@@ -1210,26 +1210,30 @@ fn get_matching_field<'a>(
     let matching_fields: Vec<_> = field_type
         .fields
         .iter()
-        .filter(|f| {
+        .filter(|candidate_field| {
             // The type of the field must match the enclosing type. For example, the type must match the `Concert` type (or its variation such as `Set<Concert>`)
-            let type_matches = f.typ.to_typ(types).get_underlying_typename(types).as_ref()
+            let type_matches = candidate_field
+                .typ
+                .to_typ(types)
+                .get_underlying_typename(types)
+                .as_ref()
                 == Some(&enclosing_type.name);
 
             // Ensure that relation annotation matches the field name.
-            let relation1_matches = match relation_field_name(f).as_ref() {
+            let relation1_matches = match relation_field_name(candidate_field).as_ref() {
                 Some(relation_field_name) => relation_field_name == &field.name,
                 None => true,
             };
             // Check the other way around
             let relation2_matches = match relation_field_name(field).as_ref() {
-                Some(relation_field_name) => relation_field_name == &f.name,
+                Some(relation_field_name) => relation_field_name == &candidate_field.name,
                 None => true,
             };
 
             // Both ways must match
             let relation_field_name_matches = relation1_matches && relation2_matches;
 
-            type_matches && relation_field_name_matches
+            type_matches && relation_field_name_matches && *candidate_field != field
         })
         .collect();
 

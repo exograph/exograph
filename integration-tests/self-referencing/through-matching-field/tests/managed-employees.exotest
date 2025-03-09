@@ -1,0 +1,95 @@
+operation: |
+  fragment EmployeeInfo on Employee {
+    id
+    name
+    manager {
+      id
+      name
+    }
+    company {
+      id
+      name
+    }
+  }
+  query($ceoId: Int!, $vpEngId: Int!) {
+    ceoReports: employees(where: {manager: {id: {eq: $ceoId}}}) @unordered{
+      ...EmployeeInfo
+    }
+    vpEngReports: employees(where: {manager: {id: {eq: $vpEngId}}}) @unordered {
+      ...EmployeeInfo
+    }
+  }
+variable: |
+  {
+    "ceoId": $.ceoId,
+    "vpEngId": $.vpEngId
+  }
+response: |
+  {
+    "data": {
+      "ceoReports": [
+        {
+          "id": $.vpEngId,
+          "name": "VP of Engineering",
+          "manager": {
+            "id": $.ceoId,
+            "name": "CEO"
+          },
+          "company": {
+            "id": $.companyId,
+            "name": "Company"
+          }
+        },
+        {
+          "id": $.vpSalesId,
+          "name": "VP of Sales",
+          "manager": {
+            "id": $.ceoId,
+            "name": "CEO"
+          },
+          "company": {
+            "id": $.companyId,
+            "name": "Company"
+          }
+        }
+      ],
+      "vpEngReports": [
+        {
+          "id": $.eng1Id,
+          "name": "Engineer 1",
+          "manager": {
+            "id": $.vpEngId,
+            "name": "VP of Engineering"
+          },
+          "company": {
+            "id": $.companyId,
+            "name": "Company"
+          }
+        },
+        {
+          "id": $.eng2Id,
+          "name": "Engineer 2",
+          "manager": {
+            "id": $.vpEngId,
+            "name": "VP of Engineering"
+          },
+          "company": {
+            "id": $.companyId,
+            "name": "Company"
+          }
+        },
+        {
+          "id": $.eng3Id,
+          "name": "Engineer 3",
+          "manager": {
+            "id": $.vpEngId,
+            "name": "VP of Engineering"
+          },
+          "company": {
+            "id": $.companyId,
+            "name": "Company"
+          }
+        }
+      ]
+    }
+  }

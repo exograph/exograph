@@ -1,0 +1,29 @@
+operation: |
+  query($employeeId: Int!) {
+    employee(id: $employeeId) {
+      id
+      name
+      manager {
+        id
+        name
+      }
+    }
+  }
+variable: |
+  {
+    "employeeId": $.eng1Id
+  }
+response: |
+  {
+    "data": {
+      "employee": {
+        "id": $.eng1Id,
+        "name": "Engineer 1",
+        "manager": {
+          "id": $.vpEngId,
+          "name": "VP of Engineering"
+        }
+      }
+    }
+  }
+         

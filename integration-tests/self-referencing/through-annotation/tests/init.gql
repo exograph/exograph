@@ -1,0 +1,56 @@
+stages:
+    - operation: |
+        mutation {
+            company: createCompany(data: {name: "Company"}) {
+                id @bind(name: "companyId")
+            }
+        }
+    - operation: |
+        mutation($companyId: Int!) {
+            ceo: createEmployee(data: {name: "CEO", company: {id: $companyId}}) {
+                id @bind(name: "ceoId")
+            }
+        }
+      variable: |
+        {
+            companyId: $.companyId
+        }
+    - operation: |
+        mutation($ceoId: Int!, $companyId: Int!) {
+            vpEng: createEmployee(data: {name: "VP of Engineering", manager: {id: $ceoId}, company: {id: $companyId}}) {
+                id @bind(name: "vpEngId")
+            }
+            vpSales: createEmployee(data: {name: "VP of Sales", manager: {id: $ceoId}, company: {id: $companyId}}) {
+                id @bind(name: "vpSalesId")
+            }
+        }
+      variable: |
+        {
+            ceoId: $.ceoId,
+            companyId: $.companyId
+        }
+    - operation: |
+        mutation($vpEngId: Int!, $vpSalesId: Int!, $companyId: Int!) {
+            eng1: createEmployee(data: {name: "Engineer 1", manager: {id: $vpEngId}, company: {id: $companyId}}) {
+                id @bind(name: "eng1Id")
+            }
+            eng2: createEmployee(data: {name: "Engineer 2", manager: {id: $vpEngId}, company: {id: $companyId}}) {
+                id @bind(name: "eng2Id")
+            }
+            eng3: createEmployee(data: {name: "Engineer 3", manager: {id: $vpEngId}, company: {id: $companyId}}) {
+                id @bind(name: "eng3Id")
+            }
+            sales1: createEmployee(data: {name: "Sales 1", manager: {id: $vpSalesId}, company: {id: $companyId}}) {
+                id @bind(name: "sales1Id")
+            }
+            sales2: createEmployee(data: {name: "Sales 2", manager: {id: $vpSalesId}, company: {id: $companyId}}) {
+                id @bind(name: "sales2Id")
+            }
+        }
+      variable: |
+        {
+            vpEngId: $.vpEngId,
+            vpSalesId: $.vpSalesId,
+            companyId: $.companyId
+        }
+

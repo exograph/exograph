@@ -480,6 +480,7 @@ mod tests {
         assert!(!mutation_type_names.contains("TodoUpdateInput"));
         assert!(!mutation_type_names.contains("TodoCreationInput"));
     }
+
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn access_false_mutation() {
@@ -560,6 +561,33 @@ mod tests {
         assert!(system.mutations.get_by_key("updateTodos").is_none());
         let mutation_type_names = get_mutation_type_names(&system);
         assert!(!mutation_type_names.contains("TodoUpdateInput"));
+    }
+
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
+    async fn self_referencing_through_matching_field() {
+        let src = r#"
+        @postgres
+        module CompanyModule {
+            @access(true)
+            type Employee {
+                @pk id: Int = autoIncrement()
+                name: String
+                manager: Employee?
+                reports: Set<Employee>?
+            }
+        }
+        "#;
+
+        let system = create_system(src).await;
+        let mutation_type_names = get_mutation_type_names(&system);
+
+        assert!(mutation_type_names.contains("EmployeeReferenceInput"));
+        assert!(mutation_type_names.contains("EmployeeUpdateInput"));
+        assert!(mutation_type_names.contains("EmployeeCreationInput"));
+        assert!(mutation_type_names.contains("EmployeeCreationInputFromEmployee"));
+        assert!(mutation_type_names.contains("EmployeeUpdateInputFromEmployee"));
+        assert!(mutation_type_names.contains("EmployeeUpdateInputFromEmployeeNested"));
     }
 
     fn get_mutation_type_names(system: &PostgresGraphQLSubsystem) -> HashSet<String> {

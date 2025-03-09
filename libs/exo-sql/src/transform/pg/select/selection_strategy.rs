@@ -126,13 +126,14 @@ pub(super) fn join_info(
             .tail_relation_id()
             .map(|relation_id| SelectionLevel::Nested(vec![*relation_id])),
     };
+
+    let relation_predicate = compute_relation_predicate(selection_level, false, database);
+
     let predicate_selection_level = predicate_selection_level_override
         .as_ref()
         .unwrap_or(selection_level);
 
     let predicate = transformer.to_predicate(predicate, predicate_selection_level, true, database);
-
-    let relation_predicate = compute_relation_predicate(predicate_selection_level, false, database);
 
     let predicate = ConcretePredicate::and(predicate, relation_predicate);
 
@@ -168,6 +169,9 @@ pub(super) fn compute_relation_predicate(
                 None
             };
 
+            let foreign_table_alias =
+                selection_level.self_referencing_table_alias(relation_table_id, database);
+
             relation_column_pairs.into_iter().fold(
                 ConcretePredicate::True,
                 |predicate, column_pair| {
@@ -175,7 +179,10 @@ pub(super) fn compute_relation_predicate(
                         predicate,
                         ConcretePredicate::Eq(
                             Column::physical(column_pair.self_column_id, alias.clone()),
-                            Column::physical(column_pair.foreign_column_id, None),
+                            Column::physical(
+                                column_pair.foreign_column_id,
+                                foreign_table_alias.clone(),
+                            ),
                         ),
                     )
                 },

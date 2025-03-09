@@ -152,4 +152,44 @@ impl SelectionLevel {
             }
         }
     }
+
+    /// Compute the alias of the foreign table for a self-referencing relation
+    ///
+    /// For self-referencing relations, we need to use the alias to distinguish between the
+    /// inner and outer table.
+    pub(crate) fn self_referencing_table_alias(
+        &self,
+        table_id: TableId,
+        database: &Database,
+    ) -> Option<String> {
+        match self {
+            SelectionLevel::TopLevel => None,
+            SelectionLevel::Nested(nested_selection_level) => {
+                let is_self_referencing = match nested_selection_level.last().unwrap() {
+                    RelationId::OneToMany(relation_id) => {
+                        let relation = relation_id.deref(database);
+                        relation.linked_table_id == relation.self_table_id
+                    }
+                    RelationId::ManyToOne(relation_id) => {
+                        let relation = relation_id.deref(database);
+                        relation.linked_table_id == relation.self_table_id
+                    }
+                };
+
+                if is_self_referencing {
+                    let alias = {
+                        let table = database.get_table(table_id);
+                        format!(
+                            "{}{ALIAS_SEPARATOR}{}",
+                            table.name.fully_qualified_name_with_sep(ALIAS_SEPARATOR),
+                            nested_selection_level.len()
+                        )
+                    };
+                    Some(alias)
+                } else {
+                    None
+                }
+            }
+        }
+    }
 }
