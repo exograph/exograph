@@ -1,0 +1,15 @@
+[package]
+name = "lsp"
+publish = false
+version.workspace = true
+edition.workspace = true
+repository = "https://github.com/exograph/exograph"
+
+[[bin]]
+name = "exo-lsp"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { workspace = true, features = ["full"] }
+anyhow = { workspace = true, features = ["backtrace"] }
+tower-lsp = { version = "0.20.0", features = ["proposed"] }

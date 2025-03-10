@@ -7,16 +7,13 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-//! Top level subcommands
+use anyhow::Result;
 
-pub(crate) mod build;
-pub(crate) mod command;
-pub(crate) mod deploy;
-pub(crate) mod dev;
-pub(crate) mod graphql;
-pub(crate) mod new;
-pub(crate) mod playground;
-pub(crate) mod schema;
-pub(crate) mod test;
-pub(super) mod util;
-pub(crate) mod yolo;
+mod server;
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    server::start().await?;
+
+    Ok(())
+}
