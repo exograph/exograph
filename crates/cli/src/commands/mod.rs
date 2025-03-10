@@ -14,6 +14,7 @@ pub(crate) mod command;
 pub(crate) mod deploy;
 pub(crate) mod dev;
 pub(crate) mod graphql;
+pub(crate) mod lsp;
 pub(crate) mod new;
 pub(crate) mod playground;
 pub(crate) mod schema;
