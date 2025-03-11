@@ -69,6 +69,7 @@ impl SubsystemBuilder for WasmSubsystemBuilder {
             id: self.id(),
             graphql: Some(graphql_subsystem),
             rest: None,
+            rpc: None,
             core: CoreSubsystemBuild {
                 serialized_subsystem: SerializableCoreBytes(vec![]),
             },

@@ -71,6 +71,7 @@ impl SubsystemBuilder for DenoSubsystemBuilder {
             id: self.id(),
             graphql: Some(graphql_subsystem),
             rest: None,
+            rpc: None,
             core: CoreSubsystemBuild {
                 serialized_subsystem: SerializableCoreBytes(vec![]),
             },

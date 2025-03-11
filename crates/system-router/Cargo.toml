@@ -12,6 +12,7 @@ http.workspace = true
 common = { path = "../common" }
 graphql-router = { path = "../graphql-router" }
 rest-router = { path = "../rest-router" }
+rpc-router = { path = "../rpc-router" }
 playground-router = { path = "../playground-router" }
 core-router = { path = "../core-subsystem/core-router" }
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }

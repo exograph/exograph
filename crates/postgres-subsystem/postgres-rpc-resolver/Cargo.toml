@@ -1,0 +1,21 @@
+[package]
+name = "postgres-rpc-resolver"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+async-trait.workspace = true
+http.workspace = true
+
+exo-sql = { path = "../../../libs/exo-sql" }
+
+core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+postgres-rpc-model = { path = "../postgres-rpc-model" }
+postgres-core-resolver = { path = "../postgres-core-resolver" }
+common = { path = "../../common" }
+
+[dev-dependencies]
+
+[lib]
+doctest = false

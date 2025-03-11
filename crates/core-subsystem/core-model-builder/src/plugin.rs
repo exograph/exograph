@@ -10,7 +10,7 @@
 use crate::{ast::ast_types::AstExpr, typechecker::Typed};
 use core_plugin_shared::interception::{InterceptorIndex, InterceptorKind};
 use core_plugin_shared::serializable_system::{
-    SerializableCoreBytes, SerializableGraphQLBytes, SerializableRestBytes,
+    SerializableCoreBytes, SerializableGraphQLBytes, SerializableRestBytes, SerializableRpcBytes,
 };
 
 pub struct GraphQLSubsystemBuild {
@@ -30,6 +30,10 @@ pub struct Interception {
 
 pub struct RestSubsystemBuild {
     pub serialized_subsystem: SerializableRestBytes,
+}
+
+pub struct RpcSubsystemBuild {
+    pub serialized_subsystem: SerializableRpcBytes,
 }
 
 pub struct CoreSubsystemBuild {

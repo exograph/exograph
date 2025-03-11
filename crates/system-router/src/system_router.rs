@@ -9,7 +9,11 @@
 
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 
+use common::env_const::EXO_UNSTABLE_ENABLE_RPC_API;
 use common::router::PlainRequestPayload;
+use core_plugin_interface::core_resolver::plugin::SubsystemRpcResolver;
+use core_plugin_interface::core_resolver::system_rpc_resolver::SystemRpcResolver;
+use rpc_router::RpcRouter;
 use tracing::debug;
 
 use common::context::{JwtAuthenticator, RequestContext};
@@ -75,9 +79,10 @@ pub async fn create_system_router_from_system(
 
     let mut graphql_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>> = vec![];
     let mut rest_resolvers: Vec<Box<dyn SubsystemRestResolver + Send + Sync>> = vec![];
+    let mut rpc_resolvers: Vec<Box<dyn SubsystemRpcResolver + Send + Sync>> = vec![];
 
     for resolver in subsystem_resolvers {
-        let SubsystemResolver { graphql, rest } = *resolver;
+        let SubsystemResolver { graphql, rest, rpc } = *resolver;
 
         if let Some(graphql) = graphql {
             graphql_resolvers.push(graphql);
@@ -85,6 +90,10 @@ pub async fn create_system_router_from_system(
 
         if let Some(rest) = rest {
             rest_resolvers.push(rest);
+        }
+
+        if let Some(rpc) = rpc {
+            rpc_resolvers.push(rpc);
         }
     }
 
@@ -100,7 +109,10 @@ pub async fn create_system_router_from_system(
     let rest_resolver = SystemRestResolver::new(rest_resolvers, env.clone());
     let rest_router = RestRouter::new(rest_resolver, env.clone());
 
-    create_system_router(graphql_router, rest_router, env).await
+    let rpc_resolver = SystemRpcResolver::new(rpc_resolvers, env.clone());
+    let rpc_router = RpcRouter::new(rpc_resolver, env.clone());
+
+    create_system_router(graphql_router, rest_router, rpc_router, env).await
 }
 
 pub async fn create_system_resolvers(
@@ -183,6 +195,7 @@ pub async fn create_system_resolvers(
 async fn create_system_router(
     graphql_router: GraphQLRouter,
     rest_router: RestRouter,
+    rpc_router: RpcRouter,
     env: Arc<dyn Environment>,
 ) -> Result<SystemRouter, SystemLoadingError> {
     let mut routers: Vec<Box<dyn for<'a> Router<RequestContext<'a>> + Send + Sync>> =
@@ -190,6 +203,10 @@ async fn create_system_router(
 
     if env.enabled(EXO_UNSTABLE_ENABLE_REST_API, false) {
         routers.push(Box::new(rest_router));
+    }
+
+    if env.enabled(EXO_UNSTABLE_ENABLE_RPC_API, false) {
+        routers.push(Box::new(rpc_router));
     }
 
     #[cfg(target_family = "wasm")]

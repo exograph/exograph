@@ -1,0 +1,19 @@
+[package]
+name = "postgres-rpc-model"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+serde.workspace = true
+bincode.workspace = true
+http.workspace = true
+
+exo-sql = { path = "../../../libs/exo-sql" }
+postgres-core-model = { path = "../postgres-core-model" }
+core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+
+[dev-dependencies]
+
+[lib]
+doctest = false
