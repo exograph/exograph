@@ -1,0 +1,17 @@
+[package]
+name = "postgres-rpc-builder"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+postgres-core-model = { path = "../postgres-core-model" }
+postgres-rpc-model = { path = "../postgres-rpc-model" }
+postgres-core-builder = { path = "../postgres-core-builder" }
+core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+
+
+[dev-dependencies]
+
+[lib]
+doctest = false

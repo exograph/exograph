@@ -34,7 +34,6 @@ postgres-resolver = { path = "../../postgres-subsystem/postgres-resolver" }
 tokio-postgres.workspace = true
 wasm-bindgen-test.workspace = true
 wasm-bindgen-test-macro.workspace = true
-multiplatform_test.workspace = true
 
 builder = { path = "../../builder", features = ["test-context"] }
 core-plugin-interface = { path = "../core-plugin-interface" }

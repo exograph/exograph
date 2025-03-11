@@ -65,16 +65,17 @@ pub async fn build(
             id,
             graphql,
             rest,
+            rpc,
             core,
         } = build_info;
 
         // The builder's contract is that it must return a subsystem only if it found a relevant
         // module in the exo file, in which case it must serve GraphQL and/or REST.
-        assert!(graphql.is_some() || rest.is_some());
+        assert!(graphql.is_some() || rest.is_some() || rpc.is_some());
 
         let mut serialized_graphql_subsystem = None;
         let mut serialized_rest_subsystem = None;
-
+        let mut serialized_rpc_subsystem = None;
         if let Some(graphql) = graphql {
             subsystem_interceptions.push((subsystem_index, graphql.interceptions));
             query_names.extend(graphql.query_names);
@@ -86,11 +87,16 @@ pub async fn build(
             serialized_rest_subsystem = Some(rest.serialized_subsystem);
         }
 
+        if let Some(rpc) = rpc {
+            serialized_rpc_subsystem = Some(rpc.serialized_subsystem);
+        }
+
         SerializableSubsystem {
             id: id.to_string(),
             subsystem_index,
             graphql: serialized_graphql_subsystem,
             rest: serialized_rest_subsystem,
+            rpc: serialized_rpc_subsystem,
             core: SerializableCoreBytes(core.serialized_subsystem.0),
         }
     })

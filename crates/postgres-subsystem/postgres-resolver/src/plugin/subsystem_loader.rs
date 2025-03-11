@@ -11,12 +11,14 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use common::env_const::get_rest_http_path;
+use common::env_const::{get_rest_http_path, get_rpc_http_path};
 use postgres_core_model::subsystem::PostgresCoreSubsystem;
 use postgres_graphql_resolver::PostgresSubsystemResolver;
 
 use core_plugin_interface::{
-    core_resolver::plugin::{SubsystemGraphQLResolver, SubsystemRestResolver},
+    core_resolver::plugin::{
+        SubsystemGraphQLResolver, SubsystemRestResolver, SubsystemRpcResolver,
+    },
     interface::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver},
     serializable_system::SerializableSubsystem,
     system_serializer::SystemSerializer,
@@ -27,6 +29,8 @@ use postgres_core_resolver::database_helper::create_database_executor;
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 use postgres_rest_model::subsystem::{PostgresRestSubsystem, PostgresRestSubsystemWithRouter};
 use postgres_rest_resolver::PostgresSubsystemRestResolver;
+use postgres_rpc_model::subsystem::{PostgresRpcSubsystem, PostgresRpcSubsystemWithRouter};
+use postgres_rpc_resolver::PostgresSubsystemRpcResolver;
 
 pub struct PostgresSubsystemLoader {
     pub existing_client: Option<DatabaseClientManager>,
@@ -52,6 +56,7 @@ impl SubsystemLoader for PostgresSubsystemLoader {
         let SerializableSubsystem {
             graphql,
             rest,
+            rpc,
             core,
             ..
         } = subsystem;
@@ -83,16 +88,33 @@ impl SubsystemLoader for PostgresSubsystemLoader {
                 Ok::<_, SubsystemLoadingError>(Box::new(PostgresSubsystemRestResolver {
                     id: self.id(),
                     subsystem,
-                    executor,
+                    executor: executor.clone(),
                     api_path_prefix,
                 })
                     as Box<dyn SubsystemRestResolver + Send + Sync>)
             })
             .transpose()?;
 
+        let rpc_system = rpc
+            .map(|rpc| {
+                let subsystem = PostgresRpcSubsystem::deserialize(rpc.0)?;
+                let mut subsystem = PostgresRpcSubsystemWithRouter::new(subsystem)?;
+                subsystem.core_subsystem = core_subsystem.clone();
+                let api_path_prefix = get_rpc_http_path(env).to_string();
+                Ok::<_, SubsystemLoadingError>(Box::new(PostgresSubsystemRpcResolver {
+                    id: self.id(),
+                    subsystem,
+                    executor: executor.clone(),
+                    api_path_prefix,
+                })
+                    as Box<dyn SubsystemRpcResolver + Send + Sync>)
+            })
+            .transpose()?;
+
         Ok(Box::new(SubsystemResolver::new(
             graphql_system,
             rest_system,
+            rpc_system,
         )))
     }
 }

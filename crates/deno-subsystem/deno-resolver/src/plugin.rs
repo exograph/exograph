@@ -50,6 +50,6 @@ impl SubsystemLoader for DenoSubsystemLoader {
             None => Ok(None),
         }?;
 
-        Ok(Box::new(SubsystemResolver::new(graphql, None)))
+        Ok(Box::new(SubsystemResolver::new(graphql, None, None)))
     }
 }

@@ -19,7 +19,7 @@ async-trait.workspace = true
 
 postgres-graphql-resolver = { path = "../postgres-graphql-resolver" }
 postgres-rest-resolver = { path = "../postgres-rest-resolver" }
-
+postgres-rpc-resolver = { path = "../postgres-rpc-resolver" }
 exo-sql = { path = "../../../libs/exo-sql" }
 exo-env = { path = "../../../libs/exo-env" }
 common = { path = "../../common" }
@@ -28,6 +28,7 @@ postgres-core-model = { path = "../postgres-core-model" }
 postgres-core-resolver = { path = "../postgres-core-resolver" }
 postgres-graphql-model = { path = "../postgres-graphql-model" }
 postgres-rest-model = { path = "../postgres-rest-model" }
+postgres-rpc-model = { path = "../postgres-rpc-model" }
 
 [dev-dependencies]
 wasm-bindgen-test.workspace = true
