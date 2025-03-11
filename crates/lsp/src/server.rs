@@ -1,6 +1,7 @@
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::{
-    DidChangeTextDocumentParams, DidOpenTextDocumentParams, InitializeParams, InitializeResult,
+    DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidCloseTextDocumentParams,
+    DidOpenTextDocumentParams, DidSaveTextDocumentParams, InitializeParams, InitializeResult,
     InitializedParams, MessageType, SaveOptions, ServerCapabilities, TextDocumentSyncCapability,
     TextDocumentSyncKind, TextDocumentSyncOptions, TextDocumentSyncSaveOptions,
 };
@@ -34,6 +35,7 @@ impl LanguageServer for Backend {
     }
 
     async fn initialized(&self, _: InitializedParams) {
+        tracing::info!("server initialized!");
         self.client
             .log_message(MessageType::INFO, "server initialized!")
             .await;
@@ -44,28 +46,26 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        self.client
-            .log_message(
-                MessageType::INFO,
-                format!("text document did open! {:?}", params.text_document.uri),
-            )
-            .await;
+        tracing::info!("text document did open! {:?}", params.text_document.uri);
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        self.client
-            .log_message(
-                MessageType::INFO,
-                format!(
-                    "text document did change! {:?}",
-                    params
-                        .content_changes
-                        .first()
-                        .map(|change| change.text.clone())
-                        .unwrap_or_default()
-                ),
-            )
-            .await;
+        tracing::info!("text document did change! {:?}", params.text_document.uri);
+    }
+
+    async fn did_save(&self, params: DidSaveTextDocumentParams) {
+        tracing::info!("text document did save! {:?}", params.text_document.uri);
+    }
+
+    async fn did_close(&self, params: DidCloseTextDocumentParams) {
+        tracing::info!("text document did close! {:?}", params.text_document.uri);
+    }
+
+    async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
+        tracing::info!(
+            "text document did change watched files! {:?}",
+            params.changes
+        );
     }
 }
 

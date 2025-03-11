@@ -10,6 +10,9 @@ name = "exo-lsp"
 path = "src/main.rs"
 
 [dependencies]
+tracing.workspace = true
+tracing-appender = "0.2"
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 tokio = { workspace = true, features = ["full"] }
 anyhow = { workspace = true, features = ["backtrace"] }
 tower-lsp = { version = "0.20.0", features = ["proposed"] }

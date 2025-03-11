@@ -10,9 +10,12 @@
 use anyhow::Result;
 
 mod server;
+mod trace_setup;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let _guard = trace_setup::setup();
+
     server::start().await?;
 
     Ok(())
