@@ -17,7 +17,7 @@ tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 dashmap = "6.1.0"
 url.workspace = true
 
-tokio = { workspace = true, features = ["full"] }
+tokio = { workspace = true, features = ["macros", "rt"] }
 anyhow = { workspace = true, features = ["backtrace"] }
 tower-lsp = { version = "0.20.0", features = ["proposed"] }
 codemap.workspace = true
