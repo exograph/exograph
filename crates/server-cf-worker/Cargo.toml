@@ -10,9 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 tracing.workspace = true
-tracing-subscriber = { workspace = true, default-features = false, features = [
-  "fmt",
-] }
+tracing-subscriber = { workspace = true, features = ["fmt"] }
 http.workspace = true
 url.workspace = true
 

@@ -1985,6 +1985,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dashmap"
+version = "6.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5041cc499144891f3790297212f32a74fb938e5136a14943f338ef9e0ae276cf"
+dependencies = [
+ "cfg-if 1.0.0",
+ "crossbeam-utils",
+ "hashbrown 0.14.5",
+ "lock_api",
+ "once_cell",
+ "parking_lot_core",
+]
+
+[[package]]
 name = "data-encoding"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2060,7 +2074,7 @@ dependencies = [
  "clap_complete_fig",
  "color-print",
  "console_static_text",
- "dashmap",
+ "dashmap 5.5.3",
  "data-encoding",
  "deno_ast",
  "deno_cache_dir",
@@ -5537,11 +5551,20 @@ name = "lsp"
 version = "0.12.0"
 dependencies = [
  "anyhow",
+ "builder",
+ "codemap",
+ "core-plugin-interface",
+ "core-plugin-shared",
+ "dashmap 6.1.0",
+ "deno-builder",
+ "postgres-builder",
  "tokio",
  "tower-lsp",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "url",
+ "wasm-builder",
 ]
 
 [[package]]
@@ -8850,7 +8873,7 @@ checksum = "630c761c74ac8021490b78578cc2223aa4a568241e26505c27bf0e4fd4ad8ec2"
 dependencies = [
  "ahash",
  "anyhow",
- "dashmap",
+ "dashmap 5.5.3",
  "once_cell",
  "regex",
  "serde",
@@ -9049,7 +9072,7 @@ version = "0.208.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98d8447ea20ef76958a8240feef95743702485a84331e6df5bdbe7e383c87838"
 dependencies = [
- "dashmap",
+ "dashmap 5.5.3",
  "indexmap 2.7.0",
  "once_cell",
  "petgraph",
@@ -9094,7 +9117,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76c76d8b9792ce51401d38da0fa62158d61f6d80d16d68fe5b03ce4bf5fba383"
 dependencies = [
  "base64 0.21.7",
- "dashmap",
+ "dashmap 5.5.3",
  "indexmap 2.7.0",
  "once_cell",
  "serde",
@@ -9870,7 +9893,7 @@ dependencies = [
  "async-trait",
  "auto_impl",
  "bytes",
- "dashmap",
+ "dashmap 5.5.3",
  "futures",
  "httparse",
  "lsp-types",
@@ -11957,7 +11980,7 @@ dependencies = [
  "asynchronous-codec",
  "bytes",
  "crossbeam-queue",
- "dashmap",
+ "dashmap 5.5.3",
  "futures-channel",
  "futures-io",
  "futures-task",

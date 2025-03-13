@@ -46,14 +46,32 @@ use core_model_builder::{
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
+pub trait FileSystem {
+    fn read_file(&self, path: impl AsRef<Path>) -> Result<String, std::io::Error>;
+    fn exists(&self, path: impl AsRef<Path>) -> bool;
+}
+
+pub struct RealFileSystem;
+
+impl FileSystem for RealFileSystem {
+    fn read_file(&self, path: impl AsRef<Path>) -> Result<String, std::io::Error> {
+        fs::read_to_string(path.as_ref())
+    }
+
+    fn exists(&self, path: impl AsRef<Path>) -> bool {
+        Path::exists(path.as_ref())
+    }
+}
+
 #[cfg(not(target_family = "wasm"))]
 /// Build a model system from a exo file
 pub async fn build_system(
     model_file: impl AsRef<Path>,
+    file_system: &impl FileSystem,
     trusted_documents_dir: Option<impl AsRef<Path>>,
     static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
 ) -> Result<SerializableSystem, ParserError> {
-    let file_content = fs::read_to_string(model_file.as_ref())?;
+    let file_content = file_system.read_file(model_file.as_ref())?;
     let mut codemap = CodeMap::new();
 
     codemap.add_file(model_file.as_ref().display().to_string(), file_content);
@@ -63,7 +81,7 @@ pub async fn build_system(
         .unwrap_or(Ok(TrustedDocuments::all()))?;
 
     match build_from_ast_system(
-        parser::parse_file(&model_file, &mut codemap),
+        parser::parse_file(&model_file, file_system, &mut codemap),
         trusted_documents,
         static_builders,
     )
@@ -162,7 +180,7 @@ pub fn load_subsystem_builders(
     Ok(subsystem_builders)
 }
 
-async fn build_from_ast_system(
+pub async fn build_from_ast_system(
     ast_system: Result<AstSystem<Untyped>, ParserError>,
     trusted_documents: TrustedDocuments,
     static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,

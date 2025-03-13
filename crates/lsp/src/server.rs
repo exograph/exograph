@@ -1,22 +1,61 @@
+use std::path::PathBuf;
+
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::{
     DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidCloseTextDocumentParams,
     DidOpenTextDocumentParams, DidSaveTextDocumentParams, InitializeParams, InitializeResult,
-    InitializedParams, MessageType, SaveOptions, ServerCapabilities, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextDocumentSyncOptions, TextDocumentSyncSaveOptions,
+    InitializedParams, MessageType, SaveOptions, ServerCapabilities, ServerInfo,
+    TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
+    TextDocumentSyncSaveOptions,
 };
-use tower_lsp::{Client, LanguageServer, LspService, Server};
+use tower_lsp::{Client, LanguageServer};
+use url::Url;
+
+use crate::workspace::Document;
+use crate::workspaces::Workspaces;
 
 #[derive(Debug)]
-struct Backend {
+pub(crate) struct Backend {
     client: Client,
+    workspaces: Workspaces,
+}
+
+impl Backend {
+    pub fn new(client: Client) -> Self {
+        Self {
+            client,
+            workspaces: Workspaces::new(),
+        }
+    }
+
+    pub async fn on_change(&self, path: PathBuf, document: Document) -> Result<()> {
+        let diagnostics = self
+            .workspaces
+            .insert_document(path, document)
+            .await
+            .map_err(|e| {
+                tracing::error!("Error inserting document: {}", e);
+                tower_lsp::jsonrpc::Error::parse_error()
+            })?;
+
+        for (path, version, diagnostics) in diagnostics {
+            self.client
+                .publish_diagnostics(Url::from_file_path(path).unwrap(), diagnostics, version)
+                .await;
+        }
+
+        Ok(())
+    }
 }
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
-            server_info: None,
+            server_info: Some(ServerInfo {
+                name: "Exograph Language Server".to_string(),
+                version: Some(env!("CARGO_PKG_VERSION").to_string()),
+            }),
             offset_encoding: None,
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Options(
@@ -46,15 +85,52 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        tracing::info!("text document did open! {:?}", params.text_document.uri);
+        let path = PathBuf::from(params.text_document.uri.path());
+        let _ = self
+            .on_change(
+                path,
+                Document::new(
+                    params.text_document.text,
+                    Some(params.text_document.version),
+                ),
+            )
+            .await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        tracing::info!("text document did change! {:?}", params.text_document.uri);
+        let path = PathBuf::from(params.text_document.uri.path());
+        let _ = self
+            .on_change(
+                path,
+                Document::new(
+                    params
+                        .content_changes
+                        .into_iter()
+                        .last()
+                        .expect("no content changes")
+                        .text,
+                    Some(params.text_document.version),
+                ),
+            )
+            .await;
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        tracing::info!("text document did save! {:?}", params.text_document.uri);
+        let content = params.text;
+
+        match content {
+            Some(content) => {
+                self.on_change(
+                    PathBuf::from(params.text_document.uri.path()),
+                    Document::new(content, None),
+                )
+                .await
+                .unwrap();
+            }
+            None => {
+                _ = self.client.semantic_tokens_refresh().await;
+            }
+        }
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
@@ -67,14 +143,4 @@ impl LanguageServer for Backend {
             params.changes
         );
     }
-}
-
-pub async fn start() -> Result<()> {
-    let stdin = tokio::io::stdin();
-    let stdout = tokio::io::stdout();
-
-    let (service, socket) = LspService::new(|client| Backend { client });
-    Server::new(stdin, stdout, socket).serve(service).await;
-
-    Ok(())
 }

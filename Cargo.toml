@@ -34,6 +34,7 @@ members = [
 default-members = [
   "crates/builder",
   "crates/cli",
+  "crates/lsp",
   "crates/system-router",
   "crates/graphql-router",
   "crates/rest-router",

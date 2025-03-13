@@ -8,15 +8,29 @@
 // by the Apache License, Version 2.0.
 
 use anyhow::Result;
+use server::Backend;
+use tower_lsp::{LspService, Server};
 
 mod server;
 mod trace_setup;
+mod workspace;
+mod workspaces;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let _guard = trace_setup::setup();
 
-    server::start().await?;
+    start().await?;
+
+    Ok(())
+}
+
+pub async fn start() -> Result<()> {
+    let stdin = tokio::io::stdin();
+    let stdout = tokio::io::stdout();
+
+    let (service, socket) = LspService::new(Backend::new);
+    Server::new(stdin, stdout, socket).serve(service).await;
 
     Ok(())
 }
