@@ -1,0 +1,30 @@
+[package]
+name = "lsp"
+publish = false
+version.workspace = true
+edition.workspace = true
+repository = "https://github.com/exograph/exograph"
+
+[[bin]]
+name = "exo-lsp"
+path = "src/main.rs"
+
+[dependencies]
+tracing.workspace = true
+tracing-appender = "0.2"
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
+
+dashmap = "6.1.0"
+url.workspace = true
+
+tokio = { workspace = true, features = ["macros", "rt"] }
+anyhow = { workspace = true, features = ["backtrace"] }
+tower-lsp = { version = "0.20.0", features = ["proposed"] }
+codemap.workspace = true
+
+builder = { path = "../builder" }
+core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
+core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
+postgres-builder = { path = "../postgres-subsystem/postgres-builder" }
+deno-builder = { path = "../deno-subsystem/deno-builder" }
+wasm-builder = { path = "../wasm-subsystem/wasm-builder" }

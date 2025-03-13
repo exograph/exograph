@@ -9,10 +9,8 @@ repository = "https://github.com/exograph/exograph"
 crate-type = ["cdylib"]
 
 [dependencies]
-tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.18", default-features = false, features = [
-  "fmt",
-] }
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["fmt"] }
 http.workspace = true
 url.workspace = true
 

@@ -66,9 +66,10 @@ pub async fn test_query(test_request: TestRequest<'_>, expected: TestResponse<'_
 
     let context = lambda_runtime::Context::default();
 
-    let model_system = builder::build_system(model_path, None::<&Path>, vec![])
-        .await
-        .expect("Failed to build system");
+    let model_system =
+        builder::build_system(model_path, &builder::RealFileSystem, None::<&Path>, vec![])
+            .await
+            .expect("Failed to build system");
 
     let system_router = create_system_router_from_system(
         model_system,

@@ -10,7 +10,7 @@
 use std::path::Path;
 
 #[cfg(not(target_family = "wasm"))]
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 
 use codemap::{CodeMap, Span};
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
@@ -20,6 +20,9 @@ use crate::{
     ast::ast_types::{AstSystem, Untyped},
     error::ParserError,
 };
+
+#[cfg(not(target_family = "wasm"))]
+use crate::FileSystem;
 
 mod converter;
 mod sitter_ffi;
@@ -38,10 +41,11 @@ fn span_from_node(source_span: Span, node: Node<'_>) -> Span {
 /// * `codemap` - The codemap to accumulate errors
 pub fn parse_file(
     input_file: impl AsRef<Path>,
+    file_system: &impl FileSystem,
     codemap: &mut CodeMap,
 ) -> Result<AstSystem<Untyped>, ParserError> {
     let mut already_parsed = vec![];
-    _parse_file(input_file, codemap, &mut already_parsed)
+    _parse_file(input_file, file_system, codemap, &mut already_parsed)
 }
 
 #[cfg(not(target_family = "wasm"))]
@@ -55,17 +59,19 @@ pub fn parse_file(
 /// * already_parsed - a vector of files that have already been parsed. Used to ensure that recursive imports do not cause an infinite loop
 fn _parse_file(
     input_file: impl AsRef<Path>,
+    file_system: &impl FileSystem,
     codemap: &mut CodeMap,
     already_parsed: &mut Vec<PathBuf>,
 ) -> Result<AstSystem<Untyped>, ParserError> {
     let input_file_path = Path::new(input_file.as_ref());
-    if !input_file_path.exists() {
+
+    if !file_system.exists(input_file.as_ref()) {
         return Err(ParserError::FileNotFound(
             input_file.as_ref().display().to_string(),
         ));
     }
 
-    let source = fs::read_to_string(input_file.as_ref())?;
+    let source = file_system.read_file(input_file.as_ref())?;
     let mut system = parse_str(&source, codemap, input_file_path)?;
 
     // add to already parsed list since we're parsing it currently
@@ -74,7 +80,7 @@ fn _parse_file(
     for import in system.imports.iter() {
         if !already_parsed.contains(import) {
             // parse import
-            let mut imported_system = _parse_file(import, codemap, already_parsed)?;
+            let mut imported_system = _parse_file(import, file_system, codemap, already_parsed)?;
 
             // merge import into system
             system.types.append(&mut imported_system.types);

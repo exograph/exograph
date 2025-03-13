@@ -10,7 +10,7 @@ async-stream.workspace = true
 async-trait.workspace = true
 bytes.workspace = true
 http.workspace = true
-tracing = { version = "0.1", features = ["log"] }
+tracing = { workspace = true, features = ["log"] }
 
 core-router = { path = "../core-subsystem/core-router" }
 core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }

@@ -141,7 +141,7 @@ jobs:
           CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
           RUST_BACKTRACE: 1
         run: cargo test --workspace --target wasm32-unknown-unknown
-          --exclude cli
+          --exclude cli --exclude lsp
           --exclude postgres-resolver-dynamic --exclude postgres-core-model
           --exclude 'deno-*'
           --exclude 'wasm-*'

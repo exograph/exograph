@@ -30,8 +30,8 @@ tokio-postgres.workspace = true
 exo-env = { path = "../../libs/exo-env" }
 exo-sql = { path = "../../libs/exo-sql" }
 
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["registry", "env-filter"] }
 tracing-opentelemetry = "0.28"
 opentelemetry = { version = "0.27.1", default-features = false, features = [
   "trace",

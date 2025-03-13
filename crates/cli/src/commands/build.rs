@@ -10,6 +10,7 @@
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use builder::error::ParserError;
+use builder::RealFileSystem;
 use clap::{ArgMatches, Command};
 use core_plugin_interface::interface::SubsystemBuilder;
 use core_plugin_shared::serializable_system::SerializableSystem;
@@ -76,7 +77,13 @@ pub(crate) async fn build_system_with_static_builders(
         Box::new(wasm_builder::WasmSubsystemBuilder::default()),
     ];
 
-    builder::build_system(model, trusted_documents_dir, static_builders).await
+    builder::build_system(
+        model,
+        &RealFileSystem,
+        trusted_documents_dir,
+        static_builders,
+    )
+    .await
 }
 
 /// Build exo_ir file
