@@ -19,8 +19,10 @@ use tree_sitter_c2rust::Node;
 use crate::{
     ast::ast_types::{AstSystem, Untyped},
     error::ParserError,
-    FileSystem,
 };
+
+#[cfg(not(target_family = "wasm"))]
+use crate::FileSystem;
 
 mod converter;
 mod sitter_ffi;

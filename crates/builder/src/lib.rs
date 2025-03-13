@@ -46,6 +46,7 @@ use core_model_builder::{
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
+#[cfg(not(target_family = "wasm"))]
 pub trait FileSystem {
     fn read_file(&self, path: impl AsRef<Path>) -> Result<String, std::io::Error>;
     fn exists(&self, path: impl AsRef<Path>) -> bool;
@@ -53,6 +54,7 @@ pub trait FileSystem {
 
 pub struct RealFileSystem;
 
+#[cfg(not(target_family = "wasm"))]
 impl FileSystem for RealFileSystem {
     fn read_file(&self, path: impl AsRef<Path>) -> Result<String, std::io::Error> {
         fs::read_to_string(path.as_ref())
