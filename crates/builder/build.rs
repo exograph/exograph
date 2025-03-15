@@ -10,7 +10,6 @@
 use std::env;
 use std::io::Write;
 use std::path::PathBuf;
-use tree_sitter_cli::generate;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dir = tempfile::Builder::new().prefix("grammar").tempdir()?;
@@ -22,8 +21,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         PathBuf::from("./grammar/grammar.js").display()
     );
 
-    let grammar = generate::load_grammar_file(&PathBuf::from("./grammar/grammar.js"))?;
-    let (grammar_name, grammar_c) = generate::generate_parser_for_grammar(&grammar)?;
+    let grammar =
+        tree_sitter_generate::load_grammar_file(&PathBuf::from("./grammar/grammar.js"), None)?;
+    let (grammar_name, grammar_c) =
+        tree_sitter_generate::generate_parser_for_grammar(&grammar, Some((0, 25, 1)))?;
     f.write_all(grammar_c.as_bytes())?;
     drop(f);
 

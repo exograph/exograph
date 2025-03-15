@@ -20,6 +20,7 @@ types:
                 - StringLiteral:
                     - sub
         default_value: ~
+        doc_comments: ~
       - name: roles
         typ:
           Plain:
@@ -35,7 +36,9 @@ types:
           - name: jwt
             params: None
         default_value: ~
+        doc_comments: ~
     fragment_references: []
     annotations: []
+    doc_comments: ~
 modules: []
 imports: []

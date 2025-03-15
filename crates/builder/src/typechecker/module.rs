@@ -37,6 +37,7 @@ impl TypecheckFrom<AstModule<Untyped>> for AstModule<Typed> {
             methods: typed(&untyped.methods),
             interceptors: typed(&untyped.interceptors),
             annotations: annotation_map,
+            doc_comments: untyped.doc_comments.clone(),
             base_exofile: untyped.base_exofile.clone(),
             span: untyped.span,
         }
@@ -124,6 +125,7 @@ impl TypecheckFrom<AstMethod<Untyped>> for AstMethod<Typed> {
             return_type: AstFieldType::shallow(&untyped.return_type),
             is_exported: untyped.is_exported,
             annotations: annotation_map,
+            doc_comments: untyped.doc_comments.clone(),
             span: untyped.span,
         }
     }
@@ -167,6 +169,7 @@ impl TypecheckFrom<AstInterceptor<Untyped>> for AstInterceptor<Typed> {
             name: untyped.name.clone(),
             arguments: typed(&untyped.arguments),
             annotations: annotation_map,
+            doc_comments: untyped.doc_comments.clone(),
             span: untyped.span,
         }
     }

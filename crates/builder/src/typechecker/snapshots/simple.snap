@@ -136,6 +136,7 @@ types:
                         - StringLiteral:
                             - custom_column
               default_value: ~
+              doc_comments: ~
             - name: role
               typ:
                 Plain:
@@ -146,9 +147,11 @@ types:
               annotations:
                 annotations: {}
               default_value: ~
+              doc_comments: ~
           fragment_references: []
           annotations:
             annotations: {}
+          doc_comments: ~
     - - ~
       - Composite:
           name: Doc
@@ -164,9 +167,11 @@ types:
               annotations:
                 annotations: {}
               default_value: ~
+              doc_comments: ~
           fragment_references: []
           annotations:
             annotations: {}
+          doc_comments: ~
     - ~
     - ~
     - ~
@@ -343,6 +348,7 @@ modules:
                           - StringLiteral:
                               - custom_column
                 default_value: ~
+                doc_comments: ~
               - name: role
                 typ:
                   Plain:
@@ -353,9 +359,11 @@ modules:
                 annotations:
                   annotations: {}
                 default_value: ~
+                doc_comments: ~
             fragment_references: []
             annotations:
               annotations: {}
+            doc_comments: ~
           - name: Doc
             kind: Type
             fields:
@@ -369,12 +377,15 @@ modules:
                 annotations:
                   annotations: {}
                 default_value: ~
+                doc_comments: ~
             fragment_references: []
             annotations:
               annotations: {}
+            doc_comments: ~
         methods: []
         interceptors: []
         base_exofile: input.exo
+        doc_comments: ~
     - ~
     - ~
     - ~

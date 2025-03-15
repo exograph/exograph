@@ -110,9 +110,9 @@ tracing = "0.1.41"
 tokio = "1"
 tokio-postgres = { version = "0.7.12", default-features = false }
 deadpool-postgres = { version = "0.14.0", default-features = false }
-tree-sitter = "0.20.10"
-tree-sitter-c2rust = "0.20.11-pre.1"
-tree-sitter-cli = "0.20.8"
+tree-sitter = { git = "https://github.com/exograph/tree-sitter-c2rust.git", branch = "generate-loading-feature-flag" }
+tree-sitter-c2rust = "0.25.1"
+tree-sitter-generate = { git = "https://github.com/exograph/tree-sitter-c2rust.git", branch = "generate-loading-feature-flag" }
 typed-generational-arena = { version = "0.2.5", features = ["serde"] }
 uuid = "1.11.0"
 url = "2.3.1"

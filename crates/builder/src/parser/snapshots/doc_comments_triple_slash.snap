@@ -1,0 +1,74 @@
+---
+source: crates/builder/src/parser/converter.rs
+expression: "convert_root(parsed.root_node(),\nr#\"\n            @postgres\n            /// Todo database module line 1\n            /// Todo database module line 2\n            module TestModule {\n                /// Todo database type line 1\n                /// Todo database type line 2\n                type Todo {\n                    /// Todo database field id line 1\n                    /// Todo database field id line 2\n                    id: Int\n                    /// Todo database field title line 1\n                    /// Todo database field title line 2\n                    title: String\n                }\n\n                /// Todo database method line 1\n                /// Todo database method line 2\n                query getTodo(id: Int): Todo\n\n                /// Todo database interceptor line 1\n                /// Todo database interceptor line 2\n                interceptor getTodoInterceptor(id: Int)\n            }\n            \"#.as_bytes(),\nfile_span, Path :: new(\"input.exo\")).unwrap()"
+---
+types: []
+modules:
+  - name: TestModule
+    annotations:
+      - name: postgres
+        params: None
+    types:
+      - name: Todo
+        kind: Type
+        fields:
+          - name: id
+            typ:
+              Plain:
+                - ~
+                - Int
+                - []
+                - ~
+            annotations: []
+            default_value: ~
+            doc_comments: "Todo database field id line 1\nTodo database field id line 2"
+          - name: title
+            typ:
+              Plain:
+                - ~
+                - String
+                - []
+                - ~
+            annotations: []
+            default_value: ~
+            doc_comments: "Todo database field title line 1\nTodo database field title line 2"
+        fragment_references: []
+        annotations: []
+        doc_comments: "Todo database type line 1\nTodo database type line 2"
+    methods:
+      - name: getTodo
+        typ: Query
+        arguments:
+          - name: id
+            typ:
+              Plain:
+                - ~
+                - Int
+                - []
+                - ~
+            annotations: []
+        return_type:
+          Plain:
+            - ~
+            - Todo
+            - []
+            - ~
+        is_exported: false
+        annotations: []
+        doc_comments: "Todo database method line 1\nTodo database method line 2"
+    interceptors:
+      - name: getTodoInterceptor
+        arguments:
+          - name: id
+            typ:
+              Plain:
+                - ~
+                - Int
+                - []
+                - ~
+            annotations: []
+        annotations: []
+        doc_comments: "Todo database interceptor line 1\nTodo database interceptor line 2"
+    base_exofile: input.exo
+    doc_comments: ~
+imports: []

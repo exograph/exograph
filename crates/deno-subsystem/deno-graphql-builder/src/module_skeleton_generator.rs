@@ -531,6 +531,7 @@ mod tests {
                     typ: AstFieldType::Plain(None, "String".to_string(), vec![], true, span),
                     annotations: Default::default(),
                     default_value: None,
+                    doc_comments: None,
                     span,
                 },
                 AstField {
@@ -538,11 +539,13 @@ mod tests {
                     typ: AstFieldType::Plain(None, "Int".to_string(), vec![], true, span),
                     annotations: Default::default(),
                     default_value: None,
+                    doc_comments: None,
                     span,
                 },
             ],
             fragment_references: vec![],
             annotations: Default::default(),
+            doc_comments: None,
             span,
         }
     }
@@ -571,6 +574,7 @@ mod tests {
                     ),
                     annotations: Default::default(),
                     default_value: None,
+                    doc_comments: None,
                     span,
                 },
                 AstField {
@@ -578,11 +582,13 @@ mod tests {
                     typ: AstFieldType::Plain(None, "Int".to_string(), vec![], true, span),
                     annotations: Default::default(),
                     default_value: None,
+                    doc_comments: None,
                     span,
                 },
             ],
             fragment_references: vec![],
             annotations: Default::default(),
+            doc_comments: None,
             span,
         }
     }
@@ -600,6 +606,7 @@ mod tests {
             base_exofile: PathBuf::new(),
             interceptors: vec![],
             methods: vec![],
+            doc_comments: None,
             span,
         }
     }

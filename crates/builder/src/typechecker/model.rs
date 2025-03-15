@@ -38,6 +38,7 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
                 .map(AstFragmentReference::shallow)
                 .collect(),
             annotations: annotation_map,
+            doc_comments: untyped.doc_comments.clone(),
             span: untyped.span,
         }
     }
@@ -101,6 +102,7 @@ impl TypecheckFrom<AstFragmentReference<Untyped>> for AstFragmentReference<Typed
         AstFragmentReference {
             name: untyped.name.clone(),
             typ: false,
+            doc_comments: untyped.doc_comments.clone(),
             span: untyped.span,
         }
     }

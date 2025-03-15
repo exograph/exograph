@@ -30,6 +30,7 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
             name: untyped.name.clone(),
             typ: AstFieldType::shallow(&untyped.typ),
             annotations: annotation_map,
+            doc_comments: untyped.doc_comments.clone(),
             default_value: untyped.default_value.as_ref().map(AstFieldDefault::shallow),
             span: untyped.span,
         }
