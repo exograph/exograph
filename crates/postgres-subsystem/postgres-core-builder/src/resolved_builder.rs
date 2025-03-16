@@ -225,6 +225,7 @@ fn resolve_composite_type(
                     schema: schema_name,
                 },
                 access: access.clone(),
+                doc_comments: ct.doc_comments.clone(),
                 span: ct.span,
             }),
         );
@@ -351,6 +352,7 @@ fn resolve_composite_type_fields(
                         default_value,
                         update_sync,
                         readonly,
+                        doc_comments: field.doc_comments.clone(),
                         span: field.span,
                     })
                 }

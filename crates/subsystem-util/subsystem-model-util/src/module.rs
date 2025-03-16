@@ -26,6 +26,7 @@ pub struct ModuleMethod {
     pub arguments: Vec<Argument>,
     pub access: Access,
     pub return_type: ModuleOperationReturnType,
+    pub doc_comments: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

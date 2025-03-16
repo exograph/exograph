@@ -43,6 +43,8 @@ pub struct ContextType {
     pub name: String,
     /// Fields such as `@jwt id: Int` and `@clientId ip: String`
     pub fields: Vec<ContextField>,
+    /// Doc comments for the context type
+    pub doc_comments: Option<String>,
 }
 
 /// A context field is a single field in a context type.

@@ -291,6 +291,7 @@ pub trait DataParamBuilder<D> {
                         access: field.access.clone(),
                         readonly: field.readonly,
                         type_validation: field.type_validation.clone(),
+                        doc_comments: None,
                     })
                 } else {
                     // Make the decision to include the pk column based on the default value for the
@@ -320,6 +321,7 @@ pub trait DataParamBuilder<D> {
                             default_value: field.default_value.clone(),
                             readonly: field.readonly,
                             type_validation: field.type_validation.clone(),
+                            doc_comments: None,
                         })
                     }
                 }
@@ -337,6 +339,7 @@ pub trait DataParamBuilder<D> {
                     default_value: field.default_value.clone(),
                     readonly: field.readonly,
                     type_validation: field.type_validation.clone(),
+                    doc_comments: None,
                 })
             }
             PostgresRelation::OneToMany { .. } => {
@@ -377,6 +380,7 @@ pub trait DataParamBuilder<D> {
                         default_value: field.default_value.clone(),
                         readonly: field.readonly,
                         type_validation: field.type_validation.clone(),
+                        doc_comments: None,
                     }),
                 }
             }
@@ -421,6 +425,7 @@ pub trait DataParamBuilder<D> {
                         default_value: field.default_value.clone(),
                         readonly: field.readonly,
                         type_validation: field.type_validation.clone(),
+                        doc_comments: None,
                     }),
                 }
             })

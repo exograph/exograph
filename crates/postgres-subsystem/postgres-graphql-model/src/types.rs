@@ -89,7 +89,7 @@ impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for EntityType {
         };
         TypeDefinition {
             extend: false,
-            description: None,
+            description: self.doc_comments.clone().map(default_positioned),
             name: default_positioned_name(&self.name),
             directives: vec![],
             kind,
@@ -183,7 +183,7 @@ impl<CT> FieldDefinitionProvider<PostgresGraphQLSubsystem> for PostgresField<CT>
         };
 
         FieldDefinition {
-            description: None,
+            description: self.doc_comments.clone().map(default_positioned),
             name: default_positioned_name(&self.name),
             arguments,
             ty: field_type,

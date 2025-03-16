@@ -59,6 +59,7 @@ pub struct ResolvedCompositeType {
     pub fields: Vec<ResolvedField>,
     pub is_input: bool,
     pub access: ResolvedAccess,
+    pub doc_comments: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -66,12 +67,14 @@ pub struct ResolvedField {
     pub name: String,
     pub typ: FieldType<ResolvedFieldType>,
     pub default_value: Option<Box<AstExpr<Typed>>>,
+    pub doc_comments: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedFieldType {
     pub module_name: Option<String>,
     pub type_name: String,
+    pub doc_comments: Option<String>,
 }
 
 impl Named for ResolvedFieldType {
@@ -88,6 +91,7 @@ pub struct ResolvedModule {
     pub methods: Vec<ResolvedMethod>,
     pub interceptors: Vec<ResolvedInterceptor>,
     pub types_defined: HashSet<String>, // Typed defined in the module
+    pub doc_comments: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -98,6 +102,7 @@ pub struct ResolvedMethod {
     pub access: ResolvedAccess,
     pub arguments: Vec<ResolvedArgument>,
     pub return_type: FieldType<ResolvedFieldType>,
+    pub doc_comments: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -307,6 +312,7 @@ async fn resolve_module(
                             .map(|a| resolve_argument(a, types))
                             .collect(),
                         return_type: resolve_field_type(&m.return_type.to_typ(types), m.return_type.module_name(), types),
+                        doc_comments: m.doc_comments.clone(),
                     }
                 })
                 .collect(),
@@ -362,7 +368,8 @@ async fn resolve_module(
                     })
                 })
                 .collect(),
-                types_defined: module.types.iter().map(|m| m.name.clone()).collect(),
+            types_defined: module.types.iter().map(|m| m.name.clone()).collect(),
+            doc_comments: module.doc_comments.clone(),
         },
     );
 
@@ -522,6 +529,7 @@ fn resolve_module_types(
                                 &typechecked_system.types,
                             ),
                             default_value: None,
+                            doc_comments: field.doc_comments.clone(),
                         })
                         .collect();
 
@@ -532,6 +540,7 @@ fn resolve_module_types(
                             fields: resolved_fields,
                             is_input: input_types.contains(&ct.name),
                             access,
+                            doc_comments: ct.doc_comments.clone(),
                         }),
                     );
                 }
@@ -554,10 +563,18 @@ fn resolve_field_type(
             module_name,
             types,
         ))),
-        Type::Reference(id) => FieldType::Plain(ResolvedFieldType {
-            type_name: types[*id].get_underlying_typename(types).unwrap(),
-            module_name,
-        }),
+        Type::Reference(id) => {
+            let tpe = &types[*id];
+            let doc_comments = match tpe {
+                Type::Composite(ct) => ct.doc_comments.clone(),
+                _ => None,
+            };
+            FieldType::Plain(ResolvedFieldType {
+                type_name: tpe.get_underlying_typename(types).unwrap(),
+                module_name,
+                doc_comments,
+            })
+        }
         Type::Set(underlying) | Type::Array(underlying) => FieldType::List(Box::new(
             resolve_field_type(underlying.as_ref(), module_name, types),
         )),

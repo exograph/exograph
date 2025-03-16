@@ -51,6 +51,7 @@ impl AstAnnotationHelper for AstAnnotation<Typed> {
 pub struct ResolvedContext {
     pub name: String,
     pub fields: Vec<ResolvedContextField>,
+    pub doc_comments: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -58,6 +59,7 @@ pub struct ResolvedContextField {
     pub name: String,
     pub typ: ResolvedContextFieldType,
     pub source: ResolvedContextSource,
+    pub doc_comments: Option<String>,
 }
 
 pub type ResolvedContextFieldType = FieldType<PrimitiveType>;
@@ -131,6 +133,7 @@ fn resolve_contexts(
                                     name: field.name.clone(),
                                     typ,
                                     source,
+                                    doc_comments: field.doc_comments.clone(),
                                 }
                             })
                         })
@@ -142,6 +145,7 @@ fn resolve_contexts(
                     ResolvedContext {
                         name: ct.name.clone(),
                         fields: resolved_fields,
+                        doc_comments: ct.doc_comments.clone(),
                     },
                 );
             }

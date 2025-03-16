@@ -50,6 +50,7 @@ pub struct ResolvedCompositeType {
     pub fields: Vec<ResolvedField>,
     pub table_name: PhysicalTableName,
     pub access: ResolvedAccess,
+    pub doc_comments: Option<String>,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     #[serde(default = "default_span")]
@@ -81,6 +82,7 @@ pub struct ResolvedField {
     pub default_value: Option<ResolvedFieldDefault>,
     pub update_sync: bool,
     pub readonly: bool,
+    pub doc_comments: Option<String>,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     #[serde(default = "default_span")]

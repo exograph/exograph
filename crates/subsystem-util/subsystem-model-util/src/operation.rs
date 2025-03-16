@@ -28,6 +28,7 @@ pub struct ModuleQuery {
     pub method_id: Option<SerializableSlabIndex<ModuleMethod>>,
     pub argument_param: Vec<ArgumentParameter>,
     pub return_type: ModuleOperationReturnType,
+    pub doc_comments: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -36,6 +37,7 @@ pub struct ModuleMutation {
     pub method_id: Option<SerializableSlabIndex<ModuleMethod>>,
     pub argument_param: Vec<ArgumentParameter>,
     pub return_type: ModuleOperationReturnType,
+    pub doc_comments: Option<String>,
 }
 
 impl Operation for ModuleQuery {
@@ -55,6 +57,10 @@ impl Operation for ModuleQuery {
 
     fn return_type(&self) -> Type {
         return_type(&self.return_type)
+    }
+
+    fn doc_comments(&self) -> Option<String> {
+        self.doc_comments.clone()
     }
 }
 
@@ -76,6 +82,10 @@ impl Operation for ModuleMutation {
     fn return_type(&self) -> Type {
         return_type(&self.return_type)
     }
+
+    fn doc_comments(&self) -> Option<String> {
+        self.doc_comments.clone()
+    }
 }
 
 fn return_type(module_return_type: &ModuleOperationReturnType) -> Type {
@@ -89,6 +99,7 @@ pub trait Operation {
     fn name(&self) -> &String;
     fn parameters(&self) -> Vec<&dyn Parameter>;
     fn return_type(&self) -> Type;
+    fn doc_comments(&self) -> Option<String>;
 }
 
 impl<S> FieldDefinitionProvider<S> for ModuleQuery {
@@ -100,7 +111,7 @@ impl<S> FieldDefinitionProvider<S> for ModuleQuery {
             .collect();
 
         FieldDefinition {
-            description: None,
+            description: self.doc_comments().map(default_positioned),
             name: default_positioned_name(self.name()),
             arguments: fields,
             directives: vec![],
@@ -118,7 +129,7 @@ impl<S> FieldDefinitionProvider<S> for ModuleMutation {
             .collect();
 
         FieldDefinition {
-            description: None,
+            description: self.doc_comments().map(default_positioned),
             name: default_positioned_name(self.name()),
             arguments: fields,
             directives: vec![],

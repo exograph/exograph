@@ -29,6 +29,7 @@ pub struct ModuleType {
     pub name: String,
     pub kind: ModuleTypeKind,
     pub is_input: bool, // Is this to be used as an input field (such as an argument in a mutation)? Needed for introspection
+    pub doc_comments: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -43,6 +44,7 @@ pub struct ModuleCompositeType {
     pub fields: Vec<ModuleField>,
     pub is_input: bool,
     pub access: Access,
+    pub doc_comments: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -50,6 +52,7 @@ pub struct ModuleField {
     pub name: String,
     pub typ: FieldType<ModuleFieldType>,
     pub has_default_value: bool, // does this field have a default value?
+    pub doc_comments: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -99,7 +102,7 @@ impl TypeDefinitionProvider<SerializableSlab<ModuleType>> for ModuleType {
                 };
                 TypeDefinition {
                     extend: false,
-                    description: None,
+                    description: self.doc_comments.clone().map(default_positioned),
                     name: default_positioned_name(&self.name),
                     directives: vec![],
                     kind,
@@ -114,7 +117,7 @@ impl FieldDefinitionProvider<SerializableSlab<ModuleType>> for ModuleField {
         let field_type = default_positioned((&self.typ).into());
 
         FieldDefinition {
-            description: None,
+            description: self.doc_comments.clone().map(default_positioned),
             name: default_positioned_name(&self.name),
             arguments: vec![],
             ty: field_type,

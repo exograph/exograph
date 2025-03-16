@@ -263,6 +263,7 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
                         default_value: field.default_value.clone(),
                         readonly: field.readonly,
                         type_validation: None,
+                        doc_comments: None,
                     }
                 })
                 .collect();

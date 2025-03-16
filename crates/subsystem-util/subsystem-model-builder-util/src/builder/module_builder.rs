@@ -145,6 +145,7 @@ fn create_shallow_module(
                     }
                 }
             },
+            doc_comments: resolved_method.doc_comments.clone(),
         },
     );
 }
@@ -159,6 +160,7 @@ fn shallow_module_query(
         method_id: None,
         argument_param: argument_param(method, building),
         return_type: compute_shallow_return_type(&method.return_type, module_types),
+        doc_comments: method.doc_comments.clone(),
     }
 }
 
@@ -172,6 +174,7 @@ fn shallow_module_mutation(
         method_id: None,
         argument_param: argument_param(method, building),
         return_type: compute_shallow_return_type(&method.return_type, module_types),
+        doc_comments: method.doc_comments.clone(),
     }
 }
 
