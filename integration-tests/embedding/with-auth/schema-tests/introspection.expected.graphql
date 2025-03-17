@@ -6,6 +6,7 @@ type Document {
   contentVectorDistance(to: [Float!]!): Float!
 }
 
+"""An aggregate for the `Document` type."""
 type DocumentAgg {
   id: IntAgg
   title: StringAgg
@@ -19,6 +20,11 @@ input DocumentCreationInput {
   contentVector: [Float!]
 }
 
+"""
+Predicate for the `Document` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input DocumentFilter {
   id: IntFilter
   title: StringFilter
@@ -106,8 +112,12 @@ input VectorFilter {
   neq: [Float!]
 }
 
+"""Predicate to filter based on vector distance"""
 input VectorFilterArg {
+  """The target vector to compare against."""
   distanceTo: [Float!]!
+
+  """The distance to the vector."""
   distance: FloatFilter
 }
 
@@ -117,16 +127,44 @@ input VectorOrdering {
 }
 
 type Query {
+  """Get a single `Document` given primary key fields"""
   document(id: Int!): Document
+
+  """
+  Get multiple `Document`s given the provided `where` filter, order by, limit, and offset
+  """
   documents(where: DocumentFilter, orderBy: [DocumentOrdering!], limit: Int, offset: Int): [Document!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Document`s given the provided `where` filter
+  """
   documentsAgg(where: DocumentFilter): DocumentAgg!
 }
 
 type Mutation {
+  """
+  Create a new Document. Check the `DocumentCreationInput` type for the expected shape of the data.
+  """
   createDocument(data: DocumentCreationInput!): Document!
+
+  """
+  Create multiple Documents. Check the `DocumentCreationInput` type for the expected shape of the data.
+  """
   createDocuments(data: [DocumentCreationInput!]!): [Document!]!
+
+  """Delete the Document with the provided primary key."""
   deleteDocument(id: Int!): Document
+
+  """Delete multiple Documents matching the provided `where` filter."""
   deleteDocuments(where: DocumentFilter): [Document!]!
+
+  """
+  Update the Document with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateDocument(id: Int!, data: DocumentUpdateInput!): Document
+
+  """
+  Update multiple Documents matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateDocuments(where: DocumentFilter, data: DocumentUpdateInput!): [Document!]!
 }

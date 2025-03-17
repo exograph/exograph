@@ -58,6 +58,7 @@ types:
                         - StringLiteral:
                             - sub
               default_value: ~
+              doc_comments: ~
             - name: role
               typ:
                 Plain:
@@ -71,9 +72,11 @@ types:
                     name: jwt
                     params: None
               default_value: ~
+              doc_comments: ~
           fragment_references: []
           annotations:
             annotations: {}
+          doc_comments: ~
     - - ~
       - Composite:
           name: Document
@@ -96,6 +99,7 @@ types:
                   Function:
                     - autoIncrement
                     - []
+              doc_comments: ~
             - name: content
               typ:
                 Plain:
@@ -106,6 +110,7 @@ types:
               annotations:
                 annotations: {}
               default_value: ~
+              doc_comments: ~
             - name: documentUsers
               typ:
                 Plain:
@@ -120,6 +125,7 @@ types:
               annotations:
                 annotations: {}
               default_value: ~
+              doc_comments: ~
           fragment_references: []
           annotations:
             annotations:
@@ -349,6 +355,7 @@ types:
                                 typ:
                                   Primitive: Boolean
                             - Primitive: Boolean
+          doc_comments: ~
     - - ~
       - Composite:
           name: DocumentUser
@@ -371,6 +378,7 @@ types:
                   Function:
                     - autoIncrement
                     - []
+              doc_comments: ~
             - name: document
               typ:
                 Plain:
@@ -381,6 +389,7 @@ types:
               annotations:
                 annotations: {}
               default_value: ~
+              doc_comments: ~
             - name: userId
               typ:
                 Plain:
@@ -391,6 +400,7 @@ types:
               annotations:
                 annotations: {}
               default_value: ~
+              doc_comments: ~
             - name: read
               typ:
                 Plain:
@@ -401,6 +411,7 @@ types:
               annotations:
                 annotations: {}
               default_value: ~
+              doc_comments: ~
             - name: write
               typ:
                 Plain:
@@ -411,9 +422,11 @@ types:
               annotations:
                 annotations: {}
               default_value: ~
+              doc_comments: ~
           fragment_references: []
           annotations:
             annotations: {}
+          doc_comments: ~
     - ~
     - ~
     - ~
@@ -515,6 +528,7 @@ modules:
                     Function:
                       - autoIncrement
                       - []
+                doc_comments: ~
               - name: content
                 typ:
                   Plain:
@@ -525,6 +539,7 @@ modules:
                 annotations:
                   annotations: {}
                 default_value: ~
+                doc_comments: ~
               - name: documentUsers
                 typ:
                   Plain:
@@ -539,6 +554,7 @@ modules:
                 annotations:
                   annotations: {}
                 default_value: ~
+                doc_comments: ~
             fragment_references: []
             annotations:
               annotations:
@@ -768,6 +784,7 @@ modules:
                                   typ:
                                     Primitive: Boolean
                               - Primitive: Boolean
+            doc_comments: ~
           - name: DocumentUser
             kind: Type
             fields:
@@ -788,6 +805,7 @@ modules:
                     Function:
                       - autoIncrement
                       - []
+                doc_comments: ~
               - name: document
                 typ:
                   Plain:
@@ -798,6 +816,7 @@ modules:
                 annotations:
                   annotations: {}
                 default_value: ~
+                doc_comments: ~
               - name: userId
                 typ:
                   Plain:
@@ -808,6 +827,7 @@ modules:
                 annotations:
                   annotations: {}
                 default_value: ~
+                doc_comments: ~
               - name: read
                 typ:
                   Plain:
@@ -818,6 +838,7 @@ modules:
                 annotations:
                   annotations: {}
                 default_value: ~
+                doc_comments: ~
               - name: write
                 typ:
                   Plain:
@@ -828,12 +849,15 @@ modules:
                 annotations:
                   annotations: {}
                 default_value: ~
+                doc_comments: ~
             fragment_references: []
             annotations:
               annotations: {}
+            doc_comments: ~
         methods: []
         interceptors: []
         base_exofile: input.exo
+        doc_comments: ~
     - ~
     - ~
     - ~

@@ -26,7 +26,7 @@ core-model-builder = { path = "../core-subsystem/core-model-builder" }
 [build-dependencies]
 cc = "*"
 tree-sitter.workspace = true
-tree-sitter-cli.workspace = true
+tree-sitter-generate.workspace = true
 tempfile.workspace = true
 
 [dev-dependencies]

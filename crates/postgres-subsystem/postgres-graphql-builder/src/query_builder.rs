@@ -111,6 +111,7 @@ fn shallow_unique_query(
     name: String,
     entity_type_id: SerializableSlabIndex<EntityType>,
     return_type: &ResolvedCompositeType,
+    pk_query: bool, // false if unique query is for a unique constraint
 ) -> UniqueQuery {
     UniqueQuery {
         name,
@@ -123,6 +124,15 @@ fn shallow_unique_query(
                 type_name: return_type.name.clone(),
             },
         ))),
+        doc_comments: Some(format!(
+            "Get a single `{}` given {}",
+            return_type.name,
+            if pk_query {
+                "primary key fields"
+            } else {
+                "unique fields"
+            }
+        )),
     }
 }
 
@@ -130,7 +140,7 @@ fn shallow_pk_query(
     entity_type_id: SerializableSlabIndex<EntityType>,
     return_type: &ResolvedCompositeType,
 ) -> UniqueQuery {
-    shallow_unique_query(return_type.pk_query(), entity_type_id, return_type)
+    shallow_unique_query(return_type.pk_query(), entity_type_id, return_type, true)
 }
 
 fn shallow_unique_queries(
@@ -145,6 +155,7 @@ fn shallow_unique_queries(
                 resolved_entity_type.unique_query(name),
                 entity_type_id,
                 resolved_entity_type,
+                false,
             )
         })
         .collect()
@@ -217,6 +228,10 @@ fn shallow_collection_query(
                 type_name: resolved_entity_type.name.clone(),
             },
         ))),
+        doc_comments: Some(format!(
+            "Get multiple `{}`s given the provided `where` filter, order by, limit, and offset",
+            resolved_entity_type.name
+        )),
     }
 }
 
@@ -256,6 +271,10 @@ fn shallow_aggregate_query(
             associated_type_id: entity_type_id,
             type_name: aggregate_type_name(&resolved_entity_type.name),
         }),
+        doc_comments: Some(format!(
+            "Get the aggregate value of the selected fields over all `{}`s given the provided `where` filter",
+            resolved_entity_type.name
+        )),
     }
 }
 

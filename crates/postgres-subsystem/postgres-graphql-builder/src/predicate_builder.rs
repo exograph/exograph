@@ -63,6 +63,7 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
                     PredicateParameterType {
                         name: type_name.to_string(),
                         kind: PredicateParameterTypeKind::ImplicitEqual {},
+                        underlying_type: None,
                     },
                 );
 
@@ -73,6 +74,7 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
                     PredicateParameterType {
                         name: param_type_name.to_string(),
                         kind: PredicateParameterTypeKind::ImplicitEqual {},
+                        underlying_type: None,
                     },
                 );
             }
@@ -86,6 +88,7 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
                     let shallow_type = PredicateParameterType {
                         name: get_filter_type_name(&c.name),
                         kind: PredicateParameterTypeKind::ImplicitEqual, // Will be set to the correct value in expand_type
+                        underlying_type: None,
                     };
                     building
                         .predicate_types
@@ -96,6 +99,7 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
                     let shallow_type = PredicateParameterType {
                         name: get_unique_filter_type_name(&c.name),
                         kind: PredicateParameterTypeKind::ImplicitEqual, // Will be set to the correct value in expand_type
+                        underlying_type: None,
                     };
                     building
                         .predicate_types
@@ -109,6 +113,7 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
         PredicateParameterType {
             name: "VectorFilterArg".to_string(),
             kind: PredicateParameterTypeKind::Vector,
+            underlying_type: None,
         },
     );
 }
@@ -122,7 +127,7 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
         building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
     }
 
-    for (_, entity_type) in building.core_subsystem.entity_types.iter() {
+    for (entity_type_id, entity_type) in building.core_subsystem.entity_types.iter() {
         if entity_type.representation == EntityRepresentation::Json {
             continue;
         }
@@ -137,14 +142,19 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
                 .unwrap();
 
             let new_kind = expand_entity_type(resolved_type, entity_type, building);
-            building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
+            let param_type = &mut building.predicate_types[existing_param_id.unwrap()];
+            param_type.kind = new_kind;
+            param_type.underlying_type = Some(entity_type_id);
         }
 
         {
             let param_type_name = get_unique_filter_type_name(&entity_type.name);
             let existing_param_id = building.predicate_types.get_id(&param_type_name);
             let new_kind = expand_unique_type(entity_type, building);
-            building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
+
+            let param_type = &mut building.predicate_types[existing_param_id.unwrap()];
+            param_type.kind = new_kind;
+            param_type.underlying_type = Some(entity_type_id);
         }
     }
 }

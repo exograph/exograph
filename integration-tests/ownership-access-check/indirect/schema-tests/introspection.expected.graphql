@@ -11,6 +11,7 @@ type Project {
   questionsAgg(where: QuestionFilter): QuestionAgg
 }
 
+"""An aggregate for the `Project` type."""
 type ProjectAgg {
   id: UuidAgg
   name: StringAgg
@@ -29,6 +30,11 @@ input ProjectCreationInputFromUser {
   questions: [QuestionCreationInputFromProject!]
 }
 
+"""
+Predicate for the `Project` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input ProjectFilter {
   id: UuidFilter
   name: StringFilter
@@ -74,6 +80,7 @@ type Question {
   project: Project!
 }
 
+"""An aggregate for the `Question` type."""
 type QuestionAgg {
   id: UuidAgg
   text: StringAgg
@@ -90,6 +97,11 @@ input QuestionCreationInputFromProject {
   text: String!
 }
 
+"""
+Predicate for the `Question` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input QuestionFilter {
   id: UuidFilter
   text: StringFilter
@@ -152,6 +164,7 @@ type User {
   projectsAgg(where: ProjectFilter): ProjectAgg
 }
 
+"""An aggregate for the `User` type."""
 type UserAgg {
   id: UuidAgg
   name: StringAgg
@@ -163,6 +176,11 @@ input UserCreationInput {
   projects: [ProjectCreationInputFromUser!]
 }
 
+"""
+Predicate for the `User` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input UserFilter {
   id: UuidFilter
   name: StringFilter
@@ -199,34 +217,122 @@ input UuidFilter {
 }
 
 type Query {
+  """Get a single `Project` given primary key fields"""
   project(id: Uuid!): Project
+
+  """
+  Get multiple `Project`s given the provided `where` filter, order by, limit, and offset
+  """
   projects(where: ProjectFilter, orderBy: [ProjectOrdering!], limit: Int, offset: Int): [Project!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Project`s given the provided `where` filter
+  """
   projectsAgg(where: ProjectFilter): ProjectAgg!
+
+  """Get a single `Question` given primary key fields"""
   question(id: Uuid!): Question
+
+  """
+  Get multiple `Question`s given the provided `where` filter, order by, limit, and offset
+  """
   questions(where: QuestionFilter, orderBy: [QuestionOrdering!], limit: Int, offset: Int): [Question!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Question`s given the provided `where` filter
+  """
   questionsAgg(where: QuestionFilter): QuestionAgg!
+
+  """Get a single `User` given primary key fields"""
   user(id: Uuid!): User
+
+  """
+  Get multiple `User`s given the provided `where` filter, order by, limit, and offset
+  """
   users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+
+  """
+  Get the aggregate value of the selected fields over all `User`s given the provided `where` filter
+  """
   usersAgg(where: UserFilter): UserAgg!
 }
 
 type Mutation {
+  """
+  Create a new Project. Check the `ProjectCreationInput` type for the expected shape of the data.
+  """
   createProject(data: ProjectCreationInput!): Project!
+
+  """
+  Create multiple Projects. Check the `ProjectCreationInput` type for the expected shape of the data.
+  """
   createProjects(data: [ProjectCreationInput!]!): [Project!]!
+
+  """
+  Create a new Question. Check the `QuestionCreationInput` type for the expected shape of the data.
+  """
   createQuestion(data: QuestionCreationInput!): Question!
+
+  """
+  Create multiple Questions. Check the `QuestionCreationInput` type for the expected shape of the data.
+  """
   createQuestions(data: [QuestionCreationInput!]!): [Question!]!
+
+  """
+  Create a new User. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUser(data: UserCreationInput!): User!
+
+  """
+  Create multiple Users. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUsers(data: [UserCreationInput!]!): [User!]!
+
+  """Delete the Project with the provided primary key."""
   deleteProject(id: Uuid!): Project
+
+  """Delete multiple Projects matching the provided `where` filter."""
   deleteProjects(where: ProjectFilter): [Project!]!
+
+  """Delete the Question with the provided primary key."""
   deleteQuestion(id: Uuid!): Question
+
+  """Delete multiple Questions matching the provided `where` filter."""
   deleteQuestions(where: QuestionFilter): [Question!]!
+
+  """Delete the User with the provided primary key."""
   deleteUser(id: Uuid!): User
+
+  """Delete multiple Users matching the provided `where` filter."""
   deleteUsers(where: UserFilter): [User!]!
+
+  """
+  Update the Project with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateProject(id: Uuid!, data: ProjectUpdateInput!): Project
+
+  """
+  Update multiple Projects matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateProjects(where: ProjectFilter, data: ProjectUpdateInput!): [Project!]!
+
+  """
+  Update the Question with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateQuestion(id: Uuid!, data: QuestionUpdateInput!): Question
+
+  """
+  Update multiple Questions matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateQuestions(where: QuestionFilter, data: QuestionUpdateInput!): [Question!]!
+
+  """
+  Update the User with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUser(id: Uuid!, data: UserUpdateInput!): User
+
+  """
+  Update multiple Users matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
 }

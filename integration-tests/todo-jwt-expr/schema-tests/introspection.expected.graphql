@@ -55,6 +55,7 @@ type Todo {
   userId: String!
 }
 
+"""An aggregate for the `Todo` type."""
 type TodoAgg {
   id: IntAgg
   title: StringAgg
@@ -68,6 +69,11 @@ input TodoCreationInput {
   userId: String
 }
 
+"""
+Predicate for the `Todo` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input TodoFilter {
   id: IntFilter
   title: StringFilter
@@ -93,16 +99,44 @@ input TodoUpdateInput {
 }
 
 type Query {
+  """Get a single `Todo` given primary key fields"""
   todo(id: Int!): Todo
+
+  """
+  Get multiple `Todo`s given the provided `where` filter, order by, limit, and offset
+  """
   todos(where: TodoFilter, orderBy: [TodoOrdering!], limit: Int, offset: Int): [Todo!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Todo`s given the provided `where` filter
+  """
   todosAgg(where: TodoFilter): TodoAgg!
 }
 
 type Mutation {
+  """
+  Create a new Todo. Check the `TodoCreationInput` type for the expected shape of the data.
+  """
   createTodo(data: TodoCreationInput!): Todo!
+
+  """
+  Create multiple Todos. Check the `TodoCreationInput` type for the expected shape of the data.
+  """
   createTodos(data: [TodoCreationInput!]!): [Todo!]!
+
+  """Delete the Todo with the provided primary key."""
   deleteTodo(id: Int!): Todo
+
+  """Delete multiple Todos matching the provided `where` filter."""
   deleteTodos(where: TodoFilter): [Todo!]!
+
+  """
+  Update the Todo with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateTodo(id: Int!, data: TodoUpdateInput!): Todo
+
+  """
+  Update multiple Todos matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateTodos(where: TodoFilter, data: TodoUpdateInput!): [Todo!]!
 }

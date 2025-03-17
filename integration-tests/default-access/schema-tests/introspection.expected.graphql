@@ -3,11 +3,17 @@ type Concert {
   title: String!
 }
 
+"""An aggregate for the `Concert` type."""
 type ConcertAgg {
   id: IntAgg
   title: StringAgg
 }
 
+"""
+Predicate for the `Concert` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input ConcertFilter {
   id: IntFilter
   title: StringFilter
@@ -73,8 +79,17 @@ input StringFilter {
 }
 
 type Query {
+  """Get a single `Concert` given primary key fields"""
   concert(id: Int!): Concert
+
+  """
+  Get multiple `Concert`s given the provided `where` filter, order by, limit, and offset
+  """
   concerts(where: ConcertFilter, orderBy: [ConcertOrdering!], limit: Int, offset: Int): [Concert!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Concert`s given the provided `where` filter
+  """
   concertsAgg(where: ConcertFilter): ConcertAgg!
   divide(a: Int!, b: Int!): DivisionResultFullAccess!
   divideFullAccess(a: Int!, b: Int!): DivisionResultNoAccess!

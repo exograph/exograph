@@ -76,6 +76,7 @@ fn expanded_reference_types(
                 default_value: field.default_value.clone(),
                 readonly: field.readonly,
                 type_validation: None,
+                doc_comments: None,
             }),
             PostgresRelation::ManyToOne { is_pk: true, .. } => Some(PostgresField {
                 name: field.name.clone(),
@@ -85,6 +86,7 @@ fn expanded_reference_types(
                 default_value: field.default_value.clone(),
                 readonly: field.readonly,
                 type_validation: None,
+                doc_comments: None,
             }),
             _ => None,
         })
@@ -105,6 +107,7 @@ fn expanded_reference_types(
                 .get_id(&entity_type.name)
                 .unwrap(),
             database_access: None,
+            doc_comments: entity_type.doc_comments.clone(),
         },
     )]
 }

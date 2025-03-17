@@ -119,6 +119,7 @@ fn create_shallow_type(
                 vector_distance_fields: vec![],
                 table_id: SerializableSlabIndex::shallow(),
                 access: restrictive_access(),
+                doc_comments: composite.doc_comments.clone(),
             };
 
             building.entity_types.add(&resolved_type.name(), typ);
@@ -590,6 +591,7 @@ fn create_persistent_field(
         default_value,
         readonly: field.readonly || field.update_sync,
         type_validation,
+        doc_comments: field.doc_comments.clone(),
     })
 }
 

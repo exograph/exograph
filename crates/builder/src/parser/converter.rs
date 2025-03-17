@@ -29,7 +29,7 @@ use crate::error::ParserError;
 
 pub fn parse(input: &str) -> Option<Tree> {
     let mut parser = tree_sitter_c2rust::Parser::new();
-    parser.set_language(sitter_ffi::language()).unwrap();
+    parser.set_language(&sitter_ffi::language()).unwrap();
     parser.parse(input, None)
 }
 
@@ -210,8 +210,19 @@ fn convert_model(
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
+        doc_comments: convert_doc_comments(node, source, source_span),
         span: span_from_node(source_span, node.child_by_field_name("name").unwrap()),
     }
+}
+
+fn convert_doc_comments(node: Node, source: &[u8], _source_span: Span) -> Option<String> {
+    node.child_by_field_name("doc_comment").map(|c| {
+        let mut cursor = c.walk();
+        c.children_by_field_name("doc_line", &mut cursor)
+            .map(|c| c.utf8_text(source).unwrap().trim().to_string())
+            .collect::<Vec<_>>()
+            .join("\n")
+    })
 }
 
 fn convert_module(
@@ -257,6 +268,7 @@ fn convert_module(
             .collect(),
         annotations,
         base_exofile: filepath.into(),
+        doc_comments: convert_doc_comments(node, source, source_span),
         span: span_from_node(source_span, node),
     }
 }
@@ -286,6 +298,7 @@ fn convert_module_method(node: Node, source: &[u8], source_span: Span) -> AstMet
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
+        doc_comments: convert_doc_comments(node, source, source_span),
         span: span_from_node(source_span, node),
     }
 }
@@ -303,6 +316,7 @@ fn convert_interceptor(node: Node, source: &[u8], source_span: Span) -> AstInter
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
+        doc_comments: convert_doc_comments(node, source, source_span),
         span: span_from_node(source_span, node),
     }
 }
@@ -323,6 +337,7 @@ fn convert_fields_and_fragments(
         .map(|c| AstFragmentReference {
             name: text_child(c, source, "name"),
             typ: (),
+            doc_comments: convert_doc_comments(c, source, source_span),
             span: span_from_node(source_span, c),
         })
         .collect();
@@ -349,6 +364,7 @@ fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<Untyp
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
+        doc_comments: convert_doc_comments(node, source, source_span),
         span: span_from_node(source_span, node),
     }
 }
@@ -913,6 +929,82 @@ mod tests {
             }
         "#,
             "access_control_function_with_paren"
+        );
+    }
+
+    #[multiplatform_test]
+    fn doc_comments_triple_slash() {
+        parsing_test!(
+            r#"
+            @postgres
+            /// Todo database module line 1
+            /// Todo database module line 2
+            module TestModule {
+                /// Todo database type line 1
+                /// Todo database type line 2
+                type Todo {
+                    /// Todo database field id line 1
+                    /// Todo database field id line 2
+                    id: Int
+                    /// Todo database field title line 1
+                    /// Todo database field title line 2
+                    title: String
+                }
+
+                /// Todo database method line 1
+                /// Todo database method line 2
+                query getTodo(id: Int): Todo
+
+                /// Todo database interceptor line 1
+                /// Todo database interceptor line 2
+                interceptor getTodoInterceptor(id: Int)
+            }
+            "#,
+            "doc_comments_triple_slash"
+        );
+    }
+
+    #[multiplatform_test]
+    fn doc_comments_block_comment() {
+        parsing_test!(
+            r#"
+            @postgres
+            /**
+             *  Todo database module line 1
+             *  Todo database module line 2
+             */
+            module TestModule {
+                /**
+                 *  Todo database type line 1
+                 *  Todo database type line 2
+                 */
+                type Todo {
+                    /**
+                     *  Todo database field id line 1
+                     *  Todo database field id line 2
+                     */
+                    id: Int
+                    /**
+                     *  Todo database field title line 1
+                     *  Todo database field title line 2
+                     */
+                    title: String
+                }
+
+                /**
+                 *  Todo database method line 1
+                 *  Todo database method line 2
+                 */
+                query getTodo(id: Int): Todo
+
+                /**
+                 *  Todo database interceptor line 1
+                 *  Todo database interceptor line 2
+                 */
+                interceptor getTodoInterceptor(id: Int)
+            }
+            "#,
+            "doc_comments_block_comment"
         );
     }
 }

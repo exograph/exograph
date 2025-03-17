@@ -8,6 +8,7 @@ type CaptchaChallengeRecord {
   properResponse: String!
 }
 
+"""An aggregate for the `CaptchaChallengeRecord` type."""
 type CaptchaChallengeRecordAgg {
   uuid: UuidAgg
   properResponse: StringAgg
@@ -18,6 +19,11 @@ input CaptchaChallengeRecordCreationInput {
   properResponse: String!
 }
 
+"""
+Predicate for the `CaptchaChallengeRecord` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input CaptchaChallengeRecordFilter {
   uuid: UuidFilter
   properResponse: StringFilter
@@ -41,6 +47,7 @@ type Comment {
   text: String!
 }
 
+"""An aggregate for the `Comment` type."""
 type CommentAgg {
   id: IntAgg
   text: StringAgg
@@ -50,6 +57,11 @@ input CommentCreationInput {
   text: String!
 }
 
+"""
+Predicate for the `Comment` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input CommentFilter {
   id: IntFilter
   text: StringFilter
@@ -121,27 +133,87 @@ input UuidFilter {
 }
 
 type Query {
+  """Get a single `CaptchaChallengeRecord` given primary key fields"""
   captchaChallengeRecord(uuid: Uuid!): CaptchaChallengeRecord
+
+  """
+  Get multiple `CaptchaChallengeRecord`s given the provided `where` filter, order by, limit, and offset
+  """
   captchaChallengeRecords(where: CaptchaChallengeRecordFilter, orderBy: [CaptchaChallengeRecordOrdering!], limit: Int, offset: Int): [CaptchaChallengeRecord!]!
+
+  """
+  Get the aggregate value of the selected fields over all `CaptchaChallengeRecord`s given the provided `where` filter
+  """
   captchaChallengeRecordsAgg(where: CaptchaChallengeRecordFilter): CaptchaChallengeRecordAgg!
+
+  """Get a single `Comment` given primary key fields"""
   comment(id: Int!): Comment
+
+  """
+  Get multiple `Comment`s given the provided `where` filter, order by, limit, and offset
+  """
   comments(where: CommentFilter, orderBy: [CommentOrdering!], limit: Int, offset: Int): [Comment!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Comment`s given the provided `where` filter
+  """
   commentsAgg(where: CommentFilter): CommentAgg!
   getChallenge: CaptchaChallenge!
   verifyCaptcha: Boolean!
 }
 
 type Mutation {
+  """
+  Create a new CaptchaChallengeRecord. Check the `CaptchaChallengeRecordCreationInput` type for the expected shape of the data.
+  """
   createCaptchaChallengeRecord(data: CaptchaChallengeRecordCreationInput!): CaptchaChallengeRecord!
+
+  """
+  Create multiple CaptchaChallengeRecords. Check the `CaptchaChallengeRecordCreationInput` type for the expected shape of the data.
+  """
   createCaptchaChallengeRecords(data: [CaptchaChallengeRecordCreationInput!]!): [CaptchaChallengeRecord!]!
+
+  """
+  Create a new Comment. Check the `CommentCreationInput` type for the expected shape of the data.
+  """
   createComment(data: CommentCreationInput!): Comment!
+
+  """
+  Create multiple Comments. Check the `CommentCreationInput` type for the expected shape of the data.
+  """
   createComments(data: [CommentCreationInput!]!): [Comment!]!
+
+  """Delete the CaptchaChallengeRecord with the provided primary key."""
   deleteCaptchaChallengeRecord(uuid: Uuid!): CaptchaChallengeRecord
+
+  """
+  Delete multiple CaptchaChallengeRecords matching the provided `where` filter.
+  """
   deleteCaptchaChallengeRecords(where: CaptchaChallengeRecordFilter): [CaptchaChallengeRecord!]!
+
+  """Delete the Comment with the provided primary key."""
   deleteComment(id: Int!): Comment
+
+  """Delete multiple Comments matching the provided `where` filter."""
   deleteComments(where: CommentFilter): [Comment!]!
+
+  """
+  Update the CaptchaChallengeRecord with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateCaptchaChallengeRecord(uuid: Uuid!, data: CaptchaChallengeRecordUpdateInput!): CaptchaChallengeRecord
+
+  """
+  Update multiple CaptchaChallengeRecords matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateCaptchaChallengeRecords(where: CaptchaChallengeRecordFilter, data: CaptchaChallengeRecordUpdateInput!): [CaptchaChallengeRecord!]!
+
+  """
+  Update the Comment with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateComment(id: Int!, data: CommentUpdateInput!): Comment
+
+  """
+  Update multiple Comments matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateComments(where: CommentFilter, data: CommentUpdateInput!): [Comment!]!
 }

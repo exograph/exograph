@@ -25,6 +25,7 @@ type ProfileMetric {
   cost: Int!
 }
 
+"""An aggregate for the `ProfileMetric` type."""
 type ProfileMetricAgg {
   id: StringAgg
   cost: IntAgg
@@ -35,6 +36,11 @@ input ProfileMetricCreationInput {
   cost: Int!
 }
 
+"""
+Predicate for the `ProfileMetric` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input ProfileMetricFilter {
   id: StringFilter
   cost: IntFilter
@@ -73,16 +79,44 @@ input StringFilter {
 }
 
 type Query {
+  """Get a single `ProfileMetric` given primary key fields"""
   profileMetric(id: String!): ProfileMetric
+
+  """
+  Get multiple `ProfileMetric`s given the provided `where` filter, order by, limit, and offset
+  """
   profileMetrics(where: ProfileMetricFilter, orderBy: [ProfileMetricOrdering!], limit: Int, offset: Int): [ProfileMetric!]!
+
+  """
+  Get the aggregate value of the selected fields over all `ProfileMetric`s given the provided `where` filter
+  """
   profileMetricsAgg(where: ProfileMetricFilter): ProfileMetricAgg!
 }
 
 type Mutation {
+  """
+  Create a new ProfileMetric. Check the `ProfileMetricCreationInput` type for the expected shape of the data.
+  """
   createProfileMetric(data: ProfileMetricCreationInput!): ProfileMetric!
+
+  """
+  Create multiple ProfileMetrics. Check the `ProfileMetricCreationInput` type for the expected shape of the data.
+  """
   createProfileMetrics(data: [ProfileMetricCreationInput!]!): [ProfileMetric!]!
+
+  """Delete the ProfileMetric with the provided primary key."""
   deleteProfileMetric(id: String!): ProfileMetric
+
+  """Delete multiple ProfileMetrics matching the provided `where` filter."""
   deleteProfileMetrics(where: ProfileMetricFilter): [ProfileMetric!]!
+
+  """
+  Update the ProfileMetric with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateProfileMetric(id: String!, data: ProfileMetricUpdateInput!): ProfileMetric
+
+  """
+  Update multiple ProfileMetrics matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateProfileMetrics(where: ProfileMetricFilter, data: ProfileMetricUpdateInput!): [ProfileMetric!]!
 }

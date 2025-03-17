@@ -67,6 +67,7 @@ values:
             default_value: AutoIncrement
             update_sync: false
             readonly: false
+            doc_comments: ~
           - name: title_main
             typ:
               Plain:
@@ -92,6 +93,7 @@ values:
             default_value: ~
             update_sync: false
             readonly: false
+            doc_comments: ~
           - name: title_main1
             typ:
               Plain:
@@ -117,6 +119,7 @@ values:
             default_value: ~
             update_sync: false
             readonly: false
+            doc_comments: ~
           - name: public1
             typ:
               Plain:
@@ -142,6 +145,7 @@ values:
             default_value: ~
             update_sync: false
             readonly: false
+            doc_comments: ~
           - name: PUBLIC2
             typ:
               Plain:
@@ -167,6 +171,7 @@ values:
             default_value: ~
             update_sync: false
             readonly: false
+            doc_comments: ~
           - name: foo123
             typ:
               Plain:
@@ -192,6 +197,7 @@ values:
             default_value: ~
             update_sync: false
             readonly: false
+            doc_comments: ~
         table_name:
           name: entities
           schema: ~
@@ -202,6 +208,7 @@ values:
           creation: ~
           update: ~
           delete: ~
+        doc_comments: ~
   - ~
   - ~
   - ~

@@ -4,6 +4,7 @@ type BlobAgg {
   count: Int
 }
 
+"""A single value to match against using the equal operator."""
 scalar BlobFilter
 
 type Image {
@@ -12,6 +13,7 @@ type Image {
   data: Blob!
 }
 
+"""An aggregate for the `Image` type."""
 type ImageAgg {
   id: UuidAgg
   name: StringAgg
@@ -24,6 +26,11 @@ input ImageCreationInput {
   data: Blob!
 }
 
+"""
+Predicate for the `Image` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input ImageFilter {
   id: UuidFilter
   name: StringFilter
@@ -81,16 +88,44 @@ input UuidFilter {
 }
 
 type Query {
+  """Get a single `Image` given primary key fields"""
   image(id: Uuid!): Image
+
+  """
+  Get multiple `Image`s given the provided `where` filter, order by, limit, and offset
+  """
   images(where: ImageFilter, orderBy: [ImageOrdering!], limit: Int, offset: Int): [Image!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Image`s given the provided `where` filter
+  """
   imagesAgg(where: ImageFilter): ImageAgg!
 }
 
 type Mutation {
+  """
+  Create a new Image. Check the `ImageCreationInput` type for the expected shape of the data.
+  """
   createImage(data: ImageCreationInput!): Image!
+
+  """
+  Create multiple Images. Check the `ImageCreationInput` type for the expected shape of the data.
+  """
   createImages(data: [ImageCreationInput!]!): [Image!]!
+
+  """Delete the Image with the provided primary key."""
   deleteImage(id: Uuid!): Image
+
+  """Delete multiple Images matching the provided `where` filter."""
   deleteImages(where: ImageFilter): [Image!]!
+
+  """
+  Update the Image with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateImage(id: Uuid!, data: ImageUpdateInput!): Image
+
+  """
+  Update multiple Images matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateImages(where: ImageFilter, data: ImageUpdateInput!): [Image!]!
 }

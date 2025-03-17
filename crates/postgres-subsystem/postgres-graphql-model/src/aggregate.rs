@@ -37,7 +37,13 @@ impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for AggregateType {
         };
         TypeDefinition {
             extend: false,
-            description: None,
+            description: system
+                .core_subsystem
+                .entity_types
+                .get(self.underlying_type)
+                .map(|entity_type| {
+                    default_positioned(format!("An aggregate for the `{}` type.", entity_type.name))
+                }),
             name: default_positioned_name(&self.name),
             directives: vec![],
             kind,

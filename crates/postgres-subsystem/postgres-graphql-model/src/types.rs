@@ -38,6 +38,7 @@ pub struct MutationType {
     pub name: String,
     pub fields: Vec<PostgresField<MutationType>>,
     pub entity_id: SerializableSlabIndex<EntityType>,
+    pub doc_comments: Option<String>,
 
     pub database_access:
         Option<SerializableSlabIndex<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>>,
@@ -89,7 +90,7 @@ impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for EntityType {
         };
         TypeDefinition {
             extend: false,
-            description: None,
+            description: self.doc_comments.clone().map(default_positioned),
             name: default_positioned_name(&self.name),
             directives: vec![],
             kind,
@@ -113,7 +114,7 @@ impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for MutationType {
         };
         TypeDefinition {
             extend: false,
-            description: None,
+            description: self.doc_comments.clone().map(default_positioned),
             name: default_positioned_name(&self.name),
             directives: vec![],
             kind,
@@ -141,7 +142,7 @@ impl<CT> FieldDefinitionProvider<PostgresGraphQLSubsystem> for PostgresField<CT>
             let base_list_type = vector_introspection_base_type();
 
             return FieldDefinition {
-                description: None,
+                description: self.doc_comments.clone().map(default_positioned),
                 name: default_positioned_name(&self.name),
                 arguments: vec![],
                 ty: default_positioned(Type {
@@ -183,7 +184,7 @@ impl<CT> FieldDefinitionProvider<PostgresGraphQLSubsystem> for PostgresField<CT>
         };
 
         FieldDefinition {
-            description: None,
+            description: self.doc_comments.clone().map(default_positioned),
             name: default_positioned_name(&self.name),
             arguments,
             ty: field_type,
@@ -213,6 +214,7 @@ pub trait Operation {
     fn name(&self) -> &String;
     fn parameters(&self) -> Vec<&dyn Parameter>;
     fn return_type(&self) -> Type;
+    fn doc_comments(&self) -> Option<String>;
 }
 
 impl<S, P: OperationParameters> FieldDefinitionProvider<S> for PostgresOperation<P> {
@@ -224,7 +226,7 @@ impl<S, P: OperationParameters> FieldDefinitionProvider<S> for PostgresOperation
             .collect();
 
         FieldDefinition {
-            description: None,
+            description: self.doc_comments.clone().map(default_positioned),
             name: default_positioned_name(self.name()),
             arguments: fields,
             directives: vec![],

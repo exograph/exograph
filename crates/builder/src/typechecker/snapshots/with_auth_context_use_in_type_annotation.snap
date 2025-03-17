@@ -55,9 +55,11 @@ types:
                     name: jwt
                     params: None
               default_value: ~
+              doc_comments: ~
           fragment_references: []
           annotations:
             annotations: {}
+          doc_comments: ~
     - - ~
       - Composite:
           name: Doc
@@ -73,6 +75,7 @@ types:
               annotations:
                 annotations: {}
               default_value: ~
+              doc_comments: ~
             - name: content
               typ:
                 Plain:
@@ -83,6 +86,7 @@ types:
               annotations:
                 annotations: {}
               default_value: ~
+              doc_comments: ~
           fragment_references: []
           annotations:
             annotations:
@@ -132,6 +136,7 @@ types:
                                     index: 0
                                     generation: ~
                           - Primitive: Boolean
+          doc_comments: ~
     - ~
     - ~
     - ~
@@ -224,6 +229,7 @@ modules:
                 annotations:
                   annotations: {}
                 default_value: ~
+                doc_comments: ~
               - name: content
                 typ:
                   Plain:
@@ -234,6 +240,7 @@ modules:
                 annotations:
                   annotations: {}
                 default_value: ~
+                doc_comments: ~
             fragment_references: []
             annotations:
               annotations:
@@ -283,9 +290,11 @@ modules:
                                       index: 0
                                       generation: ~
                             - Primitive: Boolean
+            doc_comments: ~
         methods: []
         interceptors: []
         base_exofile: input.exo
+        doc_comments: ~
     - ~
     - ~
     - ~

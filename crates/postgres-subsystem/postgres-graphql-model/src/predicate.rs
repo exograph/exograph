@@ -21,7 +21,7 @@ use core_plugin_interface::core_model::{
     types::{FieldType, Named, TypeValidation},
 };
 
-use postgres_core_model::access::Access;
+use postgres_core_model::{access::Access, types::EntityType};
 
 use exo_sql::{ColumnPathLink, VectorDistanceFunction};
 use serde::{Deserialize, Serialize};
@@ -64,6 +64,7 @@ pub struct PredicateParameterType {
     /// The name of the type. For example, "ConcertFilter", "IntFilter".
     pub name: String,
     pub kind: PredicateParameterTypeKind,
+    pub underlying_type: Option<SerializableSlabIndex<EntityType>>,
 }
 
 impl Named for PredicateParameterTypeWrapper {
@@ -99,7 +100,7 @@ impl Parameter for PredicateParameter {
 }
 
 impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for PredicateParameterType {
-    fn type_definition(&self, _system: &PostgresGraphQLSubsystem) -> TypeDefinition {
+    fn type_definition(&self, system: &PostgresGraphQLSubsystem) -> TypeDefinition {
         match &self.kind {
             PredicateParameterTypeKind::Operator(parameters)
             | PredicateParameterTypeKind::Reference(parameters) => {
@@ -107,10 +108,18 @@ impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for PredicateParameterType
                     .iter()
                     .map(|parameter| default_positioned(parameter.input_value()))
                     .collect();
-
+                let description = self
+                    .underlying_type
+                    .map(|underlying_type| &system.core_subsystem.entity_types[underlying_type])
+                    .map(|entity_type| {
+                        format!(
+                            "A predicate to filter the results for a `{}` type parameter.",
+                            entity_type.name.clone()
+                        )
+                    });
                 TypeDefinition {
                     extend: false,
-                    description: None,
+                    description: description.map(default_positioned),
                     name: default_positioned_name(&self.name),
                     directives: vec![],
                     kind: TypeKind::InputObject(InputObjectType { fields }),
@@ -126,9 +135,20 @@ impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for PredicateParameterType
                     .map(|parameter| default_positioned(parameter.input_value()))
                     .collect();
 
+                let description = self
+                    .underlying_type
+                    .map(|underlying_type| &system.core_subsystem.entity_types[underlying_type])
+                    .map(|entity_type| {
+                        format!(
+                            "Predicate for the `{}` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter",
+                            entity_type.name.clone()
+                        )
+                    });
                 TypeDefinition {
                     extend: false,
-                    description: None,
+                    description: description.map(default_positioned),
                     name: default_positioned_name(&self.name),
                     directives: vec![],
                     kind: TypeKind::InputObject(InputObjectType { fields }),
@@ -136,7 +156,9 @@ impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for PredicateParameterType
             }
             PredicateParameterTypeKind::ImplicitEqual => TypeDefinition {
                 extend: false,
-                description: None,
+                description: Some(default_positioned(
+                    "A single value to match against using the equal operator.".to_string(),
+                )),
                 name: default_positioned_name(&self.name),
                 directives: vec![],
                 kind: TypeKind::Scalar,
@@ -144,14 +166,18 @@ impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for PredicateParameterType
             PredicateParameterTypeKind::Vector => {
                 let fields = vec![
                     InputValueDefinition {
-                        description: None,
+                        description: Some(default_positioned(
+                            "The target vector to compare against.".to_string(),
+                        )),
                         name: default_positioned_name("distanceTo"),
                         ty: default_positioned(vector_introspection_type(false)),
                         default_value: None,
                         directives: vec![],
                     },
                     InputValueDefinition {
-                        description: None,
+                        description: Some(default_positioned(
+                            "The distance to the vector.".to_string(),
+                        )),
                         name: default_positioned_name("distance"),
                         ty: default_positioned(Type::new("FloatFilter").unwrap()),
                         default_value: None,
@@ -164,7 +190,9 @@ impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for PredicateParameterType
 
                 TypeDefinition {
                     extend: false,
-                    description: None,
+                    description: Some(default_positioned(
+                        "Predicate to filter based on vector distance".to_string(),
+                    )),
                     name: default_positioned_name(&self.name),
                     directives: vec![],
                     kind: TypeKind::InputObject(InputObjectType { fields }),

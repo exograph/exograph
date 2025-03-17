@@ -135,6 +135,22 @@ impl MutationBuilder for CreateMutationBuilder {
     ) -> PostgresMutationParameters {
         PostgresMutationParameters::Create(Self::data_param(entity_type, building, true))
     }
+
+    fn single_mutation_doc_comments(entity_type: &EntityType) -> Option<String> {
+        Some(format!(
+            "Create a new {}. Check the `{}` type for the expected shape of the data.",
+            entity_type.name,
+            Self::base_data_type_name(&entity_type.name)
+        ))
+    }
+
+    fn multi_mutation_doc_comments(entity_type: &EntityType) -> Option<String> {
+        Some(format!(
+            "Create multiple {}s. Check the `{}` type for the expected shape of the data.",
+            entity_type.name,
+            Self::base_data_type_name(&entity_type.name)
+        ))
+    }
 }
 
 impl DataParamBuilder<DataParameter> for CreateMutationBuilder {
@@ -179,6 +195,7 @@ impl DataParamBuilder<DataParameter> for CreateMutationBuilder {
                 base_type
             },
             type_validation: None,
+            doc_comments: Some(format!("The data to create the {} with", entity_type.name)),
         }
     }
 }

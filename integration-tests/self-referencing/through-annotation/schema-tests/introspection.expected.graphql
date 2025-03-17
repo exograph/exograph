@@ -5,6 +5,7 @@ type Company {
   employeesAgg(where: EmployeeFilter): EmployeeAgg
 }
 
+"""An aggregate for the `Company` type."""
 type CompanyAgg {
   id: IntAgg
   name: StringAgg
@@ -15,6 +16,11 @@ input CompanyCreationInput {
   employees: [EmployeeCreationInputFromCompany!]
 }
 
+"""
+Predicate for the `Company` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input CompanyFilter {
   id: IntFilter
   name: StringFilter
@@ -46,6 +52,7 @@ type Employee {
   manager: Employee
 }
 
+"""An aggregate for the `Employee` type."""
 type EmployeeAgg {
   id: IntAgg
   name: StringAgg
@@ -62,6 +69,11 @@ input EmployeeCreationInputFromCompany {
   manager: EmployeeReferenceInput
 }
 
+"""
+Predicate for the `Employee` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input EmployeeFilter {
   id: IntFilter
   name: StringFilter
@@ -144,25 +156,83 @@ input StringFilter {
 }
 
 type Query {
+  """
+  Get multiple `Company`s given the provided `where` filter, order by, limit, and offset
+  """
   companies(where: CompanyFilter, orderBy: [CompanyOrdering!], limit: Int, offset: Int): [Company!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Company`s given the provided `where` filter
+  """
   companiesAgg(where: CompanyFilter): CompanyAgg!
+
+  """Get a single `Company` given primary key fields"""
   company(id: Int!): Company
+
+  """Get a single `Employee` given primary key fields"""
   employee(id: Int!): Employee
+
+  """
+  Get multiple `Employee`s given the provided `where` filter, order by, limit, and offset
+  """
   employees(where: EmployeeFilter, orderBy: [EmployeeOrdering!], limit: Int, offset: Int): [Employee!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Employee`s given the provided `where` filter
+  """
   employeesAgg(where: EmployeeFilter): EmployeeAgg!
 }
 
 type Mutation {
+  """
+  Create multiple Companys. Check the `CompanyCreationInput` type for the expected shape of the data.
+  """
   createCompanies(data: [CompanyCreationInput!]!): [Company!]!
+
+  """
+  Create a new Company. Check the `CompanyCreationInput` type for the expected shape of the data.
+  """
   createCompany(data: CompanyCreationInput!): Company!
+
+  """
+  Create a new Employee. Check the `EmployeeCreationInput` type for the expected shape of the data.
+  """
   createEmployee(data: EmployeeCreationInput!): Employee!
+
+  """
+  Create multiple Employees. Check the `EmployeeCreationInput` type for the expected shape of the data.
+  """
   createEmployees(data: [EmployeeCreationInput!]!): [Employee!]!
+
+  """Delete multiple Companys matching the provided `where` filter."""
   deleteCompanies(where: CompanyFilter): [Company!]!
+
+  """Delete the Company with the provided primary key."""
   deleteCompany(id: Int!): Company
+
+  """Delete the Employee with the provided primary key."""
   deleteEmployee(id: Int!): Employee
+
+  """Delete multiple Employees matching the provided `where` filter."""
   deleteEmployees(where: EmployeeFilter): [Employee!]!
+
+  """
+  Update multiple Companys matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateCompanies(where: CompanyFilter, data: CompanyUpdateInput!): [Company!]!
+
+  """
+  Update the Company with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateCompany(id: Int!, data: CompanyUpdateInput!): Company
+
+  """
+  Update the Employee with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateEmployee(id: Int!, data: EmployeeUpdateInput!): Employee
+
+  """
+  Update multiple Employees matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateEmployees(where: EmployeeFilter, data: EmployeeUpdateInput!): [Employee!]!
 }

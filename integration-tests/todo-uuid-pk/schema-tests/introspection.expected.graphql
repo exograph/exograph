@@ -38,6 +38,7 @@ type Todo {
   user: User!
 }
 
+"""An aggregate for the `Todo` type."""
 type TodoAgg {
   id: UuidAgg
   title: StringAgg
@@ -57,6 +58,11 @@ input TodoCreationInputFromUser {
   completed: Boolean!
 }
 
+"""
+Predicate for the `Todo` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input TodoFilter {
   id: UuidFilter
   title: StringFilter
@@ -108,6 +114,7 @@ type User {
   todosAgg(where: TodoFilter): TodoAgg
 }
 
+"""An aggregate for the `User` type."""
 type UserAgg {
   id: UuidAgg
   email: StringAgg
@@ -127,6 +134,11 @@ input UserCreationInput {
   todos: [TodoCreationInputFromUser!]
 }
 
+"""
+Predicate for the `User` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input UserFilter {
   id: UuidFilter
   email: StringFilter
@@ -175,26 +187,86 @@ input UuidFilter {
 }
 
 type Query {
+  """Get a single `Todo` given primary key fields"""
   todo(id: Uuid!): Todo
+
+  """
+  Get multiple `Todo`s given the provided `where` filter, order by, limit, and offset
+  """
   todos(where: TodoFilter, orderBy: [TodoOrdering!], limit: Int, offset: Int): [Todo!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Todo`s given the provided `where` filter
+  """
   todosAgg(where: TodoFilter): TodoAgg!
+
+  """Get a single `User` given primary key fields"""
   user(id: Uuid!): User
+
+  """Get a single `User` given unique fields"""
   userByEmail(email: String!): User
+
+  """
+  Get multiple `User`s given the provided `where` filter, order by, limit, and offset
+  """
   users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+
+  """
+  Get the aggregate value of the selected fields over all `User`s given the provided `where` filter
+  """
   usersAgg(where: UserFilter): UserAgg!
 }
 
 type Mutation {
+  """
+  Create a new Todo. Check the `TodoCreationInput` type for the expected shape of the data.
+  """
   createTodo(data: TodoCreationInput!): Todo!
+
+  """
+  Create multiple Todos. Check the `TodoCreationInput` type for the expected shape of the data.
+  """
   createTodos(data: [TodoCreationInput!]!): [Todo!]!
+
+  """
+  Create a new User. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUser(data: UserCreationInput!): User!
+
+  """
+  Create multiple Users. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUsers(data: [UserCreationInput!]!): [User!]!
+
+  """Delete the Todo with the provided primary key."""
   deleteTodo(id: Uuid!): Todo
+
+  """Delete multiple Todos matching the provided `where` filter."""
   deleteTodos(where: TodoFilter): [Todo!]!
+
+  """Delete the User with the provided primary key."""
   deleteUser(id: Uuid!): User
+
+  """Delete multiple Users matching the provided `where` filter."""
   deleteUsers(where: UserFilter): [User!]!
+
+  """
+  Update the Todo with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateTodo(id: Uuid!, data: TodoUpdateInput!): Todo
+
+  """
+  Update multiple Todos matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateTodos(where: TodoFilter, data: TodoUpdateInput!): [Todo!]!
+
+  """
+  Update the User with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUser(id: Uuid!, data: UserUpdateInput!): User
+
+  """
+  Update multiple Users matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
 }

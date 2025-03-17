@@ -71,6 +71,7 @@ pub struct AstModel<T: NodeTypedness> {
     pub fields: Vec<AstField<T>>,
     pub fragment_references: Vec<AstFragmentReference<T>>,
     pub annotations: T::Annotations,
+    pub doc_comments: Option<String>,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     #[serde(default = "default_span")]
@@ -87,6 +88,7 @@ impl<T: NodeTypedness> Display for AstModel<T> {
 pub struct AstFragmentReference<T: NodeTypedness> {
     pub name: String,
     pub typ: T::Type,
+    pub doc_comments: Option<String>,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     #[serde(default = "default_span")]
@@ -107,6 +109,7 @@ pub struct AstModule<T: NodeTypedness> {
     pub methods: Vec<AstMethod<T>>,
     pub interceptors: Vec<AstInterceptor<T>>,
     pub base_exofile: PathBuf, // The exo file in which this module is defined. Used to resolve relative imports and js/ts/wasm sources
+    pub doc_comments: Option<String>,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     #[serde(default = "default_span")]
@@ -121,6 +124,7 @@ pub struct AstMethod<T: NodeTypedness> {
     pub return_type: AstFieldType<T>,
     pub is_exported: bool,
     pub annotations: T::Annotations,
+    pub doc_comments: Option<String>,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     #[serde(default = "default_span")]
@@ -149,6 +153,7 @@ pub struct AstInterceptor<T: NodeTypedness> {
     pub name: String,
     pub arguments: Vec<AstArgument<T>>,
     pub annotations: T::Annotations,
+    pub doc_comments: Option<String>,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     #[serde(default = "default_span")]
@@ -168,6 +173,7 @@ pub struct AstField<T: NodeTypedness> {
     pub typ: AstFieldType<T>,
     pub annotations: T::Annotations,
     pub default_value: Option<AstFieldDefault<T>>,
+    pub doc_comments: Option<String>,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     #[serde(default = "default_span")]

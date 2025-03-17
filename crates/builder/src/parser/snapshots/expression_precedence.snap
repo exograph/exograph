@@ -67,9 +67,12 @@ modules:
                                 - ~
                           - ~
             default_value: ~
+            doc_comments: ~
         fragment_references: []
         annotations: []
+        doc_comments: ~
     methods: []
     interceptors: []
     base_exofile: input.exo
+    doc_comments: ~
 imports: []

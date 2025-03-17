@@ -67,6 +67,7 @@ values:
             default_value: AutoIncrement
             update_sync: false
             readonly: false
+            doc_comments: ~
           - name: name
             typ:
               Plain:
@@ -92,6 +93,7 @@ values:
             default_value: ~
             update_sync: false
             readonly: false
+            doc_comments: ~
         table_name:
           name: auth_schema_tables
           schema: auth
@@ -102,6 +104,7 @@ values:
           creation: ~
           update: ~
           delete: ~
+        doc_comments: ~
   - - ~
     - Composite:
         name: AuthSchemaTableWithCustomName
@@ -133,6 +136,7 @@ values:
             default_value: AutoIncrement
             update_sync: false
             readonly: false
+            doc_comments: ~
           - name: name
             typ:
               Plain:
@@ -158,6 +162,7 @@ values:
             default_value: ~
             update_sync: false
             readonly: false
+            doc_comments: ~
         table_name:
           name: custom_table
           schema: auth
@@ -168,6 +173,7 @@ values:
           creation: ~
           update: ~
           delete: ~
+        doc_comments: ~
   - ~
   - ~
   - ~

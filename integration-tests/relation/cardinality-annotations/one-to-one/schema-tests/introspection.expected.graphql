@@ -44,6 +44,7 @@ type User {
   name: String!
 }
 
+"""An aggregate for the `User` type."""
 type UserAgg {
   id: IntAgg
   name: StringAgg
@@ -53,6 +54,11 @@ input UserCreationInput {
   name: String!
 }
 
+"""
+Predicate for the `User` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input UserFilter {
   id: IntFilter
   name: StringFilter
@@ -71,6 +77,7 @@ type UserProfile {
   bio: String!
 }
 
+"""An aggregate for the `UserProfile` type."""
 type UserProfileAgg {
   user: UserAgg
   bio: StringAgg
@@ -81,6 +88,11 @@ input UserProfileCreationInput {
   bio: String!
 }
 
+"""
+Predicate for the `UserProfile` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input UserProfileFilter {
   user: UserFilter
   bio: StringFilter
@@ -103,6 +115,7 @@ input UserReferenceInput {
   id: Int!
 }
 
+"""A predicate to filter the results for a `User` type parameter."""
 input UserUniqueFilter {
   id: Int!
 }
@@ -113,26 +126,86 @@ input UserUpdateInput {
 }
 
 type Query {
+  """Get a single `User` given primary key fields"""
   user(id: Int!): User
+
+  """Get a single `UserProfile` given primary key fields"""
   userProfile(user: UserUniqueFilter!): UserProfile
+
+  """Get a single `UserProfile` given unique fields"""
   userProfileByUser(user: UserUniqueFilter!): UserProfile
+
+  """
+  Get multiple `UserProfile`s given the provided `where` filter, order by, limit, and offset
+  """
   userProfiles(where: UserProfileFilter, orderBy: [UserProfileOrdering!], limit: Int, offset: Int): [UserProfile!]!
+
+  """
+  Get the aggregate value of the selected fields over all `UserProfile`s given the provided `where` filter
+  """
   userProfilesAgg(where: UserProfileFilter): UserProfileAgg!
+
+  """
+  Get multiple `User`s given the provided `where` filter, order by, limit, and offset
+  """
   users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+
+  """
+  Get the aggregate value of the selected fields over all `User`s given the provided `where` filter
+  """
   usersAgg(where: UserFilter): UserAgg!
 }
 
 type Mutation {
+  """
+  Create a new User. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUser(data: UserCreationInput!): User!
+
+  """
+  Create a new UserProfile. Check the `UserProfileCreationInput` type for the expected shape of the data.
+  """
   createUserProfile(data: UserProfileCreationInput!): UserProfile!
+
+  """
+  Create multiple UserProfiles. Check the `UserProfileCreationInput` type for the expected shape of the data.
+  """
   createUserProfiles(data: [UserProfileCreationInput!]!): [UserProfile!]!
+
+  """
+  Create multiple Users. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUsers(data: [UserCreationInput!]!): [User!]!
+
+  """Delete the User with the provided primary key."""
   deleteUser(id: Int!): User
+
+  """Delete the UserProfile with the provided primary key."""
   deleteUserProfile(user: UserUniqueFilter!): UserProfile
+
+  """Delete multiple UserProfiles matching the provided `where` filter."""
   deleteUserProfiles(where: UserProfileFilter): [UserProfile!]!
+
+  """Delete multiple Users matching the provided `where` filter."""
   deleteUsers(where: UserFilter): [User!]!
+
+  """
+  Update the User with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUser(id: Int!, data: UserUpdateInput!): User
+
+  """
+  Update the UserProfile with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUserProfile(user: UserUniqueFilter!, data: UserProfileUpdateInput!): UserProfile
+
+  """
+  Update multiple UserProfiles matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUserProfiles(where: UserProfileFilter, data: UserProfileUpdateInput!): [UserProfile!]!
+
+  """
+  Update multiple Users matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
 }

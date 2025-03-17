@@ -77,6 +77,8 @@ pub struct DataParameter {
     pub typ: FieldType<DataParameterType>,
     /// Type validation for the parameter.
     pub type_validation: Option<TypeValidation>,
+    /// Doc comments for the parameter.
+    pub doc_comments: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

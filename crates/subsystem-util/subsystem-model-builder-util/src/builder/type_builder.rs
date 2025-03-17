@@ -93,6 +93,7 @@ fn expand_module_type_no_fields(
             fields: vec![],
             access: Access::restrictive(),
             is_input: false,
+            doc_comments: resolved_type.doc_comments.clone(),
         });
     building
         .types
@@ -116,6 +117,7 @@ fn expand_module_type_fields(
         fields: model_fields,
         is_input: resolved_type.is_input,
         access: Access::restrictive(),
+        doc_comments: resolved_type.doc_comments.clone(),
     });
 
     building.types.get_by_id_mut(existing_type_id).kind = kind
@@ -160,6 +162,7 @@ fn create_module_field(field: &ResolvedField, building: &SystemContextBuilding) 
         name: field.name.to_owned(),
         typ: create_field_type(&field.typ, building),
         has_default_value: field.default_value.is_some(),
+        doc_comments: field.doc_comments.clone(),
     }
 }
 
@@ -192,6 +195,7 @@ fn expand_type_access(
             fields: self_type_info.fields.clone(),
             is_input: self_type_info.is_input,
             access: expr,
+            doc_comments: self_type_info.doc_comments.clone(),
         });
 
         building.types.get_by_id_mut(existing_type_id).kind = kind
@@ -209,6 +213,10 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
         name: type_name.to_string(),
         kind: ModuleTypeKind::Primitive,
         is_input: false,
+        doc_comments: match resolved_type {
+            ResolvedType::Composite(ct) => ct.doc_comments.clone(),
+            _ => None,
+        },
     };
 
     building.types.add(&type_name, typ);
@@ -223,6 +231,7 @@ fn create_shallow_context(context: &ContextType, building: &mut SystemContextBui
         name: type_name.to_string(),
         kind: ModuleTypeKind::Primitive,
         is_input: false,
+        doc_comments: context.doc_comments.clone(),
     };
 
     building.types.add(type_name, typ);

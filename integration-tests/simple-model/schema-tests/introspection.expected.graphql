@@ -21,6 +21,7 @@ type Log {
   text: String!
 }
 
+"""An aggregate for the `Log` type."""
 type LogAgg {
   id: IntAgg
   timestamp: IntAgg
@@ -32,6 +33,11 @@ input LogCreationInput {
   text: String!
 }
 
+"""
+Predicate for the `Log` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input LogFilter {
   id: IntFilter
   timestamp: IntFilter
@@ -78,16 +84,44 @@ input StringFilter {
 }
 
 type Query {
+  """Get a single `Log` given primary key fields"""
   log(id: Int!): Log
+
+  """
+  Get multiple `Log`s given the provided `where` filter, order by, limit, and offset
+  """
   logs(where: LogFilter, orderBy: [LogOrdering!], limit: Int, offset: Int): [Log!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Log`s given the provided `where` filter
+  """
   logsAgg(where: LogFilter): LogAgg!
 }
 
 type Mutation {
+  """
+  Create a new Log. Check the `LogCreationInput` type for the expected shape of the data.
+  """
   createLog(data: LogCreationInput!): Log!
+
+  """
+  Create multiple Logs. Check the `LogCreationInput` type for the expected shape of the data.
+  """
   createLogs(data: [LogCreationInput!]!): [Log!]!
+
+  """Delete the Log with the provided primary key."""
   deleteLog(id: Int!): Log
+
+  """Delete multiple Logs matching the provided `where` filter."""
   deleteLogs(where: LogFilter): [Log!]!
+
+  """
+  Update the Log with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateLog(id: Int!, data: LogUpdateInput!): Log
+
+  """
+  Update multiple Logs matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateLogs(where: LogFilter, data: LogUpdateInput!): [Log!]!
 }

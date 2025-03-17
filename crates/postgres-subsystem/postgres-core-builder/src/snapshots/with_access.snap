@@ -67,6 +67,7 @@ values:
             default_value: AutoIncrement
             update_sync: false
             readonly: false
+            doc_comments: ~
           - name: title
             typ:
               Plain:
@@ -92,6 +93,7 @@ values:
             default_value: ~
             update_sync: false
             readonly: false
+            doc_comments: ~
           - name: public
             typ:
               Plain:
@@ -117,6 +119,7 @@ values:
             default_value: ~
             update_sync: false
             readonly: false
+            doc_comments: ~
         table_name:
           name: concerts
           schema: ~
@@ -169,6 +172,7 @@ values:
           creation: ~
           update: ~
           delete: ~
+        doc_comments: ~
   - - ~
     - Composite:
         name: Venue
@@ -200,6 +204,7 @@ values:
             default_value: AutoIncrement
             update_sync: false
             readonly: false
+            doc_comments: ~
           - name: name
             typ:
               Plain:
@@ -225,6 +230,7 @@ values:
             default_value: ~
             update_sync: false
             readonly: false
+            doc_comments: ~
         table_name:
           name: venues
           schema: ~
@@ -237,6 +243,7 @@ values:
           creation: ~
           update: ~
           delete: ~
+        doc_comments: ~
   - - ~
     - Composite:
         name: Artist
@@ -268,6 +275,7 @@ values:
             default_value: AutoIncrement
             update_sync: false
             readonly: false
+            doc_comments: ~
           - name: name
             typ:
               Plain:
@@ -293,6 +301,7 @@ values:
             default_value: ~
             update_sync: false
             readonly: false
+            doc_comments: ~
         table_name:
           name: artists
           schema: ~
@@ -305,6 +314,7 @@ values:
           creation: ~
           update: ~
           delete: ~
+        doc_comments: ~
   - ~
   - ~
   - ~

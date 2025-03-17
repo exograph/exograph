@@ -37,6 +37,7 @@ fn create_shallow(context: &ResolvedContext, building: &mut SystemContextBuildin
         ContextType {
             name: context.name.clone(),
             fields: vec![],
+            doc_comments: context.doc_comments.clone(),
         },
     );
 }
@@ -73,6 +74,7 @@ fn expand(context: &ResolvedContext, building: &mut SystemContextBuilding) {
     let expanded_context = ContextType {
         name: existing_context.name.clone(),
         fields: context_fields,
+        doc_comments: existing_context.doc_comments.clone(),
     };
     building.contexts[existing_context_id] = expanded_context;
 }

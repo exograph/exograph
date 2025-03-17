@@ -39,6 +39,7 @@ type Number {
   singlePrecision: Float
 }
 
+"""An aggregate for the `Number` type."""
 type NumberAgg {
   id: IntAgg
   int16: IntAgg
@@ -52,6 +53,11 @@ input NumberCreationInput {
   singlePrecision: Float
 }
 
+"""
+Predicate for the `Number` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input NumberFilter {
   id: IntFilter
   int16: IntFilter
@@ -82,16 +88,44 @@ enum Ordering {
 }
 
 type Query {
+  """Get a single `Number` given primary key fields"""
   number(id: Int!): Number
+
+  """
+  Get multiple `Number`s given the provided `where` filter, order by, limit, and offset
+  """
   numbers(where: NumberFilter, orderBy: [NumberOrdering!], limit: Int, offset: Int): [Number!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Number`s given the provided `where` filter
+  """
   numbersAgg(where: NumberFilter): NumberAgg!
 }
 
 type Mutation {
+  """
+  Create a new Number. Check the `NumberCreationInput` type for the expected shape of the data.
+  """
   createNumber(data: NumberCreationInput!): Number!
+
+  """
+  Create multiple Numbers. Check the `NumberCreationInput` type for the expected shape of the data.
+  """
   createNumbers(data: [NumberCreationInput!]!): [Number!]!
+
+  """Delete the Number with the provided primary key."""
   deleteNumber(id: Int!): Number
+
+  """Delete multiple Numbers matching the provided `where` filter."""
   deleteNumbers(where: NumberFilter): [Number!]!
+
+  """
+  Update the Number with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateNumber(id: Int!, data: NumberUpdateInput!): Number
+
+  """
+  Update multiple Numbers matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateNumbers(where: NumberFilter, data: NumberUpdateInput!): [Number!]!
 }

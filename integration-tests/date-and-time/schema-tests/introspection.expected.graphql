@@ -7,6 +7,7 @@ type Book {
   reading_club_time: LocalTime!
 }
 
+"""An aggregate for the `Book` type."""
 type BookAgg {
   id: IntAgg
   name: StringAgg
@@ -24,6 +25,11 @@ input BookCreationInput {
   reading_club_time: LocalTime!
 }
 
+"""
+Predicate for the `Book` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input BookFilter {
   id: IntFilter
   name: StringFilter
@@ -156,16 +162,44 @@ input StringFilter {
 }
 
 type Query {
+  """Get a single `Book` given primary key fields"""
   book(id: Int!): Book
+
+  """
+  Get multiple `Book`s given the provided `where` filter, order by, limit, and offset
+  """
   books(where: BookFilter, orderBy: [BookOrdering!], limit: Int, offset: Int): [Book!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Book`s given the provided `where` filter
+  """
   booksAgg(where: BookFilter): BookAgg!
 }
 
 type Mutation {
+  """
+  Create a new Book. Check the `BookCreationInput` type for the expected shape of the data.
+  """
   createBook(data: BookCreationInput!): Book!
+
+  """
+  Create multiple Books. Check the `BookCreationInput` type for the expected shape of the data.
+  """
   createBooks(data: [BookCreationInput!]!): [Book!]!
+
+  """Delete the Book with the provided primary key."""
   deleteBook(id: Int!): Book
+
+  """Delete multiple Books matching the provided `where` filter."""
   deleteBooks(where: BookFilter): [Book!]!
+
+  """
+  Update the Book with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateBook(id: Int!, data: BookUpdateInput!): Book
+
+  """
+  Update multiple Books matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateBooks(where: BookFilter, data: BookUpdateInput!): [Book!]!
 }

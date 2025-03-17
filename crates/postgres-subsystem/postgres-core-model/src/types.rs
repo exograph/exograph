@@ -82,6 +82,7 @@ pub struct EntityType {
 
     pub table_id: SerializableSlabIndex<PhysicalTable>,
     pub access: Access,
+    pub doc_comments: Option<String>,
 }
 
 /// Encapsulates a field on an entity type (mirros how `ColumnId` is structured)
@@ -157,6 +158,7 @@ pub struct PostgresField<CT> {
     pub readonly: bool,
     pub access: Access,
     pub type_validation: Option<TypeValidation>,
+    pub doc_comments: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

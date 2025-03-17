@@ -31,6 +31,7 @@ module.exports = grammar({
       field("path", $.literal_str)
     ),
     module: $ => seq(
+      optional(field("doc_comment", $.doc_comment)),
       repeat(field("annotation", $.annotation)),
       "module",
       field("name", $.term),
@@ -48,6 +49,7 @@ module.exports = grammar({
       $.interceptor
     ),
     module_method: $ => seq(
+      optional(field("doc_comment", $.doc_comment)),
       repeat(field("annotation", $.annotation)),
       optional(field("is_exported", "export")),
       field("method_type", choice("query", "mutation")),
@@ -58,6 +60,7 @@ module.exports = grammar({
       field("return_type", $.field_type)
     ),
     interceptor: $ => seq(
+      optional(field("doc_comment", $.doc_comment)),
       repeat(field("annotation", $.annotation)),
       "interceptor",
       field("name", $.term),
@@ -66,18 +69,21 @@ module.exports = grammar({
       ")",
     ),
     context: $ => seq(
+      optional(field("doc_comment", $.doc_comment)),
       repeat(field("annotation", $.annotation)),
       "context",
       field("name", $.term),
       field("body", $.type_body)
     ),
     type: $ => seq(
+      optional(field("doc_comment", $.doc_comment)),
       repeat(field("annotation", $.annotation)),
       "type",
       field("name", $.term),
       field("body", $.type_body)
     ),
     fragment: $ => seq(
+      optional(field("doc_comment", $.doc_comment)),
       repeat(field("annotation", $.annotation)),
       "fragment",
       field("name", $.term),
@@ -109,6 +115,7 @@ module.exports = grammar({
       field("argument_type", $.field_type),
     ),
     field: $ => seq(
+      optional(field("doc_comment", $.doc_comment)),
       repeat(field("annotation", $.annotation)),
       field("name", $.term),
       ":",
@@ -245,14 +252,24 @@ module.exports = grammar({
       $.literal_boolean,
       $.literal_null
     ),
-    comment: $ => token(choice(
+    comment: $ => choice(
       seq('//', /.*/),
       seq(
         '/*',
-        /[^*]*\*+([^/*][^*]*\*+)*/,
+        /[^*]*\*+([^\/*][^*]*\*+)*/,
         '/'
       )
-    ))
+    ),
+    doc_comment: $ => choice(
+      seq(
+        /\/\*\*[ \t]*\n/,
+        repeat1(seq('*', field("doc_line", $.doc_line_content))),
+        /\*\//
+      ),
+      repeat1(seq('///', field("doc_line", $.doc_line_content)))
+    ),
+
+    doc_line_content: $ => /.*/,
   }
 });
 

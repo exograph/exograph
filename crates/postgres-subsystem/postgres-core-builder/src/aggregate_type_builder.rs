@@ -20,6 +20,7 @@ use postgres_core_model::types::EntityRepresentation;
 use crate::resolved_type::ResolvedType;
 use crate::resolved_type::ResolvedTypeEnv;
 
+use crate::shallow::Shallow;
 use crate::system_builder::SystemContextBuilding;
 
 pub fn aggregate_type_name(type_name: &str) -> String {
@@ -67,6 +68,7 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
         ResolvedType::Composite(_) => AggregateType {
             name: aggregate_type_name.clone(),
             fields: vec![],
+            underlying_type: Shallow::shallow(),
         },
         ResolvedType::Primitive(_) => {
             let supported_kinds = AGG_MAP
@@ -101,6 +103,7 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
             AggregateType {
                 name: aggregate_type_name.clone(),
                 fields,
+                underlying_type: Shallow::shallow(),
             }
         }
     };
@@ -166,10 +169,12 @@ fn expand_type(resolved_type: &ResolvedType, building: &mut SystemContextBuildin
             })
             .collect();
 
-        building
-            .aggregate_types
-            .get_by_id_mut(existing_type_id)
-            .fields = fields;
+        let existing_type = building.aggregate_types.get_by_id_mut(existing_type_id);
+
+        existing_type.fields = fields;
+
+        existing_type.underlying_type =
+            building.entity_types.get_id(&resolved_type.name()).unwrap();
     }
 }
 

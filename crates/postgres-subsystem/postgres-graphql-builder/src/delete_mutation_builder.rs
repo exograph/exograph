@@ -106,4 +106,18 @@ impl MutationBuilder for DeleteMutationBuilder {
             &building.predicate_types,
         )])
     }
+
+    fn single_mutation_doc_comments(entity_type: &EntityType) -> Option<String> {
+        Some(format!(
+            "Delete the {} with the provided primary key.",
+            entity_type.name
+        ))
+    }
+
+    fn multi_mutation_doc_comments(entity_type: &EntityType) -> Option<String> {
+        Some(format!(
+            "Delete multiple {}s matching the provided `where` filter.",
+            entity_type.name
+        ))
+    }
 }
