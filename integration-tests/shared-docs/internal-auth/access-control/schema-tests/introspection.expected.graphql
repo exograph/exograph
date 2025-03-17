@@ -14,6 +14,7 @@ type Document {
   permissionsAgg(where: PermissionFilter): PermissionAgg
 }
 
+"""An aggregate for the `Document` type."""
 type DocumentAgg {
   id: IntAgg
   content: StringAgg
@@ -24,6 +25,11 @@ input DocumentCreationInput {
   permissions: [PermissionCreationInputFromDocument!]
 }
 
+"""
+Predicate for the `Document` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input DocumentFilter {
   id: IntFilter
   content: StringFilter
@@ -78,6 +84,7 @@ type Permission {
   write: Boolean!
 }
 
+"""An aggregate for the `Permission` type."""
 type PermissionAgg {
   id: IntAgg
   read: BooleanAgg
@@ -103,6 +110,11 @@ input PermissionCreationInputFromUser {
   write: Boolean!
 }
 
+"""
+Predicate for the `Permission` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input PermissionFilter {
   id: IntFilter
   document: DocumentFilter
@@ -186,6 +198,7 @@ type User {
   permissionsAgg(where: PermissionFilter): PermissionAgg
 }
 
+"""An aggregate for the `User` type."""
 type UserAgg {
   id: IntAgg
   name: StringAgg
@@ -196,6 +209,11 @@ input UserCreationInput {
   permissions: [PermissionCreationInputFromUser!]
 }
 
+"""
+Predicate for the `User` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input UserFilter {
   id: IntFilter
   name: StringFilter
@@ -221,34 +239,122 @@ input UserUpdateInput {
 }
 
 type Query {
+  """Get a single `Document` given primary key fields"""
   document(id: Int!): Document
+
+  """
+  Get multiple `Document`s given the provided `where` filter, order by, limit, and offset
+  """
   documents(where: DocumentFilter, orderBy: [DocumentOrdering!], limit: Int, offset: Int): [Document!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Document`s given the provided `where` filter
+  """
   documentsAgg(where: DocumentFilter): DocumentAgg!
+
+  """Get a single `Permission` given primary key fields"""
   permission(id: Int!): Permission
+
+  """
+  Get multiple `Permission`s given the provided `where` filter, order by, limit, and offset
+  """
   permissions(where: PermissionFilter, orderBy: [PermissionOrdering!], limit: Int, offset: Int): [Permission!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Permission`s given the provided `where` filter
+  """
   permissionsAgg(where: PermissionFilter): PermissionAgg!
+
+  """Get a single `User` given primary key fields"""
   user(id: Int!): User
+
+  """
+  Get multiple `User`s given the provided `where` filter, order by, limit, and offset
+  """
   users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+
+  """
+  Get the aggregate value of the selected fields over all `User`s given the provided `where` filter
+  """
   usersAgg(where: UserFilter): UserAgg!
 }
 
 type Mutation {
+  """
+  Create a new Document. Check the `DocumentCreationInput` type for the expected shape of the data.
+  """
   createDocument(data: DocumentCreationInput!): Document!
+
+  """
+  Create multiple Documents. Check the `DocumentCreationInput` type for the expected shape of the data.
+  """
   createDocuments(data: [DocumentCreationInput!]!): [Document!]!
+
+  """
+  Create a new Permission. Check the `PermissionCreationInput` type for the expected shape of the data.
+  """
   createPermission(data: PermissionCreationInput!): Permission!
+
+  """
+  Create multiple Permissions. Check the `PermissionCreationInput` type for the expected shape of the data.
+  """
   createPermissions(data: [PermissionCreationInput!]!): [Permission!]!
+
+  """
+  Create a new User. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUser(data: UserCreationInput!): User!
+
+  """
+  Create multiple Users. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUsers(data: [UserCreationInput!]!): [User!]!
+
+  """Delete the Document with the provided primary key."""
   deleteDocument(id: Int!): Document
+
+  """Delete multiple Documents matching the provided `where` filter."""
   deleteDocuments(where: DocumentFilter): [Document!]!
+
+  """Delete the Permission with the provided primary key."""
   deletePermission(id: Int!): Permission
+
+  """Delete multiple Permissions matching the provided `where` filter."""
   deletePermissions(where: PermissionFilter): [Permission!]!
+
+  """Delete the User with the provided primary key."""
   deleteUser(id: Int!): User
+
+  """Delete multiple Users matching the provided `where` filter."""
   deleteUsers(where: UserFilter): [User!]!
+
+  """
+  Update the Document with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateDocument(id: Int!, data: DocumentUpdateInput!): Document
+
+  """
+  Update multiple Documents matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateDocuments(where: DocumentFilter, data: DocumentUpdateInput!): [Document!]!
+
+  """
+  Update the Permission with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updatePermission(id: Int!, data: PermissionUpdateInput!): Permission
+
+  """
+  Update multiple Permissions matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updatePermissions(where: PermissionFilter, data: PermissionUpdateInput!): [Permission!]!
+
+  """
+  Update the User with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUser(id: Int!, data: UserUpdateInput!): User
+
+  """
+  Update multiple Users matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
 }

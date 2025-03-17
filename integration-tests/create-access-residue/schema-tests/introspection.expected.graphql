@@ -6,6 +6,7 @@ type Employee {
   issuesAgg(where: IssueFilter): IssueAgg
 }
 
+"""An aggregate for the `Employee` type."""
 type EmployeeAgg {
   id: IntAgg
   name: StringAgg
@@ -18,6 +19,11 @@ input EmployeeCreationInput {
   issues: [IssueCreationInputFromEmployee!]
 }
 
+"""
+Predicate for the `Employee` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input EmployeeFilter {
   id: IntFilter
   name: StringFilter
@@ -68,6 +74,7 @@ type Issue {
   assignee: Employee!
 }
 
+"""An aggregate for the `Issue` type."""
 type IssueAgg {
   id: IntAgg
   title: StringAgg
@@ -82,6 +89,11 @@ input IssueCreationInputFromEmployee {
   title: String!
 }
 
+"""
+Predicate for the `Issue` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input IssueFilter {
   id: IntFilter
   title: StringFilter
@@ -143,25 +155,83 @@ input StringFilter {
 }
 
 type Query {
+  """Get a single `Employee` given primary key fields"""
   employee(id: Int!): Employee
+
+  """
+  Get multiple `Employee`s given the provided `where` filter, order by, limit, and offset
+  """
   employees(where: EmployeeFilter, orderBy: [EmployeeOrdering!], limit: Int, offset: Int): [Employee!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Employee`s given the provided `where` filter
+  """
   employeesAgg(where: EmployeeFilter): EmployeeAgg!
+
+  """Get a single `Issue` given primary key fields"""
   issue(id: Int!): Issue
+
+  """
+  Get multiple `Issue`s given the provided `where` filter, order by, limit, and offset
+  """
   issues(where: IssueFilter, orderBy: [IssueOrdering!], limit: Int, offset: Int): [Issue!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Issue`s given the provided `where` filter
+  """
   issuesAgg(where: IssueFilter): IssueAgg!
 }
 
 type Mutation {
+  """
+  Create a new Employee. Check the `EmployeeCreationInput` type for the expected shape of the data.
+  """
   createEmployee(data: EmployeeCreationInput!): Employee!
+
+  """
+  Create multiple Employees. Check the `EmployeeCreationInput` type for the expected shape of the data.
+  """
   createEmployees(data: [EmployeeCreationInput!]!): [Employee!]!
+
+  """
+  Create a new Issue. Check the `IssueCreationInput` type for the expected shape of the data.
+  """
   createIssue(data: IssueCreationInput!): Issue!
+
+  """
+  Create multiple Issues. Check the `IssueCreationInput` type for the expected shape of the data.
+  """
   createIssues(data: [IssueCreationInput!]!): [Issue!]!
+
+  """Delete the Employee with the provided primary key."""
   deleteEmployee(id: Int!): Employee
+
+  """Delete multiple Employees matching the provided `where` filter."""
   deleteEmployees(where: EmployeeFilter): [Employee!]!
+
+  """Delete the Issue with the provided primary key."""
   deleteIssue(id: Int!): Issue
+
+  """Delete multiple Issues matching the provided `where` filter."""
   deleteIssues(where: IssueFilter): [Issue!]!
+
+  """
+  Update the Employee with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateEmployee(id: Int!, data: EmployeeUpdateInput!): Employee
+
+  """
+  Update multiple Employees matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateEmployees(where: EmployeeFilter, data: EmployeeUpdateInput!): [Employee!]!
+
+  """
+  Update the Issue with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateIssue(id: Int!, data: IssueUpdateInput!): Issue
+
+  """
+  Update multiple Issues matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateIssues(where: IssueFilter, data: IssueUpdateInput!): [Issue!]!
 }

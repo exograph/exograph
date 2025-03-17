@@ -22,6 +22,7 @@ type Foo {
   verylong: Decimal!
 }
 
+"""An aggregate for the `Foo` type."""
 type FooAgg {
   id: IntAgg
   verylong: DecimalAgg
@@ -31,6 +32,11 @@ input FooCreationInput {
   verylong: Decimal!
 }
 
+"""
+Predicate for the `Foo` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input FooFilter {
   id: IntFilter
   verylong: DecimalFilter
@@ -72,16 +78,44 @@ enum Ordering {
 }
 
 type Query {
+  """Get a single `Foo` given primary key fields"""
   foo(id: Int!): Foo
+
+  """
+  Get multiple `Foo`s given the provided `where` filter, order by, limit, and offset
+  """
   foos(where: FooFilter, orderBy: [FooOrdering!], limit: Int, offset: Int): [Foo!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Foo`s given the provided `where` filter
+  """
   foosAgg(where: FooFilter): FooAgg!
 }
 
 type Mutation {
+  """
+  Create a new Foo. Check the `FooCreationInput` type for the expected shape of the data.
+  """
   createFoo(data: FooCreationInput!): Foo!
+
+  """
+  Create multiple Foos. Check the `FooCreationInput` type for the expected shape of the data.
+  """
   createFoos(data: [FooCreationInput!]!): [Foo!]!
+
+  """Delete the Foo with the provided primary key."""
   deleteFoo(id: Int!): Foo
+
+  """Delete multiple Foos matching the provided `where` filter."""
   deleteFoos(where: FooFilter): [Foo!]!
+
+  """
+  Update the Foo with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateFoo(id: Int!, data: FooUpdateInput!): Foo
+
+  """
+  Update multiple Foos matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateFoos(where: FooFilter, data: FooUpdateInput!): [Foo!]!
 }

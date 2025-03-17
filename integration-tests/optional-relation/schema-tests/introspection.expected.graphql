@@ -5,6 +5,7 @@ type Event {
   notificationsAgg(where: NotificationFilter): NotificationAgg
 }
 
+"""An aggregate for the `Event` type."""
 type EventAgg {
   id: IntAgg
   title: StringAgg
@@ -15,6 +16,11 @@ input EventCreationInput {
   notifications: [NotificationCreationInputFromEvent!]
 }
 
+"""
+Predicate for the `Event` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input EventFilter {
   id: IntFilter
   title: StringFilter
@@ -63,6 +69,7 @@ type Notification {
   event: Event
 }
 
+"""An aggregate for the `Notification` type."""
 type NotificationAgg {
   id: IntAgg
   title: StringAgg
@@ -80,6 +87,11 @@ input NotificationCreationInputFromEvent {
   description: String!
 }
 
+"""
+Predicate for the `Notification` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input NotificationFilter {
   id: IntFilter
   title: StringFilter
@@ -145,25 +157,83 @@ input StringFilter {
 }
 
 type Query {
+  """Get a single `Event` given primary key fields"""
   event(id: Int!): Event
+
+  """
+  Get multiple `Event`s given the provided `where` filter, order by, limit, and offset
+  """
   events(where: EventFilter, orderBy: [EventOrdering!], limit: Int, offset: Int): [Event!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Event`s given the provided `where` filter
+  """
   eventsAgg(where: EventFilter): EventAgg!
+
+  """Get a single `Notification` given primary key fields"""
   notification(id: Int!): Notification
+
+  """
+  Get multiple `Notification`s given the provided `where` filter, order by, limit, and offset
+  """
   notifications(where: NotificationFilter, orderBy: [NotificationOrdering!], limit: Int, offset: Int): [Notification!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Notification`s given the provided `where` filter
+  """
   notificationsAgg(where: NotificationFilter): NotificationAgg!
 }
 
 type Mutation {
+  """
+  Create a new Event. Check the `EventCreationInput` type for the expected shape of the data.
+  """
   createEvent(data: EventCreationInput!): Event!
+
+  """
+  Create multiple Events. Check the `EventCreationInput` type for the expected shape of the data.
+  """
   createEvents(data: [EventCreationInput!]!): [Event!]!
+
+  """
+  Create a new Notification. Check the `NotificationCreationInput` type for the expected shape of the data.
+  """
   createNotification(data: NotificationCreationInput!): Notification!
+
+  """
+  Create multiple Notifications. Check the `NotificationCreationInput` type for the expected shape of the data.
+  """
   createNotifications(data: [NotificationCreationInput!]!): [Notification!]!
+
+  """Delete the Event with the provided primary key."""
   deleteEvent(id: Int!): Event
+
+  """Delete multiple Events matching the provided `where` filter."""
   deleteEvents(where: EventFilter): [Event!]!
+
+  """Delete the Notification with the provided primary key."""
   deleteNotification(id: Int!): Notification
+
+  """Delete multiple Notifications matching the provided `where` filter."""
   deleteNotifications(where: NotificationFilter): [Notification!]!
+
+  """
+  Update the Event with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateEvent(id: Int!, data: EventUpdateInput!): Event
+
+  """
+  Update multiple Events matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateEvents(where: EventFilter, data: EventUpdateInput!): [Event!]!
+
+  """
+  Update the Notification with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateNotification(id: Int!, data: NotificationUpdateInput!): Notification
+
+  """
+  Update multiple Notifications matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateNotifications(where: NotificationFilter, data: NotificationUpdateInput!): [Notification!]!
 }

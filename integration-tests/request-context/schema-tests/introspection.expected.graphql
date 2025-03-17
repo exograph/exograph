@@ -20,6 +20,7 @@ type JournalEntry {
   text: String!
 }
 
+"""An aggregate for the `JournalEntry` type."""
 type JournalEntryAgg {
   id: IntAgg
   text: StringAgg
@@ -29,6 +30,11 @@ input JournalEntryCreationInput {
   text: String!
 }
 
+"""
+Predicate for the `JournalEntry` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input JournalEntryFilter {
   id: IntFilter
   text: StringFilter
@@ -79,17 +85,46 @@ type Query {
   getRoleAndUid: String!
   getSecretHeader: String!
   isTrackingEnabled: Boolean!
+
+  """
+  Get multiple `JournalEntry`s given the provided `where` filter, order by, limit, and offset
+  """
   journalEntries(where: JournalEntryFilter, orderBy: [JournalEntryOrdering!], limit: Int, offset: Int): [JournalEntry!]!
+
+  """
+  Get the aggregate value of the selected fields over all `JournalEntry`s given the provided `where` filter
+  """
   journalEntriesAgg(where: JournalEntryFilter): JournalEntryAgg!
+
+  """Get a single `JournalEntry` given primary key fields"""
   journalEntry(id: Int!): JournalEntry
   shouldTrack: Boolean!
 }
 
 type Mutation {
+  """
+  Create multiple JournalEntrys. Check the `JournalEntryCreationInput` type for the expected shape of the data.
+  """
   createJournalEntries(data: [JournalEntryCreationInput!]!): [JournalEntry!]!
+
+  """
+  Create a new JournalEntry. Check the `JournalEntryCreationInput` type for the expected shape of the data.
+  """
   createJournalEntry(data: JournalEntryCreationInput!): JournalEntry!
+
+  """Delete multiple JournalEntrys matching the provided `where` filter."""
   deleteJournalEntries(where: JournalEntryFilter): [JournalEntry!]!
+
+  """Delete the JournalEntry with the provided primary key."""
   deleteJournalEntry(id: Int!): JournalEntry
+
+  """
+  Update multiple JournalEntrys matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateJournalEntries(where: JournalEntryFilter, data: JournalEntryUpdateInput!): [JournalEntry!]!
+
+  """
+  Update the JournalEntry with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateJournalEntry(id: Int!, data: JournalEntryUpdateInput!): JournalEntry
 }

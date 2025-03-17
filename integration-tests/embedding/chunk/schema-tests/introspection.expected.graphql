@@ -6,6 +6,7 @@ type Chunk {
   chunkVectorDistance(to: [Float!]!): Float!
 }
 
+"""An aggregate for the `Chunk` type."""
 type ChunkAgg {
   id: IntAgg
   chunk: StringAgg
@@ -23,6 +24,11 @@ input ChunkCreationInputFromTodo {
   chunkVector: [Float!]
 }
 
+"""
+Predicate for the `Chunk` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input ChunkFilter {
   id: IntFilter
   todo: TodoFilter
@@ -121,6 +127,7 @@ type Todo {
   chunksAgg(where: ChunkFilter): ChunkAgg
 }
 
+"""An aggregate for the `Todo` type."""
 type TodoAgg {
   id: IntAgg
   title: StringAgg
@@ -133,6 +140,11 @@ input TodoCreationInput {
   chunks: [ChunkCreationInputFromTodo!]
 }
 
+"""
+Predicate for the `Todo` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input TodoFilter {
   id: IntFilter
   title: StringFilter
@@ -173,8 +185,12 @@ input VectorFilter {
   neq: [Float!]
 }
 
+"""Predicate to filter based on vector distance"""
 input VectorFilterArg {
+  """The target vector to compare against."""
   distanceTo: [Float!]!
+
+  """The distance to the vector."""
   distance: FloatFilter
 }
 
@@ -184,25 +200,83 @@ input VectorOrdering {
 }
 
 type Query {
+  """Get a single `Chunk` given primary key fields"""
   chunk(id: Int!): Chunk
+
+  """
+  Get multiple `Chunk`s given the provided `where` filter, order by, limit, and offset
+  """
   chunks(where: ChunkFilter, orderBy: [ChunkOrdering!], limit: Int, offset: Int): [Chunk!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Chunk`s given the provided `where` filter
+  """
   chunksAgg(where: ChunkFilter): ChunkAgg!
+
+  """Get a single `Todo` given primary key fields"""
   todo(id: Int!): Todo
+
+  """
+  Get multiple `Todo`s given the provided `where` filter, order by, limit, and offset
+  """
   todos(where: TodoFilter, orderBy: [TodoOrdering!], limit: Int, offset: Int): [Todo!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Todo`s given the provided `where` filter
+  """
   todosAgg(where: TodoFilter): TodoAgg!
 }
 
 type Mutation {
+  """
+  Create a new Chunk. Check the `ChunkCreationInput` type for the expected shape of the data.
+  """
   createChunk(data: ChunkCreationInput!): Chunk!
+
+  """
+  Create multiple Chunks. Check the `ChunkCreationInput` type for the expected shape of the data.
+  """
   createChunks(data: [ChunkCreationInput!]!): [Chunk!]!
+
+  """
+  Create a new Todo. Check the `TodoCreationInput` type for the expected shape of the data.
+  """
   createTodo(data: TodoCreationInput!): Todo!
+
+  """
+  Create multiple Todos. Check the `TodoCreationInput` type for the expected shape of the data.
+  """
   createTodos(data: [TodoCreationInput!]!): [Todo!]!
+
+  """Delete the Chunk with the provided primary key."""
   deleteChunk(id: Int!): Chunk
+
+  """Delete multiple Chunks matching the provided `where` filter."""
   deleteChunks(where: ChunkFilter): [Chunk!]!
+
+  """Delete the Todo with the provided primary key."""
   deleteTodo(id: Int!): Todo
+
+  """Delete multiple Todos matching the provided `where` filter."""
   deleteTodos(where: TodoFilter): [Todo!]!
+
+  """
+  Update the Chunk with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateChunk(id: Int!, data: ChunkUpdateInput!): Chunk
+
+  """
+  Update multiple Chunks matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateChunks(where: ChunkFilter, data: ChunkUpdateInput!): [Chunk!]!
+
+  """
+  Update the Todo with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateTodo(id: Int!, data: TodoUpdateInput!): Todo
+
+  """
+  Update multiple Todos matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateTodos(where: TodoFilter, data: TodoUpdateInput!): [Todo!]!
 }

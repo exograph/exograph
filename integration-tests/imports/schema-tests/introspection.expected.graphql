@@ -22,6 +22,7 @@ type MailingList {
   subscriptionsAgg(where: UserSubscriptionFilter): UserSubscriptionAgg
 }
 
+"""An aggregate for the `MailingList` type."""
 type MailingListAgg {
   id: IntAgg
   email_address: StringAgg
@@ -32,6 +33,11 @@ input MailingListCreationInput {
   subscriptions: [UserSubscriptionCreationInputFromMailingList!]
 }
 
+"""
+Predicate for the `MailingList` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input MailingListFilter {
   id: IntFilter
   email_address: StringFilter
@@ -87,6 +93,7 @@ type User {
   subscribed_listsAgg(where: UserSubscriptionFilter): UserSubscriptionAgg
 }
 
+"""An aggregate for the `User` type."""
 type UserAgg {
   id: IntAgg
   username: StringAgg
@@ -97,6 +104,11 @@ input UserCreationInput {
   subscribed_lists: [UserSubscriptionCreationInputFromUser!]
 }
 
+"""
+Predicate for the `User` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input UserFilter {
   id: IntFilter
   username: StringFilter
@@ -121,6 +133,7 @@ type UserSubscription {
   mailing_list: MailingList!
 }
 
+"""An aggregate for the `UserSubscription` type."""
 type UserSubscriptionAgg {
   id: IntAgg
 }
@@ -138,6 +151,11 @@ input UserSubscriptionCreationInputFromUser {
   mailing_list: MailingListReferenceInput!
 }
 
+"""
+Predicate for the `UserSubscription` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input UserSubscriptionFilter {
   id: IntFilter
   user: UserFilter
@@ -192,34 +210,124 @@ input UserUpdateInput {
 }
 
 type Query {
+  """Get a single `MailingList` given primary key fields"""
   mailingList(id: Int!): MailingList
+
+  """
+  Get multiple `MailingList`s given the provided `where` filter, order by, limit, and offset
+  """
   mailingLists(where: MailingListFilter, orderBy: [MailingListOrdering!], limit: Int, offset: Int): [MailingList!]!
+
+  """
+  Get the aggregate value of the selected fields over all `MailingList`s given the provided `where` filter
+  """
   mailingListsAgg(where: MailingListFilter): MailingListAgg!
+
+  """Get a single `User` given primary key fields"""
   user(id: Int!): User
+
+  """Get a single `UserSubscription` given primary key fields"""
   userSubscription(id: Int!): UserSubscription
+
+  """
+  Get multiple `UserSubscription`s given the provided `where` filter, order by, limit, and offset
+  """
   userSubscriptions(where: UserSubscriptionFilter, orderBy: [UserSubscriptionOrdering!], limit: Int, offset: Int): [UserSubscription!]!
+
+  """
+  Get the aggregate value of the selected fields over all `UserSubscription`s given the provided `where` filter
+  """
   userSubscriptionsAgg(where: UserSubscriptionFilter): UserSubscriptionAgg!
+
+  """
+  Get multiple `User`s given the provided `where` filter, order by, limit, and offset
+  """
   users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+
+  """
+  Get the aggregate value of the selected fields over all `User`s given the provided `where` filter
+  """
   usersAgg(where: UserFilter): UserAgg!
 }
 
 type Mutation {
+  """
+  Create a new MailingList. Check the `MailingListCreationInput` type for the expected shape of the data.
+  """
   createMailingList(data: MailingListCreationInput!): MailingList!
+
+  """
+  Create multiple MailingLists. Check the `MailingListCreationInput` type for the expected shape of the data.
+  """
   createMailingLists(data: [MailingListCreationInput!]!): [MailingList!]!
+
+  """
+  Create a new User. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUser(data: UserCreationInput!): User!
+
+  """
+  Create a new UserSubscription. Check the `UserSubscriptionCreationInput` type for the expected shape of the data.
+  """
   createUserSubscription(data: UserSubscriptionCreationInput!): UserSubscription!
+
+  """
+  Create multiple UserSubscriptions. Check the `UserSubscriptionCreationInput` type for the expected shape of the data.
+  """
   createUserSubscriptions(data: [UserSubscriptionCreationInput!]!): [UserSubscription!]!
+
+  """
+  Create multiple Users. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUsers(data: [UserCreationInput!]!): [User!]!
+
+  """Delete the MailingList with the provided primary key."""
   deleteMailingList(id: Int!): MailingList
+
+  """Delete multiple MailingLists matching the provided `where` filter."""
   deleteMailingLists(where: MailingListFilter): [MailingList!]!
+
+  """Delete the User with the provided primary key."""
   deleteUser(id: Int!): User
+
+  """Delete the UserSubscription with the provided primary key."""
   deleteUserSubscription(id: Int!): UserSubscription
+
+  """
+  Delete multiple UserSubscriptions matching the provided `where` filter.
+  """
   deleteUserSubscriptions(where: UserSubscriptionFilter): [UserSubscription!]!
+
+  """Delete multiple Users matching the provided `where` filter."""
   deleteUsers(where: UserFilter): [User!]!
+
+  """
+  Update the MailingList with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateMailingList(id: Int!, data: MailingListUpdateInput!): MailingList
+
+  """
+  Update multiple MailingLists matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateMailingLists(where: MailingListFilter, data: MailingListUpdateInput!): [MailingList!]!
+
+  """
+  Update the User with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUser(id: Int!, data: UserUpdateInput!): User
+
+  """
+  Update the UserSubscription with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUserSubscription(id: Int!, data: UserSubscriptionUpdateInput!): UserSubscription
+
+  """
+  Update multiple UserSubscriptions matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUserSubscriptions(where: UserSubscriptionFilter, data: UserSubscriptionUpdateInput!): [UserSubscription!]!
+
+  """
+  Update multiple Users matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
 }

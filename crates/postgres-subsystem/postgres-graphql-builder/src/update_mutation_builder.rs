@@ -149,6 +149,20 @@ impl MutationBuilder for UpdateMutationBuilder {
             )],
         }
     }
+
+    fn single_mutation_doc_comments(entity_type: &EntityType) -> Option<String> {
+        Some(format!(
+            "Update the {} with the provided primary key with the provided data. Any fields not provided will remain unchanged.",
+            entity_type.name
+        ))
+    }
+
+    fn multi_mutation_doc_comments(entity_type: &EntityType) -> Option<String> {
+        Some(format!(
+            "Update multiple {}s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.",
+            entity_type.name
+        ))
+    }
 }
 
 impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
@@ -187,6 +201,7 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
                 type_validation: None,
             }),
             type_validation: None,
+            doc_comments: Some(format!("The data to update the {} with", entity_type.name)),
         }
     }
 
@@ -279,6 +294,7 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
                         .get_id(&field_type.name)
                         .unwrap(),
                     database_access: None,
+                    doc_comments: field_type.doc_comments.clone(),
                 },
             )];
 

@@ -8,6 +8,7 @@ type Address {
   peopleAgg(where: PersonFilter): PersonAgg
 }
 
+"""An aggregate for the `Address` type."""
 type AddressAgg {
   street: StringAgg
   city: StringAgg
@@ -25,6 +26,11 @@ input AddressCreationInput {
   people: [PersonCreationInputFromAddress!]
 }
 
+"""
+Predicate for the `Address` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input AddressFilter {
   street: StringFilter
   city: StringFilter
@@ -90,6 +96,7 @@ type Person {
   address: Address
 }
 
+"""An aggregate for the `Person` type."""
 type PersonAgg {
   firstName: StringAgg
   lastName: StringAgg
@@ -109,6 +116,11 @@ input PersonCreationInputFromAddress {
   age: Int!
 }
 
+"""
+Predicate for the `Person` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input PersonFilter {
   firstName: StringFilter
   lastName: StringFilter
@@ -170,25 +182,83 @@ input StringFilter {
 }
 
 type Query {
+  """Get a single `Address` given primary key fields"""
   address(street: String!, city: String!, state: String!, zip: Int!): Address
+
+  """
+  Get multiple `Address`s given the provided `where` filter, order by, limit, and offset
+  """
   addresses(where: AddressFilter, orderBy: [AddressOrdering!], limit: Int, offset: Int): [Address!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Address`s given the provided `where` filter
+  """
   addressesAgg(where: AddressFilter): AddressAgg!
+
+  """
+  Get multiple `Person`s given the provided `where` filter, order by, limit, and offset
+  """
   people(where: PersonFilter, orderBy: [PersonOrdering!], limit: Int, offset: Int): [Person!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Person`s given the provided `where` filter
+  """
   peopleAgg(where: PersonFilter): PersonAgg!
+
+  """Get a single `Person` given primary key fields"""
   person(firstName: String!, lastName: String!): Person
 }
 
 type Mutation {
+  """
+  Create a new Address. Check the `AddressCreationInput` type for the expected shape of the data.
+  """
   createAddress(data: AddressCreationInput!): Address!
+
+  """
+  Create multiple Addresss. Check the `AddressCreationInput` type for the expected shape of the data.
+  """
   createAddresses(data: [AddressCreationInput!]!): [Address!]!
+
+  """
+  Create multiple Persons. Check the `PersonCreationInput` type for the expected shape of the data.
+  """
   createPeople(data: [PersonCreationInput!]!): [Person!]!
+
+  """
+  Create a new Person. Check the `PersonCreationInput` type for the expected shape of the data.
+  """
   createPerson(data: PersonCreationInput!): Person!
+
+  """Delete the Address with the provided primary key."""
   deleteAddress(street: String!, city: String!, state: String!, zip: Int!): Address
+
+  """Delete multiple Addresss matching the provided `where` filter."""
   deleteAddresses(where: AddressFilter): [Address!]!
+
+  """Delete multiple Persons matching the provided `where` filter."""
   deletePeople(where: PersonFilter): [Person!]!
+
+  """Delete the Person with the provided primary key."""
   deletePerson(firstName: String!, lastName: String!): Person
+
+  """
+  Update the Address with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateAddress(street: String!, city: String!, state: String!, zip: Int!, data: AddressUpdateInput!): Address
+
+  """
+  Update multiple Addresss matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateAddresses(where: AddressFilter, data: AddressUpdateInput!): [Address!]!
+
+  """
+  Update multiple Persons matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updatePeople(where: PersonFilter, data: PersonUpdateInput!): [Person!]!
+
+  """
+  Update the Person with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updatePerson(firstName: String!, lastName: String!, data: PersonUpdateInput!): Person
 }

@@ -107,6 +107,7 @@ fn expanded_reference_types(
                 .get_id(&entity_type.name)
                 .unwrap(),
             database_access: None,
+            doc_comments: entity_type.doc_comments.clone(),
         },
     )]
 }

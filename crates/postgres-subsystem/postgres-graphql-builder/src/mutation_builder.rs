@@ -97,6 +97,9 @@ pub trait MutationBuilder {
         building: &SystemContextBuilding,
     ) -> PostgresMutationParameters;
 
+    fn single_mutation_doc_comments(entity_type: &EntityType) -> Option<String>;
+    fn multi_mutation_doc_comments(entity_type: &EntityType) -> Option<String>;
+
     fn build_mutations(
         &self,
         entity_type_id: SerializableSlabIndex<EntityType>,
@@ -119,6 +122,7 @@ pub trait MutationBuilder {
                     associated_type_id: entity_type_id,
                     type_name: entity_type.name.clone(),
                 }),
+                doc_comments: Self::single_mutation_doc_comments(entity_type),
             })
         };
 
@@ -131,6 +135,7 @@ pub trait MutationBuilder {
                     type_name: entity_type.name.clone(),
                 },
             ))),
+            doc_comments: Self::multi_mutation_doc_comments(entity_type),
         };
 
         match single_mutation {
@@ -511,6 +516,7 @@ pub trait DataParamBuilder<D> {
                     .get_id(&entity_type.name)
                     .unwrap(),
                 database_access: nested_predicate,
+                doc_comments: entity_type.doc_comments.clone(),
             },
         ));
 

@@ -14,6 +14,7 @@ type Chat {
   participantsAgg(where: ChatParticipationFilter): ChatParticipationAgg
 }
 
+"""An aggregate for the `Chat` type."""
 type ChatAgg {
   id: IntAgg
   title: StringAgg
@@ -24,6 +25,11 @@ input ChatCreationInput {
   participants: [ChatParticipationCreationInputFromChat!]
 }
 
+"""
+Predicate for the `Chat` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input ChatFilter {
   id: IntFilter
   title: StringFilter
@@ -46,6 +52,7 @@ type ChatParticipation {
   moodsAgg(where: MoodFilter): MoodAgg
 }
 
+"""An aggregate for the `ChatParticipation` type."""
 type ChatParticipationAgg {
   chat: ChatAgg
   user: UserAgg
@@ -71,6 +78,11 @@ input ChatParticipationCreationInputFromUser {
   moods: [MoodCreationInputFromChatParticipation!]
 }
 
+"""
+Predicate for the `ChatParticipation` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input ChatParticipationFilter {
   chat: ChatFilter
   user: UserFilter
@@ -127,6 +139,7 @@ input ChatReferenceInput {
   id: Int!
 }
 
+"""A predicate to filter the results for a `Chat` type parameter."""
 input ChatUniqueFilter {
   id: Int!
 }
@@ -160,6 +173,7 @@ type Mood {
   chatParticipation: ChatParticipation!
 }
 
+"""An aggregate for the `Mood` type."""
 type MoodAgg {
   id: IntAgg
   name: StringAgg
@@ -174,6 +188,11 @@ input MoodCreationInputFromChatParticipation {
   name: String!
 }
 
+"""
+Predicate for the `Mood` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input MoodFilter {
   id: IntFilter
   name: StringFilter
@@ -241,6 +260,7 @@ type User {
   participatesInAgg(where: ChatParticipationFilter): ChatParticipationAgg
 }
 
+"""An aggregate for the `User` type."""
 type UserAgg {
   id: IntAgg
   name: StringAgg
@@ -251,6 +271,11 @@ input UserCreationInput {
   participatesIn: [ChatParticipationCreationInputFromUser!]
 }
 
+"""
+Predicate for the `User` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input UserFilter {
   id: IntFilter
   name: StringFilter
@@ -269,6 +294,7 @@ input UserReferenceInput {
   id: Int!
 }
 
+"""A predicate to filter the results for a `User` type parameter."""
 input UserUniqueFilter {
   id: Int!
 }
@@ -280,43 +306,163 @@ input UserUpdateInput {
 }
 
 type Query {
+  """Get a single `Chat` given primary key fields"""
   chat(id: Int!): Chat
+
+  """Get a single `ChatParticipation` given primary key fields"""
   chatParticipation(chat: ChatUniqueFilter!, user: UserUniqueFilter!): ChatParticipation
+
+  """
+  Get multiple `ChatParticipation`s given the provided `where` filter, order by, limit, and offset
+  """
   chatParticipations(where: ChatParticipationFilter, orderBy: [ChatParticipationOrdering!], limit: Int, offset: Int): [ChatParticipation!]!
+
+  """
+  Get the aggregate value of the selected fields over all `ChatParticipation`s given the provided `where` filter
+  """
   chatParticipationsAgg(where: ChatParticipationFilter): ChatParticipationAgg!
+
+  """
+  Get multiple `Chat`s given the provided `where` filter, order by, limit, and offset
+  """
   chats(where: ChatFilter, orderBy: [ChatOrdering!], limit: Int, offset: Int): [Chat!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Chat`s given the provided `where` filter
+  """
   chatsAgg(where: ChatFilter): ChatAgg!
+
+  """Get a single `Mood` given primary key fields"""
   mood(id: Int!): Mood
+
+  """
+  Get multiple `Mood`s given the provided `where` filter, order by, limit, and offset
+  """
   moods(where: MoodFilter, orderBy: [MoodOrdering!], limit: Int, offset: Int): [Mood!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Mood`s given the provided `where` filter
+  """
   moodsAgg(where: MoodFilter): MoodAgg!
+
+  """Get a single `User` given primary key fields"""
   user(id: Int!): User
+
+  """
+  Get multiple `User`s given the provided `where` filter, order by, limit, and offset
+  """
   users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+
+  """
+  Get the aggregate value of the selected fields over all `User`s given the provided `where` filter
+  """
   usersAgg(where: UserFilter): UserAgg!
 }
 
 type Mutation {
+  """
+  Create a new Chat. Check the `ChatCreationInput` type for the expected shape of the data.
+  """
   createChat(data: ChatCreationInput!): Chat!
+
+  """
+  Create a new ChatParticipation. Check the `ChatParticipationCreationInput` type for the expected shape of the data.
+  """
   createChatParticipation(data: ChatParticipationCreationInput!): ChatParticipation!
+
+  """
+  Create multiple ChatParticipations. Check the `ChatParticipationCreationInput` type for the expected shape of the data.
+  """
   createChatParticipations(data: [ChatParticipationCreationInput!]!): [ChatParticipation!]!
+
+  """
+  Create multiple Chats. Check the `ChatCreationInput` type for the expected shape of the data.
+  """
   createChats(data: [ChatCreationInput!]!): [Chat!]!
+
+  """
+  Create a new Mood. Check the `MoodCreationInput` type for the expected shape of the data.
+  """
   createMood(data: MoodCreationInput!): Mood!
+
+  """
+  Create multiple Moods. Check the `MoodCreationInput` type for the expected shape of the data.
+  """
   createMoods(data: [MoodCreationInput!]!): [Mood!]!
+
+  """
+  Create a new User. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUser(data: UserCreationInput!): User!
+
+  """
+  Create multiple Users. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUsers(data: [UserCreationInput!]!): [User!]!
+
+  """Delete the Chat with the provided primary key."""
   deleteChat(id: Int!): Chat
+
+  """Delete the ChatParticipation with the provided primary key."""
   deleteChatParticipation(chat: ChatUniqueFilter!, user: UserUniqueFilter!): ChatParticipation
+
+  """
+  Delete multiple ChatParticipations matching the provided `where` filter.
+  """
   deleteChatParticipations(where: ChatParticipationFilter): [ChatParticipation!]!
+
+  """Delete multiple Chats matching the provided `where` filter."""
   deleteChats(where: ChatFilter): [Chat!]!
+
+  """Delete the Mood with the provided primary key."""
   deleteMood(id: Int!): Mood
+
+  """Delete multiple Moods matching the provided `where` filter."""
   deleteMoods(where: MoodFilter): [Mood!]!
+
+  """Delete the User with the provided primary key."""
   deleteUser(id: Int!): User
+
+  """Delete multiple Users matching the provided `where` filter."""
   deleteUsers(where: UserFilter): [User!]!
+
+  """
+  Update the Chat with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateChat(id: Int!, data: ChatUpdateInput!): Chat
+
+  """
+  Update the ChatParticipation with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateChatParticipation(chat: ChatUniqueFilter!, user: UserUniqueFilter!, data: ChatParticipationUpdateInput!): ChatParticipation
+
+  """
+  Update multiple ChatParticipations matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateChatParticipations(where: ChatParticipationFilter, data: ChatParticipationUpdateInput!): [ChatParticipation!]!
+
+  """
+  Update multiple Chats matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateChats(where: ChatFilter, data: ChatUpdateInput!): [Chat!]!
+
+  """
+  Update the Mood with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateMood(id: Int!, data: MoodUpdateInput!): Mood
+
+  """
+  Update multiple Moods matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateMoods(where: MoodFilter, data: MoodUpdateInput!): [Mood!]!
+
+  """
+  Update the User with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUser(id: Int!, data: UserUpdateInput!): User
+
+  """
+  Update multiple Users matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
 }

@@ -51,6 +51,8 @@ pub struct PostgresOperation<P: OperationParameters> {
     pub parameters: P,
     /// The return type such as `Todo` or `[Todo]`.
     pub return_type: OperationReturnType<EntityType>,
+    /// The doc comments for the operation.
+    pub doc_comments: Option<String>,
 }
 
 /// Supports introspection of operation parameters
@@ -70,5 +72,9 @@ impl<P: OperationParameters> Operation for PostgresOperation<P> {
 
     fn return_type(&self) -> Type {
         (&self.return_type).into()
+    }
+
+    fn doc_comments(&self) -> Option<String> {
+        self.doc_comments.clone()
     }
 }

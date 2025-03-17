@@ -22,6 +22,7 @@ type InternalRsvp {
   count: Int!
 }
 
+"""An aggregate for the `InternalRsvp` type."""
 type InternalRsvpAgg {
   id: IntAgg
   event: StringAgg
@@ -39,6 +40,11 @@ input InternalRsvpCreationInputFromUser {
   count: Int
 }
 
+"""
+Predicate for the `InternalRsvp` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input InternalRsvpFilter {
   id: IntFilter
   event: StringFilter
@@ -91,6 +97,7 @@ type Rsvp {
   count: Int!
 }
 
+"""An aggregate for the `Rsvp` type."""
 type RsvpAgg {
   id: IntAgg
   event: StringAgg
@@ -108,6 +115,11 @@ input RsvpCreationInputFromUser {
   count: Int
 }
 
+"""
+Predicate for the `Rsvp` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input RsvpFilter {
   id: IntFilter
   event: StringFilter
@@ -179,6 +191,7 @@ type User {
   internalRsvpsAgg(where: InternalRsvpFilter): InternalRsvpAgg
 }
 
+"""An aggregate for the `User` type."""
 type UserAgg {
   id: IntAgg
   username: StringAgg
@@ -196,6 +209,11 @@ input UserCreationInput {
   internalRsvps: [InternalRsvpCreationInputFromUser!]
 }
 
+"""
+Predicate for the `User` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input UserFilter {
   id: IntFilter
   username: StringFilter
@@ -221,6 +239,7 @@ input UserReferenceInput {
   id: Int!
 }
 
+"""A predicate to filter the results for a `User` type parameter."""
 input UserUniqueFilter {
   id: Int!
 }
@@ -236,39 +255,137 @@ input UserUpdateInput {
 }
 
 type Query {
+  """Get a single `InternalRsvp` given primary key fields"""
   internalRsvp(id: Int!): InternalRsvp
+
+  """Get a single `InternalRsvp` given unique fields"""
   internalRsvpByEventRsvp(event: String!, user: UserUniqueFilter!): InternalRsvp
+
+  """
+  Get multiple `InternalRsvp`s given the provided `where` filter, order by, limit, and offset
+  """
   internalRsvps(where: InternalRsvpFilter, orderBy: [InternalRsvpOrdering!], limit: Int, offset: Int): [InternalRsvp!]!
+
+  """
+  Get the aggregate value of the selected fields over all `InternalRsvp`s given the provided `where` filter
+  """
   internalRsvpsAgg(where: InternalRsvpFilter): InternalRsvpAgg!
+
+  """Get a single `Rsvp` given primary key fields"""
   rsvp(id: Int!): Rsvp
+
+  """Get a single `Rsvp` given unique fields"""
   rsvpByEventRsvp(event: String!, user: UserUniqueFilter!): Rsvp
+
+  """
+  Get multiple `Rsvp`s given the provided `where` filter, order by, limit, and offset
+  """
   rsvps(where: RsvpFilter, orderBy: [RsvpOrdering!], limit: Int, offset: Int): [Rsvp!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Rsvp`s given the provided `where` filter
+  """
   rsvpsAgg(where: RsvpFilter): RsvpAgg!
+
+  """Get a single `User` given primary key fields"""
   user(id: Int!): User
+
+  """Get a single `User` given unique fields"""
   userByPrimaryEmail(primaryEmailId: String!, emailDomain: String!): User
+
+  """Get a single `User` given unique fields"""
   userBySecondaryEmail(secondaryEmailId: String!, emailDomain: String!): User
+
+  """Get a single `User` given unique fields"""
   userByUsername(username: String!): User
+
+  """
+  Get multiple `User`s given the provided `where` filter, order by, limit, and offset
+  """
   users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+
+  """
+  Get the aggregate value of the selected fields over all `User`s given the provided `where` filter
+  """
   usersAgg(where: UserFilter): UserAgg!
 }
 
 type Mutation {
+  """
+  Create a new InternalRsvp. Check the `InternalRsvpCreationInput` type for the expected shape of the data.
+  """
   createInternalRsvp(data: InternalRsvpCreationInput!): InternalRsvp!
+
+  """
+  Create multiple InternalRsvps. Check the `InternalRsvpCreationInput` type for the expected shape of the data.
+  """
   createInternalRsvps(data: [InternalRsvpCreationInput!]!): [InternalRsvp!]!
+
+  """
+  Create a new Rsvp. Check the `RsvpCreationInput` type for the expected shape of the data.
+  """
   createRsvp(data: RsvpCreationInput!): Rsvp!
+
+  """
+  Create multiple Rsvps. Check the `RsvpCreationInput` type for the expected shape of the data.
+  """
   createRsvps(data: [RsvpCreationInput!]!): [Rsvp!]!
+
+  """
+  Create a new User. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUser(data: UserCreationInput!): User!
+
+  """
+  Create multiple Users. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUsers(data: [UserCreationInput!]!): [User!]!
+
+  """Delete the InternalRsvp with the provided primary key."""
   deleteInternalRsvp(id: Int!): InternalRsvp
+
+  """Delete multiple InternalRsvps matching the provided `where` filter."""
   deleteInternalRsvps(where: InternalRsvpFilter): [InternalRsvp!]!
+
+  """Delete the Rsvp with the provided primary key."""
   deleteRsvp(id: Int!): Rsvp
+
+  """Delete multiple Rsvps matching the provided `where` filter."""
   deleteRsvps(where: RsvpFilter): [Rsvp!]!
+
+  """Delete the User with the provided primary key."""
   deleteUser(id: Int!): User
+
+  """Delete multiple Users matching the provided `where` filter."""
   deleteUsers(where: UserFilter): [User!]!
+
+  """
+  Update the InternalRsvp with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateInternalRsvp(id: Int!, data: InternalRsvpUpdateInput!): InternalRsvp
+
+  """
+  Update multiple InternalRsvps matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateInternalRsvps(where: InternalRsvpFilter, data: InternalRsvpUpdateInput!): [InternalRsvp!]!
+
+  """
+  Update the Rsvp with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateRsvp(id: Int!, data: RsvpUpdateInput!): Rsvp
+
+  """
+  Update multiple Rsvps matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateRsvps(where: RsvpFilter, data: RsvpUpdateInput!): [Rsvp!]!
+
+  """
+  Update the User with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUser(id: Int!, data: UserUpdateInput!): User
+
+  """
+  Update multiple Users matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
 }

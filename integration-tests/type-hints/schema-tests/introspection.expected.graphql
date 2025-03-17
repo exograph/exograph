@@ -48,6 +48,7 @@ type Video {
   filesize: Int!
 }
 
+"""An aggregate for the `Video` type."""
 type VideoAgg {
   id: IntAgg
   name: StringAgg
@@ -65,6 +66,11 @@ input VideoCreationInput {
   filesize: Int!
 }
 
+"""
+Predicate for the `Video` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input VideoFilter {
   id: IntFilter
   name: StringFilter
@@ -96,16 +102,44 @@ input VideoUpdateInput {
 }
 
 type Query {
+  """Get a single `Video` given primary key fields"""
   video(id: Int!): Video
+
+  """
+  Get multiple `Video`s given the provided `where` filter, order by, limit, and offset
+  """
   videos(where: VideoFilter, orderBy: [VideoOrdering!], limit: Int, offset: Int): [Video!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Video`s given the provided `where` filter
+  """
   videosAgg(where: VideoFilter): VideoAgg!
 }
 
 type Mutation {
+  """
+  Create a new Video. Check the `VideoCreationInput` type for the expected shape of the data.
+  """
   createVideo(data: VideoCreationInput!): Video!
+
+  """
+  Create multiple Videos. Check the `VideoCreationInput` type for the expected shape of the data.
+  """
   createVideos(data: [VideoCreationInput!]!): [Video!]!
+
+  """Delete the Video with the provided primary key."""
   deleteVideo(id: Int!): Video
+
+  """Delete multiple Videos matching the provided `where` filter."""
   deleteVideos(where: VideoFilter): [Video!]!
+
+  """
+  Update the Video with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateVideo(id: Int!, data: VideoUpdateInput!): Video
+
+  """
+  Update multiple Videos matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateVideos(where: VideoFilter, data: VideoUpdateInput!): [Video!]!
 }

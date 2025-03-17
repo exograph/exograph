@@ -5,6 +5,7 @@ type Customer {
   internalTier: Int!
 }
 
+"""An aggregate for the `Customer` type."""
 type CustomerAgg {
   id: IntAgg
   name: StringAgg
@@ -18,6 +19,11 @@ input CustomerCreationInput {
   internalTier: Int
 }
 
+"""
+Predicate for the `Customer` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input CustomerFilter {
   id: IntFilter
   name: StringFilter
@@ -84,16 +90,44 @@ input StringFilter {
 }
 
 type Query {
+  """Get a single `Customer` given primary key fields"""
   customer(id: Int!): Customer
+
+  """
+  Get multiple `Customer`s given the provided `where` filter, order by, limit, and offset
+  """
   customers(where: CustomerFilter, orderBy: [CustomerOrdering!], limit: Int, offset: Int): [Customer!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Customer`s given the provided `where` filter
+  """
   customersAgg(where: CustomerFilter): CustomerAgg!
 }
 
 type Mutation {
+  """
+  Create a new Customer. Check the `CustomerCreationInput` type for the expected shape of the data.
+  """
   createCustomer(data: CustomerCreationInput!): Customer!
+
+  """
+  Create multiple Customers. Check the `CustomerCreationInput` type for the expected shape of the data.
+  """
   createCustomers(data: [CustomerCreationInput!]!): [Customer!]!
+
+  """Delete the Customer with the provided primary key."""
   deleteCustomer(id: Int!): Customer
+
+  """Delete multiple Customers matching the provided `where` filter."""
   deleteCustomers(where: CustomerFilter): [Customer!]!
+
+  """
+  Update the Customer with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateCustomer(id: Int!, data: CustomerUpdateInput!): Customer
+
+  """
+  Update multiple Customers matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateCustomers(where: CustomerFilter, data: CustomerUpdateInput!): [Customer!]!
 }

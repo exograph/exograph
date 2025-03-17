@@ -44,6 +44,7 @@ type Product {
   purchasePrice: Float!
 }
 
+"""An aggregate for the `Product` type."""
 type ProductAgg {
   id: IntAgg
   name: StringAgg
@@ -57,6 +58,11 @@ input ProductCreationInput {
   purchasePrice: Float!
 }
 
+"""
+Predicate for the `Product` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input ProductFilter {
   id: IntFilter
   name: StringFilter
@@ -82,6 +88,7 @@ type ProductProfit {
   profit: Float!
 }
 
+"""An aggregate for the `ProductProfit` type."""
 type ProductProfitAgg {
   id: IntAgg
   name: StringAgg
@@ -90,6 +97,11 @@ type ProductProfitAgg {
   profit: FloatAgg
 }
 
+"""
+Predicate for the `ProductProfit` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input ProductProfitFilter {
   id: IntFilter
   name: StringFilter
@@ -143,20 +155,62 @@ input StringFilter {
 }
 
 type Query {
+  """Get a single `Product` given primary key fields"""
   product(id: Int!): Product
+
+  """
+  Get multiple `ProductProfit`s given the provided `where` filter, order by, limit, and offset
+  """
   productProfits(where: ProductProfitFilter, orderBy: [ProductProfitOrdering!], limit: Int, offset: Int): [ProductProfit!]!
+
+  """
+  Get the aggregate value of the selected fields over all `ProductProfit`s given the provided `where` filter
+  """
   productProfitsAgg(where: ProductProfitFilter): ProductProfitAgg!
+
+  """
+  Get multiple `Product`s given the provided `where` filter, order by, limit, and offset
+  """
   products(where: ProductFilter, orderBy: [ProductOrdering!], limit: Int, offset: Int): [Product!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Product`s given the provided `where` filter
+  """
   productsAgg(where: ProductFilter): ProductAgg!
 }
 
 type Mutation {
+  """
+  Create a new Product. Check the `ProductCreationInput` type for the expected shape of the data.
+  """
   createProduct(data: ProductCreationInput!): Product!
+
+  """
+  Create multiple Products. Check the `ProductCreationInput` type for the expected shape of the data.
+  """
   createProducts(data: [ProductCreationInput!]!): [Product!]!
+
+  """Delete the Product with the provided primary key."""
   deleteProduct(id: Int!): Product
+
+  """Delete multiple ProductProfits matching the provided `where` filter."""
   deleteProductProfits(where: ProductProfitFilter): [ProductProfit!]!
+
+  """Delete multiple Products matching the provided `where` filter."""
   deleteProducts(where: ProductFilter): [Product!]!
+
+  """
+  Update the Product with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateProduct(id: Int!, data: ProductUpdateInput!): Product
+
+  """
+  Update multiple ProductProfits matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateProductProfits(where: ProductProfitFilter, data: ProductProfitUpdateInput!): [ProductProfit!]!
+
+  """
+  Update multiple Products matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateProducts(where: ProductFilter, data: ProductUpdateInput!): [Product!]!
 }

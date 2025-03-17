@@ -4,6 +4,7 @@ type Amount {
   concert: Concert!
 }
 
+"""An aggregate for the `Amount` type."""
 type AmountAgg {
   id: IntAgg
   value: FloatAgg
@@ -18,6 +19,11 @@ input AmountCreationInputFromConcert {
   value: Float!
 }
 
+"""
+Predicate for the `Amount` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input AmountFilter {
   id: IntFilter
   value: FloatFilter
@@ -62,6 +68,7 @@ type Concert {
   pricesAgg(where: AmountFilter): AmountAgg
 }
 
+"""An aggregate for the `Concert` type."""
 type ConcertAgg {
   id: IntAgg
   title: StringAgg
@@ -78,6 +85,11 @@ input ConcertCreationInputFromVenue {
   prices: [AmountCreationInputFromConcert!]
 }
 
+"""
+Predicate for the `Concert` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input ConcertFilter {
   id: IntFilter
   title: StringFilter
@@ -182,6 +194,7 @@ type Venue {
   concertsAgg(where: ConcertFilter): ConcertAgg
 }
 
+"""An aggregate for the `Venue` type."""
 type VenueAgg {
   id: IntAgg
   name: StringAgg
@@ -192,6 +205,11 @@ input VenueCreationInput {
   concerts: [ConcertCreationInputFromVenue!]
 }
 
+"""
+Predicate for the `Venue` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input VenueFilter {
   id: IntFilter
   name: StringFilter
@@ -217,34 +235,122 @@ input VenueUpdateInput {
 }
 
 type Query {
+  """Get a single `Amount` given primary key fields"""
   amount(id: Int!): Amount
+
+  """
+  Get multiple `Amount`s given the provided `where` filter, order by, limit, and offset
+  """
   amounts(where: AmountFilter, orderBy: [AmountOrdering!], limit: Int, offset: Int): [Amount!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Amount`s given the provided `where` filter
+  """
   amountsAgg(where: AmountFilter): AmountAgg!
+
+  """Get a single `Concert` given primary key fields"""
   concert(id: Int!): Concert
+
+  """
+  Get multiple `Concert`s given the provided `where` filter, order by, limit, and offset
+  """
   concerts(where: ConcertFilter, orderBy: [ConcertOrdering!], limit: Int, offset: Int): [Concert!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Concert`s given the provided `where` filter
+  """
   concertsAgg(where: ConcertFilter): ConcertAgg!
+
+  """Get a single `Venue` given primary key fields"""
   venue(id: Int!): Venue
+
+  """
+  Get multiple `Venue`s given the provided `where` filter, order by, limit, and offset
+  """
   venues(where: VenueFilter, orderBy: [VenueOrdering!], limit: Int, offset: Int): [Venue!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Venue`s given the provided `where` filter
+  """
   venuesAgg(where: VenueFilter): VenueAgg!
 }
 
 type Mutation {
+  """
+  Create a new Amount. Check the `AmountCreationInput` type for the expected shape of the data.
+  """
   createAmount(data: AmountCreationInput!): Amount!
+
+  """
+  Create multiple Amounts. Check the `AmountCreationInput` type for the expected shape of the data.
+  """
   createAmounts(data: [AmountCreationInput!]!): [Amount!]!
+
+  """
+  Create a new Concert. Check the `ConcertCreationInput` type for the expected shape of the data.
+  """
   createConcert(data: ConcertCreationInput!): Concert!
+
+  """
+  Create multiple Concerts. Check the `ConcertCreationInput` type for the expected shape of the data.
+  """
   createConcerts(data: [ConcertCreationInput!]!): [Concert!]!
+
+  """
+  Create a new Venue. Check the `VenueCreationInput` type for the expected shape of the data.
+  """
   createVenue(data: VenueCreationInput!): Venue!
+
+  """
+  Create multiple Venues. Check the `VenueCreationInput` type for the expected shape of the data.
+  """
   createVenues(data: [VenueCreationInput!]!): [Venue!]!
+
+  """Delete the Amount with the provided primary key."""
   deleteAmount(id: Int!): Amount
+
+  """Delete multiple Amounts matching the provided `where` filter."""
   deleteAmounts(where: AmountFilter): [Amount!]!
+
+  """Delete the Concert with the provided primary key."""
   deleteConcert(id: Int!): Concert
+
+  """Delete multiple Concerts matching the provided `where` filter."""
   deleteConcerts(where: ConcertFilter): [Concert!]!
+
+  """Delete the Venue with the provided primary key."""
   deleteVenue(id: Int!): Venue
+
+  """Delete multiple Venues matching the provided `where` filter."""
   deleteVenues(where: VenueFilter): [Venue!]!
+
+  """
+  Update the Amount with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateAmount(id: Int!, data: AmountUpdateInput!): Amount
+
+  """
+  Update multiple Amounts matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateAmounts(where: AmountFilter, data: AmountUpdateInput!): [Amount!]!
+
+  """
+  Update the Concert with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateConcert(id: Int!, data: ConcertUpdateInput!): Concert
+
+  """
+  Update multiple Concerts matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateConcerts(where: ConcertFilter, data: ConcertUpdateInput!): [Concert!]!
+
+  """
+  Update the Venue with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateVenue(id: Int!, data: VenueUpdateInput!): Venue
+
+  """
+  Update multiple Venues matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateVenues(where: VenueFilter, data: VenueUpdateInput!): [Venue!]!
 }

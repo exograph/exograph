@@ -5,6 +5,7 @@ type ChessPiece {
   neighbor_info: [[String!]!]!
 }
 
+"""An aggregate for the `ChessPiece` type."""
 type ChessPieceAgg {
   id: IntAgg
   name: StringAgg
@@ -18,6 +19,11 @@ input ChessPieceCreationInput {
   neighbor_info: [[String!]!]!
 }
 
+"""
+Predicate for the `ChessPiece` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input ChessPieceFilter {
   id: IntFilter
   name: StringFilter
@@ -82,16 +88,44 @@ input StringFilter {
 }
 
 type Query {
+  """Get a single `ChessPiece` given primary key fields"""
   chessPiece(id: Int!): ChessPiece
+
+  """
+  Get multiple `ChessPiece`s given the provided `where` filter, order by, limit, and offset
+  """
   chessPieces(where: ChessPieceFilter, orderBy: [ChessPieceOrdering!], limit: Int, offset: Int): [ChessPiece!]!
+
+  """
+  Get the aggregate value of the selected fields over all `ChessPiece`s given the provided `where` filter
+  """
   chessPiecesAgg(where: ChessPieceFilter): ChessPieceAgg!
 }
 
 type Mutation {
+  """
+  Create a new ChessPiece. Check the `ChessPieceCreationInput` type for the expected shape of the data.
+  """
   createChessPiece(data: ChessPieceCreationInput!): ChessPiece!
+
+  """
+  Create multiple ChessPieces. Check the `ChessPieceCreationInput` type for the expected shape of the data.
+  """
   createChessPieces(data: [ChessPieceCreationInput!]!): [ChessPiece!]!
+
+  """Delete the ChessPiece with the provided primary key."""
   deleteChessPiece(id: Int!): ChessPiece
+
+  """Delete multiple ChessPieces matching the provided `where` filter."""
   deleteChessPieces(where: ChessPieceFilter): [ChessPiece!]!
+
+  """
+  Update the ChessPiece with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateChessPiece(id: Int!, data: ChessPieceUpdateInput!): ChessPiece
+
+  """
+  Update multiple ChessPieces matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateChessPieces(where: ChessPieceFilter, data: ChessPieceUpdateInput!): [ChessPiece!]!
 }

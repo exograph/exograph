@@ -14,6 +14,7 @@ type Document {
   documentUsersAgg(where: DocumentUserFilter): DocumentUserAgg
 }
 
+"""An aggregate for the `Document` type."""
 type DocumentAgg {
   id: IntAgg
   content: StringAgg
@@ -24,6 +25,11 @@ input DocumentCreationInput {
   documentUsers: [DocumentUserCreationInputFromDocument!]!
 }
 
+"""
+Predicate for the `Document` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input DocumentFilter {
   id: IntFilter
   content: StringFilter
@@ -56,6 +62,7 @@ type DocumentUser {
   write: Boolean!
 }
 
+"""An aggregate for the `DocumentUser` type."""
 type DocumentUserAgg {
   id: IntAgg
   userId: StringAgg
@@ -76,6 +83,11 @@ input DocumentUserCreationInputFromDocument {
   write: Boolean!
 }
 
+"""
+Predicate for the `DocumentUser` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input DocumentUserFilter {
   id: IntFilter
   document: DocumentFilter
@@ -162,25 +174,83 @@ input StringFilter {
 }
 
 type Query {
+  """Get a single `Document` given primary key fields"""
   document(id: Int!): Document
+
+  """Get a single `DocumentUser` given primary key fields"""
   documentUser(id: Int!): DocumentUser
+
+  """
+  Get multiple `DocumentUser`s given the provided `where` filter, order by, limit, and offset
+  """
   documentUsers(where: DocumentUserFilter, orderBy: [DocumentUserOrdering!], limit: Int, offset: Int): [DocumentUser!]!
+
+  """
+  Get the aggregate value of the selected fields over all `DocumentUser`s given the provided `where` filter
+  """
   documentUsersAgg(where: DocumentUserFilter): DocumentUserAgg!
+
+  """
+  Get multiple `Document`s given the provided `where` filter, order by, limit, and offset
+  """
   documents(where: DocumentFilter, orderBy: [DocumentOrdering!], limit: Int, offset: Int): [Document!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Document`s given the provided `where` filter
+  """
   documentsAgg(where: DocumentFilter): DocumentAgg!
 }
 
 type Mutation {
+  """
+  Create a new Document. Check the `DocumentCreationInput` type for the expected shape of the data.
+  """
   createDocument(data: DocumentCreationInput!): Document!
+
+  """
+  Create a new DocumentUser. Check the `DocumentUserCreationInput` type for the expected shape of the data.
+  """
   createDocumentUser(data: DocumentUserCreationInput!): DocumentUser!
+
+  """
+  Create multiple DocumentUsers. Check the `DocumentUserCreationInput` type for the expected shape of the data.
+  """
   createDocumentUsers(data: [DocumentUserCreationInput!]!): [DocumentUser!]!
+
+  """
+  Create multiple Documents. Check the `DocumentCreationInput` type for the expected shape of the data.
+  """
   createDocuments(data: [DocumentCreationInput!]!): [Document!]!
+
+  """Delete the Document with the provided primary key."""
   deleteDocument(id: Int!): Document
+
+  """Delete the DocumentUser with the provided primary key."""
   deleteDocumentUser(id: Int!): DocumentUser
+
+  """Delete multiple DocumentUsers matching the provided `where` filter."""
   deleteDocumentUsers(where: DocumentUserFilter): [DocumentUser!]!
+
+  """Delete multiple Documents matching the provided `where` filter."""
   deleteDocuments(where: DocumentFilter): [Document!]!
+
+  """
+  Update the Document with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateDocument(id: Int!, data: DocumentUpdateInput!): Document
+
+  """
+  Update the DocumentUser with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateDocumentUser(id: Int!, data: DocumentUserUpdateInput!): DocumentUser
+
+  """
+  Update multiple DocumentUsers matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateDocumentUsers(where: DocumentUserFilter, data: DocumentUserUpdateInput!): [DocumentUser!]!
+
+  """
+  Update multiple Documents matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateDocuments(where: DocumentFilter, data: DocumentUpdateInput!): [Document!]!
 }

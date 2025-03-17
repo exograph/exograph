@@ -26,6 +26,7 @@ type Project {
   owner: User!
 }
 
+"""An aggregate for the `Project` type."""
 type ProjectAgg {
   id: IntAgg
   title: StringAgg
@@ -40,6 +41,11 @@ input ProjectCreationInputFromUser {
   title: String!
 }
 
+"""
+Predicate for the `Project` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input ProjectFilter {
   id: IntFilter
   title: StringFilter
@@ -102,6 +108,7 @@ type User {
   assignedProjectsAgg(where: ProjectFilter): ProjectAgg
 }
 
+"""An aggregate for the `User` type."""
 type UserAgg {
   id: IntAgg
   name: StringAgg
@@ -112,6 +119,11 @@ input UserCreationInput {
   assignedProjects: [ProjectCreationInputFromUser!]
 }
 
+"""
+Predicate for the `User` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input UserFilter {
   id: IntFilter
   name: StringFilter
@@ -137,25 +149,83 @@ input UserUpdateInput {
 }
 
 type Query {
+  """Get a single `Project` given primary key fields"""
   project(id: Int!): Project
+
+  """
+  Get multiple `Project`s given the provided `where` filter, order by, limit, and offset
+  """
   projects(where: ProjectFilter, orderBy: [ProjectOrdering!], limit: Int, offset: Int): [Project!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Project`s given the provided `where` filter
+  """
   projectsAgg(where: ProjectFilter): ProjectAgg!
+
+  """Get a single `User` given primary key fields"""
   user(id: Int!): User
+
+  """
+  Get multiple `User`s given the provided `where` filter, order by, limit, and offset
+  """
   users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+
+  """
+  Get the aggregate value of the selected fields over all `User`s given the provided `where` filter
+  """
   usersAgg(where: UserFilter): UserAgg!
 }
 
 type Mutation {
+  """
+  Create a new Project. Check the `ProjectCreationInput` type for the expected shape of the data.
+  """
   createProject(data: ProjectCreationInput!): Project!
+
+  """
+  Create multiple Projects. Check the `ProjectCreationInput` type for the expected shape of the data.
+  """
   createProjects(data: [ProjectCreationInput!]!): [Project!]!
+
+  """
+  Create a new User. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUser(data: UserCreationInput!): User!
+
+  """
+  Create multiple Users. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUsers(data: [UserCreationInput!]!): [User!]!
+
+  """Delete the Project with the provided primary key."""
   deleteProject(id: Int!): Project
+
+  """Delete multiple Projects matching the provided `where` filter."""
   deleteProjects(where: ProjectFilter): [Project!]!
+
+  """Delete the User with the provided primary key."""
   deleteUser(id: Int!): User
+
+  """Delete multiple Users matching the provided `where` filter."""
   deleteUsers(where: UserFilter): [User!]!
+
+  """
+  Update the Project with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateProject(id: Int!, data: ProjectUpdateInput!): Project
+
+  """
+  Update multiple Projects matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateProjects(where: ProjectFilter, data: ProjectUpdateInput!): [Project!]!
+
+  """
+  Update the User with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUser(id: Int!, data: UserUpdateInput!): User
+
+  """
+  Update multiple Users matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
 }

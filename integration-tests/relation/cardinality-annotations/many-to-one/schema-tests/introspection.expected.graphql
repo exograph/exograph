@@ -3,6 +3,7 @@ type Department {
   name: String!
 }
 
+"""An aggregate for the `Department` type."""
 type DepartmentAgg {
   id: IntAgg
   name: StringAgg
@@ -12,6 +13,11 @@ input DepartmentCreationInput {
   name: String!
 }
 
+"""
+Predicate for the `Department` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input DepartmentFilter {
   id: IntFilter
   name: StringFilter
@@ -62,6 +68,7 @@ type Product {
   department: Department!
 }
 
+"""An aggregate for the `Product` type."""
 type ProductAgg {
   id: IntAgg
   name: StringAgg
@@ -72,6 +79,11 @@ input ProductCreationInput {
   department: DepartmentReferenceInput!
 }
 
+"""
+Predicate for the `Product` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input ProductFilter {
   id: IntFilter
   name: StringFilter
@@ -113,25 +125,83 @@ input StringFilter {
 }
 
 type Query {
+  """Get a single `Department` given primary key fields"""
   department(id: Int!): Department
+
+  """
+  Get multiple `Department`s given the provided `where` filter, order by, limit, and offset
+  """
   departments(where: DepartmentFilter, orderBy: [DepartmentOrdering!], limit: Int, offset: Int): [Department!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Department`s given the provided `where` filter
+  """
   departmentsAgg(where: DepartmentFilter): DepartmentAgg!
+
+  """Get a single `Product` given primary key fields"""
   product(id: Int!): Product
+
+  """
+  Get multiple `Product`s given the provided `where` filter, order by, limit, and offset
+  """
   products(where: ProductFilter, orderBy: [ProductOrdering!], limit: Int, offset: Int): [Product!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Product`s given the provided `where` filter
+  """
   productsAgg(where: ProductFilter): ProductAgg!
 }
 
 type Mutation {
+  """
+  Create a new Department. Check the `DepartmentCreationInput` type for the expected shape of the data.
+  """
   createDepartment(data: DepartmentCreationInput!): Department!
+
+  """
+  Create multiple Departments. Check the `DepartmentCreationInput` type for the expected shape of the data.
+  """
   createDepartments(data: [DepartmentCreationInput!]!): [Department!]!
+
+  """
+  Create a new Product. Check the `ProductCreationInput` type for the expected shape of the data.
+  """
   createProduct(data: ProductCreationInput!): Product!
+
+  """
+  Create multiple Products. Check the `ProductCreationInput` type for the expected shape of the data.
+  """
   createProducts(data: [ProductCreationInput!]!): [Product!]!
+
+  """Delete the Department with the provided primary key."""
   deleteDepartment(id: Int!): Department
+
+  """Delete multiple Departments matching the provided `where` filter."""
   deleteDepartments(where: DepartmentFilter): [Department!]!
+
+  """Delete the Product with the provided primary key."""
   deleteProduct(id: Int!): Product
+
+  """Delete multiple Products matching the provided `where` filter."""
   deleteProducts(where: ProductFilter): [Product!]!
+
+  """
+  Update the Department with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateDepartment(id: Int!, data: DepartmentUpdateInput!): Department
+
+  """
+  Update multiple Departments matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateDepartments(where: DepartmentFilter, data: DepartmentUpdateInput!): [Department!]!
+
+  """
+  Update the Product with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateProduct(id: Int!, data: ProductUpdateInput!): Product
+
+  """
+  Update multiple Products matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateProducts(where: ProductFilter, data: ProductUpdateInput!): [Product!]!
 }

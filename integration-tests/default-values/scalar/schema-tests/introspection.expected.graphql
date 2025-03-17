@@ -18,6 +18,7 @@ type Event {
   orgId: String
 }
 
+"""An aggregate for the `Event` type."""
 type EventAgg {
   id: IntAgg
   timestamp: InstantAgg
@@ -39,6 +40,11 @@ input EventCreationInput {
   orgId: String
 }
 
+"""
+Predicate for the `Event` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input EventFilter {
   id: IntFilter
   timestamp: InstantFilter
@@ -132,16 +138,44 @@ input StringFilter {
 }
 
 type Query {
+  """Get a single `Event` given primary key fields"""
   event(id: Int!): Event
+
+  """
+  Get multiple `Event`s given the provided `where` filter, order by, limit, and offset
+  """
   events(where: EventFilter, orderBy: [EventOrdering!], limit: Int, offset: Int): [Event!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Event`s given the provided `where` filter
+  """
   eventsAgg(where: EventFilter): EventAgg!
 }
 
 type Mutation {
+  """
+  Create a new Event. Check the `EventCreationInput` type for the expected shape of the data.
+  """
   createEvent(data: EventCreationInput!): Event!
+
+  """
+  Create multiple Events. Check the `EventCreationInput` type for the expected shape of the data.
+  """
   createEvents(data: [EventCreationInput!]!): [Event!]!
+
+  """Delete the Event with the provided primary key."""
   deleteEvent(id: Int!): Event
+
+  """Delete multiple Events matching the provided `where` filter."""
   deleteEvents(where: EventFilter): [Event!]!
+
+  """
+  Update the Event with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateEvent(id: Int!, data: EventUpdateInput!): Event
+
+  """
+  Update multiple Events matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateEvents(where: EventFilter, data: EventUpdateInput!): [Event!]!
 }

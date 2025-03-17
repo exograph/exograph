@@ -52,6 +52,7 @@ pub trait Builder {
                     fields: vec![],
                     entity_id: SerializableSlabIndex::shallow(),
                     database_access: None,
+                    doc_comments: None,
                 },
             );
         }

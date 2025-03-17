@@ -40,6 +40,7 @@ type Numbers {
   price: Float
 }
 
+"""An aggregate for the `Numbers` type."""
 type NumbersAgg {
   id: IntAgg
   limit: IntAgg
@@ -55,6 +56,11 @@ input NumbersCreationInput {
   price: Float
 }
 
+"""
+Predicate for the `Numbers` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input NumbersFilter {
   id: IntFilter
   limit: IntFilter
@@ -95,6 +101,7 @@ type OtherNumbers {
   price: Float
 }
 
+"""An aggregate for the `OtherNumbers` type."""
 type OtherNumbersAgg {
   id: IntAgg
   limit: IntAgg
@@ -110,6 +117,11 @@ input OtherNumbersCreationInput {
   price: Float
 }
 
+"""
+Predicate for the `OtherNumbers` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input OtherNumbersFilter {
   id: IntFilter
   limit: IntFilter
@@ -138,25 +150,83 @@ input OtherNumbersUpdateInput {
 }
 
 type Query {
+  """Get a single `Numbers` given primary key fields"""
   numbers(id: Int!): Numbers
+
+  """
+  Get multiple `Numbers`s given the provided `where` filter, order by, limit, and offset
+  """
   numberss(where: NumbersFilter, orderBy: [NumbersOrdering!], limit: Int, offset: Int): [Numbers!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Numbers`s given the provided `where` filter
+  """
   numberssAgg(where: NumbersFilter): NumbersAgg!
+
+  """Get a single `OtherNumbers` given primary key fields"""
   otherNumbers(id: Int!): OtherNumbers
+
+  """
+  Get multiple `OtherNumbers`s given the provided `where` filter, order by, limit, and offset
+  """
   otherNumberss(where: OtherNumbersFilter, orderBy: [OtherNumbersOrdering!], limit: Int, offset: Int): [OtherNumbers!]!
+
+  """
+  Get the aggregate value of the selected fields over all `OtherNumbers`s given the provided `where` filter
+  """
   otherNumberssAgg(where: OtherNumbersFilter): OtherNumbersAgg!
 }
 
 type Mutation {
+  """
+  Create a new Numbers. Check the `NumbersCreationInput` type for the expected shape of the data.
+  """
   createNumbers(data: NumbersCreationInput!): Numbers!
+
+  """
+  Create multiple Numberss. Check the `NumbersCreationInput` type for the expected shape of the data.
+  """
   createNumberss(data: [NumbersCreationInput!]!): [Numbers!]!
+
+  """
+  Create a new OtherNumbers. Check the `OtherNumbersCreationInput` type for the expected shape of the data.
+  """
   createOtherNumbers(data: OtherNumbersCreationInput!): OtherNumbers!
+
+  """
+  Create multiple OtherNumberss. Check the `OtherNumbersCreationInput` type for the expected shape of the data.
+  """
   createOtherNumberss(data: [OtherNumbersCreationInput!]!): [OtherNumbers!]!
+
+  """Delete the Numbers with the provided primary key."""
   deleteNumbers(id: Int!): Numbers
+
+  """Delete multiple Numberss matching the provided `where` filter."""
   deleteNumberss(where: NumbersFilter): [Numbers!]!
+
+  """Delete the OtherNumbers with the provided primary key."""
   deleteOtherNumbers(id: Int!): OtherNumbers
+
+  """Delete multiple OtherNumberss matching the provided `where` filter."""
   deleteOtherNumberss(where: OtherNumbersFilter): [OtherNumbers!]!
+
+  """
+  Update the Numbers with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateNumbers(id: Int!, data: NumbersUpdateInput!): Numbers
+
+  """
+  Update multiple Numberss matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateNumberss(where: NumbersFilter, data: NumbersUpdateInput!): [Numbers!]!
+
+  """
+  Update the OtherNumbers with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateOtherNumbers(id: Int!, data: OtherNumbersUpdateInput!): OtherNumbers
+
+  """
+  Update multiple OtherNumberss matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateOtherNumberss(where: OtherNumbersFilter, data: OtherNumbersUpdateInput!): [OtherNumbers!]!
 }

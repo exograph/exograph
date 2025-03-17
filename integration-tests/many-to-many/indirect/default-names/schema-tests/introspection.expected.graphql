@@ -5,6 +5,7 @@ type Artist {
   concertArtistsAgg(where: ConcertArtistFilter): ConcertArtistAgg
 }
 
+"""An aggregate for the `Artist` type."""
 type ArtistAgg {
   id: IntAgg
   name: StringAgg
@@ -15,6 +16,11 @@ input ArtistCreationInput {
   concertArtists: [ConcertArtistCreationInputFromArtist!]
 }
 
+"""
+Predicate for the `Artist` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input ArtistFilter {
   id: IntFilter
   name: StringFilter
@@ -48,6 +54,7 @@ type Concert {
   notificationsAgg(where: NotificationFilter): NotificationAgg
 }
 
+"""An aggregate for the `Concert` type."""
 type ConcertAgg {
   id: IntAgg
   title: StringAgg
@@ -61,6 +68,7 @@ type ConcertArtist {
   role: String!
 }
 
+"""An aggregate for the `ConcertArtist` type."""
 type ConcertArtistAgg {
   id: IntAgg
   rank: IntAgg
@@ -86,6 +94,11 @@ input ConcertArtistCreationInputFromConcert {
   role: String!
 }
 
+"""
+Predicate for the `ConcertArtist` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input ConcertArtistFilter {
   id: IntFilter
   concert: ConcertFilter
@@ -149,6 +162,11 @@ input ConcertCreationInput {
   notifications: [NotificationCreationInputFromConcert!]
 }
 
+"""
+Predicate for the `Concert` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input ConcertFilter {
   id: IntFilter
   title: StringFilter
@@ -199,6 +217,7 @@ type Notification {
   message: String!
 }
 
+"""An aggregate for the `Notification` type."""
 type NotificationAgg {
   id: IntAgg
   title: StringAgg
@@ -216,6 +235,11 @@ input NotificationCreationInputFromConcert {
   message: String!
 }
 
+"""
+Predicate for the `Notification` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input NotificationFilter {
   id: IntFilter
   concert: ConcertFilter
@@ -281,43 +305,161 @@ input StringFilter {
 }
 
 type Query {
+  """Get a single `Artist` given primary key fields"""
   artist(id: Int!): Artist
+
+  """
+  Get multiple `Artist`s given the provided `where` filter, order by, limit, and offset
+  """
   artists(where: ArtistFilter, orderBy: [ArtistOrdering!], limit: Int, offset: Int): [Artist!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Artist`s given the provided `where` filter
+  """
   artistsAgg(where: ArtistFilter): ArtistAgg!
+
+  """Get a single `Concert` given primary key fields"""
   concert(id: Int!): Concert
+
+  """Get a single `ConcertArtist` given primary key fields"""
   concertArtist(id: Int!): ConcertArtist
+
+  """
+  Get multiple `ConcertArtist`s given the provided `where` filter, order by, limit, and offset
+  """
   concertArtists(where: ConcertArtistFilter, orderBy: [ConcertArtistOrdering!], limit: Int, offset: Int): [ConcertArtist!]!
+
+  """
+  Get the aggregate value of the selected fields over all `ConcertArtist`s given the provided `where` filter
+  """
   concertArtistsAgg(where: ConcertArtistFilter): ConcertArtistAgg!
+
+  """
+  Get multiple `Concert`s given the provided `where` filter, order by, limit, and offset
+  """
   concerts(where: ConcertFilter, orderBy: [ConcertOrdering!], limit: Int, offset: Int): [Concert!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Concert`s given the provided `where` filter
+  """
   concertsAgg(where: ConcertFilter): ConcertAgg!
+
+  """Get a single `Notification` given primary key fields"""
   notification(id: Int!): Notification
+
+  """
+  Get multiple `Notification`s given the provided `where` filter, order by, limit, and offset
+  """
   notifications(where: NotificationFilter, orderBy: [NotificationOrdering!], limit: Int, offset: Int): [Notification!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Notification`s given the provided `where` filter
+  """
   notificationsAgg(where: NotificationFilter): NotificationAgg!
 }
 
 type Mutation {
+  """
+  Create a new Artist. Check the `ArtistCreationInput` type for the expected shape of the data.
+  """
   createArtist(data: ArtistCreationInput!): Artist!
+
+  """
+  Create multiple Artists. Check the `ArtistCreationInput` type for the expected shape of the data.
+  """
   createArtists(data: [ArtistCreationInput!]!): [Artist!]!
+
+  """
+  Create a new Concert. Check the `ConcertCreationInput` type for the expected shape of the data.
+  """
   createConcert(data: ConcertCreationInput!): Concert!
+
+  """
+  Create a new ConcertArtist. Check the `ConcertArtistCreationInput` type for the expected shape of the data.
+  """
   createConcertArtist(data: ConcertArtistCreationInput!): ConcertArtist!
+
+  """
+  Create multiple ConcertArtists. Check the `ConcertArtistCreationInput` type for the expected shape of the data.
+  """
   createConcertArtists(data: [ConcertArtistCreationInput!]!): [ConcertArtist!]!
+
+  """
+  Create multiple Concerts. Check the `ConcertCreationInput` type for the expected shape of the data.
+  """
   createConcerts(data: [ConcertCreationInput!]!): [Concert!]!
+
+  """
+  Create a new Notification. Check the `NotificationCreationInput` type for the expected shape of the data.
+  """
   createNotification(data: NotificationCreationInput!): Notification!
+
+  """
+  Create multiple Notifications. Check the `NotificationCreationInput` type for the expected shape of the data.
+  """
   createNotifications(data: [NotificationCreationInput!]!): [Notification!]!
+
+  """Delete the Artist with the provided primary key."""
   deleteArtist(id: Int!): Artist
+
+  """Delete multiple Artists matching the provided `where` filter."""
   deleteArtists(where: ArtistFilter): [Artist!]!
+
+  """Delete the Concert with the provided primary key."""
   deleteConcert(id: Int!): Concert
+
+  """Delete the ConcertArtist with the provided primary key."""
   deleteConcertArtist(id: Int!): ConcertArtist
+
+  """Delete multiple ConcertArtists matching the provided `where` filter."""
   deleteConcertArtists(where: ConcertArtistFilter): [ConcertArtist!]!
+
+  """Delete multiple Concerts matching the provided `where` filter."""
   deleteConcerts(where: ConcertFilter): [Concert!]!
+
+  """Delete the Notification with the provided primary key."""
   deleteNotification(id: Int!): Notification
+
+  """Delete multiple Notifications matching the provided `where` filter."""
   deleteNotifications(where: NotificationFilter): [Notification!]!
+
+  """
+  Update the Artist with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateArtist(id: Int!, data: ArtistUpdateInput!): Artist
+
+  """
+  Update multiple Artists matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateArtists(where: ArtistFilter, data: ArtistUpdateInput!): [Artist!]!
+
+  """
+  Update the Concert with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateConcert(id: Int!, data: ConcertUpdateInput!): Concert
+
+  """
+  Update the ConcertArtist with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateConcertArtist(id: Int!, data: ConcertArtistUpdateInput!): ConcertArtist
+
+  """
+  Update multiple ConcertArtists matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateConcertArtists(where: ConcertArtistFilter, data: ConcertArtistUpdateInput!): [ConcertArtist!]!
+
+  """
+  Update multiple Concerts matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateConcerts(where: ConcertFilter, data: ConcertUpdateInput!): [Concert!]!
+
+  """
+  Update the Notification with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateNotification(id: Int!, data: NotificationUpdateInput!): Notification
+
+  """
+  Update multiple Notifications matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateNotifications(where: NotificationFilter, data: NotificationUpdateInput!): [Notification!]!
 }

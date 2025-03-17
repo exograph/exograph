@@ -3,6 +3,7 @@ type AdminDoc {
   content: String!
 }
 
+"""An aggregate for the `AdminDoc` type."""
 type AdminDocAgg {
   id: IntAgg
   content: StringAgg
@@ -12,6 +13,11 @@ input AdminDocCreationInput {
   content: String!
 }
 
+"""
+Predicate for the `AdminDoc` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input AdminDocFilter {
   id: IntFilter
   content: StringFilter
@@ -35,6 +41,7 @@ type AdminDocWithContains {
   content: String!
 }
 
+"""An aggregate for the `AdminDocWithContains` type."""
 type AdminDocWithContainsAgg {
   id: IntAgg
   content: StringAgg
@@ -44,6 +51,11 @@ input AdminDocWithContainsCreationInput {
   content: String!
 }
 
+"""
+Predicate for the `AdminDocWithContains` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input AdminDocWithContainsFilter {
   id: IntFilter
   content: StringFilter
@@ -68,6 +80,7 @@ type AdminNote {
   user: User!
 }
 
+"""An aggregate for the `AdminNote` type."""
 type AdminNoteAgg {
   id: IntAgg
   content: StringAgg
@@ -82,6 +95,11 @@ input AdminNoteCreationInputFromUser {
   content: String!
 }
 
+"""
+Predicate for the `AdminNote` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input AdminNoteFilter {
   id: IntFilter
   content: StringFilter
@@ -123,6 +141,7 @@ type AuthenticatedDoc {
   content: String!
 }
 
+"""An aggregate for the `AuthenticatedDoc` type."""
 type AuthenticatedDocAgg {
   id: IntAgg
   content: StringAgg
@@ -132,6 +151,11 @@ input AuthenticatedDocCreationInput {
   content: String!
 }
 
+"""
+Predicate for the `AuthenticatedDoc` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input AuthenticatedDocFilter {
   id: IntFilter
   content: StringFilter
@@ -165,6 +189,7 @@ type Doc {
   public: Boolean!
 }
 
+"""An aggregate for the `Doc` type."""
 type DocAgg {
   id: IntAgg
   content: StringAgg
@@ -176,6 +201,11 @@ input DocCreationInput {
   public: Boolean!
 }
 
+"""
+Predicate for the `Doc` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input DocFilter {
   id: IntFilter
   content: StringFilter
@@ -203,6 +233,7 @@ type ExternalDoc {
   content: String!
 }
 
+"""An aggregate for the `ExternalDoc` type."""
 type ExternalDocAgg {
   id: IntAgg
   externalId: IntAgg
@@ -214,6 +245,11 @@ input ExternalDocCreationInput {
   content: String!
 }
 
+"""
+Predicate for the `ExternalDoc` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input ExternalDocFilter {
   id: IntFilter
   externalId: IntFilter
@@ -258,6 +294,7 @@ type Membership {
   user: User!
 }
 
+"""An aggregate for the `Membership` type."""
 type MembershipAgg {
   id: IntAgg
   kind: StringAgg
@@ -272,6 +309,11 @@ input MembershipCreationInputFromUser {
   kind: String!
 }
 
+"""
+Predicate for the `Membership` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input MembershipFilter {
   id: IntFilter
   kind: StringFilter
@@ -337,6 +379,7 @@ type UnauthenticatedDoc {
   content: String!
 }
 
+"""An aggregate for the `UnauthenticatedDoc` type."""
 type UnauthenticatedDocAgg {
   id: IntAgg
   content: StringAgg
@@ -346,6 +389,11 @@ input UnauthenticatedDocCreationInput {
   content: String!
 }
 
+"""
+Predicate for the `UnauthenticatedDoc` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input UnauthenticatedDocFilter {
   id: IntFilter
   content: StringFilter
@@ -372,6 +420,7 @@ type User {
   notesAgg(where: AdminNoteFilter): AdminNoteAgg
 }
 
+"""An aggregate for the `User` type."""
 type UserAgg {
   id: IntAgg
   name: StringAgg
@@ -383,6 +432,11 @@ input UserCreationInput {
   notes: [AdminNoteCreationInputFromUser!]
 }
 
+"""
+Predicate for the `User` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input UserFilter {
   id: IntFilter
   name: StringFilter
@@ -403,6 +457,7 @@ input UserReferenceInput {
   id: Int!
 }
 
+"""A predicate to filter the results for a `User` type parameter."""
 input UserUniqueFilter {
   id: Int!
 }
@@ -415,94 +470,370 @@ input UserUpdateInput {
 }
 
 type Query {
+  """Get a single `AdminDoc` given primary key fields"""
   adminDoc(id: Int!): AdminDoc
+
+  """Get a single `AdminDocWithContains` given primary key fields"""
   adminDocWithContains(id: Int!): AdminDocWithContains
+
+  """
+  Get multiple `AdminDocWithContains`s given the provided `where` filter, order by, limit, and offset
+  """
   adminDocWithContainss(where: AdminDocWithContainsFilter, orderBy: [AdminDocWithContainsOrdering!], limit: Int, offset: Int): [AdminDocWithContains!]!
+
+  """
+  Get the aggregate value of the selected fields over all `AdminDocWithContains`s given the provided `where` filter
+  """
   adminDocWithContainssAgg(where: AdminDocWithContainsFilter): AdminDocWithContainsAgg!
+
+  """
+  Get multiple `AdminDoc`s given the provided `where` filter, order by, limit, and offset
+  """
   adminDocs(where: AdminDocFilter, orderBy: [AdminDocOrdering!], limit: Int, offset: Int): [AdminDoc!]!
+
+  """
+  Get the aggregate value of the selected fields over all `AdminDoc`s given the provided `where` filter
+  """
   adminDocsAgg(where: AdminDocFilter): AdminDocAgg!
+
+  """Get a single `AdminNote` given primary key fields"""
   adminNote(id: Int!): AdminNote
+
+  """
+  Get multiple `AdminNote`s given the provided `where` filter, order by, limit, and offset
+  """
   adminNotes(where: AdminNoteFilter, orderBy: [AdminNoteOrdering!], limit: Int, offset: Int): [AdminNote!]!
+
+  """
+  Get the aggregate value of the selected fields over all `AdminNote`s given the provided `where` filter
+  """
   adminNotesAgg(where: AdminNoteFilter): AdminNoteAgg!
+
+  """Get a single `AuthenticatedDoc` given primary key fields"""
   authenticatedDoc(id: Int!): AuthenticatedDoc
+
+  """
+  Get multiple `AuthenticatedDoc`s given the provided `where` filter, order by, limit, and offset
+  """
   authenticatedDocs(where: AuthenticatedDocFilter, orderBy: [AuthenticatedDocOrdering!], limit: Int, offset: Int): [AuthenticatedDoc!]!
+
+  """
+  Get the aggregate value of the selected fields over all `AuthenticatedDoc`s given the provided `where` filter
+  """
   authenticatedDocsAgg(where: AuthenticatedDocFilter): AuthenticatedDocAgg!
+
+  """Get a single `Doc` given primary key fields"""
   doc(id: Int!): Doc
+
+  """
+  Get multiple `Doc`s given the provided `where` filter, order by, limit, and offset
+  """
   docs(where: DocFilter, orderBy: [DocOrdering!], limit: Int, offset: Int): [Doc!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Doc`s given the provided `where` filter
+  """
   docsAgg(where: DocFilter): DocAgg!
+
+  """Get a single `ExternalDoc` given primary key fields"""
   externalDoc(id: Int!): ExternalDoc
+
+  """
+  Get multiple `ExternalDoc`s given the provided `where` filter, order by, limit, and offset
+  """
   externalDocs(where: ExternalDocFilter, orderBy: [ExternalDocOrdering!], limit: Int, offset: Int): [ExternalDoc!]!
+
+  """
+  Get the aggregate value of the selected fields over all `ExternalDoc`s given the provided `where` filter
+  """
   externalDocsAgg(where: ExternalDocFilter): ExternalDocAgg!
   getAdminSecret: String!
   getAuthenticatedSecret: String!
   getUnauthenticatedSecret: String!
+
+  """Get a single `Membership` given primary key fields"""
   membership(id: Int!): Membership
+
+  """Get a single `Membership` given unique fields"""
   membershipByUser(user: UserUniqueFilter!): Membership
+
+  """
+  Get multiple `Membership`s given the provided `where` filter, order by, limit, and offset
+  """
   memberships(where: MembershipFilter, orderBy: [MembershipOrdering!], limit: Int, offset: Int): [Membership!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Membership`s given the provided `where` filter
+  """
   membershipsAgg(where: MembershipFilter): MembershipAgg!
+
+  """Get a single `UnauthenticatedDoc` given primary key fields"""
   unauthenticatedDoc(id: Int!): UnauthenticatedDoc
+
+  """
+  Get multiple `UnauthenticatedDoc`s given the provided `where` filter, order by, limit, and offset
+  """
   unauthenticatedDocs(where: UnauthenticatedDocFilter, orderBy: [UnauthenticatedDocOrdering!], limit: Int, offset: Int): [UnauthenticatedDoc!]!
+
+  """
+  Get the aggregate value of the selected fields over all `UnauthenticatedDoc`s given the provided `where` filter
+  """
   unauthenticatedDocsAgg(where: UnauthenticatedDocFilter): UnauthenticatedDocAgg!
+
+  """Get a single `User` given primary key fields"""
   user(id: Int!): User
+
+  """
+  Get multiple `User`s given the provided `where` filter, order by, limit, and offset
+  """
   users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+
+  """
+  Get the aggregate value of the selected fields over all `User`s given the provided `where` filter
+  """
   usersAgg(where: UserFilter): UserAgg!
 }
 
 type Mutation {
+  """
+  Create a new AdminDoc. Check the `AdminDocCreationInput` type for the expected shape of the data.
+  """
   createAdminDoc(data: AdminDocCreationInput!): AdminDoc!
+
+  """
+  Create a new AdminDocWithContains. Check the `AdminDocWithContainsCreationInput` type for the expected shape of the data.
+  """
   createAdminDocWithContains(data: AdminDocWithContainsCreationInput!): AdminDocWithContains!
+
+  """
+  Create multiple AdminDocWithContainss. Check the `AdminDocWithContainsCreationInput` type for the expected shape of the data.
+  """
   createAdminDocWithContainss(data: [AdminDocWithContainsCreationInput!]!): [AdminDocWithContains!]!
+
+  """
+  Create multiple AdminDocs. Check the `AdminDocCreationInput` type for the expected shape of the data.
+  """
   createAdminDocs(data: [AdminDocCreationInput!]!): [AdminDoc!]!
+
+  """
+  Create a new AdminNote. Check the `AdminNoteCreationInput` type for the expected shape of the data.
+  """
   createAdminNote(data: AdminNoteCreationInput!): AdminNote!
+
+  """
+  Create multiple AdminNotes. Check the `AdminNoteCreationInput` type for the expected shape of the data.
+  """
   createAdminNotes(data: [AdminNoteCreationInput!]!): [AdminNote!]!
+
+  """
+  Create a new AuthenticatedDoc. Check the `AuthenticatedDocCreationInput` type for the expected shape of the data.
+  """
   createAuthenticatedDoc(data: AuthenticatedDocCreationInput!): AuthenticatedDoc!
+
+  """
+  Create multiple AuthenticatedDocs. Check the `AuthenticatedDocCreationInput` type for the expected shape of the data.
+  """
   createAuthenticatedDocs(data: [AuthenticatedDocCreationInput!]!): [AuthenticatedDoc!]!
+
+  """
+  Create a new Doc. Check the `DocCreationInput` type for the expected shape of the data.
+  """
   createDoc(data: DocCreationInput!): Doc!
+
+  """
+  Create multiple Docs. Check the `DocCreationInput` type for the expected shape of the data.
+  """
   createDocs(data: [DocCreationInput!]!): [Doc!]!
+
+  """
+  Create a new ExternalDoc. Check the `ExternalDocCreationInput` type for the expected shape of the data.
+  """
   createExternalDoc(data: ExternalDocCreationInput!): ExternalDoc!
+
+  """
+  Create multiple ExternalDocs. Check the `ExternalDocCreationInput` type for the expected shape of the data.
+  """
   createExternalDocs(data: [ExternalDocCreationInput!]!): [ExternalDoc!]!
+
+  """
+  Create a new Membership. Check the `MembershipCreationInput` type for the expected shape of the data.
+  """
   createMembership(data: MembershipCreationInput!): Membership!
+
+  """
+  Create multiple Memberships. Check the `MembershipCreationInput` type for the expected shape of the data.
+  """
   createMemberships(data: [MembershipCreationInput!]!): [Membership!]!
+
+  """
+  Create a new UnauthenticatedDoc. Check the `UnauthenticatedDocCreationInput` type for the expected shape of the data.
+  """
   createUnauthenticatedDoc(data: UnauthenticatedDocCreationInput!): UnauthenticatedDoc!
+
+  """
+  Create multiple UnauthenticatedDocs. Check the `UnauthenticatedDocCreationInput` type for the expected shape of the data.
+  """
   createUnauthenticatedDocs(data: [UnauthenticatedDocCreationInput!]!): [UnauthenticatedDoc!]!
+
+  """
+  Create a new User. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUser(data: UserCreationInput!): User!
+
+  """
+  Create multiple Users. Check the `UserCreationInput` type for the expected shape of the data.
+  """
   createUsers(data: [UserCreationInput!]!): [User!]!
+
+  """Delete the AdminDoc with the provided primary key."""
   deleteAdminDoc(id: Int!): AdminDoc
+
+  """Delete the AdminDocWithContains with the provided primary key."""
   deleteAdminDocWithContains(id: Int!): AdminDocWithContains
+
+  """
+  Delete multiple AdminDocWithContainss matching the provided `where` filter.
+  """
   deleteAdminDocWithContainss(where: AdminDocWithContainsFilter): [AdminDocWithContains!]!
+
+  """Delete multiple AdminDocs matching the provided `where` filter."""
   deleteAdminDocs(where: AdminDocFilter): [AdminDoc!]!
+
+  """Delete the AdminNote with the provided primary key."""
   deleteAdminNote(id: Int!): AdminNote
+
+  """Delete multiple AdminNotes matching the provided `where` filter."""
   deleteAdminNotes(where: AdminNoteFilter): [AdminNote!]!
+
+  """Delete the AuthenticatedDoc with the provided primary key."""
   deleteAuthenticatedDoc(id: Int!): AuthenticatedDoc
+
+  """
+  Delete multiple AuthenticatedDocs matching the provided `where` filter.
+  """
   deleteAuthenticatedDocs(where: AuthenticatedDocFilter): [AuthenticatedDoc!]!
+
+  """Delete the Doc with the provided primary key."""
   deleteDoc(id: Int!): Doc
+
+  """Delete multiple Docs matching the provided `where` filter."""
   deleteDocs(where: DocFilter): [Doc!]!
+
+  """Delete the ExternalDoc with the provided primary key."""
   deleteExternalDoc(id: Int!): ExternalDoc
+
+  """Delete multiple ExternalDocs matching the provided `where` filter."""
   deleteExternalDocs(where: ExternalDocFilter): [ExternalDoc!]!
+
+  """Delete the Membership with the provided primary key."""
   deleteMembership(id: Int!): Membership
+
+  """Delete multiple Memberships matching the provided `where` filter."""
   deleteMemberships(where: MembershipFilter): [Membership!]!
+
+  """Delete the UnauthenticatedDoc with the provided primary key."""
   deleteUnauthenticatedDoc(id: Int!): UnauthenticatedDoc
+
+  """
+  Delete multiple UnauthenticatedDocs matching the provided `where` filter.
+  """
   deleteUnauthenticatedDocs(where: UnauthenticatedDocFilter): [UnauthenticatedDoc!]!
+
+  """Delete the User with the provided primary key."""
   deleteUser(id: Int!): User
+
+  """Delete multiple Users matching the provided `where` filter."""
   deleteUsers(where: UserFilter): [User!]!
   setAuthenticatedSecret(secret: String!): String!
   setUnauthenticatedSecret(secret: String!): String!
+
+  """
+  Update the AdminDoc with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateAdminDoc(id: Int!, data: AdminDocUpdateInput!): AdminDoc
+
+  """
+  Update the AdminDocWithContains with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateAdminDocWithContains(id: Int!, data: AdminDocWithContainsUpdateInput!): AdminDocWithContains
+
+  """
+  Update multiple AdminDocWithContainss matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateAdminDocWithContainss(where: AdminDocWithContainsFilter, data: AdminDocWithContainsUpdateInput!): [AdminDocWithContains!]!
+
+  """
+  Update multiple AdminDocs matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateAdminDocs(where: AdminDocFilter, data: AdminDocUpdateInput!): [AdminDoc!]!
+
+  """
+  Update the AdminNote with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateAdminNote(id: Int!, data: AdminNoteUpdateInput!): AdminNote
+
+  """
+  Update multiple AdminNotes matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateAdminNotes(where: AdminNoteFilter, data: AdminNoteUpdateInput!): [AdminNote!]!
+
+  """
+  Update the AuthenticatedDoc with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateAuthenticatedDoc(id: Int!, data: AuthenticatedDocUpdateInput!): AuthenticatedDoc
+
+  """
+  Update multiple AuthenticatedDocs matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateAuthenticatedDocs(where: AuthenticatedDocFilter, data: AuthenticatedDocUpdateInput!): [AuthenticatedDoc!]!
+
+  """
+  Update the Doc with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateDoc(id: Int!, data: DocUpdateInput!): Doc
+
+  """
+  Update multiple Docs matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateDocs(where: DocFilter, data: DocUpdateInput!): [Doc!]!
+
+  """
+  Update the ExternalDoc with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateExternalDoc(id: Int!, data: ExternalDocUpdateInput!): ExternalDoc
+
+  """
+  Update multiple ExternalDocs matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateExternalDocs(where: ExternalDocFilter, data: ExternalDocUpdateInput!): [ExternalDoc!]!
+
+  """
+  Update the Membership with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateMembership(id: Int!, data: MembershipUpdateInput!): Membership
+
+  """
+  Update multiple Memberships matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateMemberships(where: MembershipFilter, data: MembershipUpdateInput!): [Membership!]!
+
+  """
+  Update the UnauthenticatedDoc with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUnauthenticatedDoc(id: Int!, data: UnauthenticatedDocUpdateInput!): UnauthenticatedDoc
+
+  """
+  Update multiple UnauthenticatedDocs matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUnauthenticatedDocs(where: UnauthenticatedDocFilter, data: UnauthenticatedDocUpdateInput!): [UnauthenticatedDoc!]!
+
+  """
+  Update the User with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUser(id: Int!, data: UserUpdateInput!): User
+
+  """
+  Update multiple Users matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
 }

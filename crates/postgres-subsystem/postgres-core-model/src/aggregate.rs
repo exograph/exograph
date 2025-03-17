@@ -9,13 +9,14 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::relation::PostgresRelation;
+use crate::{relation::PostgresRelation, types::EntityType};
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AggregateType {
     pub name: String, // Such as IntAgg, ConcertAgg.
     pub fields: Vec<AggregateField>,
+    pub underlying_type: SerializableSlabIndex<EntityType>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

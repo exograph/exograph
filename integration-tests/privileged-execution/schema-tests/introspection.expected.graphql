@@ -26,6 +26,7 @@ type Rsvp {
   count: Int!
 }
 
+"""An aggregate for the `Rsvp` type."""
 type RsvpAgg {
   id: IntAgg
   email: StringAgg
@@ -42,6 +43,11 @@ input RsvpCreationInput {
   count: Int!
 }
 
+"""
+Predicate for the `Rsvp` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
 input RsvpFilter {
   id: IntFilter
   email: StringFilter
@@ -83,17 +89,45 @@ input StringFilter {
 }
 
 type Query {
+  """Get a single `Rsvp` given primary key fields"""
   rsvp(id: Int!): Rsvp
+
+  """
+  Get multiple `Rsvp`s given the provided `where` filter, order by, limit, and offset
+  """
   rsvps(where: RsvpFilter, orderBy: [RsvpOrdering!], limit: Int, offset: Int): [Rsvp!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Rsvp`s given the provided `where` filter
+  """
   rsvpsAgg(where: RsvpFilter): RsvpAgg!
 }
 
 type Mutation {
+  """
+  Create a new Rsvp. Check the `RsvpCreationInput` type for the expected shape of the data.
+  """
   createRsvp(data: RsvpCreationInput!): Rsvp!
+
+  """
+  Create multiple Rsvps. Check the `RsvpCreationInput` type for the expected shape of the data.
+  """
   createRsvps(data: [RsvpCreationInput!]!): [Rsvp!]!
+
+  """Delete the Rsvp with the provided primary key."""
   deleteRsvp(id: Int!): Rsvp
+
+  """Delete multiple Rsvps matching the provided `where` filter."""
   deleteRsvps(where: RsvpFilter): [Rsvp!]!
   processRsvp(email: String!, count: Int!): RsvpConfirmation!
+
+  """
+  Update the Rsvp with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
   updateRsvp(id: Int!, data: RsvpUpdateInput!): Rsvp
+
+  """
+  Update multiple Rsvps matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
   updateRsvps(where: RsvpFilter, data: RsvpUpdateInput!): [Rsvp!]!
 }
