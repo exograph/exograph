@@ -24,5 +24,7 @@ pub struct PostgresOperation {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum PostgresOperationKind {
     Query,
-    Mutation,
+    Create,
+    Update,
+    Delete,
 }
