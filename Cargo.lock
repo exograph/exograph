@@ -1562,6 +1562,7 @@ dependencies = [
  "exo-env",
  "exo-sql",
  "futures",
+ "http 1.1.0",
  "insta",
  "postgres-builder",
  "postgres-resolver",
@@ -6977,6 +6978,7 @@ dependencies = [
  "postgres-core-model",
  "postgres-core-resolver",
  "postgres-rpc-model",
+ "serde_json",
 ]
 
 [[package]]
@@ -7680,11 +7682,14 @@ dependencies = [
 name = "rpc-router"
 version = "0.12.0"
 dependencies = [
+ "async-stream",
  "async-trait",
+ "bytes",
  "common",
  "core-resolver",
  "exo-env",
  "http 1.1.0",
+ "serde_json",
  "tracing",
 ]
 

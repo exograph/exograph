@@ -3,12 +3,13 @@ use std::sync::Arc;
 use async_trait::async_trait;
 
 use common::context::RequestContext;
-use common::http::{Headers, ResponseBody, ResponsePayload};
 
 use core_plugin_interface::core_resolver::access_solver::AccessSolver;
-use core_plugin_interface::core_resolver::plugin::{
-    SubsystemResolutionError, SubsystemRpcResolver,
+use core_plugin_interface::core_resolver::plugin::subsystem_rpc_resolver::{
+    SubsystemRpcError, SubsystemRpcResponse,
 };
+use core_plugin_interface::core_resolver::plugin::SubsystemRpcResolver;
+use core_plugin_interface::core_resolver::{QueryResponse, QueryResponseBody};
 use exo_sql::{
     AbstractOperation, AbstractSelect, AliasedSelectionElement, DatabaseExecutor, Selection,
     SelectionCardinality, SelectionElement,
@@ -20,10 +21,8 @@ use postgres_rpc_model::operation::PostgresOperationKind;
 use postgres_rpc_model::{operation::PostgresOperation, subsystem::PostgresRpcSubsystemWithRouter};
 
 pub struct PostgresSubsystemRpcResolver {
-    #[allow(dead_code)]
     pub id: &'static str,
     pub subsystem: PostgresRpcSubsystemWithRouter,
-    #[allow(dead_code)]
     pub executor: Arc<DatabaseExecutor>,
     pub api_path_prefix: String,
 }
@@ -36,29 +35,11 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
 
     async fn resolve<'a>(
         &self,
+        request_method: &str,
+        _request_params: &Option<serde_json::Value>,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<Option<ResponsePayload>, SubsystemResolutionError> {
-        use common::http::RequestPayload;
-
-        let body = request_context.take_body();
-
-        // TODO: Use a parser for JSON-RPC requests
-        let operation_name = body.get("method").ok_or_else(|| {
-            SubsystemResolutionError::UserDisplayError(
-                "Invalid JSON-RPC request. No method provided.".to_string(),
-            )
-        })?;
-
-        let operation_name = match operation_name.as_str() {
-            Some(operation_name) => operation_name,
-            None => {
-                return Err(SubsystemResolutionError::UserDisplayError(
-                    "Invalid JSON-RPC request. Method name is not a string.".to_string(),
-                ));
-            }
-        };
-
-        let operation = self.subsystem.method_operation_map.get(operation_name);
+    ) -> Result<Option<SubsystemRpcResponse>, SubsystemRpcError> {
+        let operation = self.subsystem.method_operation_map.get(request_method);
 
         if let Some(operation) = operation {
             let operation = operation.resolve(request_context, &self.subsystem).await?;
@@ -77,20 +58,24 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
                     &self.subsystem.core_subsystem.as_ref().database,
                 )
                 .await
-                .map_err(PostgresExecutionError::Postgres)?;
+                .map_err(|e| from_postgres_error(PostgresExecutionError::Postgres(e)))?;
 
             let body = if result.len() == 1 {
-                let string_result: String = extractor(result.swap_remove(0))?;
-                Ok(ResponseBody::Bytes(string_result.into()))
+                let string_result: String =
+                    extractor(result.swap_remove(0)).map_err(from_postgres_error)?;
+                Ok(QueryResponseBody::Raw(Some(string_result)))
             } else if result.is_empty() {
-                Ok(ResponseBody::None)
+                Ok(QueryResponseBody::Raw(None))
             } else {
                 Err(PostgresExecutionError::NonUniqueResult(result.len()))
-            }?;
+            }
+            .map_err(from_postgres_error)?;
 
-            return Ok(Some(ResponsePayload {
-                body,
-                headers: Headers::new(),
+            return Ok(Some(SubsystemRpcResponse {
+                response: QueryResponse {
+                    body,
+                    headers: vec![],
+                },
                 status_code: http::StatusCode::OK,
             }));
         }
@@ -105,7 +90,7 @@ trait OperationResolver {
         &self,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresRpcSubsystemWithRouter,
-    ) -> Result<AbstractOperation, SubsystemResolutionError>;
+    ) -> Result<AbstractOperation, SubsystemRpcError>;
 }
 
 #[async_trait]
@@ -114,7 +99,7 @@ impl OperationResolver for PostgresOperation {
         &self,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresRpcSubsystemWithRouter,
-    ) -> Result<AbstractOperation, SubsystemResolutionError> {
+    ) -> Result<AbstractOperation, SubsystemRpcError> {
         let entity_types = &subsystem.core_subsystem.entity_types;
 
         let entity_type = &entity_types[self.entity_type_id];
@@ -123,7 +108,7 @@ impl OperationResolver for PostgresOperation {
             let access_expr_index = match self.kind {
                 PostgresOperationKind::Query => entity_type.access.read,
                 _ => {
-                    return Err(SubsystemResolutionError::UserDisplayError(
+                    return Err(SubsystemRpcError::UserDisplayError(
                         "Only queries are supported for this operation".to_string(),
                     ))
                 }
@@ -135,7 +120,7 @@ impl OperationResolver for PostgresOperation {
             .core_subsystem
             .solve(request_context, None, access_expr)
             .await
-            .map_err(|_| SubsystemResolutionError::Authorization)?
+            .map_err(|_| SubsystemRpcError::Authorization)?
             .map(|p| p.0)
             .resolve();
 
@@ -166,5 +151,12 @@ impl OperationResolver for PostgresOperation {
         };
 
         Ok(AbstractOperation::Select(select))
+    }
+}
+
+fn from_postgres_error(e: PostgresExecutionError) -> SubsystemRpcError {
+    match e {
+        PostgresExecutionError::Authorization => SubsystemRpcError::Authorization,
+        _ => SubsystemRpcError::UserDisplayError(e.user_error_message()),
     }
 }
