@@ -13,6 +13,7 @@ exo-sql = { path = "../../../libs/exo-sql" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 postgres-rpc-model = { path = "../postgres-rpc-model" }
 postgres-core-resolver = { path = "../postgres-core-resolver" }
+postgres-core-model = { path = "../postgres-core-model" }
 common = { path = "../../common" }
 
 [dev-dependencies]

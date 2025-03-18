@@ -10,7 +10,7 @@
 use core_plugin_interface::{
     core_model::{
         access::AccessPredicateExpression,
-        context_type::ContextType,
+        context_type::{ContextContainer, ContextType},
         mapped_arena::{MappedArena, SerializableSlab},
     },
     error::ModelSerializationError,
@@ -68,5 +68,11 @@ impl Default for PostgresCoreSubsystem {
 
             database: Database::default(),
         }
+    }
+}
+
+impl ContextContainer for PostgresCoreSubsystem {
+    fn contexts(&self) -> &MappedArena<ContextType> {
+        &self.contexts
     }
 }

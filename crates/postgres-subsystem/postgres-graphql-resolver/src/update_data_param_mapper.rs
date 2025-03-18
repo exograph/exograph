@@ -432,6 +432,7 @@ async fn compute_nested_inserts<'a>(
 
     let access_predicate = match field_entity_type.database_access {
         Some(access_expr_index) => subsystem
+            .core_subsystem
             .solve(
                 request_context,
                 None,

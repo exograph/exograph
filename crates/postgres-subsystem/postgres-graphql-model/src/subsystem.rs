@@ -20,7 +20,6 @@ use crate::{
 };
 use core_plugin_interface::{
     core_model::{
-        context_type::{ContextContainer, ContextType},
         mapped_arena::{MappedArena, SerializableSlab, SerializableSlabIndex},
         type_normalization::{FieldDefinitionProvider, TypeDefinitionProvider},
     },
@@ -182,11 +181,5 @@ impl SystemSerializer for PostgresGraphQLSubsystem {
         reader: impl std::io::Read,
     ) -> Result<Self::Underlying, ModelSerializationError> {
         bincode::deserialize_from(reader).map_err(ModelSerializationError::Deserialize)
-    }
-}
-
-impl ContextContainer for PostgresGraphQLSubsystem {
-    fn contexts(&self) -> &MappedArena<ContextType> {
-        &self.core_subsystem.contexts
     }
 }

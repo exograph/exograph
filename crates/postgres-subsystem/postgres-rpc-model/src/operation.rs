@@ -7,9 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use postgres_core_model::types::EntityType;
 use serde::{Deserialize, Serialize};
-
-use exo_sql::PhysicalTable;
 
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 
@@ -18,12 +17,14 @@ use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PostgresOperation {
     pub kind: PostgresOperationKind,
-    pub table_id: SerializableSlabIndex<PhysicalTable>,
+    pub entity_type_id: SerializableSlabIndex<EntityType>,
     // TODO: Add parameter model
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum PostgresOperationKind {
     Query,
-    Mutation,
+    Create,
+    Update,
+    Delete,
 }

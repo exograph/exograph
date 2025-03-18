@@ -137,6 +137,7 @@ async fn map_single<'a>(
                         &field.default_value
                     {
                         subsystem
+                            .core_subsystem
                             .extract_context_selection(request_context, selection)
                             .await
                     } else {

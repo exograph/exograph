@@ -156,6 +156,7 @@ async fn check_create_access<'a>(
     input_value: Option<&AccessInput<'a>>,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
     let precheck_predicate = subsystem
+        .core_subsystem
         .solve(
             request_context,
             input_value,
@@ -178,6 +179,7 @@ pub(super) async fn check_retrieve_access<'a>(
     request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
     Ok(subsystem
+        .core_subsystem
         .solve(request_context, None, expr)
         .await?
         .map(|p| p.0)
@@ -192,6 +194,7 @@ async fn check_update_access<'a>(
 ) -> Result<(AbstractPredicate, AbstractPredicate), PostgresExecutionError> {
     // First check the input predicate (i.e. the "data" parameter matches the access predicate)
     let precheck_predicate = subsystem
+        .core_subsystem
         .solve(
             request_context,
             input_value,
@@ -209,6 +212,7 @@ async fn check_update_access<'a>(
 
     // Now compute the database access predicate (the "where" clause to the update statement)
     let database_predicate = subsystem
+        .core_subsystem
         .solve(
             request_context,
             None,
@@ -229,6 +233,7 @@ async fn check_delete_access<'a>(
     Ok((
         AbstractPredicate::True,
         subsystem
+            .core_subsystem
             .solve(request_context, None, expr)
             .await?
             .map(|p| p.0)
@@ -316,6 +321,7 @@ async fn check_input_access<'a>(
                                 };
 
                                 let input_predicate = subsystem
+                                    .core_subsystem
                                     .solve(
                                         request_context,
                                         Some(&access_input),

@@ -26,7 +26,8 @@ use exo_env::MapEnvironment;
 use exo_sql::AbstractPredicate;
 use serde_json::json;
 
-use crate::access::{database_solver::literal_column, test_util::test_request_context};
+use crate::access::test_util::test_request_context;
+use postgres_core_resolver::access::database_solver::literal_column;
 
 use super::test_system::{context_selection_expr, router, TestSystem};
 
@@ -855,6 +856,7 @@ async fn solve_access<'a>(
     let request_context = test_request_context(context_value, &router, env);
 
     let result = subsystem
+        .core_subsystem
         .solve(&request_context, input_value.as_ref(), expr)
         .await;
 
