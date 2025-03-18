@@ -9,6 +9,7 @@
 
 use std::collections::HashMap;
 
+use crate::cast::{self, literal_column_path};
 use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
@@ -26,8 +27,7 @@ use exo_sql::{
     AbstractPredicate, ColumnPath, ColumnPathLink, Database, PhysicalColumnPath, PhysicalColumnType,
 };
 use maybe_owned::MaybeOwned;
-use postgres_core_resolver::cast::{self, literal_column_path};
-use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
+use postgres_core_model::subsystem::PostgresCoreSubsystem;
 
 use postgres_core_model::{
     access::{AccessPrimitiveExpressionPath, FieldPath, PrecheckAccessPrimitiveExpression},
@@ -36,12 +36,6 @@ use postgres_core_model::{
 
 use super::access_op::AbstractPredicateWrapper;
 use super::database_solver::to_column_path;
-
-#[cfg(test)]
-mod tests;
-
-#[cfg(test)]
-mod test_system;
 
 #[derive(Debug)]
 enum SolvedPrecheckPrimitiveExpression {
@@ -55,7 +49,7 @@ type ValuePredicateFn = fn(&Val, &Val) -> bool;
 
 #[async_trait]
 impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWrapper>
-    for PostgresGraphQLSubsystem
+    for PostgresCoreSubsystem
 {
     async fn solve_relational_op(
         &self,
@@ -88,7 +82,7 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
                 left,
                 right,
                 input_value,
-                &self.core_subsystem.database,
+                &self.database,
                 ignore_missing_value,
                 column_predicate,
                 value_predicate,
@@ -147,7 +141,7 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
 }
 
 async fn reduce_primitive_expression<'a>(
-    solver: &PostgresGraphQLSubsystem,
+    solver: &PostgresCoreSubsystem,
     request_context: &'a RequestContext<'a>,
     input_value: Option<&AccessInput<'a>>,
     expr: &'a PrecheckAccessPrimitiveExpression,
@@ -252,7 +246,7 @@ async fn reduce_primitive_expression<'a>(
                         input_value,
                         lead_default,
                         request_context,
-                        &solver.core_subsystem.database,
+                        &solver.database,
                     )
                     .await?;
 
@@ -370,7 +364,7 @@ async fn reduce_primitive_expression<'a>(
 
 #[allow(clippy::too_many_arguments)]
 async fn evaluate_relation(
-    solver: &PostgresGraphQLSubsystem,
+    solver: &PostgresCoreSubsystem,
     request_context: &RequestContext<'_>,
     left: SolvedPrecheckPrimitiveExpression,
     right: SolvedPrecheckPrimitiveExpression,
@@ -467,7 +461,7 @@ async fn evaluate_relation(
 }
 
 async fn resolve_path(
-    solver: &PostgresGraphQLSubsystem,
+    solver: &PostgresCoreSubsystem,
     path: &AccessPrimitiveExpressionPath,
     input_value: Option<&AccessInput<'_>>,
     request_context: &RequestContext<'_>,
@@ -520,7 +514,7 @@ async fn resolve_path(
 
 #[allow(clippy::too_many_arguments)]
 async fn process_path_common_expr(
-    solver: &PostgresGraphQLSubsystem,
+    solver: &PostgresCoreSubsystem,
     left_path: AccessPrimitiveExpressionPath,
     parameter_name: Option<String>,
     right_value: Val,
@@ -673,7 +667,7 @@ fn compute_literal_column_path(
 
 #[allow(clippy::too_many_arguments)]
 async fn compute_relational_predicate(
-    solver: &PostgresGraphQLSubsystem,
+    solver: &PostgresCoreSubsystem,
     head_link: ColumnPathLink,
     lead: &[String],
     pk_fields: &[String],
@@ -765,7 +759,7 @@ fn column_type<'a>(
 }
 
 async fn resolve_value<'a>(
-    solver: &PostgresGraphQLSubsystem,
+    solver: &PostgresCoreSubsystem,
     input_value: Option<&AccessInput<'a>>,
     path: &'a [String],
     default: &'a Option<PostgresFieldDefaultValue>,
