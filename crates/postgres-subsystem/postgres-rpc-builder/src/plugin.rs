@@ -38,12 +38,12 @@ impl PostgresRpcSubsystemBuilder {
                     continue;
                 }
 
-                let table_id = core_subsystem_building
-                    .database
-                    .get_table_id(&composite.table_name)
+                let entity_type_id = core_subsystem_building
+                    .entity_types
+                    .get_id(&composite.name)
                     .ok_or(ModelBuildingError::Generic(format!(
-                        "Table not found: {}",
-                        composite.table_name.fully_qualified_name()
+                        "Entity type not found: {}",
+                        composite.name
                     )))?;
 
                 let rpc_method = format!("get_{}", composite.plural_name.to_lowercase());
@@ -52,7 +52,7 @@ impl PostgresRpcSubsystemBuilder {
                     rpc_method,
                     PostgresOperation {
                         kind: PostgresOperationKind::Query,
-                        table_id,
+                        entity_type_id,
                     },
                 ));
             }

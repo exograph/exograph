@@ -6958,8 +6958,6 @@ version = "0.12.0"
 dependencies = [
  "bincode",
  "core-plugin-interface",
- "exo-sql",
- "http 1.1.0",
  "postgres-core-model",
  "serde",
 ]
@@ -6973,6 +6971,7 @@ dependencies = [
  "core-plugin-interface",
  "exo-sql",
  "http 1.1.0",
+ "postgres-core-model",
  "postgres-core-resolver",
  "postgres-rpc-model",
 ]
