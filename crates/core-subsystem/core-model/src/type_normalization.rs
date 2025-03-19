@@ -8,10 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use async_graphql_parser::{
-    types::{
-        BaseType, EnumValueDefinition, FieldDefinition, InputValueDefinition, Type, TypeDefinition,
-        TypeKind,
-    },
+    types::{EnumValueDefinition, FieldDefinition, InputValueDefinition, TypeDefinition, TypeKind},
     Pos, Positioned,
 };
 use async_graphql_value::Name;
@@ -47,6 +44,33 @@ pub enum TypeModifier {
     Optional,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Type {
+    pub base: BaseType,
+    pub nullable: bool,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum BaseType {
+    Leaf(String),
+    List(Box<Type>),
+}
+
+impl Type {
+    pub fn to_graphql_type(&self) -> async_graphql_parser::types::Type {
+        let graphql_base_type = match &self.base {
+            BaseType::Leaf(name) => async_graphql_parser::types::BaseType::Named(Name::new(name)),
+            BaseType::List(inner) => {
+                async_graphql_parser::types::BaseType::List(Box::new(inner.to_graphql_type()))
+            }
+        };
+        async_graphql_parser::types::Type {
+            base: graphql_base_type,
+            nullable: self.nullable,
+        }
+    }
+}
+
 /// Introspection parameter such as `id: Int` or `name: String`
 pub trait Parameter {
     /// Name of the parameter such as `id` or `name`
@@ -58,7 +82,7 @@ pub trait Parameter {
 
 fn innermost_typename(typ: &Type) -> &str {
     match &typ.base {
-        BaseType::Named(name) => name.as_str(),
+        BaseType::Leaf(name) => name,
         BaseType::List(inner) => innermost_typename(inner),
     }
 }
@@ -71,7 +95,7 @@ impl<T: Parameter> InputValueProvider for T {
             self.typ()
         };
 
-        let field_type = default_positioned(vector_adjusted_type);
+        let field_type = default_positioned(vector_adjusted_type.to_graphql_type());
 
         InputValueDefinition {
             description: None,
@@ -94,13 +118,13 @@ impl InputValueProvider for &dyn Parameter {
         // Special case for Vector. Even though it is a "scalar" from the perspective of the
         // database, it is a list of floats from the perspective of the GraphQL schema.
         // TODO: This should be handled in a more general way (probably best done with https://github.com/exograph/exograph/issues/603)
-        let vector_adjusted_type = if self.typ().to_string() == "Vector" {
+        let vector_adjusted_type = if self.typ().to_graphql_type().to_string() == "Vector" {
             vector_introspection_type(false)
         } else {
             self.typ()
         };
 
-        let field_type = default_positioned(vector_adjusted_type);
+        let field_type = default_positioned(vector_adjusted_type.to_graphql_type());
 
         InputValueDefinition {
             description: None,

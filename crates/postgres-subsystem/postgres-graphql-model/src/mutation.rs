@@ -7,12 +7,12 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use async_graphql_parser::types::Type;
+use postgres_core_model::predicate::PredicateParameter;
 use serde::{Deserialize, Serialize};
 
-use crate::{predicate::PredicateParameter, types::MutationType};
+use crate::types::MutationType;
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
-use core_plugin_interface::core_model::type_normalization::Parameter;
+use core_plugin_interface::core_model::type_normalization::{Parameter, Type};
 use core_plugin_interface::core_model::types::{FieldType, Named, TypeValidation};
 
 use super::operation::{OperationParameters, PostgresOperation};

@@ -11,8 +11,8 @@ use crate::subsystem::PostgresGraphQLSubsystem;
 
 use async_graphql_parser::{
     types::{
-        BaseType, EnumType, EnumValueDefinition, InputObjectType, InputValueDefinition, Type,
-        TypeDefinition, TypeKind,
+        EnumType, EnumValueDefinition, InputObjectType, InputValueDefinition, TypeDefinition,
+        TypeKind,
     },
     Pos, Positioned,
 };
@@ -21,7 +21,7 @@ use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
     primitive_type::vector_introspection_type,
     type_normalization::{
-        default_positioned, default_positioned_name, InputValueProvider, Parameter,
+        default_positioned, default_positioned_name, BaseType, InputValueProvider, Parameter, Type,
         TypeDefinitionProvider,
     },
     types::{FieldType, Named, TypeValidation},
@@ -136,17 +136,20 @@ impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for OrderByParameterType {
                         name: default_positioned_name("distanceTo"),
                         directives: vec![],
                         default_value: None,
-                        ty: default_positioned(vector_introspection_type(false)),
+                        ty: default_positioned(vector_introspection_type(false).to_graphql_type()),
                     },
                     InputValueDefinition {
                         description: None,
                         name: default_positioned_name("order"),
                         directives: vec![],
                         default_value: None,
-                        ty: default_positioned(Type {
-                            base: BaseType::Named(Name::new("Ordering")),
-                            nullable: true,
-                        }),
+                        ty: default_positioned(
+                            Type {
+                                base: BaseType::Leaf("Ordering".to_string()),
+                                nullable: true,
+                            }
+                            .to_graphql_type(),
+                        ),
                     },
                 ]
                 .into_iter()

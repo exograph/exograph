@@ -9,9 +9,9 @@
 
 use std::fmt::{Display, Formatter};
 
-use async_graphql_parser::types::{BaseType, Type};
-use async_graphql_value::Name;
 use serde::{Deserialize, Serialize};
+
+use crate::type_normalization::{BaseType, Type};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PrimitiveType {
@@ -75,7 +75,7 @@ impl Display for PrimitiveType {
 
 pub fn vector_introspection_base_type() -> BaseType {
     BaseType::List(Box::new(Type {
-        base: BaseType::Named(Name::new("Float")),
+        base: BaseType::Leaf("Float".to_string()),
         nullable: false,
     }))
 }

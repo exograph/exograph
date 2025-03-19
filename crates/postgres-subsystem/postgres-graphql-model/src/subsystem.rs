@@ -11,9 +11,7 @@ use std::{collections::HashMap, sync::Arc, vec};
 
 use async_graphql_parser::types::{FieldDefinition, TypeDefinition};
 
-use super::{
-    mutation::PostgresMutation, order::OrderByParameterType, predicate::PredicateParameterType,
-};
+use super::{mutation::PostgresMutation, order::OrderByParameterType};
 use crate::{
     query::{AggregateQuery, CollectionQuery, UniqueQuery},
     types::MutationType,
@@ -27,8 +25,8 @@ use core_plugin_interface::{
     system_serializer::SystemSerializer,
 };
 
-use postgres_core_model::subsystem::PostgresCoreSubsystem;
 use postgres_core_model::types::EntityType;
+use postgres_core_model::{predicate::PredicateParameterType, subsystem::PostgresCoreSubsystem};
 
 use serde::{Deserialize, Serialize};
 

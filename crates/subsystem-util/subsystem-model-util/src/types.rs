@@ -8,14 +8,14 @@
 // by the Apache License, Version 2.0.
 
 use async_graphql_parser::types::{
-    FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
+    FieldDefinition, InputObjectType, ObjectType, TypeDefinition, TypeKind,
 };
 
 use core_model::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
     type_normalization::{
         default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
-        Parameter, TypeDefinitionProvider,
+        Parameter, Type, TypeDefinitionProvider,
     },
     types::{FieldType, Named, OperationReturnType, TypeValidation},
 };
@@ -114,7 +114,8 @@ impl TypeDefinitionProvider<SerializableSlab<ModuleType>> for ModuleType {
 
 impl FieldDefinitionProvider<SerializableSlab<ModuleType>> for ModuleField {
     fn field_definition(&self, _module_types: &SerializableSlab<ModuleType>) -> FieldDefinition {
-        let field_type = default_positioned((&self.typ).into());
+        let field_type: Type = (&self.typ).into();
+        let field_type = default_positioned(field_type.to_graphql_type());
 
         FieldDefinition {
             description: self.doc_comments.clone().map(default_positioned),

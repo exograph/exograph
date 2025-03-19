@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use postgres_core_model::predicate::PredicateParameter;
 use serde::{Deserialize, Serialize};
 
 use core_plugin_interface::core_model::type_normalization::Parameter;
@@ -14,7 +15,6 @@ use core_plugin_interface::core_model::type_normalization::Parameter;
 use crate::{
     limit_offset::{LimitParameter, OffsetParameter},
     order::OrderByParameter,
-    predicate::PredicateParameter,
 };
 
 use super::operation::{OperationParameters, PostgresOperation};

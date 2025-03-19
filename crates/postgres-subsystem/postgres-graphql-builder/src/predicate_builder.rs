@@ -12,17 +12,16 @@ use core_plugin_interface::core_model::{
     types::{FieldType, Named},
 };
 use exo_sql::ColumnPathLink;
-use postgres_graphql_model::predicate::PredicateParameterTypeWrapper;
-
+use postgres_core_model::predicate::{
+    PredicateParameter, PredicateParameterType, PredicateParameterTypeKind,
+    PredicateParameterTypeWrapper,
+};
 use postgres_core_model::types::{EntityType, PostgresField, PostgresPrimitiveType, TypeIndex};
 use postgres_core_model::{relation::PostgresRelation, types::EntityRepresentation};
 
 use std::collections::HashMap;
 
 use super::system_builder::SystemContextBuilding;
-use postgres_graphql_model::predicate::{
-    PredicateParameter, PredicateParameterType, PredicateParameterTypeKind,
-};
 
 use postgres_core_builder::resolved_type::{
     ResolvedCompositeType, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
