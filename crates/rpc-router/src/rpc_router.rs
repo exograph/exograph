@@ -2,16 +2,22 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use http::StatusCode;
+use async_stream::try_stream;
+use bytes::Bytes;
 
 use common::{
     context::RequestContext,
     env_const::get_rpc_http_path,
-    http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload},
+    http::{Headers, RequestHead, ResponseBody, ResponsePayload},
     router::Router,
 };
-use core_resolver::system_rpc_resolver::SystemRpcResolver;
+use core_resolver::{
+    plugin::subsystem_rpc_resolver::{JsonRpcId, JsonRpcRequest, SubsystemRpcError},
+    system_rpc_resolver::SystemRpcResolver,
+    QueryResponseBody,
+};
 use exo_env::Environment;
+use http::StatusCode;
 
 pub struct RpcRouter {
     system_resolver: SystemRpcResolver,
@@ -31,6 +37,9 @@ impl RpcRouter {
     }
 }
 
+const ERROR_METHOD_NOT_FOUND_CODE: &str = "-32601";
+const ERROR_METHOD_NOT_FOUND_MESSAGE: &str = "Method not found";
+
 #[async_trait]
 impl<'a> Router<RequestContext<'a>> for RpcRouter {
     async fn route(&self, request_context: &RequestContext<'a>) -> Option<ResponsePayload> {
@@ -38,17 +47,107 @@ impl<'a> Router<RequestContext<'a>> for RpcRouter {
             return None;
         }
 
-        match self.system_resolver.resolve(request_context).await {
-            Ok(Some(response)) => Some(response),
-            Err(e) => {
-                tracing::error!("Error resolving subsystem: {}", e);
-                Some(ResponsePayload {
-                    body: ResponseBody::None,
-                    headers: Headers::new(),
-                    status_code: StatusCode::INTERNAL_SERVER_ERROR,
-                })
+        use common::http::RequestPayload;
+
+        let body = request_context.take_body();
+
+        let request: Result<JsonRpcRequest, _> =
+            serde_json::from_value(body).map_err(|_| SubsystemRpcError::ParseError);
+
+        let mut id = None;
+        let mut headers = Headers::new();
+
+        headers.insert("content-type".into(), "application/json".into());
+
+        let response = {
+            match request {
+                Ok(request) => {
+                    if request.jsonrpc != "2.0" {
+                        Err(SubsystemRpcError::InvalidRequest)
+                    } else {
+                        id = Some(request.id);
+                        let response = self
+                            .system_resolver
+                            .resolve(&request.method, &request.params, request_context)
+                            .await;
+
+                        if let Ok(Some(response)) = &response {
+                            for (key, value) in response.response.headers.iter() {
+                                headers.insert(key.into(), value.into());
+                            }
+                        }
+
+                        response
+                    }
+                }
+                Err(_) => Err(SubsystemRpcError::ParseError),
             }
-            _ => None,
-        }
+        };
+
+        let stream = try_stream! {
+            macro_rules! emit_id_and_close {
+                () => {
+                    yield Bytes::from_static(br#", "id": "#);
+
+                    match id {
+                        Some(JsonRpcId::String(value)) => {
+                            yield Bytes::from_static(br#"""#);
+                            yield Bytes::from(value);
+                            yield Bytes::from_static(br#"""#);
+                        }
+                        Some(JsonRpcId::Number(value)) => {
+                            yield Bytes::from(value.to_string());
+                        }
+                        None => {
+                            yield Bytes::from_static(br#"null"#);
+                        }
+                    };
+
+                    yield Bytes::from_static(br#"}"#);
+                };
+            }
+
+            match response {
+                Ok(Some(response)) => {
+                    yield Bytes::from_static(br#"{"jsonrpc": "2.0", "result": "#);
+
+                    match response.response.body {
+                        QueryResponseBody::Json(value) => yield Bytes::from(value.to_string()),
+                        QueryResponseBody::Raw(Some(value)) => yield Bytes::from(value),
+                        QueryResponseBody::Raw(None) => yield Bytes::from_static(b"null"),
+                    };
+
+                    emit_id_and_close!();
+                },
+                Ok(None) => {
+                    yield Bytes::from_static(br#"{"error": {"code": "#);
+                    yield Bytes::from_static(ERROR_METHOD_NOT_FOUND_CODE.as_bytes());
+                    yield Bytes::from_static(br#", "message": ""#);
+                    yield Bytes::from_static(ERROR_METHOD_NOT_FOUND_MESSAGE.as_bytes());
+                    yield Bytes::from_static(br#""}"#);
+                    emit_id_and_close!();
+                },
+                Err(err) => {
+                    tracing::error!("Error while resolving request: {:?}", err);
+
+                    yield Bytes::from_static(br#"{"error": {"code": "#);
+                    yield Bytes::from_static(err.error_code_string().as_bytes());
+                    yield Bytes::from_static(br#", "message": ""#);
+                    yield Bytes::from(
+                        err.user_error_message().unwrap_or_default()
+                            .replace('\"', "")
+                            .replace('\n', "; ")
+                    );
+                    yield Bytes::from_static(br#""}"#);
+                    emit_id_and_close!();
+                },
+            }
+        };
+
+        Some(ResponsePayload {
+            body: ResponseBody::Stream(Box::pin(stream)),
+            headers,
+            status_code: StatusCode::OK,
+        })
     }
 }
