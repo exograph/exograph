@@ -9,8 +9,9 @@
 
 use std::vec;
 
+use async_trait::async_trait;
+
 use core_plugin_interface::{
-    async_trait::async_trait,
     core_model_builder::{
         builder::system_builder::BaseModelSystem,
         error::ModelBuildingError,

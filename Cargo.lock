@@ -1515,11 +1515,8 @@ dependencies = [
 name = "core-plugin-interface"
 version = "0.12.1"
 dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
  "async-trait",
  "built",
- "codemap-diagnostic",
  "core-model",
  "core-model-builder",
  "core-plugin-shared",
@@ -5436,6 +5433,7 @@ dependencies = [
  "anyhow",
  "builder",
  "codemap",
+ "codemap-diagnostic",
  "core-plugin-interface",
  "core-plugin-shared",
  "dashmap 6.1.0",
@@ -10543,6 +10541,7 @@ dependencies = [
 name = "wasm-builder"
 version = "0.12.1"
 dependencies = [
+ "async-trait",
  "core-plugin-interface",
  "wasm-graphql-builder",
 ]
@@ -10578,6 +10577,7 @@ dependencies = [
 name = "wasm-graphql-builder"
 version = "0.12.1"
 dependencies = [
+ "async-trait",
  "core-plugin-interface",
  "subsystem-model-builder-util",
  "wasm-graphql-model",

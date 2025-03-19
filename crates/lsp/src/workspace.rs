@@ -8,7 +8,7 @@ use dashmap::DashMap;
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 
 use core_plugin_interface::{
-    codemap_diagnostic, core_model_builder::error::ModelBuildingError, interface::SubsystemBuilder,
+    core_model_builder::error::ModelBuildingError, interface::SubsystemBuilder,
 };
 
 #[derive(Debug)]

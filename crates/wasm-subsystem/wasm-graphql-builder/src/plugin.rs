@@ -7,9 +7,11 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use async_trait::async_trait;
+
 use crate::system_builder::ModelWasmSystemWithInterceptors;
+
 use core_plugin_interface::{
-    async_trait::async_trait,
     core_model_builder::{
         builder::system_builder::BaseModelSystem,
         error::ModelBuildingError,

@@ -5,6 +5,7 @@ edition.workspace = true
 publish = false
 
 [dependencies]
+async-trait.workspace = true
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 wasm-graphql-model = { path = "../wasm-graphql-model" }
 subsystem-model-builder-util = { path = "../../subsystem-util/subsystem-model-builder-util" }
