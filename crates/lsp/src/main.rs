@@ -18,14 +18,8 @@ mod workspaces;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let _guard = trace_setup::setup();
+    trace_setup::setup()?;
 
-    start().await?;
-
-    Ok(())
-}
-
-pub async fn start() -> Result<()> {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
