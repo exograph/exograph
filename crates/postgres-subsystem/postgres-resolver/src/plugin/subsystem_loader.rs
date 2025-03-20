@@ -15,13 +15,12 @@ use common::env_const::{get_rest_http_path, get_rpc_http_path};
 use postgres_core_model::subsystem::PostgresCoreSubsystem;
 use postgres_graphql_resolver::PostgresSubsystemResolver;
 
-use core_plugin_interface::{
-    core_resolver::plugin::{
-        SubsystemGraphQLResolver, SubsystemRestResolver, SubsystemRpcResolver,
-    },
-    interface::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver},
-    serializable_system::SerializableSubsystem,
-    system_serializer::SystemSerializer,
+use core_plugin_interface::interface::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver};
+use core_plugin_shared::{
+    serializable_system::SerializableSubsystem, system_serializer::SystemSerializer,
+};
+use core_resolver::plugin::{
+    SubsystemGraphQLResolver, SubsystemRestResolver, SubsystemRpcResolver,
 };
 use exo_env::Environment;
 use exo_sql::DatabaseClientManager;

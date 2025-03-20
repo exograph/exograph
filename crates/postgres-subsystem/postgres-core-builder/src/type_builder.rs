@@ -17,7 +17,8 @@ use crate::resolved_type::{
 };
 use common::value::val::ValNumber;
 use common::value::Val;
-use core_plugin_interface::core_model::access::AccessPredicateExpression;
+use core_model::access::AccessPredicateExpression;
+use core_model::types::{Named, TypeValidationProvider};
 use postgres_core_model::access::{CreationAccessExpression, PrecheckAccessPrimitiveExpression};
 use postgres_core_model::types::{EntityRepresentation, PostgresFieldDefaultValue};
 
@@ -25,14 +26,10 @@ use crate::{aggregate_type_builder::aggregate_type_name, shallow::Shallow};
 
 use super::access;
 
-use core_plugin_interface::{
-    core_model::{
-        mapped_arena::SerializableSlabIndex,
-        primitive_type::PrimitiveType,
-        types::{FieldType, Named, TypeValidationProvider},
-    },
-    core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError, typechecker::Typed},
+use core_model::{
+    mapped_arena::SerializableSlabIndex, primitive_type::PrimitiveType, types::FieldType,
 };
+use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError, typechecker::Typed};
 
 use exo_sql::{ColumnId, VectorDistanceFunction, DEFAULT_VECTOR_SIZE};
 

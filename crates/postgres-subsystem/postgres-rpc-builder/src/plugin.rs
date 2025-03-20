@@ -9,12 +9,12 @@
 
 use std::sync::Arc;
 
-use core_plugin_interface::core_model_builder::plugin::RpcSubsystemBuild;
-
-use core_plugin_interface::serializable_system::SerializableRpcBytes;
-use core_plugin_interface::{
-    core_model_builder::error::ModelBuildingError, system_serializer::SystemSerializer,
+use core_model_builder::plugin::RpcSubsystemBuild;
+use core_plugin_shared::{
+    serializable_system::SerializableRpcBytes, system_serializer::SystemSerializer,
 };
+
+use core_model_builder::error::ModelBuildingError;
 
 use postgres_core_builder::resolved_type::ResolvedType;
 use postgres_core_builder::resolved_type::ResolvedTypeEnv;

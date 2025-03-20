@@ -9,9 +9,7 @@
 
 // TODO: This is duplicated from postgres-builder and cli
 #[cfg(test)]
-use core_plugin_interface::{
-    error::ModelSerializationError, serializable_system::SerializableSystem,
-};
+use core_plugin_shared::{error::ModelSerializationError, serializable_system::SerializableSystem};
 #[cfg(test)]
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
@@ -44,7 +42,7 @@ fn deserialize_postgres_subsystem(
         .into_iter()
         .find(|subsystem| subsystem.id == "postgres");
 
-    use core_plugin_interface::system_serializer::SystemSerializer;
+    use core_plugin_shared::system_serializer::SystemSerializer;
     use postgres_core_model::subsystem::PostgresCoreSubsystem;
     match postgres_subsystem {
         Some(subsystem) => {

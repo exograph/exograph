@@ -13,8 +13,8 @@ use async_recursion::async_recursion;
 use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
-use core_plugin_interface::core_resolver::access_solver::AccessInput;
-use core_plugin_interface::core_resolver::context_extractor::ContextExtractor;
+use core_resolver::access_solver::AccessInput;
+use core_resolver::context_extractor::ContextExtractor;
 use exo_sql::{
     AbstractInsert, AbstractPredicate, AbstractSelect, ColumnId, ColumnValuePair, InsertionElement,
     InsertionRow, ManyToOne, NestedInsertion,

@@ -4,7 +4,7 @@ use async_graphql_parser::types::{
     BaseType, FieldDefinition, InputValueDefinition, ObjectType, Type, TypeDefinition, TypeKind,
 };
 use async_graphql_value::Name;
-use core_plugin_interface::core_model::type_normalization::{
+use core_model::type_normalization::{
     default_positioned, default_positioned_name, FieldDefinitionProvider, TypeDefinitionProvider,
 };
 

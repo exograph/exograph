@@ -10,14 +10,12 @@
 //! Build mutation input types (`<Type>CreationInput`, `<Type>UpdateInput`, `<Type>ReferenceInput`) and
 //! mutations (`create<Type>`, `update<Type>`, and `delete<Type>` as well as their plural versions)
 
-use core_plugin_interface::{
-    core_model::{
-        access::AccessPredicateExpression,
-        mapped_arena::{MappedArena, SerializableSlabIndex},
-        types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
-    },
-    core_model_builder::error::ModelBuildingError,
+use core_model::{
+    access::AccessPredicateExpression,
+    mapped_arena::{MappedArena, SerializableSlabIndex},
+    types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
 };
+use core_model_builder::error::ModelBuildingError;
 
 use postgres_graphql_model::{
     mutation::{PostgresMutation, PostgresMutationParameters},

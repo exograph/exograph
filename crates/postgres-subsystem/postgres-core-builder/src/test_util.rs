@@ -1,11 +1,11 @@
 #![cfg(test)]
 
 use codemap::CodeMap;
+use core_model::mapped_arena::MappedArena;
 use core_model_builder::{
     builder::system_builder::BaseModelSystem, error::ModelBuildingError,
     typechecker::typ::TypecheckedSystem,
 };
-use core_plugin_interface::core_model::mapped_arena::MappedArena;
 use resolved_type::{ResolvedType, ResolvedTypeEnv};
 
 use super::*;

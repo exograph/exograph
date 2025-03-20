@@ -10,7 +10,7 @@ http.workspace = true
 
 exo-sql = { path = "../../../libs/exo-sql" }
 
-core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+core-resolver = { path = "../../core-subsystem/core-resolver" }
 postgres-rest-model = { path = "../postgres-rest-model" }
 postgres-core-resolver = { path = "../postgres-core-resolver" }
 common = { path = "../../common" }

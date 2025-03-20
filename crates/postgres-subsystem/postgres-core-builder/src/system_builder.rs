@@ -9,13 +9,11 @@
 
 use std::sync::Mutex;
 
-use core_plugin_interface::{
-    core_model::{
-        access::AccessPredicateExpression,
-        mapped_arena::{MappedArena, SerializableSlab, SerializableSlabIndex},
-    },
-    core_model_builder::{builder::system_builder::BaseModelSystem, error::ModelBuildingError},
+use core_model::{
+    access::AccessPredicateExpression,
+    mapped_arena::{MappedArena, SerializableSlab, SerializableSlabIndex},
 };
+use core_model_builder::{builder::system_builder::BaseModelSystem, error::ModelBuildingError};
 
 use postgres_core_model::{
     access::PrecheckAccessPrimitiveExpression,

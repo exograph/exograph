@@ -15,14 +15,12 @@ use crate::{
 use async_graphql_parser::types::{FieldDefinition, OperationType, TypeDefinition};
 use async_trait::async_trait;
 use common::context::RequestContext;
-use core_plugin_interface::{
-    core_resolver::{
-        plugin::{SubsystemGraphQLResolver, SubsystemResolutionError},
-        system_resolver::GraphQLSystemResolver,
-        validation::field::ValidatedField,
-        InterceptedOperation, QueryResponse,
-    },
-    interception::InterceptorIndex,
+use core_plugin_shared::interception::InterceptorIndex;
+use core_resolver::{
+    plugin::{SubsystemGraphQLResolver, SubsystemResolutionError},
+    system_resolver::GraphQLSystemResolver,
+    validation::field::ValidatedField,
+    InterceptedOperation, QueryResponse,
 };
 use exo_sql::DatabaseExecutor;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;

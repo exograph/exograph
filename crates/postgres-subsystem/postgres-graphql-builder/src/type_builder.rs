@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use core_plugin_interface::core_model_builder::error::ModelBuildingError;
+use core_model_builder::error::ModelBuildingError;
 use postgres_core_builder::resolved_type::{ResolvedCompositeType, ResolvedType, ResolvedTypeEnv};
 use postgres_core_model::types::EntityRepresentation;
 

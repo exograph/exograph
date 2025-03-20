@@ -25,22 +25,20 @@ use crate::resolved_type::{
     ResolvedCompositeType, ResolvedField, ResolvedFieldDefault, ResolvedFieldType, ResolvedType,
     ResolvedTypeHint,
 };
-use core_plugin_interface::{
-    core_model::{
-        mapped_arena::MappedArena,
-        types::{FieldType, Named},
+use core_model::{
+    mapped_arena::MappedArena,
+    types::{FieldType, Named},
+};
+use core_model_builder::{
+    ast::ast_types::{
+        default_span, AstAnnotation, AstAnnotationParams, AstExpr, AstField, AstFieldDefault,
+        AstFieldDefaultKind, AstFieldType, AstModel, AstModelKind,
     },
-    core_model_builder::{
-        ast::ast_types::{
-            default_span, AstAnnotation, AstAnnotationParams, AstExpr, AstField, AstFieldDefault,
-            AstFieldDefaultKind, AstFieldType, AstModel, AstModelKind,
-        },
-        builder::resolved_builder::AnnotationMapHelper,
-        error::ModelBuildingError,
-        typechecker::{
-            typ::{Module, Type, TypecheckedSystem},
-            Typed,
-        },
+    builder::resolved_builder::AnnotationMapHelper,
+    error::ModelBuildingError,
+    typechecker::{
+        typ::{Module, Type, TypecheckedSystem},
+        Typed,
     },
 };
 use exo_sql::{PhysicalTableName, VectorDistanceFunction};

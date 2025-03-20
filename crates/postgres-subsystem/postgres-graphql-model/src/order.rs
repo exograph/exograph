@@ -17,7 +17,7 @@ use async_graphql_parser::{
     Pos, Positioned,
 };
 use async_graphql_value::Name;
-use core_plugin_interface::core_model::{
+use core_model::{
     mapped_arena::SerializableSlabIndex,
     primitive_type::vector_introspection_type,
     type_normalization::{

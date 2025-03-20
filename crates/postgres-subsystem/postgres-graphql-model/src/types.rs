@@ -13,11 +13,11 @@ use crate::subsystem::PostgresGraphQLSubsystem;
 use async_graphql_parser::types::{
     FieldDefinition, InputObjectType, ObjectType, TypeDefinition, TypeKind,
 };
-use core_plugin_interface::core_model::access::AccessPredicateExpression;
-use core_plugin_interface::core_model::primitive_type::vector_introspection_base_type;
-use core_plugin_interface::core_model::type_normalization::Type;
-use core_plugin_interface::core_model::types::{DirectivesProvider, TypeValidation};
-use core_plugin_interface::core_model::{
+use core_model::access::AccessPredicateExpression;
+use core_model::primitive_type::vector_introspection_base_type;
+use core_model::type_normalization::Type;
+use core_model::types::{DirectivesProvider, TypeValidation};
+use core_model::{
     mapped_arena::SerializableSlabIndex,
     type_normalization::{
         default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,

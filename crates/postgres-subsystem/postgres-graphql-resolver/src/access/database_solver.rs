@@ -2,7 +2,7 @@
 mod tests {
     use std::collections::HashMap;
 
-    use core_plugin_interface::core_model::{
+    use core_model::{
         access::{
             AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
             CommonAccessPrimitiveExpression,
@@ -25,7 +25,7 @@ mod tests {
 
     use crate::access::test_util::{context_selection, test_request_context, TestRouter};
 
-    use core_plugin_interface::core_resolver::access_solver::AccessSolver;
+    use core_resolver::access_solver::AccessSolver;
     use postgres_core_resolver::access::database_solver::to_column_path;
 
     struct TestSystem {

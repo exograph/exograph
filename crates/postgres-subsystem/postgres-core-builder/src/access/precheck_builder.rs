@@ -10,26 +10,20 @@
 use std::collections::HashMap;
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use core_plugin_interface::{
-    core_model::access::FunctionCall,
-    core_model_builder::{
-        ast::ast_types::{AstExpr, FieldSelection},
-        error::ModelBuildingError,
-        typechecker::Typed,
+use core_model::{
+    access::{
+        AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
+        CommonAccessPrimitiveExpression, FunctionCall,
     },
+    context_type::{ContextFieldType, ContextSelection},
+    mapped_arena::MappedArena,
+    primitive_type::PrimitiveType,
+    types::FieldType,
 };
-use core_plugin_interface::{
-    core_model::{
-        access::{
-            AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
-            CommonAccessPrimitiveExpression,
-        },
-        context_type::{ContextFieldType, ContextSelection},
-        mapped_arena::MappedArena,
-        primitive_type::PrimitiveType,
-        types::FieldType,
-    },
-    core_model_builder::ast::ast_types::FieldSelectionElement,
+use core_model_builder::{
+    ast::ast_types::{AstExpr, FieldSelection, FieldSelectionElement},
+    error::ModelBuildingError,
+    typechecker::Typed,
 };
 
 use exo_sql::{Database, PhysicalColumnPath};

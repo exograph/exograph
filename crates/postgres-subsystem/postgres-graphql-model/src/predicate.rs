@@ -11,7 +11,7 @@ use crate::subsystem::PostgresGraphQLSubsystem;
 use async_graphql_parser::types::{
     InputObjectType, InputValueDefinition, Type, TypeDefinition, TypeKind,
 };
-use core_plugin_interface::core_model::{
+use core_model::{
     primitive_type::vector_introspection_type,
     type_normalization::{
         default_positioned, default_positioned_name, InputValueProvider, TypeDefinitionProvider,

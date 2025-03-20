@@ -9,8 +9,8 @@
 
 use std::collections::HashMap;
 
-use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
-use core_plugin_interface::core_resolver::access_solver::AccessInput;
+use core_model::mapped_arena::SerializableSlabIndex;
+use core_resolver::access_solver::AccessInput;
 use futures::stream::TryStreamExt;
 use postgres_core_model::access::{
     CreationAccessExpression, DatabaseAccessPrimitiveExpression, PrecheckAccessPrimitiveExpression,
@@ -24,10 +24,8 @@ use super::sql_mapper::SQLOperationKind;
 
 use common::context::RequestContext;
 use common::value::Val;
-use core_plugin_interface::core_model::access::AccessPredicateExpression;
-use core_plugin_interface::core_resolver::{
-    access_solver::AccessSolver, validation::field::ValidatedField,
-};
+use core_model::access::AccessPredicateExpression;
+use core_resolver::{access_solver::AccessSolver, validation::field::ValidatedField};
 use exo_sql::{AbstractPredicate, Predicate};
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 

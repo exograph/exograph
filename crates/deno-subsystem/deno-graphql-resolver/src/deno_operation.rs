@@ -11,16 +11,13 @@ use indexmap::IndexMap;
 
 use common::context::RequestContext;
 use common::value::Val;
-use core_plugin_interface::{
-    core_resolver::{
-        access_solver::{AccessSolver, AccessSolverError},
-        context_extractor::ContextExtractor,
-        exograph_execute_query,
-        system_resolver::{ExographExecuteQueryFn, GraphQLSystemResolver},
-        validation::field::ValidatedField,
-        QueryResponse, QueryResponseBody,
-    },
-    trusted_documents::TrustedDocumentEnforcement,
+use core_resolver::{
+    access_solver::{AccessSolver, AccessSolverError},
+    context_extractor::ContextExtractor,
+    exograph_execute_query,
+    system_resolver::{ExographExecuteQueryFn, GraphQLSystemResolver},
+    validation::field::ValidatedField,
+    QueryResponse, QueryResponseBody,
 };
 
 use deno_graphql_model::{

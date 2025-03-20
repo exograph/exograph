@@ -12,9 +12,9 @@ use crate::aggregate::AggregateField;
 use crate::vector_distance::VectorDistanceField;
 
 use common::value::Val;
-use core_plugin_interface::core_model::context_type::ContextSelection;
-use core_plugin_interface::core_model::types::TypeValidation;
-use core_plugin_interface::core_model::{
+use core_model::context_type::ContextSelection;
+use core_model::types::TypeValidation;
+use core_model::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
     types::{FieldType, Named},
 };

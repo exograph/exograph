@@ -20,10 +20,9 @@ use crate::{
 };
 use async_trait::async_trait;
 use common::context::RequestContext;
-use core_plugin_interface::core_resolver::validation::field::ValidatedField;
-use core_plugin_interface::{
-    core_model::types::OperationReturnType, core_resolver::access_solver::AccessInput,
-};
+use core_model::types::OperationReturnType;
+use core_resolver::access_solver::AccessInput;
+use core_resolver::validation::field::ValidatedField;
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect,
     AbstractUpdate, Predicate,

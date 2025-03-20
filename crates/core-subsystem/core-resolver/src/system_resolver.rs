@@ -288,10 +288,10 @@ macro_rules! exograph_execute_query {
     ($system_resolver:expr, $request_context:expr) => {
         &move |query_string: String,
                variables: Option<serde_json::Map<String, serde_json::Value>>,
-               enforce_trusted_documents: TrustedDocumentEnforcement,
+               enforce_trusted_documents: core_plugin_shared::trusted_documents::TrustedDocumentEnforcement,
                context_override: serde_json::Value| {
             use common::operation_payload::OperationsPayload;
-            use core_plugin_interface::core_resolver::QueryResponseBody;
+            use core_resolver::QueryResponseBody;
             use futures::FutureExt;
 
             let new_request_context = $request_context.with_override(context_override);

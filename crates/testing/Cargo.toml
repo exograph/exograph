@@ -46,8 +46,7 @@ exo-env = { path = "../../libs/exo-env" }
 
 system-router = { path = "../system-router" }
 
-core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
-
+core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
 server-common = { path = "../server-common" }
 futures.workspace = true
 crossbeam-channel = "0.5.13"

@@ -9,14 +9,12 @@
 
 //! Build update mutation types `<Type>UpdateInput`, `update<Type>`, and `update<Type>s`
 
-use core_plugin_interface::{
-    core_model::{
-        access::AccessPredicateExpression,
-        mapped_arena::{MappedArena, SerializableSlabIndex},
-        types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
-    },
-    core_model_builder::error::ModelBuildingError,
+use core_model::{
+    access::AccessPredicateExpression,
+    mapped_arena::{MappedArena, SerializableSlabIndex},
+    types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
 };
+use core_model_builder::error::ModelBuildingError;
 use postgres_graphql_model::{
     mutation::{DataParameter, DataParameterType, PostgresMutationParameters},
     types::MutationType,

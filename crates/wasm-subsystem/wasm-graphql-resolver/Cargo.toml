@@ -11,7 +11,9 @@ thiserror.workspace = true
 wasmtime.workspace = true
 
 exo-wasm = { path = "../../../libs/exo-wasm" }
-core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
+core-model = { path = "../../core-subsystem/core-model" }
+core-resolver = { path = "../../core-subsystem/core-resolver" }
 common = { path = "../../common" }
 wasm-graphql-model = { path = "../wasm-graphql-model" }
 

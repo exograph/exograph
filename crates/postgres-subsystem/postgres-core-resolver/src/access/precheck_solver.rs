@@ -13,15 +13,14 @@ use crate::cast::{self, literal_column_path};
 use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
-use core_plugin_interface::{
-    core_model::access::{
-        AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp, FunctionCall,
-    },
-    core_resolver::access_solver::{
-        eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
-        reduce_common_primitive_expression, AccessInput, AccessInputPath, AccessInputPathElement,
-        AccessSolution, AccessSolver, AccessSolverError,
-    },
+
+use core_model::access::{
+    AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp, FunctionCall,
+};
+use core_resolver::access_solver::{
+    eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
+    reduce_common_primitive_expression, AccessInput, AccessInputPath, AccessInputPathElement,
+    AccessSolution, AccessSolver, AccessSolverError,
 };
 use exo_sql::{
     AbstractPredicate, ColumnPath, ColumnPathLink, Database, PhysicalColumnPath, PhysicalColumnType,
@@ -775,7 +774,7 @@ async fn resolve_value<'a>(
 
     let value = value.transpose()?.flatten();
 
-    use core_plugin_interface::core_resolver::context_extractor::ContextExtractor;
+    use core_resolver::context_extractor::ContextExtractor;
     match (value, default) {
         (Some(value), _) => Ok(Some(MaybeOwned::Borrowed(value))),
         (None, Some(default)) => match default {

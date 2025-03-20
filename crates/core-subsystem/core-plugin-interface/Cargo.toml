@@ -12,7 +12,6 @@ thiserror.workspace = true
 async-trait.workspace = true
 core-model-builder = { path = "../core-model-builder" }
 core-resolver = { path = "../core-resolver" }
-core-model = { path = "../core-model" }
 core-plugin-shared = { path = "../core-plugin-shared" }
 exo-env = { path = "../../../libs/exo-env" }
 

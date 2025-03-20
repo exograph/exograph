@@ -8,7 +8,8 @@ publish = false
 postgres-core-model = { path = "../postgres-core-model" }
 postgres-rpc-model = { path = "../postgres-rpc-model" }
 postgres-core-builder = { path = "../postgres-core-builder" }
-core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
+core-model-builder = { path = "../../core-subsystem/core-model-builder" }
 
 
 [dev-dependencies]

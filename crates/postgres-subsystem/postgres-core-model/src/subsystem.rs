@@ -7,15 +7,12 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use core_plugin_interface::{
-    core_model::{
-        access::AccessPredicateExpression,
-        context_type::{ContextContainer, ContextType},
-        mapped_arena::{MappedArena, SerializableSlab},
-    },
-    error::ModelSerializationError,
-    system_serializer::SystemSerializer,
+use core_model::{
+    access::AccessPredicateExpression,
+    context_type::{ContextContainer, ContextType},
+    mapped_arena::{MappedArena, SerializableSlab},
 };
+use core_plugin_shared::{error::ModelSerializationError, system_serializer::SystemSerializer};
 use exo_sql::Database;
 use serde::{Deserialize, Serialize};
 

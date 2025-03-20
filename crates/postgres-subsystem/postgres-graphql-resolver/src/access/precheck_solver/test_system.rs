@@ -1,5 +1,5 @@
 use common::router::{PlainRequestPayload, Router};
-use core_plugin_interface::core_model::access::CommonAccessPrimitiveExpression;
+use core_model::access::CommonAccessPrimitiveExpression;
 use exo_sql::{ColumnPath, ColumnPathLink, PhysicalColumnPath};
 use postgres_core_model::{
     access::{AccessPrimitiveExpressionPath, FieldPath, PrecheckAccessPrimitiveExpression},

@@ -9,7 +9,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use core_plugin_interface::core_model_builder::{
+use core_model_builder::{
     ast::ast_types::{AstAnnotationParams, AstExpr},
     typechecker::Typed,
 };

@@ -11,9 +11,9 @@ use postgres_core_model::predicate::PredicateParameter;
 use serde::{Deserialize, Serialize};
 
 use crate::types::MutationType;
-use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
-use core_plugin_interface::core_model::type_normalization::{Parameter, Type};
-use core_plugin_interface::core_model::types::{FieldType, Named, TypeValidation};
+use core_model::mapped_arena::SerializableSlabIndex;
+use core_model::type_normalization::{Parameter, Type};
+use core_model::types::{FieldType, Named, TypeValidation};
 
 use super::operation::{OperationParameters, PostgresOperation};
 

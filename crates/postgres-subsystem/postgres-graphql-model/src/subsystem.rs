@@ -16,14 +16,11 @@ use crate::{
     query::{AggregateQuery, CollectionQuery, UniqueQuery},
     types::MutationType,
 };
-use core_plugin_interface::{
-    core_model::{
-        mapped_arena::{MappedArena, SerializableSlab, SerializableSlabIndex},
-        type_normalization::{FieldDefinitionProvider, TypeDefinitionProvider},
-    },
-    error::ModelSerializationError,
-    system_serializer::SystemSerializer,
+use core_model::{
+    mapped_arena::{MappedArena, SerializableSlab, SerializableSlabIndex},
+    type_normalization::{FieldDefinitionProvider, TypeDefinitionProvider},
 };
+use core_plugin_shared::{error::ModelSerializationError, system_serializer::SystemSerializer};
 
 use postgres_core_model::types::EntityType;
 use postgres_core_model::{predicate::PredicateParameterType, subsystem::PostgresCoreSubsystem};

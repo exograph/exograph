@@ -9,8 +9,8 @@
 
 use std::collections::HashMap;
 
-use core_plugin_interface::core_model::types::Named;
-use core_plugin_interface::core_model_builder::error::ModelBuildingError;
+use core_model::types::Named;
+use core_model_builder::error::ModelBuildingError;
 use lazy_static::lazy_static;
 use postgres_core_model::aggregate::{
     AggregateField, AggregateFieldType, AggregateType, ScalarAggregateFieldKind,

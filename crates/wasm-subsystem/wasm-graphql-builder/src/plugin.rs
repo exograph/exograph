@@ -11,16 +11,15 @@ use async_trait::async_trait;
 
 use crate::system_builder::ModelWasmSystemWithInterceptors;
 
-use core_plugin_interface::{
-    core_model_builder::{
-        builder::system_builder::BaseModelSystem,
-        error::ModelBuildingError,
-        plugin::{GraphQLSubsystemBuild, Interception},
-        typechecker::typ::TypecheckedSystem,
-    },
-    interception::InterceptorIndex,
-    interface::GraphQLSubsystemBuilder,
-    serializable_system::SerializableGraphQLBytes,
+use core_model_builder::{
+    builder::system_builder::BaseModelSystem,
+    error::ModelBuildingError,
+    plugin::{GraphQLSubsystemBuild, Interception},
+    typechecker::typ::TypecheckedSystem,
+};
+use core_plugin_interface::interface::GraphQLSubsystemBuilder;
+use core_plugin_shared::{
+    interception::InterceptorIndex, serializable_system::SerializableGraphQLBytes,
     system_serializer::SystemSerializer,
 };
 

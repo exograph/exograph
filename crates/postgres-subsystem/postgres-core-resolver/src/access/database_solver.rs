@@ -19,12 +19,11 @@
 use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
-use core_plugin_interface::{
-    core_model::access::AccessRelationalOp,
-    core_resolver::access_solver::{
-        eq_values, neq_values, reduce_common_primitive_expression, AccessInput, AccessPredicate,
-        AccessSolution, AccessSolver, AccessSolverError,
-    },
+
+use core_model::access::AccessRelationalOp;
+use core_resolver::access_solver::{
+    eq_values, neq_values, reduce_common_primitive_expression, AccessInput, AccessPredicate,
+    AccessSolution, AccessSolver, AccessSolverError,
 };
 use exo_sql::{AbstractPredicate, ColumnPath, PhysicalColumnPath, SQLParamContainer};
 use postgres_core_model::{

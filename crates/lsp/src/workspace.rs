@@ -7,9 +7,8 @@ use std::path::{Path, PathBuf};
 use dashmap::DashMap;
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 
-use core_plugin_interface::{
-    core_model_builder::error::ModelBuildingError, interface::SubsystemBuilder,
-};
+use core_model_builder::error::ModelBuildingError;
+use core_plugin_interface::interface::SubsystemBuilder;
 
 #[derive(Debug)]
 pub(crate) struct Workspace {

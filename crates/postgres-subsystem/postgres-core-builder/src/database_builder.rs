@@ -16,11 +16,8 @@ use crate::resolved_type::{
 };
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use core_plugin_interface::core_model_builder::ast::ast_types::AstExpr;
-use core_plugin_interface::{
-    core_model::{primitive_type::PrimitiveType, types::FieldType},
-    core_model_builder::error::ModelBuildingError,
-};
+use core_model::{primitive_type::PrimitiveType, types::FieldType};
+use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError};
 
 use exo_sql::{
     schema::index_spec::IndexKind, ColumnId, FloatBits, IntBits, ManyToOne, PhysicalColumn,

@@ -8,10 +8,6 @@
 // by the Apache License, Version 2.0.
 
 use common::value::Val;
-use core_plugin_interface::{
-    core_model::access::{AccessLogicalExpression, AccessRelationalOp},
-    core_resolver::access_solver::{AccessInput, AccessSolver},
-};
 use exo_sql::ColumnPath;
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
@@ -19,9 +15,11 @@ use postgres_core_model::access::PrecheckAccessPrimitiveExpression;
 
 use std::collections::HashMap;
 
-use core_plugin_interface::core_model::access::{
-    AccessPredicateExpression, CommonAccessPrimitiveExpression, FunctionCall,
+use core_model::access::{
+    AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
+    CommonAccessPrimitiveExpression, FunctionCall,
 };
+use core_resolver::access_solver::{AccessInput, AccessSolver};
 use exo_env::MapEnvironment;
 use exo_sql::AbstractPredicate;
 use serde_json::json;

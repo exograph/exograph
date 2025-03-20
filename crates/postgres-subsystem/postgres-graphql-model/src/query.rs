@@ -10,7 +10,7 @@
 use postgres_core_model::predicate::PredicateParameter;
 use serde::{Deserialize, Serialize};
 
-use core_plugin_interface::core_model::type_normalization::Parameter;
+use core_model::type_normalization::Parameter;
 
 use crate::{
     limit_offset::{LimitParameter, OffsetParameter},
