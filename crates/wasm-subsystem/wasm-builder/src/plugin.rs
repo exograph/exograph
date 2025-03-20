@@ -9,20 +9,21 @@
 
 use std::vec;
 
-use core_plugin_interface::{
-    async_trait::async_trait,
-    core_model_builder::{
-        builder::system_builder::BaseModelSystem,
-        error::ModelBuildingError,
-        plugin::CoreSubsystemBuild,
-        typechecker::{
-            annotation::{AnnotationSpec, AnnotationTarget},
-            typ::TypecheckedSystem,
-        },
+use async_trait::async_trait;
+
+use core_model_builder::{
+    builder::system_builder::BaseModelSystem,
+    error::ModelBuildingError,
+    plugin::CoreSubsystemBuild,
+    typechecker::{
+        annotation::{AnnotationSpec, AnnotationTarget},
+        typ::TypecheckedSystem,
     },
-    interface::{GraphQLSubsystemBuilder, SubsystemBuild, SubsystemBuilder},
-    serializable_system::SerializableCoreBytes,
 };
+
+use core_plugin_interface::interface::{GraphQLSubsystemBuilder, SubsystemBuild, SubsystemBuilder};
+use core_plugin_shared::serializable_system::SerializableCoreBytes;
+
 use wasm_graphql_builder::GraphQLWasmSubsystemBuilder;
 
 pub struct WasmSubsystemBuilder {

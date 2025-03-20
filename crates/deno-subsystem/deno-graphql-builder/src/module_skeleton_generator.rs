@@ -12,9 +12,9 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::{fs::File, path::Path};
 
-use core_plugin_interface::core_model::context_type::{ContextFieldType, ContextType};
-use core_plugin_interface::core_model_builder::builder::system_builder::BaseModelSystem;
-use core_plugin_interface::core_model_builder::{
+use core_model::context_type::{ContextFieldType, ContextType};
+use core_model_builder::builder::system_builder::BaseModelSystem;
+use core_model_builder::{
     ast::ast_types::{AstArgument, AstFieldType, AstModel, AstModule},
     error::ModelBuildingError,
     typechecker::Typed,
@@ -505,7 +505,7 @@ fn typescript_base_type(exo_type_name: &str) -> String {
 mod tests {
     use super::*;
     use codemap::CodeMap;
-    use core_plugin_interface::core_model_builder::ast::ast_types::{
+    use core_model_builder::ast::ast_types::{
         AstField, AstFieldType, AstModel, AstModelKind, AstModule,
     };
     use std::io::Read;

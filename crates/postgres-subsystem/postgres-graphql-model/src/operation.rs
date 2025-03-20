@@ -28,9 +28,8 @@
 
 use std::fmt::Debug;
 
-use async_graphql_parser::types::Type;
-use core_plugin_interface::core_model::type_normalization::Parameter;
-use core_plugin_interface::core_model::types::OperationReturnType;
+use core_model::type_normalization::{Parameter, Type};
+use core_model::types::OperationReturnType;
 
 use serde::{Deserialize, Serialize};
 

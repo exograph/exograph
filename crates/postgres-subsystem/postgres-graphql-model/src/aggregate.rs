@@ -15,7 +15,7 @@ use postgres_core_model::aggregate::{AggregateField, AggregateFieldType, Aggrega
 
 use crate::query::AggregateQueryParameters;
 use crate::subsystem::PostgresGraphQLSubsystem;
-use core_plugin_interface::core_model::type_normalization::{
+use core_model::type_normalization::{
     default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
     TypeDefinitionProvider,
 };

@@ -4,7 +4,7 @@ use common::{
     router::{PlainRequestPayload, Router},
 };
 
-use core_plugin_interface::core_model::context_type::ContextSelection;
+use core_model::context_type::ContextSelection;
 use exo_env::Environment;
 
 use serde_json::Value;

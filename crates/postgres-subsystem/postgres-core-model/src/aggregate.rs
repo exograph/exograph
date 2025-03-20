@@ -10,7 +10,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{relation::PostgresRelation, types::EntityType};
-use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
+use core_model::mapped_arena::SerializableSlabIndex;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AggregateType {

@@ -20,10 +20,8 @@ use exo_sql::{
 use exo_sql::{NumericComparator, SQLParamContainer};
 
 use futures::future::try_join_all;
-use postgres_graphql_model::{
-    predicate::{PredicateParameter, PredicateParameterTypeKind},
-    subsystem::PostgresGraphQLSubsystem,
-};
+use postgres_core_model::predicate::{PredicateParameter, PredicateParameterTypeKind};
+use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
 use crate::{
     auth_util::check_retrieve_access,

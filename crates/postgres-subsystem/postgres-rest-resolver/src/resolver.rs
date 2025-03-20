@@ -5,9 +5,7 @@ use async_trait::async_trait;
 use common::context::RequestContext;
 use common::http::{Headers, RequestPayload, ResponseBody, ResponsePayload};
 
-use core_plugin_interface::core_resolver::plugin::{
-    SubsystemResolutionError, SubsystemRestResolver,
-};
+use core_resolver::plugin::{SubsystemResolutionError, SubsystemRestResolver};
 use exo_sql::{
     AbstractOperation, AbstractPredicate, AbstractSelect, DatabaseExecutor, SelectionCardinality,
 };

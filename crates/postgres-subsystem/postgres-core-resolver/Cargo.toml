@@ -29,8 +29,9 @@ futures.workspace = true
 exo-sql = { path = "../../../libs/exo-sql" }
 exo-env = { path = "../../../libs/exo-env" }
 common = { path = "../../common" }
+core-model = { path = "../../core-subsystem/core-model" }
 postgres-core-model = { path = "../postgres-core-model" }
-core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+core-resolver = { path = "../../core-subsystem/core-resolver" }
 
 [dev-dependencies]
 wasm-bindgen-test.workspace = true

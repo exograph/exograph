@@ -7,18 +7,19 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use async_trait::async_trait;
+
 use crate::system_builder::ModelWasmSystemWithInterceptors;
-use core_plugin_interface::{
-    async_trait::async_trait,
-    core_model_builder::{
-        builder::system_builder::BaseModelSystem,
-        error::ModelBuildingError,
-        plugin::{GraphQLSubsystemBuild, Interception},
-        typechecker::typ::TypecheckedSystem,
-    },
-    interception::InterceptorIndex,
-    interface::GraphQLSubsystemBuilder,
-    serializable_system::SerializableGraphQLBytes,
+
+use core_model_builder::{
+    builder::system_builder::BaseModelSystem,
+    error::ModelBuildingError,
+    plugin::{GraphQLSubsystemBuild, Interception},
+    typechecker::typ::TypecheckedSystem,
+};
+use core_plugin_interface::interface::GraphQLSubsystemBuilder;
+use core_plugin_shared::{
+    interception::InterceptorIndex, serializable_system::SerializableGraphQLBytes,
     system_serializer::SystemSerializer,
 };
 

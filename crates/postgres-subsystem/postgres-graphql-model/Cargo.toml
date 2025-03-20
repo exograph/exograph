@@ -12,7 +12,8 @@ async-graphql-value.workspace = true
 postgres-core-model = { path = "../postgres-core-model" }
 
 exo-sql = { path = "../../../libs/exo-sql" }
-core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+core-model = { path = "../../core-subsystem/core-model" }
+core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 
 [dev-dependencies]
 wasm-bindgen-test.workspace = true

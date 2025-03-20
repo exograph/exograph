@@ -9,11 +9,10 @@
 
 use std::sync::Arc;
 
-use core_plugin_interface::core_model_builder::plugin::RestSubsystemBuild;
-
-use core_plugin_interface::serializable_system::SerializableRestBytes;
-use core_plugin_interface::{
-    core_model_builder::error::ModelBuildingError, system_serializer::SystemSerializer,
+use core_model_builder::error::ModelBuildingError;
+use core_model_builder::plugin::RestSubsystemBuild;
+use core_plugin_shared::{
+    serializable_system::SerializableRestBytes, system_serializer::SystemSerializer,
 };
 
 use postgres_core_builder::resolved_type::ResolvedType;

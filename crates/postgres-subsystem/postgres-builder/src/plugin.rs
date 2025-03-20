@@ -1,19 +1,20 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use core_plugin_interface::{
-    core_model_builder::{
-        builder::system_builder::BaseModelSystem,
-        error::ModelBuildingError,
-        plugin::CoreSubsystemBuild,
-        typechecker::{
-            annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
-            typ::TypecheckedSystem,
-        },
+
+use core_model_builder::{
+    builder::system_builder::BaseModelSystem,
+    error::ModelBuildingError,
+    plugin::CoreSubsystemBuild,
+    typechecker::{
+        annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
+        typ::TypecheckedSystem,
     },
-    interface::{SubsystemBuild, SubsystemBuilder},
-    serializable_system::SerializableCoreBytes,
-    system_serializer::SystemSerializer,
+};
+use core_plugin_interface::interface::{SubsystemBuild, SubsystemBuilder};
+
+use core_plugin_shared::{
+    serializable_system::SerializableCoreBytes, system_serializer::SystemSerializer,
 };
 use postgres_core_builder::resolved_type::ResolvedTypeEnv;
 use postgres_graphql_builder::PostgresGraphQLSubsystemBuilder;

@@ -10,13 +10,13 @@
 //! Common support for representing GraphQL types such as `Int`, `List<Int>`, `Optional<Int>`, `Optional<List<Int>>`, etc.
 //!
 
-use async_graphql_parser::types::{BaseType, ConstDirective, Type};
-use async_graphql_value::{ConstValue, Name};
+use async_graphql_parser::types::ConstDirective;
+use async_graphql_value::ConstValue;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
-    type_normalization::{default_positioned, default_positioned_name},
+    type_normalization::{default_positioned, default_positioned_name, BaseType, Type},
 };
 
 /// A type that can be used as a type for fields and return types
@@ -91,14 +91,14 @@ impl<T: Named> From<&FieldType<T>> for Type {
                 if base_name == "Vector" {
                     Type {
                         base: BaseType::List(Box::new(Type {
-                            base: BaseType::Named(Name::new("Float")),
+                            base: BaseType::Leaf("Float".to_string()),
                             nullable: false,
                         })),
                         nullable: false,
                     }
                 } else {
                     Type {
-                        base: BaseType::Named(Name::new(base_name)),
+                        base: BaseType::Leaf(base_name.to_string()),
                         nullable: false,
                     }
                 }

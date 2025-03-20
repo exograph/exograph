@@ -10,7 +10,7 @@
 use crate::{plugin::WasmSubsystemResolver, wasm_execution_error::WasmExecutionError};
 use common::context::RequestContext;
 use common::value::Val as ExoVal;
-use core_plugin_interface::core_resolver::{
+use core_resolver::{
     system_resolver::GraphQLSystemResolver, validation::field::ValidatedField, QueryResponse,
     QueryResponseBody,
 };

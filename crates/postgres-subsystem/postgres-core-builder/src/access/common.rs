@@ -7,10 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use core_plugin_interface::core_model::access::{
-    AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
-};
-use core_plugin_interface::core_model_builder::{
+use core_model::access::{AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp};
+use core_model_builder::{
     ast::ast_types::{AstExpr, LogicalOp, RelationalOp},
     error::ModelBuildingError,
     typechecker::Typed,

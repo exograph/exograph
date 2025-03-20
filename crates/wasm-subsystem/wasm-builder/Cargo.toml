@@ -5,7 +5,10 @@ edition.workspace = true
 publish = false
 
 [dependencies]
+async-trait.workspace = true
+core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+core-model-builder = { path = "../../core-subsystem/core-model-builder" }
 wasm-graphql-builder = { path = "../wasm-graphql-builder" }
 
 [dev-dependencies]

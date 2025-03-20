@@ -8,12 +8,12 @@
 // by the Apache License, Version 2.0.
 
 use async_trait::async_trait;
-use core_plugin_interface::{
-    core_resolver::plugin::SubsystemGraphQLResolver,
-    interface::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver},
-    serializable_system::SerializableSubsystem,
-    system_serializer::SystemSerializer,
+
+use core_plugin_interface::interface::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver};
+use core_plugin_shared::{
+    serializable_system::SerializableSubsystem, system_serializer::SystemSerializer,
 };
+use core_resolver::plugin::SubsystemGraphQLResolver;
 use exo_env::Environment;
 use exo_wasm::WasmExecutorPool;
 use wasm_graphql_model::subsystem::WasmSubsystem;

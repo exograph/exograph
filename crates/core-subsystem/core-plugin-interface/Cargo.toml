@@ -10,12 +10,8 @@ built = "0.7.5"
 [dependencies]
 thiserror.workspace = true
 async-trait.workspace = true
-async-graphql-value.workspace = true
-async-graphql-parser.workspace = true
-codemap-diagnostic.workspace = true
 core-model-builder = { path = "../core-model-builder" }
 core-resolver = { path = "../core-resolver" }
-core-model = { path = "../core-model" }
 core-plugin-shared = { path = "../core-plugin-shared" }
 exo-env = { path = "../../../libs/exo-env" }
 

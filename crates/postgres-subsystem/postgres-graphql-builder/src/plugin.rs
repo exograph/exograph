@@ -9,10 +9,9 @@
 
 use std::sync::Arc;
 
-use core_plugin_interface::{
-    core_model_builder::{error::ModelBuildingError, plugin::GraphQLSubsystemBuild},
-    serializable_system::SerializableGraphQLBytes,
-    system_serializer::SystemSerializer,
+use core_model_builder::{error::ModelBuildingError, plugin::GraphQLSubsystemBuild};
+use core_plugin_shared::{
+    serializable_system::SerializableGraphQLBytes, system_serializer::SystemSerializer,
 };
 use postgres_core_builder::resolved_type::ResolvedTypeEnv;
 

@@ -9,14 +9,12 @@
 
 use std::{collections::HashMap, path::Path, sync::Arc};
 
-use core_plugin_interface::{
-    core_model::mapped_arena::{MappedArena, SerializableSlabIndex},
-    core_model_builder::{
-        ast::ast_types::{AstExpr, AstModule},
-        builder::{resolved_builder::AnnotationMapHelper, system_builder::BaseModelSystem},
-        error::ModelBuildingError,
-        typechecker::{typ::TypecheckedSystem, Typed},
-    },
+use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use core_model_builder::{
+    ast::ast_types::{AstExpr, AstModule},
+    builder::{resolved_builder::AnnotationMapHelper, system_builder::BaseModelSystem},
+    error::ModelBuildingError,
+    typechecker::{typ::TypecheckedSystem, Typed},
 };
 
 use deno::{

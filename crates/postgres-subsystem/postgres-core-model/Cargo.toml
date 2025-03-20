@@ -10,7 +10,9 @@ bincode.workspace = true
 anyhow.workspace = true
 
 exo-sql = { path = "../../../libs/exo-sql" }
-core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+core-model = { path = "../../core-subsystem/core-model" }
+core-resolver = { path = "../../core-subsystem/core-resolver" }
+core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 common = { path = "../../common" }
 
 [dev-dependencies]
@@ -27,4 +29,3 @@ postgres-builder = { path = "../postgres-builder" }
 
 [lib]
 doctest = false
-

@@ -11,12 +11,13 @@ use crate::operation::{OperationParameters, PostgresOperation};
 use crate::query::CollectionQueryParameters;
 use crate::subsystem::PostgresGraphQLSubsystem;
 use async_graphql_parser::types::{
-    FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
+    FieldDefinition, InputObjectType, ObjectType, TypeDefinition, TypeKind,
 };
-use core_plugin_interface::core_model::access::AccessPredicateExpression;
-use core_plugin_interface::core_model::primitive_type::vector_introspection_base_type;
-use core_plugin_interface::core_model::types::{DirectivesProvider, TypeValidation};
-use core_plugin_interface::core_model::{
+use core_model::access::AccessPredicateExpression;
+use core_model::primitive_type::vector_introspection_base_type;
+use core_model::type_normalization::Type;
+use core_model::types::{DirectivesProvider, TypeValidation};
+use core_model::{
     mapped_arena::SerializableSlabIndex,
     type_normalization::{
         default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
@@ -124,7 +125,6 @@ impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for MutationType {
 
 impl<CT> FieldDefinitionProvider<PostgresGraphQLSubsystem> for PostgresField<CT> {
     fn field_definition(&self, system: &PostgresGraphQLSubsystem) -> FieldDefinition {
-        let field_type = default_positioned((&self.typ).into());
         let mut directives = vec![];
 
         if let Some(type_validation) = &self.type_validation {
@@ -145,10 +145,13 @@ impl<CT> FieldDefinitionProvider<PostgresGraphQLSubsystem> for PostgresField<CT>
                 description: self.doc_comments.clone().map(default_positioned),
                 name: default_positioned_name(&self.name),
                 arguments: vec![],
-                ty: default_positioned(Type {
-                    base: base_list_type,
-                    nullable: matches!(self.typ, FieldType::Optional(_)),
-                }),
+                ty: default_positioned(
+                    Type {
+                        base: base_list_type,
+                        nullable: matches!(self.typ, FieldType::Optional(_)),
+                    }
+                    .to_graphql_type(),
+                ),
                 directives,
             };
         }
@@ -182,6 +185,9 @@ impl<CT> FieldDefinitionProvider<PostgresGraphQLSubsystem> for PostgresField<CT>
                 .collect()
             }
         };
+
+        let field_type: Type = (&self.typ).into();
+        let field_type = default_positioned(field_type.to_graphql_type());
 
         FieldDefinition {
             description: self.doc_comments.clone().map(default_positioned),
@@ -230,7 +236,7 @@ impl<S, P: OperationParameters> FieldDefinitionProvider<S> for PostgresOperation
             name: default_positioned_name(self.name()),
             arguments: fields,
             directives: vec![],
-            ty: default_positioned(self.return_type()),
+            ty: default_positioned(self.return_type().to_graphql_type()),
         }
     }
 }

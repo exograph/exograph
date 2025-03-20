@@ -12,16 +12,17 @@ use std::path::PathBuf;
 #[cfg(not(target_family = "wasm"))]
 use std::{env::current_exe, path::Path};
 
-use crate::core_model_builder::{
+use async_trait::async_trait;
+
+use core_model_builder::plugin::{CoreSubsystemBuild, RestSubsystemBuild, RpcSubsystemBuild};
+use core_model_builder::typechecker::typ::TypecheckedSystem;
+use core_model_builder::{
     builder::system_builder::BaseModelSystem, error::ModelBuildingError,
     plugin::GraphQLSubsystemBuild, typechecker::annotation::AnnotationSpec,
 };
-use crate::core_resolver::plugin::SubsystemGraphQLResolver;
-use crate::error::ModelSerializationError;
-use async_trait::async_trait;
-use core_model_builder::plugin::{CoreSubsystemBuild, RestSubsystemBuild, RpcSubsystemBuild};
-use core_model_builder::typechecker::typ::TypecheckedSystem;
+use core_plugin_shared::error::ModelSerializationError;
 use core_plugin_shared::serializable_system::SerializableSubsystem;
+use core_resolver::plugin::SubsystemGraphQLResolver;
 use core_resolver::plugin::{SubsystemRestResolver, SubsystemRpcResolver};
 use thiserror::Error;
 

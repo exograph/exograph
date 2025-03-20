@@ -1515,12 +1515,8 @@ dependencies = [
 name = "core-plugin-interface"
 version = "0.12.1"
 dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
  "async-trait",
  "built",
- "codemap-diagnostic",
- "core-model",
  "core-model-builder",
  "core-plugin-shared",
  "core-resolver",
@@ -2098,7 +2094,9 @@ name = "deno-builder"
 version = "0.12.1"
 dependencies = [
  "async-trait",
+ "core-model-builder",
  "core-plugin-interface",
+ "core-plugin-shared",
  "deno-graphql-builder",
 ]
 
@@ -2116,7 +2114,8 @@ version = "0.12.1"
 dependencies = [
  "async-recursion",
  "codemap",
- "core-plugin-interface",
+ "core-model",
+ "core-model-builder",
  "deno",
  "deno-graphql-model",
  "deno_ast",
@@ -2140,7 +2139,8 @@ version = "0.12.1"
 dependencies = [
  "async-graphql-parser",
  "bincode",
- "core-plugin-interface",
+ "core-model",
+ "core-plugin-shared",
  "serde",
  "subsystem-model-util",
 ]
@@ -2153,7 +2153,9 @@ dependencies = [
  "async-graphql-parser",
  "async-trait",
  "common",
- "core-plugin-interface",
+ "core-model",
+ "core-plugin-shared",
+ "core-resolver",
  "deno-graphql-model",
  "deno_core",
  "exo-deno",
@@ -2172,6 +2174,8 @@ version = "0.12.1"
 dependencies = [
  "async-trait",
  "core-plugin-interface",
+ "core-plugin-shared",
+ "core-resolver",
  "deno-graphql-model",
  "deno-graphql-resolver",
  "deno_core",
@@ -5436,6 +5440,8 @@ dependencies = [
  "anyhow",
  "builder",
  "codemap",
+ "codemap-diagnostic",
+ "core-model-builder",
  "core-plugin-interface",
  "core-plugin-shared",
  "dashmap 6.1.0",
@@ -6725,7 +6731,9 @@ version = "0.12.1"
 dependencies = [
  "async-trait",
  "builder",
+ "core-model-builder",
  "core-plugin-interface",
+ "core-plugin-shared",
  "exo-sql",
  "postgres-core-builder",
  "postgres-core-model",
@@ -6754,8 +6762,8 @@ dependencies = [
  "codemap",
  "codemap-diagnostic",
  "common",
+ "core-model",
  "core-model-builder",
- "core-plugin-interface",
  "deno-builder",
  "exo-sql",
  "heck 0.5.0",
@@ -6779,7 +6787,9 @@ dependencies = [
  "builder",
  "colored",
  "common",
- "core-plugin-interface",
+ "core-model",
+ "core-plugin-shared",
+ "core-resolver",
  "exo-sql",
  "postgres-builder",
  "serde",
@@ -6797,7 +6807,8 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "common",
- "core-plugin-interface",
+ "core-model",
+ "core-resolver",
  "exo-env",
  "exo-sql",
  "futures",
@@ -6815,7 +6826,9 @@ dependencies = [
 name = "postgres-graphql-builder"
 version = "0.12.1"
 dependencies = [
- "core-plugin-interface",
+ "core-model",
+ "core-model-builder",
+ "core-plugin-shared",
  "exo-sql",
  "heck 0.5.0",
  "lazy_static",
@@ -6831,7 +6844,8 @@ dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
  "bincode",
- "core-plugin-interface",
+ "core-model",
+ "core-plugin-shared",
  "exo-sql",
  "postgres-core-model",
  "serde",
@@ -6847,7 +6861,9 @@ dependencies = [
  "async-trait",
  "builder",
  "common",
- "core-plugin-interface",
+ "core-model",
+ "core-plugin-shared",
+ "core-resolver",
  "exo-env",
  "exo-sql",
  "futures",
@@ -6888,6 +6904,8 @@ dependencies = [
  "async-trait",
  "common",
  "core-plugin-interface",
+ "core-plugin-shared",
+ "core-resolver",
  "exo-env",
  "exo-sql",
  "postgres-core-model",
@@ -6913,7 +6931,8 @@ dependencies = [
 name = "postgres-rest-builder"
 version = "0.12.1"
 dependencies = [
- "core-plugin-interface",
+ "core-model-builder",
+ "core-plugin-shared",
  "postgres-core-builder",
  "postgres-core-model",
  "postgres-rest-model",
@@ -6925,7 +6944,9 @@ version = "0.12.1"
 dependencies = [
  "bincode",
  "common",
+ "core-model",
  "core-plugin-interface",
+ "core-plugin-shared",
  "exo-sql",
  "http 1.1.0",
  "matchit 0.8.5",
@@ -6939,7 +6960,7 @@ version = "0.12.1"
 dependencies = [
  "async-trait",
  "common",
- "core-plugin-interface",
+ "core-resolver",
  "exo-sql",
  "http 1.1.0",
  "postgres-core-resolver",
@@ -6950,7 +6971,8 @@ dependencies = [
 name = "postgres-rpc-builder"
 version = "0.12.1"
 dependencies = [
- "core-plugin-interface",
+ "core-model-builder",
+ "core-plugin-shared",
  "postgres-core-builder",
  "postgres-core-model",
  "postgres-rpc-model",
@@ -6961,7 +6983,9 @@ name = "postgres-rpc-model"
 version = "0.12.1"
 dependencies = [
  "bincode",
+ "core-model",
  "core-plugin-interface",
+ "core-plugin-shared",
  "postgres-core-model",
  "serde",
 ]
@@ -6972,7 +6996,7 @@ version = "0.12.1"
 dependencies = [
  "async-trait",
  "common",
- "core-plugin-interface",
+ "core-resolver",
  "exo-sql",
  "http 1.1.0",
  "postgres-core-model",
@@ -9248,6 +9272,8 @@ dependencies = [
  "async-trait",
  "common",
  "core-plugin-interface",
+ "core-plugin-shared",
+ "core-resolver",
  "core-router",
  "exo-env",
  "graphql-router",
@@ -9344,7 +9370,7 @@ dependencies = [
  "async-graphql-value",
  "colored",
  "common",
- "core-plugin-interface",
+ "core-plugin-shared",
  "crossbeam-channel",
  "ctor",
  "deno_core",
@@ -10543,7 +10569,10 @@ dependencies = [
 name = "wasm-builder"
 version = "0.12.1"
 dependencies = [
+ "async-trait",
+ "core-model-builder",
  "core-plugin-interface",
+ "core-plugin-shared",
  "wasm-graphql-builder",
 ]
 
@@ -10578,7 +10607,11 @@ dependencies = [
 name = "wasm-graphql-builder"
 version = "0.12.1"
 dependencies = [
+ "async-trait",
+ "core-model",
+ "core-model-builder",
  "core-plugin-interface",
+ "core-plugin-shared",
  "subsystem-model-builder-util",
  "wasm-graphql-model",
 ]
@@ -10589,7 +10622,8 @@ version = "0.12.1"
 dependencies = [
  "async-graphql-parser",
  "bincode",
- "core-plugin-interface",
+ "core-model",
+ "core-plugin-shared",
  "serde",
  "subsystem-model-util",
 ]
@@ -10601,7 +10635,9 @@ dependencies = [
  "async-graphql-parser",
  "async-trait",
  "common",
- "core-plugin-interface",
+ "core-model",
+ "core-plugin-shared",
+ "core-resolver",
  "exo-wasm",
  "thiserror 2.0.12",
  "wasm-graphql-model",
@@ -10614,6 +10650,8 @@ version = "0.12.1"
 dependencies = [
  "async-trait",
  "core-plugin-interface",
+ "core-plugin-shared",
+ "core-resolver",
  "exo-env",
  "exo-wasm",
  "wasm-graphql-model",

@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use core_plugin_interface::core_model::{
+use core_model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
     types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
 };
@@ -16,7 +16,6 @@ use exo_sql::Database;
 use postgres_graphql_model::{
     limit_offset::{LimitParameter, LimitParameterType, OffsetParameter, OffsetParameterType},
     order::{OrderByParameter, OrderByParameterType},
-    predicate::{PredicateParameter, PredicateParameterType, PredicateParameterTypeWrapper},
     query::{
         AggregateQuery, AggregateQueryParameters, CollectionQuery, CollectionQueryParameters,
         UniqueQuery, UniqueQueryParameters,
@@ -24,6 +23,7 @@ use postgres_graphql_model::{
 };
 
 use postgres_core_model::{
+    predicate::{PredicateParameter, PredicateParameterType, PredicateParameterTypeWrapper},
     relation::PostgresRelation,
     types::{EntityRepresentation, EntityType, PostgresField, PostgresPrimitiveType},
 };

@@ -20,18 +20,16 @@ use crate::{
 };
 use async_trait::async_trait;
 use common::context::RequestContext;
-use core_plugin_interface::core_resolver::validation::field::ValidatedField;
-use core_plugin_interface::{
-    core_model::types::OperationReturnType, core_resolver::access_solver::AccessInput,
-};
+use core_model::types::OperationReturnType;
+use core_resolver::access_solver::AccessInput;
+use core_resolver::validation::field::ValidatedField;
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect,
     AbstractUpdate, Predicate,
 };
-use postgres_core_model::types::EntityType;
+use postgres_core_model::{predicate::PredicateParameter, types::EntityType};
 use postgres_graphql_model::{
     mutation::{DataParameter, PostgresMutation, PostgresMutationParameters},
-    predicate::PredicateParameter,
     subsystem::PostgresGraphQLSubsystem,
 };
 

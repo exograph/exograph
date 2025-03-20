@@ -9,9 +9,9 @@
 
 use std::fmt::Debug;
 
-use async_graphql_parser::types::{FieldDefinition, Type};
+use async_graphql_parser::types::FieldDefinition;
 use core_model::type_normalization::{
-    default_positioned, default_positioned_name, InputValueProvider, Parameter,
+    default_positioned, default_positioned_name, InputValueProvider, Parameter, Type,
 };
 use core_model::{
     mapped_arena::SerializableSlabIndex, type_normalization::FieldDefinitionProvider,
@@ -115,7 +115,7 @@ impl<S> FieldDefinitionProvider<S> for ModuleQuery {
             name: default_positioned_name(self.name()),
             arguments: fields,
             directives: vec![],
-            ty: default_positioned(self.return_type()),
+            ty: default_positioned(self.return_type().to_graphql_type()),
         }
     }
 }
@@ -133,7 +133,7 @@ impl<S> FieldDefinitionProvider<S> for ModuleMutation {
             name: default_positioned_name(self.name()),
             arguments: fields,
             directives: vec![],
-            ty: default_positioned(self.return_type()),
+            ty: default_positioned(self.return_type().to_graphql_type()),
         }
     }
 }

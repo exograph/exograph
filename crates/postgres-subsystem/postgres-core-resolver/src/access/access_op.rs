@@ -1,4 +1,4 @@
-use core_plugin_interface::core_resolver::access_solver::AccessPredicate;
+use core_resolver::access_solver::AccessPredicate;
 use exo_sql::AbstractPredicate;
 
 // Only to get around the orphan rule while implementing AccessSolver

@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use common::context::RequestContext;
-use core_plugin_interface::core_resolver::{
+use core_resolver::{
     system_resolver::ExographExecuteQueryFn, validation::field::ValidatedField,
     InterceptedOperation,
 };

@@ -7,13 +7,12 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use core_plugin_interface::{
-    core_model::{
-        access::{AccessPredicateExpression, CommonAccessPrimitiveExpression, FunctionCall},
-        mapped_arena::SerializableSlabIndex,
-    },
-    core_resolver::access_solver::AccessSolverError,
+use core_model::{
+    access::{AccessPredicateExpression, CommonAccessPrimitiveExpression, FunctionCall},
+    mapped_arena::SerializableSlabIndex,
 };
+use core_resolver::access_solver::AccessSolverError;
+
 use exo_sql::PhysicalColumnPath;
 use serde::{Deserialize, Serialize};
 

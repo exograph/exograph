@@ -14,7 +14,7 @@ use common::{
     http::{MemoryRequestHead, MemoryRequestPayload},
     operation_payload::OperationsPayload,
 };
-use core_plugin_interface::serializable_system::SerializableSystem;
+use core_plugin_shared::serializable_system::SerializableSystem;
 use exo_deno::{
     deno_core::{url::Url, ModuleType},
     deno_error::DenoError,

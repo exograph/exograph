@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 #[cfg(test)]
-use core_plugin_interface::{
+use core_plugin_shared::{
     error::ModelSerializationError, serializable_system::SerializableSystem,
     system_serializer::SystemSerializer,
 };

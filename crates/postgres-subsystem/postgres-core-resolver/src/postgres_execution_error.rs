@@ -8,9 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use common::context::ContextExtractionError;
-use core_plugin_interface::core_resolver::{
-    access_solver::AccessSolverError, plugin::SubsystemResolutionError,
-};
+use core_resolver::{access_solver::AccessSolverError, plugin::SubsystemResolutionError};
 
 use thiserror::Error;
 use tracing::error;

@@ -9,21 +9,18 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use core_plugin_interface::{
-    core_model::mapped_arena::{MappedArena, SerializableSlabIndex},
-    core_model_builder::error::ModelBuildingError,
-};
+use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use core_model_builder::error::ModelBuildingError;
 
 use postgres_graphql_model::{
     mutation::PostgresMutation,
     order::OrderByParameterType,
-    predicate::PredicateParameterType,
     query::{AggregateQuery, CollectionQuery, UniqueQuery},
     subsystem::PostgresGraphQLSubsystem,
     types::MutationType,
 };
 
-use postgres_core_model::types::EntityType;
+use postgres_core_model::{predicate::PredicateParameterType, types::EntityType};
 
 use super::{
     mutation_builder, order_by_type_builder, predicate_builder, query_builder, type_builder,

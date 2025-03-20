@@ -9,7 +9,7 @@
 
 use crate::types::{EntityFieldId, EntityType};
 
-use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
+use core_model::mapped_arena::SerializableSlabIndex;
 use exo_sql::{ColumnId, ColumnPathLink, Database, ManyToOneId, OneToManyId};
 use serde::{Deserialize, Serialize};
 

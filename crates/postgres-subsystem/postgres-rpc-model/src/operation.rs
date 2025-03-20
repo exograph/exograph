@@ -10,7 +10,7 @@
 use postgres_core_model::types::EntityType;
 use serde::{Deserialize, Serialize};
 
-use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
+use core_model::mapped_arena::SerializableSlabIndex;
 
 // TODO: Share this with REST?
 

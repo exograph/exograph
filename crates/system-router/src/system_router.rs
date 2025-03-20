@@ -11,8 +11,12 @@ use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 
 use common::env_const::EXO_UNSTABLE_ENABLE_RPC_API;
 use common::router::PlainRequestPayload;
-use core_plugin_interface::core_resolver::plugin::SubsystemRpcResolver;
-use core_plugin_interface::core_resolver::system_rpc_resolver::SystemRpcResolver;
+use core_resolver::plugin::SubsystemRpcResolver;
+use core_resolver::system_rpc_resolver::SystemRpcResolver;
+use core_resolver::{
+    plugin::{SubsystemGraphQLResolver, SubsystemRestResolver},
+    system_rest_resolver::SystemRestResolver,
+};
 use rpc_router::RpcRouter;
 use tracing::debug;
 
@@ -23,16 +27,10 @@ use common::{
     http::ResponsePayload,
     router::{CompositeRouter, Router},
 };
-use core_plugin_interface::{
-    core_resolver::{
-        plugin::{SubsystemGraphQLResolver, SubsystemRestResolver},
-        system_rest_resolver::SystemRestResolver,
-    },
-    interception::InterceptionMap,
-    interface::{SubsystemLoader, SubsystemResolver},
-    serializable_system::SerializableSystem,
-    system_serializer::SystemSerializer,
-    trusted_documents::TrustedDocuments,
+use core_plugin_interface::interface::{SubsystemLoader, SubsystemResolver};
+use core_plugin_shared::{
+    interception::InterceptionMap, serializable_system::SerializableSystem,
+    system_serializer::SystemSerializer, trusted_documents::TrustedDocuments,
 };
 use core_router::SystemLoadingError;
 use exo_env::Environment;

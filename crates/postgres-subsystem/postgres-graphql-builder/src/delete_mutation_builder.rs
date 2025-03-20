@@ -10,14 +10,12 @@
 //! Build mutation input types associated with deletion (`<Type>DeletionInput`) and
 //! the create mutations (`delete<Type>`, and `delete<Type>s`)
 
-use core_plugin_interface::{
-    core_model::{
-        access::AccessPredicateExpression,
-        mapped_arena::MappedArena,
-        types::{BaseOperationReturnType, OperationReturnType},
-    },
-    core_model_builder::error::ModelBuildingError,
+use core_model::{
+    access::AccessPredicateExpression,
+    mapped_arena::MappedArena,
+    types::{BaseOperationReturnType, OperationReturnType},
 };
+use core_model_builder::error::ModelBuildingError;
 use postgres_core_model::types::{EntityRepresentation, EntityType};
 use postgres_graphql_model::mutation::PostgresMutationParameters;
 

@@ -8,10 +8,10 @@
 // by the Apache License, Version 2.0.
 
 use crate::subsystem::PostgresGraphQLSubsystem;
-use async_graphql_parser::types::{Type, TypeDefinition, TypeKind};
-use core_plugin_interface::core_model::{
+use async_graphql_parser::types::{TypeDefinition, TypeKind};
+use core_model::{
     mapped_arena::SerializableSlabIndex,
-    type_normalization::{default_positioned_name, Parameter, TypeDefinitionProvider},
+    type_normalization::{default_positioned_name, Parameter, Type, TypeDefinitionProvider},
     types::{FieldType, Named, TypeValidation},
 };
 use serde::{Deserialize, Serialize};

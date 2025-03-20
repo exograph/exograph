@@ -279,6 +279,9 @@ mod tests {
     use std::path::{Path, PathBuf};
 
     use crate::subsystem::PostgresCoreSubsystem;
+    use core_plugin_shared::{
+        error::ModelSerializationError, serializable_system::SerializableSystem,
+    };
     use sqlparser::dialect::PostgreSqlDialect;
     use sqlparser::parser::Parser;
 
@@ -286,9 +289,6 @@ mod tests {
     use wildmatch::WildMatch;
 
     use super::*;
-    use core_plugin_interface::{
-        error::ModelSerializationError, serializable_system::SerializableSystem,
-    };
 
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
@@ -699,7 +699,7 @@ mod tests {
             .into_iter()
             .find(|subsystem| subsystem.id == "postgres");
 
-        use core_plugin_interface::system_serializer::SystemSerializer;
+        use core_plugin_shared::system_serializer::SystemSerializer;
         match postgres_subsystem {
             Some(subsystem) => {
                 let postgres_core_subsystem = PostgresCoreSubsystem::deserialize(subsystem.core.0)?;

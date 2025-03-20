@@ -15,15 +15,12 @@ use crate::{
     types::ModuleType,
 };
 use async_graphql_parser::types::{FieldDefinition, TypeDefinition};
-use core_plugin_interface::{
-    core_model::{
-        context_type::ContextType,
-        mapped_arena::{MappedArena, SerializableSlab},
-        type_normalization::{FieldDefinitionProvider, TypeDefinitionProvider},
-    },
-    error::ModelSerializationError,
-    system_serializer::SystemSerializer,
+use core_model::{
+    context_type::ContextType,
+    mapped_arena::{MappedArena, SerializableSlab},
+    type_normalization::{FieldDefinitionProvider, TypeDefinitionProvider},
 };
+use core_plugin_shared::{error::ModelSerializationError, system_serializer::SystemSerializer};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]

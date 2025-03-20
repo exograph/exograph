@@ -8,13 +8,14 @@
 // by the Apache License, Version 2.0.
 
 use async_graphql_parser::{
-    types::{InputObjectType, InputValueDefinition, Type, TypeDefinition, TypeKind},
+    types::{InputObjectType, InputValueDefinition, TypeDefinition, TypeKind},
     Positioned,
 };
 use core_model::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
     type_normalization::{
-        default_positioned_name, Parameter, TypeDefinitionIntrospection, TypeDefinitionProvider,
+        default_positioned_name, Parameter, Type, TypeDefinitionIntrospection,
+        TypeDefinitionProvider,
     },
     types::{FieldType, Named, TypeValidation},
 };

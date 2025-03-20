@@ -9,12 +9,12 @@
 
 use async_trait::async_trait;
 
-use core_plugin_interface::{
-    core_resolver::plugin::SubsystemGraphQLResolver,
-    interface::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver},
-    serializable_system::SerializableSubsystem,
-    system_serializer::SystemSerializer,
+use core_plugin_interface::interface::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver};
+
+use core_plugin_shared::{
+    serializable_system::SerializableSubsystem, system_serializer::SystemSerializer,
 };
+use core_resolver::plugin::SubsystemGraphQLResolver;
 
 use deno_graphql_model::subsystem::DenoSubsystem;
 use deno_graphql_resolver::{exo_config, DenoSubsystemResolver};

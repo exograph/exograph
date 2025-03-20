@@ -9,18 +9,18 @@
 
 use async_trait::async_trait;
 
-use core_plugin_interface::{
-    core_model_builder::{
-        builder::system_builder::BaseModelSystem,
-        error::ModelBuildingError,
-        plugin::{CoreSubsystemBuild, GraphQLSubsystemBuild, Interception},
-        typechecker::{
-            annotation::{AnnotationSpec, AnnotationTarget},
-            typ::TypecheckedSystem,
-        },
+use core_model_builder::{
+    builder::system_builder::BaseModelSystem,
+    error::ModelBuildingError,
+    plugin::{CoreSubsystemBuild, GraphQLSubsystemBuild, Interception},
+    typechecker::{
+        annotation::{AnnotationSpec, AnnotationTarget},
+        typ::TypecheckedSystem,
     },
+};
+use core_plugin_interface::interface::{GraphQLSubsystemBuilder, SubsystemBuild, SubsystemBuilder};
+use core_plugin_shared::{
     interception::InterceptorIndex,
-    interface::{GraphQLSubsystemBuilder, SubsystemBuild, SubsystemBuilder},
     serializable_system::{SerializableCoreBytes, SerializableGraphQLBytes},
     system_serializer::SystemSerializer,
 };

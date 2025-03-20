@@ -10,7 +10,7 @@
 use anyhow::{anyhow, bail, Result};
 use exo_deno::deno_core::{error::AnyError, op2, OpState};
 
-use core_plugin_interface::core_resolver::system_resolver::SystemResolutionError;
+use core_resolver::system_resolver::SystemResolutionError;
 use serde_json::Value;
 use std::{cell::RefCell, rc::Rc};
 use tokio::sync::mpsc::Sender;

@@ -11,7 +11,7 @@ use exo_sql::database_error::DatabaseError;
 use exo_sql::AbstractOperation;
 
 use common::context::RequestContext;
-use core_plugin_interface::core_resolver::{QueryResponse, QueryResponseBody};
+use core_resolver::{QueryResponse, QueryResponseBody};
 use postgres_core_resolver::database_helper::extractor;
 
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;

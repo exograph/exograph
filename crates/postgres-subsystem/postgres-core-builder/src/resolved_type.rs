@@ -5,18 +5,16 @@ use exo_sql::{PhysicalTableName, VectorDistanceFunction};
 use postgres_core_model::types::EntityRepresentation;
 use serde::{Deserialize, Serialize};
 
-use core_plugin_interface::{
-    core_model::{
-        context_type::ContextType,
-        function_defn::FunctionDefinition,
-        mapped_arena::MappedArena,
-        primitive_type::PrimitiveType,
-        types::{FieldType, Named, TypeValidation, TypeValidationProvider},
-    },
-    core_model_builder::{
-        ast::ast_types::{default_span, AstExpr},
-        typechecker::Typed,
-    },
+use core_model::{
+    context_type::ContextType,
+    function_defn::FunctionDefinition,
+    mapped_arena::MappedArena,
+    primitive_type::PrimitiveType,
+    types::{FieldType, Named, TypeValidation, TypeValidationProvider},
+};
+use core_model_builder::{
+    ast::ast_types::{default_span, AstExpr},
+    typechecker::Typed,
 };
 
 use crate::{access_builder::ResolvedAccess, naming::ToPlural, resolved_builder::Cardinality};

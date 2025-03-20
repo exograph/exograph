@@ -10,14 +10,12 @@
 //! Build mutation input types associated with creation (`<Type>CreationInput`) and
 //! the create mutations (`create<Type>`, and `create<Type>s`)
 
-use core_plugin_interface::{
-    core_model::{
-        access::AccessPredicateExpression,
-        mapped_arena::MappedArena,
-        types::{BaseOperationReturnType, FieldType, OperationReturnType},
-    },
-    core_model_builder::error::ModelBuildingError,
+use core_model::{
+    access::AccessPredicateExpression,
+    mapped_arena::MappedArena,
+    types::{BaseOperationReturnType, FieldType, OperationReturnType},
 };
+use core_model_builder::error::ModelBuildingError;
 
 use postgres_core_model::types::EntityType;
 use postgres_graphql_model::mutation::{

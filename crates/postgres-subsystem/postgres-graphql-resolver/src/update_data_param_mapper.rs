@@ -12,10 +12,9 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
-use core_plugin_interface::core_resolver::access_solver::AccessSolver;
-use core_plugin_interface::{
-    core_model::types::OperationReturnType, core_resolver::access_solver::AccessInput,
-};
+use core_model::types::OperationReturnType;
+use core_resolver::access_solver::AccessInput;
+use core_resolver::access_solver::AccessSolver;
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate, Column,
     ColumnId, ColumnPath, ManyToOne, NestedAbstractDelete, NestedAbstractInsert,

@@ -10,10 +10,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use core_plugin_interface::{
-    error::ModelSerializationError, interface::SubsystemLoadingError,
-    system_serializer::SystemSerializer,
-};
+use core_plugin_interface::interface::SubsystemLoadingError;
+use core_plugin_shared::{error::ModelSerializationError, system_serializer::SystemSerializer};
 use postgres_core_model::subsystem::PostgresCoreSubsystem;
 use serde::{Deserialize, Serialize};
 

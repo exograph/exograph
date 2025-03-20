@@ -4,12 +4,10 @@ use async_trait::async_trait;
 
 use common::context::RequestContext;
 
-use core_plugin_interface::core_resolver::access_solver::AccessSolver;
-use core_plugin_interface::core_resolver::plugin::subsystem_rpc_resolver::{
-    SubsystemRpcError, SubsystemRpcResponse,
-};
-use core_plugin_interface::core_resolver::plugin::SubsystemRpcResolver;
-use core_plugin_interface::core_resolver::{QueryResponse, QueryResponseBody};
+use core_resolver::access_solver::AccessSolver;
+use core_resolver::plugin::subsystem_rpc_resolver::{SubsystemRpcError, SubsystemRpcResponse};
+use core_resolver::plugin::SubsystemRpcResolver;
+use core_resolver::{QueryResponse, QueryResponseBody};
 use exo_sql::{
     AbstractOperation, AbstractSelect, AliasedSelectionElement, DatabaseExecutor, Selection,
     SelectionCardinality, SelectionElement,
