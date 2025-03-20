@@ -134,12 +134,12 @@ impl LanguageServer for Backend {
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
-        tracing::info!("text document did close! {:?}", params.text_document.uri);
+        tracing::debug!("Text document did close {:?}", params.text_document.uri);
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
-        tracing::info!(
-            "text document did change watched files! {:?}",
+        tracing::debug!(
+            "Text document did change watched files {:?}",
             params.changes
         );
     }
