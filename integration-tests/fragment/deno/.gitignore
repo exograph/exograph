@@ -1,0 +1,7 @@
+target/
+generated/
+
+# Cloudflare Workers
+node_modules/
+.wrangler/
+.dev.vars

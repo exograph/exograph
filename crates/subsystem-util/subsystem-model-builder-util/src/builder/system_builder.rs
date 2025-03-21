@@ -81,6 +81,7 @@ pub async fn build_with_selection(
     process_script: impl Fn(
         &AstModule<Typed>,
         &BaseModelSystem,
+        &TypecheckedSystem,
         &Path,
     ) -> Result<(String, Vec<u8>), ModelBuildingError>,
 ) -> Result<ModuleSubsystemWithInterceptors, ModelBuildingError> {

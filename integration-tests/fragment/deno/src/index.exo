@@ -1,0 +1,24 @@
+@postgres
+module TodoDatabase {
+  @access(true)
+  type Todo {
+    ...TodoFragment
+  }
+
+  fragment TodoFragment {
+    @pk id: Int = autoIncrement()
+    completed: Boolean
+    title: String
+  }
+}
+
+@deno("notification-service.ts")
+module NotificationService {
+  @access(true)
+  type Notification {
+    ...TodoFragment
+  }
+
+  @access(true)
+  query getNotifications(@inject exograph: Exograph): Set<Notification>
+}

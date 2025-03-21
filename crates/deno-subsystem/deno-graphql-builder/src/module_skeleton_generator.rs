@@ -13,7 +13,9 @@ use std::path::PathBuf;
 use std::{fs::File, path::Path};
 
 use core_model::context_type::{ContextFieldType, ContextType};
+use core_model_builder::builder::resolved_builder::compute_fragment_fields;
 use core_model_builder::builder::system_builder::BaseModelSystem;
+use core_model_builder::typechecker::typ::TypecheckedSystem;
 use core_model_builder::{
     ast::ast_types::{AstArgument, AstFieldType, AstModel, AstModule},
     error::ModelBuildingError,
@@ -64,6 +66,7 @@ use core_model_builder::{
 pub fn generate_module_skeleton(
     module: &AstModule<Typed>,
     base_system: &BaseModelSystem,
+    typechecked_system: &TypecheckedSystem,
     out_file: impl AsRef<Path>,
 ) -> Result<(), ModelBuildingError> {
     let is_typescript = out_file
@@ -88,10 +91,10 @@ pub fn generate_module_skeleton(
     // Generate context definitions (even if the target is a Javascript file to help with code completion)
     // Context definitions are generated in the same directory as the module code, since the types in it
     // are independent of the module code.
-    generate_context_definitions(base_system)?;
+    generate_context_definitions(base_system, typechecked_system)?;
 
     if is_typescript {
-        generate_module_definitions(module)?;
+        generate_module_definitions(module, typechecked_system)?;
     }
 
     // We don't want to overwrite any user files
@@ -314,7 +317,10 @@ fn generate_exograph_d_ts() -> Result<(), ModelBuildingError> {
     Ok(())
 }
 
-fn generate_context_definitions(base_system: &BaseModelSystem) -> Result<(), ModelBuildingError> {
+fn generate_context_definitions(
+    base_system: &BaseModelSystem,
+    typechecked_system: &TypecheckedSystem,
+) -> Result<(), ModelBuildingError> {
     let generated_dir = PathBuf::from("generated");
 
     create_dir_all(&generated_dir)?;
@@ -332,13 +338,16 @@ fn generate_context_definitions(base_system: &BaseModelSystem) -> Result<(), Mod
 
     let mut file = std::fs::File::create(context_file)?;
     for (_, context) in base_system.contexts.iter() {
-        generate_type_skeleton(context, &mut file)?;
+        generate_type_skeleton(context, typechecked_system, &mut file)?;
     }
 
     Ok(())
 }
 
-fn generate_module_definitions(module: &AstModule<Typed>) -> Result<(), ModelBuildingError> {
+fn generate_module_definitions(
+    module: &AstModule<Typed>,
+    typechecked_system: &TypecheckedSystem,
+) -> Result<(), ModelBuildingError> {
     let generated_dir = PathBuf::from("generated");
 
     create_dir_all(&generated_dir)?;
@@ -352,16 +361,20 @@ fn generate_module_definitions(module: &AstModule<Typed>) -> Result<(), ModelBui
 
     let mut file = std::fs::File::create(module_file)?;
     for module_type in module.types.iter() {
-        generate_type_skeleton(module_type, &mut file)?;
+        generate_type_skeleton(module_type, typechecked_system, &mut file)?;
     }
 
     Ok(())
 }
 
-fn generate_type_skeleton(model: &dyn Type, out_file: &mut File) -> Result<(), ModelBuildingError> {
+fn generate_type_skeleton(
+    model: &dyn Type,
+    typechecked_system: &TypecheckedSystem,
+    out_file: &mut File,
+) -> Result<(), ModelBuildingError> {
     out_file.write_all(format!("export interface {} {{\n", model.name()).as_bytes())?;
 
-    for (name, typ) in model.fields() {
+    for (name, typ) in model.fields(typechecked_system) {
         out_file.write_all(format!("\t{}\n", generate_field(name, typ, true)).as_bytes())?;
     }
 
@@ -428,13 +441,21 @@ fn generate_arguments_skeleton(
 
 trait Type {
     fn name(&self) -> &str;
-    fn fields(&self) -> Vec<(&str, &dyn TypeScriptType)>;
+    fn fields<'a>(
+        &'a self,
+        typechecked_system: &'a TypecheckedSystem,
+    ) -> Vec<(&str, &'a dyn TypeScriptType)>;
 }
 
 impl Type for AstModel<Typed> {
-    fn fields(&self) -> Vec<(&str, &dyn TypeScriptType)> {
+    fn fields<'a>(
+        &'a self,
+        typechecked_system: &'a TypecheckedSystem,
+    ) -> Vec<(&str, &'a dyn TypeScriptType)> {
+        let fragment_fields = compute_fragment_fields(self, &mut vec![], typechecked_system);
         self.fields
             .iter()
+            .chain(fragment_fields)
             .map(|field| (field.name.as_str(), &field.typ as &dyn TypeScriptType))
             .collect()
     }
@@ -445,7 +466,7 @@ impl Type for AstModel<Typed> {
 }
 
 impl Type for ContextType {
-    fn fields(&self) -> Vec<(&str, &dyn TypeScriptType)> {
+    fn fields(&self, _typechecked_system: &TypecheckedSystem) -> Vec<(&str, &dyn TypeScriptType)> {
         self.fields
             .iter()
             .map(|field| (field.name.as_str(), &field.typ as &dyn TypeScriptType))
@@ -614,9 +635,16 @@ mod tests {
     #[test]
     fn test_generate_type_skeleton() {
         let mock_type = fabricate_model("TestType");
-
         let mut temp_file = tempfile().unwrap();
-        generate_type_skeleton(&mock_type, &mut temp_file).unwrap();
+        generate_type_skeleton(
+            &mock_type,
+            &TypecheckedSystem {
+                types: Default::default(),
+                modules: Default::default(),
+            },
+            &mut temp_file,
+        )
+        .unwrap();
 
         temp_file.seek(std::io::SeekFrom::Start(0)).unwrap();
         let mut generated_code = String::new();
@@ -633,8 +661,15 @@ mod tests {
         let mock_type = fabricate_model_with_collection("TestType");
 
         let mut temp_file = tempfile().unwrap();
-        generate_type_skeleton(&mock_type, &mut temp_file).unwrap();
-
+        generate_type_skeleton(
+            &mock_type,
+            &TypecheckedSystem {
+                types: Default::default(),
+                modules: Default::default(),
+            },
+            &mut temp_file,
+        )
+        .unwrap();
         temp_file.seek(std::io::SeekFrom::Start(0)).unwrap();
         let mut generated_code = String::new();
         temp_file.read_to_string(&mut generated_code).unwrap();
@@ -658,8 +693,14 @@ mod tests {
             fs::remove_dir_all(generated_dir).unwrap();
         }
 
-        generate_module_definitions(&module).unwrap();
-
+        generate_module_definitions(
+            &module,
+            &TypecheckedSystem {
+                types: Default::default(),
+                modules: Default::default(),
+            },
+        )
+        .unwrap();
         let module_file = generated_dir.join("TestModule.d.ts");
         assert!(
             module_file.exists(),
