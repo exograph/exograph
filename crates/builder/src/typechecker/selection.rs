@@ -337,7 +337,45 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                                     return false;
                                 }
                             };
-                            if let Some(field) = c.fields.iter().find(|f| &f.name == elem.0) {
+
+                            let frgamgnt_fields = c
+                                .fragment_references
+                                .iter()
+                                .flat_map(|fragment_reference| {
+                                    match type_env.get_by_key(&fragment_reference.name) {
+                                        Some(fragment_type) => {
+                                            match fragment_type.deref(type_env) {
+                                                Type::Composite(c) => c.fields,
+                                                _ => vec![],
+                                            }
+                                        }
+                                        None => {
+                                            *typ = Type::Error;
+                                            errors.push(Diagnostic {
+                                                level: Level::Error,
+                                                message: format!(
+                                                    "No such fragment: {}",
+                                                    fragment_reference.name
+                                                ),
+                                                code: Some("C000".to_string()),
+                                                spans: vec![SpanLabel {
+                                                    span: fragment_reference.span,
+                                                    style: SpanStyle::Primary,
+                                                    label: Some("unknown field".to_string()),
+                                                }],
+                                            });
+                                            vec![]
+                                        }
+                                    }
+                                })
+                                .collect::<Vec<_>>();
+
+                            if let Some(field) = c
+                                .fields
+                                .iter()
+                                .chain(frgamgnt_fields.iter())
+                                .find(|f| &f.name == elem.0)
+                            {
                                 let resolved_typ = field.typ.to_typ(type_env);
                                 if resolved_typ.is_complete() {
                                     *typ = resolved_typ;

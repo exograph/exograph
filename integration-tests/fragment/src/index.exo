@@ -1,12 +1,12 @@
 @postgres
 module TodoDatabase {
-  @access(true)
+  @access(self.id > 0) // Not a meaningful access condition, but to test that expressions can refer to fragment fields
   type Todo {
-    @pk id: Int = autoIncrement()
     ...TodoFragment
   }
 
   fragment TodoFragment {
+    @pk id: Int = autoIncrement()
     completed: Boolean
     title: String
   }
