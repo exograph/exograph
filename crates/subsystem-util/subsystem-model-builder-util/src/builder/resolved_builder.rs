@@ -16,7 +16,7 @@ use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::types::{FieldType, Named};
 use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
 use core_model_builder::ast::ast_types::AstFieldType;
-use core_model_builder::builder::resolved_builder::AnnotationMapHelper;
+use core_model_builder::builder::resolved_builder::{compute_fragment_fields, AnnotationMapHelper};
 use core_model_builder::builder::system_builder::BaseModelSystem;
 use core_model_builder::typechecker::typ::{Module, TypecheckedSystem};
 use core_model_builder::typechecker::AnnotationMap;
@@ -156,6 +156,7 @@ pub async fn build(
     process_script: impl Fn(
         &AstModule<Typed>,
         &BaseModelSystem,
+        &TypecheckedSystem,
         &Path,
     ) -> Result<(String, Vec<u8>), ModelBuildingError>,
 ) -> Result<ResolvedModuleSystem, ModelBuildingError> {
@@ -185,6 +186,7 @@ async fn resolve(
     process_script: impl Fn(
         &AstModule<Typed>,
         &BaseModelSystem,
+        &TypecheckedSystem,
         &Path,
     ) -> Result<(String, Vec<u8>), ModelBuildingError>,
 ) -> Result<ResolvedModuleSystem, ModelBuildingError> {
@@ -227,6 +229,7 @@ async fn resolve_modules(
     process_script: impl Fn(
         &AstModule<Typed>,
         &BaseModelSystem,
+        &TypecheckedSystem,
         &Path,
     ) -> Result<(String, Vec<u8>), ModelBuildingError>,
 ) -> Result<MappedArena<ResolvedModule>, ModelBuildingError> {
@@ -239,6 +242,7 @@ async fn resolve_modules(
             resolve_module(
                 module,
                 base_system,
+                typechecked_system,
                 annotation_name,
                 &typechecked_system.types,
                 errors,
@@ -252,9 +256,11 @@ async fn resolve_modules(
     Ok(resolved_modules)
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn resolve_module(
     module: &AstModule<Typed>,
     base_system: &BaseModelSystem,
+    typechecked_system: &TypecheckedSystem,
     annotation_name: String,
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
@@ -262,6 +268,7 @@ async fn resolve_module(
     process_script: &impl Fn(
         &AstModule<Typed>,
         &BaseModelSystem,
+        &TypecheckedSystem,
         &Path,
     ) -> Result<(String, Vec<u8>), ModelBuildingError>,
 ) -> Result<(), ModelBuildingError> {
@@ -278,7 +285,8 @@ async fn resolve_module(
     source_path.pop();
     source_path.push(&module_relative_path);
 
-    let (script_path, bundled_script) = process_script(module, base_system, &source_path)?;
+    let (script_path, bundled_script) =
+        process_script(module, base_system, typechecked_system, &source_path)?;
 
     fn extract_intercept_annot<'a>(
         annotations: &'a AnnotationMap,
@@ -518,9 +526,13 @@ fn resolve_module_types(
             Type::Composite(ct) if is_relevant(typ) => {
                 if ct.kind == AstModelKind::Type {
                     let access = build_access(ct.annotations.get("access"));
+
+                    let fragment_fields = compute_fragment_fields(ct, errors, typechecked_system);
+
                     let resolved_fields = ct
                         .fields
                         .iter()
+                        .chain(fragment_fields.iter().cloned())
                         .map(|field| ResolvedField {
                             name: field.name.clone(),
                             typ: resolve_field_type(
@@ -595,8 +607,10 @@ mod tests {
     };
     use codemap::CodeMap;
     use core_model_builder::{
-        ast::ast_types::AstModule, builder::system_builder::BaseModelSystem,
-        error::ModelBuildingError, typechecker::Typed,
+        ast::ast_types::AstModule,
+        builder::system_builder::BaseModelSystem,
+        error::ModelBuildingError,
+        typechecker::{typ::TypecheckedSystem, Typed},
     };
 
     use super::{build, ResolvedModuleSystem};
@@ -654,6 +668,7 @@ mod tests {
     fn process_script(
         _module: &AstModule<Typed>,
         _base_system: &BaseModelSystem,
+        _typechecked_system: &TypecheckedSystem,
         path: &Path,
     ) -> Result<(String, Vec<u8>), ModelBuildingError> {
         Ok((path.to_str().unwrap().to_string(), vec![]))

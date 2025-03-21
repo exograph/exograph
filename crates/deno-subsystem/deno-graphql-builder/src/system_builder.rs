@@ -108,9 +108,15 @@ pub async fn build(
 fn process_script(
     module: &AstModule<Typed>,
     base_system: &BaseModelSystem,
+    typechecked_system: &TypecheckedSystem,
     module_fs_path: &Path,
 ) -> Result<(String, Vec<u8>), ModelBuildingError> {
-    module_skeleton_generator::generate_module_skeleton(module, base_system, module_fs_path)?;
+    module_skeleton_generator::generate_module_skeleton(
+        module,
+        base_system,
+        typechecked_system,
+        module_fs_path,
+    )?;
 
     fn run_local<F, R>(future: F) -> R
     where

@@ -77,6 +77,7 @@ pub async fn build(
 fn process_script(
     _module: &AstModule<Typed>,
     _base_system: &BaseModelSystem,
+    _typechecked_system: &TypecheckedSystem,
     module_fs_path: &Path,
 ) -> Result<(String, Vec<u8>), ModelBuildingError> {
     std::fs::read(module_fs_path)

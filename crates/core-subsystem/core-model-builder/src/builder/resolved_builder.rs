@@ -12,9 +12,11 @@ use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType, types
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ast::ast_types::{AstAnnotation, AstAnnotationParams, AstExpr, AstField, AstModelKind},
+    ast::ast_types::{
+        AstAnnotation, AstAnnotationParams, AstExpr, AstField, AstModel, AstModelKind,
+    },
     error::ModelBuildingError,
-    typechecker::{AnnotationMap, Type, Typed},
+    typechecker::{typ::TypecheckedSystem, AnnotationMap, Type, Typed},
 };
 
 pub trait AnnotationMapHelper {
@@ -239,4 +241,51 @@ fn extract_context_source(
             None
         }
     }
+}
+
+pub fn compute_fragment_fields<'a>(
+    ct: &'a AstModel<Typed>,
+    errors: &mut Vec<Diagnostic>,
+    typechecked_system: &'a TypecheckedSystem,
+) -> Vec<&'a AstField<Typed>> {
+    ct.fragment_references
+        .iter()
+        .flat_map(|fragment_reference| {
+            let fragment_type = typechecked_system
+                .types
+                .get_by_key(&fragment_reference.name);
+            match &fragment_type {
+                Some(Type::Composite(ft)) => ft.fields.iter().collect(),
+                Some(_) => {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: format!(
+                            "Fragment type {} is not a composite type",
+                            fragment_reference.name
+                        ),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: fragment_reference.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    });
+                    vec![]
+                }
+                None => {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: format!("Fragment type {} not found", fragment_reference.name),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: fragment_reference.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    });
+                    vec![]
+                }
+            }
+        })
+        .collect::<Vec<_>>()
 }
