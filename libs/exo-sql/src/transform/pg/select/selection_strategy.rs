@@ -166,7 +166,9 @@ pub(super) fn compute_relation_predicate(
             let alias = if use_alias {
                 Some(selection_level.alias((relation_table_id, None), database))
             } else {
-                None
+                selection_level
+                    .without_last()
+                    .self_referencing_table_alias(relation_table_id, database)
             };
 
             let foreign_table_alias =

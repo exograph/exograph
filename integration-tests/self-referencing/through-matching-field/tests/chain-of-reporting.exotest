@@ -1,0 +1,66 @@
+operation: |
+  fragment EmployeeInfo on Employee {
+    id
+    name
+    manager {
+      id
+      name
+      manager {
+        id
+        name
+        manager {
+          id
+          name
+        }
+      }
+    }
+  }
+  query($ceoId: Int!, $vpEngId: Int!, $eng1Id: Int!) {
+    ceoReports: employee(id: $ceoId) {
+      ...EmployeeInfo
+    }
+    vpEng: employee(id: $vpEngId) {
+      ...EmployeeInfo
+    }
+    eng1: employee(id: $eng1Id) {
+      ...EmployeeInfo
+    }
+  }
+variable: |
+  {
+    "ceoId": $.ceoId,
+    "vpEngId": $.vpEngId,
+    "eng1Id": $.eng1Id
+  }
+response: |
+  {
+    "data": {
+      "ceoReports": {
+        "id": $.ceoId,
+        "name": "CEO",
+        "manager": null
+      },
+      "vpEng": {
+        "id": $.vpEngId,
+        "name": "VP of Engineering",
+        "manager": {
+          "id": $.ceoId,
+          "name": "CEO",
+          "manager": null
+        }
+      },
+      "eng1": {
+        "id": $.eng1Id,
+        "name": "Engineer 1",
+        "manager": {
+          "id": $.vpEngId,
+          "name": "VP of Engineering",
+          "manager": {
+            "id": $.ceoId,
+            "name": "CEO",
+            "manager": null
+          }
+        }
+      }
+    }
+  }
