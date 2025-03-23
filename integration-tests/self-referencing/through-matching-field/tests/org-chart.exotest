@@ -1,0 +1,108 @@
+operation: |
+  fragment EmployeeInfo on Employee {
+    id
+    name
+    reports {
+      id
+      name
+      reports {
+        id
+        name
+        reports {
+          id
+          name
+        }
+      }
+    }
+  }
+  query($ceoId: Int!, $vpEngId: Int!, $eng1Id: Int!) {
+    ceoReports: employee(id: $ceoId) {
+      ...EmployeeInfo
+    }
+    vpEngReports: employee(id: $vpEngId) {
+      ...EmployeeInfo
+    }
+    eng1Reports: employee(id: $eng1Id) {
+      ...EmployeeInfo
+    }
+  }
+variable: |
+  {
+    "ceoId": $.ceoId,
+    "vpEngId": $.vpEngId,
+    "eng1Id": $.eng1Id
+  }
+response: |
+  {
+    "data": {
+      "ceoReports": {
+        "id": 1,
+        "name": "CEO",
+        "reports": [
+          {
+            "id": 2,
+            "name": "VP of Engineering",
+            "reports": [
+              {
+                "id": 4,
+                "name": "Engineer 1",
+                "reports": []
+              },
+              {
+                "id": 5,
+                "name": "Engineer 2",
+                "reports": []
+              },
+              {
+                "id": 6,
+                "name": "Engineer 3",
+                "reports": []
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "name": "VP of Sales",
+            "reports": [
+              {
+                "id": 7,
+                "name": "Sales 1",
+                "reports": []
+              },
+              {
+                "id": 8,
+                "name": "Sales 2",
+                "reports": []
+              }
+            ]
+          }
+        ]
+      },
+      "vpEngReports": {
+        "id": 2,
+        "name": "VP of Engineering",
+        "reports": [
+          {
+            "id": 4,
+            "name": "Engineer 1",
+            "reports": []
+          },
+          {
+            "id": 5,
+            "name": "Engineer 2",
+            "reports": []
+          },
+          {
+            "id": 6,
+            "name": "Engineer 3",
+            "reports": []
+          }
+        ]
+      },
+      "eng1Reports": {
+        "id": 4,
+        "name": "Engineer 1",
+        "reports": []
+      }
+    }
+  }

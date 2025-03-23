@@ -192,4 +192,20 @@ impl SelectionLevel {
             }
         }
     }
+
+    pub(crate) fn without_last(&self) -> Self {
+        match self {
+            SelectionLevel::TopLevel => SelectionLevel::TopLevel,
+            SelectionLevel::Nested(relation_ids) => {
+                let mut relation_ids = relation_ids.clone();
+                relation_ids.pop();
+
+                if relation_ids.is_empty() {
+                    SelectionLevel::TopLevel
+                } else {
+                    SelectionLevel::Nested(relation_ids)
+                }
+            }
+        }
+    }
 }
