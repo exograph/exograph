@@ -48,4 +48,4 @@ deno-builder = { path = "../deno-subsystem/deno-builder" }
 wasm-builder = { path = "../wasm-subsystem/wasm-builder" }
 
 [target.'cfg(unix)'.dev-dependencies]
-rexpect = "0.5.0"
+rexpect = "0.6.0"
