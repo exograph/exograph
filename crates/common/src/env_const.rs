@@ -28,9 +28,11 @@ pub const EXO_PLAYGROUND_HTTP_PATH: &str = "EXO_PLAYGROUND_HTTP_PATH";
 pub const EXO_GRAPHQL_HTTP_PATH: &str = "EXO_GRAPHQL_HTTP_PATH";
 pub const EXO_REST_HTTP_PATH: &str = "EXO_REST_HTTP_PATH";
 pub const EXO_RPC_HTTP_PATH: &str = "EXO_RPC_HTTP_PATH";
+pub const EXO_MCP_HTTP_PATH: &str = "EXO_MCP_HTTP_PATH";
+
 pub const EXO_UNSTABLE_ENABLE_REST_API: &str = "EXO_UNSTABLE_ENABLE_REST_API";
 pub const EXO_UNSTABLE_ENABLE_RPC_API: &str = "EXO_UNSTABLE_ENABLE_RPC_API";
-
+pub const EXO_UNSTABLE_ENABLE_MCP_API: &str = "EXO_UNSTABLE_ENABLE_MCP_API";
 #[derive(Debug)]
 pub enum DeploymentMode {
     Yolo,
@@ -93,4 +95,9 @@ pub fn get_rest_http_path(env: &dyn Environment) -> String {
 pub fn get_rpc_http_path(env: &dyn Environment) -> String {
     env.get(EXO_RPC_HTTP_PATH)
         .unwrap_or_else(|| "/rpc".to_string())
+}
+
+pub fn get_mcp_http_path(env: &dyn Environment) -> String {
+    env.get(EXO_MCP_HTTP_PATH)
+        .unwrap_or_else(|| "/mcp".to_string())
 }

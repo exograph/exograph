@@ -16,7 +16,7 @@ pub struct SubsystemRpcResponse {
 pub struct JsonRpcRequest {
     pub jsonrpc: String,
 
-    pub id: JsonRpcId,
+    pub id: Option<JsonRpcId>,
     pub method: String,
     #[allow(dead_code)]
     pub params: Option<serde_json::Value>,

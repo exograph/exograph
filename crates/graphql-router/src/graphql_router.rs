@@ -38,14 +38,14 @@ use exo_env::Environment;
 use crate::system_loader::SystemLoader;
 
 pub struct GraphQLRouter {
-    system_resolver: GraphQLSystemResolver,
+    system_resolver: Arc<GraphQLSystemResolver>,
     env: Arc<dyn Environment>,
 }
 
 impl GraphQLRouter {
     pub fn new(system_resolver: GraphQLSystemResolver, env: Arc<dyn Environment>) -> Self {
         Self {
-            system_resolver,
+            system_resolver: Arc::new(system_resolver),
             env,
         }
     }
@@ -72,6 +72,10 @@ impl GraphQLRouter {
         .await?;
 
         Ok(Self::new(graphql_resolver, env))
+    }
+
+    pub fn system_resolver(&self) -> Arc<GraphQLSystemResolver> {
+        self.system_resolver.clone()
     }
 }
 
@@ -215,7 +219,7 @@ impl<'a> Router<RequestContext<'a>> for GraphQLRouter {
     name = "resolver::resolve_in_memory"
     skip(system_resolver, request, request_context)
 )]
-async fn resolve_in_memory<'a>(
+pub async fn resolve_in_memory<'a>(
     request: &(dyn RequestPayload + Sync),
     system_resolver: &GraphQLSystemResolver,
     trusted_document_enforcement: TrustedDocumentEnforcement,
@@ -226,6 +230,21 @@ async fn resolve_in_memory<'a>(
     let operations_payload = OperationsPayload::from_json(body.clone())
         .map_err(|e| SystemResolutionError::RequestError(RequestError::InvalidBodyJson(e)))?;
 
+    resolve_in_memory_for_payload(
+        operations_payload,
+        system_resolver,
+        trusted_document_enforcement,
+        request_context,
+    )
+    .await
+}
+
+pub async fn resolve_in_memory_for_payload<'a>(
+    operations_payload: OperationsPayload,
+    system_resolver: &GraphQLSystemResolver,
+    trusted_document_enforcement: TrustedDocumentEnforcement,
+    request_context: &RequestContext<'a>,
+) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
     let response = system_resolver
         .resolve_operations(
             operations_payload,

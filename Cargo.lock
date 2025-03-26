@@ -5573,6 +5573,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4facc753ae494aeb6e3c22f839b158aebd4f9270f55cd3c79906c45476c47ab4"
 
 [[package]]
+name = "mcp-router"
+version = "0.12.2"
+dependencies = [
+ "async-stream",
+ "async-trait",
+ "bytes",
+ "common",
+ "core-plugin-shared",
+ "core-resolver",
+ "exo-env",
+ "graphql-router",
+ "http 1.1.0",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
 name = "md-5"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9319,6 +9336,7 @@ dependencies = [
  "exo-env",
  "graphql-router",
  "http 1.1.0",
+ "mcp-router",
  "playground-router",
  "rest-router",
  "rpc-router",

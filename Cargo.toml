@@ -12,6 +12,7 @@ members = [
   "crates/graphql-router",
   "crates/rest-router",
   "crates/rpc-router",
+  "crates/mcp-router",
   "crates/playground-router",
   "crates/server-actix",
   "crates/server-aws-lambda",

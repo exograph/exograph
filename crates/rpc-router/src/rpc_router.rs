@@ -65,7 +65,7 @@ impl<'a> Router<RequestContext<'a>> for RpcRouter {
                     if request.jsonrpc != "2.0" {
                         Err(SubsystemRpcError::InvalidRequest)
                     } else {
-                        id = Some(request.id);
+                        id = request.id;
                         let response = self
                             .system_resolver
                             .resolve(&request.method, &request.params, request_context)
