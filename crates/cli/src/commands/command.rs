@@ -107,6 +107,19 @@ pub(crate) fn ensure_exo_project_dir(dir: &Path) -> Result<(), BuildError> {
     }
 }
 
+pub fn yes_arg() -> Arg {
+    Arg::new("yes")
+        .help("Assume yes to all prompts")
+        .long("yes")
+        .short('y')
+        .required(false)
+        .num_args(0)
+}
+
+pub fn yes_value(matches: &ArgMatches) -> bool {
+    get(matches, "yes").unwrap_or(false)
+}
+
 pub fn new_project_arg() -> Arg {
     Arg::new("path")
         .help("Create a new project")
@@ -121,6 +134,10 @@ pub fn database_arg() -> Arg {
         .help("The PostgreSQL database connection string to use. If not specified, the program will attempt to read it from the environment (`EXO_POSTGRES_URL` or `DATABASE_URL`).")
         .long("database")
         .required(false)
+}
+
+pub fn database_value(matches: &ArgMatches) -> Option<String> {
+    get(matches, "database")
 }
 
 pub fn output_arg() -> Arg {
@@ -141,6 +158,10 @@ pub fn migration_scope_arg() -> Arg {
         .required(false)
         .value_parser(clap::value_parser!(String))
         .num_args(1)
+}
+
+pub fn migration_scope_value(matches: &ArgMatches) -> Option<String> {
+    get(matches, "scope")
 }
 
 pub fn port_arg() -> Arg {
@@ -171,6 +192,32 @@ pub(crate) fn seed_arg() -> Arg {
         .required(false)
         .value_parser(clap::value_parser!(PathBuf))
         .num_args(1)
+}
+
+pub(crate) fn query_access_arg() -> Arg {
+    Arg::new("query-access")
+        .help("Access expression to apply to all queries")
+        .long("query-access")
+        .required(false)
+        .value_parser(clap::value_parser!(bool))
+        .num_args(1)
+}
+
+pub(crate) fn query_access_value(matches: &ArgMatches) -> bool {
+    get(matches, "query-access").unwrap_or(false)
+}
+
+pub(crate) fn mutation_access_arg() -> Arg {
+    Arg::new("mutation-access")
+        .help("Access expression to apply to all mutations")
+        .long("mutation-access")
+        .required(false)
+        .value_parser(clap::value_parser!(bool))
+        .num_args(1)
+}
+
+pub(crate) fn mutation_access_value(matches: &ArgMatches) -> bool {
+    get(matches, "mutation-access").unwrap_or(false)
 }
 
 pub(crate) fn setup_trusted_documents_enforcement(matches: &ArgMatches) {

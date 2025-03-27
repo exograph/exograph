@@ -16,9 +16,9 @@ use std::{
 
 pub(crate) mod watcher;
 
-pub fn open_file_for_output(output: Option<&Path>) -> Result<Box<dyn Write + Send>> {
+pub fn open_file_for_output(output: Option<&Path>, yes: bool) -> Result<Box<dyn Write + Send>> {
     if let Some(output) = output {
-        if output.exists() {
+        if output.exists() && !yes {
             print!(
                 "File `{}` already exists. Overwrite? [y/N]: ",
                 output.display()

@@ -22,6 +22,7 @@ use std::path::PathBuf;
 use super::command::{
     enforce_trusted_documents_arg, get, migration_scope_arg, port_arg, CommandDefinition,
 };
+use crate::commands::command::migration_scope_value;
 use crate::config::{Config, WatchStage};
 use crate::{
     commands::{
@@ -69,7 +70,7 @@ impl CommandDefinition for DevCommandDefinition {
 
         std::env::set_var(EXO_CORS_DOMAINS, "*");
 
-        let migration_scope = compute_migration_scope(get(matches, "scope"));
+        let migration_scope = compute_migration_scope(migration_scope_value(matches));
 
         const MIGRATE: &str = "Attempt migration";
         const CONTINUE: &str = "Continue with old schema";
