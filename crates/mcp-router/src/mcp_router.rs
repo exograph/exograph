@@ -194,35 +194,46 @@ impl McpRouter {
                     .as_str()
                     .ok_or(SubsystemRpcError::InvalidRequest)?;
 
-                let graphql_response = self
-                    .execute_query(query.to_string(), request_context)
-                    .await?;
+                let graphql_response = self.execute_query(query.to_string(), request_context).await;
 
-                let response_contents = graphql_response
-                    .into_iter()
-                    .map(|(name, response)| {
-                        let content_string = match response.body {
-                            QueryResponseBody::Json(value) => value.to_string(),
-                            QueryResponseBody::Raw(value) => value.unwrap_or_default(),
-                        };
+                let tool_result = match graphql_response {
+                    Ok(graphql_response) => {
+                        let response_contents = graphql_response
+                            .into_iter()
+                            .map(|(name, response)| {
+                                let content_string = match response.body {
+                                    QueryResponseBody::Json(value) => value.to_string(),
+                                    QueryResponseBody::Raw(value) => value.unwrap_or_default(),
+                                };
 
-                        let text = json!({
-                            "name": name,
-                            "response": content_string,
-                        })
-                        .to_string();
+                                let text = json!({
+                                    "name": name,
+                                    "response": content_string,
+                                })
+                                .to_string();
+
+                                json!({
+                                    "text": text,
+                                    "type": "text",
+                                })
+                            })
+                            .collect::<Vec<_>>();
 
                         json!({
-                            "text": text,
-                            "type": "text",
+                            "content": response_contents,
+                            "isError": false,
                         })
-                    })
-                    .collect::<Vec<_>>();
-
-                let tool_result = json!({
-                    "content": response_contents,
-                    "isError": false,
-                });
+                    }
+                    Err(e) => {
+                        json!({
+                            "content": [json!({
+                                "text": format!("Error: {:?}", e),
+                                "type": "text",
+                            })],
+                            "isError": true,
+                        })
+                    }
+                };
 
                 let response = SubsystemRpcResponse {
                     response: QueryResponse {
@@ -231,6 +242,7 @@ impl McpRouter {
                     },
                     status_code: StatusCode::OK,
                 };
+
                 Ok(Some(response))
             }
             None => {
