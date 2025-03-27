@@ -17,6 +17,7 @@ exo-env = { path = "../../libs/exo-env" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
 graphql-router = { path = "../graphql-router" }
+introspection-util = { path = "../introspection-util" }
 
 [dev-dependencies]
 

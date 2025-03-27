@@ -31,9 +31,9 @@ async-graphql-value.workspace = true
 http.workspace = true
 md5 = "0.7"
 wildmatch.workspace = true
-include_dir.workspace = true
 
 common = { path = "../common" }
+introspection-util = { path = "../introspection-util" }
 
 exo-sql = { path = "../../libs/exo-sql", features = [
   "tls",
@@ -54,10 +54,6 @@ crossbeam-channel = "0.5.13"
 
 [dev-dependencies]
 insta.workspace = true
-ctor.workspace = true
-
-[build-dependencies]
-which.workspace = true
 
 [lib]
 doctest = false

@@ -83,7 +83,7 @@ impl CommandDefinition for SchemaCommandDefinition {
                     }
                 };
 
-                let schema_string = testing::schema_sdl(introspection_result).await?;
+                let schema_string = introspection_util::schema_sdl(introspection_result).await?;
 
                 File::create(output)?.write_all(schema_string.as_bytes())?;
             }

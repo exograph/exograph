@@ -1230,6 +1230,7 @@ dependencies = [
  "home",
  "indicatif",
  "inquire",
+ "introspection-util",
  "lazy_static",
  "notify-debouncer-mini",
  "pluralizer",
@@ -4937,6 +4938,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "introspection-util"
+version = "0.12.2"
+dependencies = [
+ "anyhow",
+ "ctor",
+ "deno_core",
+ "exo-deno",
+ "include_dir",
+ "serde_json",
+ "tokio",
+ "which 6.0.3",
+]
+
+[[package]]
 name = "io-extras"
 version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5585,6 +5600,7 @@ dependencies = [
  "exo-env",
  "graphql-router",
  "http 1.1.0",
+ "introspection-util",
  "serde_json",
  "tracing",
 ]
@@ -9431,15 +9447,14 @@ dependencies = [
  "common",
  "core-plugin-shared",
  "crossbeam-channel",
- "ctor",
  "deno_core",
  "exo-deno",
  "exo-env",
  "exo-sql",
  "futures",
  "http 1.1.0",
- "include_dir",
  "insta",
+ "introspection-util",
  "jsonwebtoken",
  "md5",
  "num_cpus",
@@ -9451,7 +9466,6 @@ dependencies = [
  "server-common",
  "system-router",
  "tokio",
- "which 6.0.3",
  "wildmatch",
 ]
 

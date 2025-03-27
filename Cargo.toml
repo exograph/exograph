@@ -25,6 +25,7 @@ members = [
   "crates/wasm-subsystem/*",
   "crates/subsystem-util/*",
   "crates/introspection-subsystem/*",
+  "crates/introspection-util",
   "libs/exo-deno",
   "libs/exo-sql",
   "libs/exo-wasm",

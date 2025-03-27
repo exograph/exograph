@@ -56,6 +56,34 @@ impl McpRouter {
             && (method == Method::GET || method == Method::POST)
     }
 
+    async fn get_introspection_schema(
+        &self,
+        request_context: &RequestContext<'_>,
+    ) -> Result<String, SubsystemRpcError> {
+        let query = introspection_util::get_introspection_query()
+            .await
+            .map_err(|_| SubsystemRpcError::InternalError)?;
+
+        let query = query.as_str().ok_or(SubsystemRpcError::InternalError)?;
+
+        let graphql_response = self
+            .execute_query(query.to_string(), request_context)
+            .await?;
+
+        let (first_name, first_response) = graphql_response.first().unwrap();
+
+        let schema_response = first_response
+            .body
+            .to_json()
+            .map_err(|_| SubsystemRpcError::InternalError)?;
+
+        let schema_response = json!({ "data": { first_name: schema_response } });
+
+        introspection_util::schema_sdl(schema_response)
+            .await
+            .map_err(|_| SubsystemRpcError::InternalError)
+    }
+
     async fn handle_initialize(
         &self,
         _request: JsonRpcRequest,
@@ -67,7 +95,6 @@ impl McpRouter {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {
                         "tools": {
-                            "listChanged": false
                         }
                     },
                     "serverInfo": {
@@ -88,25 +115,27 @@ impl McpRouter {
         _request: JsonRpcRequest,
         _request_context: &RequestContext<'_>,
     ) -> Result<Option<SubsystemRpcResponse>, SubsystemRpcError> {
+        let introspection_schema = self.get_introspection_schema(_request_context).await?;
+
         let response_body = json!({
             "tools": [{
                 "name": "execute_graphql",
-                "description": "Execute a GraphQL query",
+                "description": format!("Execute a GraphQL query per the following schema: {}", introspection_schema),
                 "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "The graphql query to execute"
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The graphql query to execute"
+                        },
+                        "variables": {
+                            "type": "object",
+                            "description": "The variables to pass to the graphql query",
+                            "properties": {},
+                            "required": []
+                        }
                     },
-                    "variables": {
-                        "type": "object",
-                        "description": "The variables to pass to the graphql query",
-                        "properties": {},
-                        "required": []
-                    }
-                },
-                "required": ["query"]
+                    "required": ["query"]
                 }
             }]
         });
@@ -120,6 +149,31 @@ impl McpRouter {
         };
 
         Ok(Some(response))
+    }
+
+    async fn execute_query(
+        &self,
+        query: String,
+        request_context: &RequestContext<'_>,
+    ) -> Result<Vec<(String, QueryResponse)>, SubsystemRpcError> {
+        let operations_payload = OperationsPayload {
+            query: Some(query),
+            variables: None,
+            operation_name: None,
+            query_hash: None,
+        };
+
+        resolve_in_memory_for_payload(
+            operations_payload,
+            &self.system_resolver,
+            TrustedDocumentEnforcement::DoNotEnforce,
+            request_context,
+        )
+        .await
+        .map_err(|e| {
+            tracing::error!("Error while resolving request: {:?}", e);
+            SubsystemRpcError::InternalError
+        })
     }
 
     async fn handle_tools_call(
@@ -140,24 +194,9 @@ impl McpRouter {
                     .as_str()
                     .ok_or(SubsystemRpcError::InvalidRequest)?;
 
-                let operations_payload = OperationsPayload {
-                    query: Some(query.to_string()),
-                    variables: None,
-                    operation_name: None,
-                    query_hash: None,
-                };
-
-                let graphql_response = resolve_in_memory_for_payload(
-                    operations_payload,
-                    &self.system_resolver,
-                    TrustedDocumentEnforcement::DoNotEnforce,
-                    request_context,
-                )
-                .await
-                .map_err(|e| {
-                    tracing::error!("Error while resolving request: {:?}", e);
-                    SubsystemRpcError::InternalError
-                })?;
+                let graphql_response = self
+                    .execute_query(query.to_string(), request_context)
+                    .await?;
 
                 let response_contents = graphql_response
                     .into_iter()
@@ -205,14 +244,32 @@ impl McpRouter {
         _request: JsonRpcRequest,
         _request_context: &RequestContext<'_>,
     ) -> Result<Option<SubsystemRpcResponse>, SubsystemRpcError> {
-        // let response = SubsystemRpcResponse {
-        //     response: QueryResponse {
-        //         body: QueryResponseBody::Raw(None),
-        //         headers: vec![],
-        //     },
-        //     status_code: StatusCode::OK,
-        // };
-        Ok(None)
+        let response = SubsystemRpcResponse {
+            response: QueryResponse {
+                body: QueryResponseBody::Raw(None),
+                headers: vec![],
+            },
+            status_code: StatusCode::OK,
+        };
+        Ok(Some(response))
+    }
+
+    async fn handle_prompts_list(
+        &self,
+        _request: JsonRpcRequest,
+        _request_context: &RequestContext<'_>,
+    ) -> Result<Option<SubsystemRpcResponse>, SubsystemRpcError> {
+        let response = SubsystemRpcResponse {
+            response: QueryResponse {
+                body: QueryResponseBody::Json(json!({
+                    "prompts": [],
+                    "resources": []
+                })),
+                headers: vec![],
+            },
+            status_code: StatusCode::OK,
+        };
+        Ok(Some(response))
     }
 }
 
@@ -255,6 +312,9 @@ impl<'a> Router<RequestContext<'a>> for McpRouter {
                                 }
                                 "tools/call" => {
                                     self.handle_tools_call(request, request_context).await
+                                }
+                                "prompts/list" | "resources/list" => {
+                                    self.handle_prompts_list(request, request_context).await
                                 }
                                 _ => Err(SubsystemRpcError::MethodNotFound(request.method)),
                             };
