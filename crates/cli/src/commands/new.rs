@@ -13,11 +13,18 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use clap::{ArgMatches, Command};
+use clap::{Arg, ArgMatches, Command};
 use colored::Colorize;
 
-use super::command::{get_required, new_project_arg, CommandDefinition};
+use super::command::{
+    database_arg, get_required, migration_scope_arg, mutation_access_arg, new_project_arg,
+    query_access_arg, CommandDefinition,
+};
+use crate::commands::command::{
+    database_value, migration_scope_value, mutation_access_value, query_access_value,
+};
 use crate::config::Config;
+use crate::schema::import::create_model_file;
 
 static SRC_INDEX_TEMPLATE: &[u8] = include_bytes!("templates/exo-new/src/index.exo");
 static TESTS_TEST_TEMPLATE: &[u8] = include_bytes!("templates/exo-new/tests/basic-query.exotest");
@@ -32,11 +39,26 @@ impl CommandDefinition for NewCommandDefinition {
         Command::new("new")
             .about("Create a new Exograph project")
             .arg(new_project_arg())
+            .arg(
+                Arg::new("from-database")
+                    .help("Create a new Exograph project from a database")
+                    .long("from-database")
+                    .required(false)
+                    .num_args(0),
+            )
+            .arg(database_arg())
+            .arg(migration_scope_arg())
+            .arg(query_access_arg())
+            .arg(mutation_access_arg())
     }
 
     async fn execute(&self, matches: &ArgMatches, _config: &Config) -> Result<()> {
         let path: PathBuf = get_required(matches, "path")?;
-
+        let from_database: bool = matches.get_flag("from-database");
+        let database_url = database_value(matches);
+        let query_access: bool = query_access_value(matches);
+        let mutation_access: bool = mutation_access_value(matches);
+        let scope: Option<String> = migration_scope_value(matches);
         let path_str = path.display().to_string();
 
         if path.exists() {
@@ -82,6 +104,19 @@ impl CommandDefinition for NewCommandDefinition {
                 // It is not an error to not have git installed, but we should warn the user
                 println!("Git is not installed. Skipping repository initialization...");
             }
+        }
+
+        if from_database {
+            create_model_file(
+                Some(&src_path.join("index.exo")),
+                database_url,
+                query_access,
+                mutation_access,
+                false,
+                scope,
+                true,
+            )
+            .await?;
         }
 
         println!(

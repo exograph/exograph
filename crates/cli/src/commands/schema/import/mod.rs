@@ -14,10 +14,12 @@ use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::issue::WithIssues;
 use exo_sql::schema::spec::{MigrationScope, MigrationScopeMatches};
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::commands::command::{
-    database_arg, get, migration_scope_arg, output_arg, CommandDefinition,
+    database_arg, database_value, get, migration_scope_arg, migration_scope_value,
+    mutation_access_arg, mutation_access_value, output_arg, query_access_arg, query_access_value,
+    yes_arg, yes_value, CommandDefinition,
 };
 use crate::commands::util::compute_migration_scope;
 use crate::config::Config;
@@ -44,22 +46,8 @@ impl CommandDefinition for ImportCommandDefinition {
             .arg(database_arg())
             .arg(output_arg())
             .arg(migration_scope_arg())
-            .arg(
-                Arg::new("query-access")
-                    .help("Query access expression to apply to all tables (default: false)")
-                    .long("query-access")
-                    .required(false)
-                    .value_parser(clap::value_parser!(bool))
-                    .num_args(1),
-            )
-            .arg(
-                Arg::new("mutation-access")
-                    .help("Write access expression to apply to all tables (default: false)")
-                    .long("mutation-access")
-                    .required(false)
-                    .value_parser(clap::value_parser!(bool))
-                    .num_args(1),
-            )
+            .arg(query_access_arg())
+            .arg(mutation_access_arg())
             .arg(
                 Arg::new("generate-fragments")
                     .help("Generate fragments for tables")
@@ -67,37 +55,29 @@ impl CommandDefinition for ImportCommandDefinition {
                     .required(false)
                     .num_args(0),
             )
+            .arg(yes_arg())
     }
 
     /// Create a exograph model file based on a database schema
     async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
         let output: Option<PathBuf> = get(matches, "output");
-        let database_url: Option<String> = get(matches, "database");
-        let query_access: bool = get(matches, "query-access").unwrap_or(false);
-        let mutation_access: bool = get(matches, "mutation-access").unwrap_or(false);
+        let database_url = database_value(matches);
+        let query_access: bool = query_access_value(matches);
+        let mutation_access: bool = mutation_access_value(matches);
         let generate_fragments: bool = matches.get_flag("generate-fragments");
-        let scope: Option<String> = get(matches, "scope");
+        let scope: Option<String> = migration_scope_value(matches);
+        let yes: bool = yes_value(matches);
 
-        let mut writer = open_file_for_output(output.as_deref())?;
-
-        let schema = import_schema(database_url, &compute_migration_scope(scope)).await?;
-
-        let mut context = ImportContext::new(
-            &schema.value,
+        create_model_file(
+            output.as_deref(),
+            database_url,
             query_access,
             mutation_access,
             generate_fragments,
-        );
-
-        for table in &schema.value.tables {
-            context.add_table(&table.name);
-        }
-
-        schema.value.process(&(), &context, &mut writer)?;
-
-        for issue in &schema.issues {
-            eprintln!("{issue}");
-        }
+            scope,
+            yes,
+        )
+        .await?;
 
         if let Some(output) = &output {
             eprintln!("\nExograph model written to `{}`", output.display());
@@ -107,7 +87,40 @@ impl CommandDefinition for ImportCommandDefinition {
     }
 }
 
-async fn import_schema(
+pub(crate) async fn create_model_file(
+    output: Option<&Path>,
+    database_url: Option<String>,
+    query_access: bool,
+    mutation_access: bool,
+    generate_fragments: bool,
+    scope: Option<String>,
+    yes: bool,
+) -> Result<()> {
+    let mut writer = open_file_for_output(output, yes)?;
+
+    let schema = import_schema(database_url, &compute_migration_scope(scope)).await?;
+
+    let mut context = ImportContext::new(
+        &schema.value,
+        query_access,
+        mutation_access,
+        generate_fragments,
+    );
+
+    for table in &schema.value.tables {
+        context.add_table(&table.name);
+    }
+
+    schema.value.process(&(), &context, &mut writer)?;
+
+    for issue in &schema.issues {
+        eprintln!("{issue}");
+    }
+
+    Ok(())
+}
+
+pub(crate) async fn import_schema(
     database_url: Option<String>,
     scope: &MigrationScope,
 ) -> Result<WithIssues<DatabaseSpec>> {

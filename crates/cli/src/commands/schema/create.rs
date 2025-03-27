@@ -15,7 +15,7 @@ use std::{io::Write, path::PathBuf};
 
 use exo_sql::schema::database_spec::DatabaseSpec;
 
-use crate::commands::command::migration_scope_arg;
+use crate::commands::command::{migration_scope_arg, migration_scope_value, yes_arg, yes_value};
 use crate::config::Config;
 use crate::{
     commands::{
@@ -37,6 +37,7 @@ impl CommandDefinition for CreateCommandDefinition {
             .arg(output_arg())
             .arg(use_ir_arg())
             .arg(migration_scope_arg())
+            .arg(yes_arg())
     }
 
     /// Create a database schema from a exograph model
@@ -45,10 +46,11 @@ impl CommandDefinition for CreateCommandDefinition {
 
         let model: PathBuf = default_model_file();
         let output: Option<PathBuf> = get(matches, "output");
-        let scope: Option<String> = get(matches, "scope");
+        let scope: Option<String> = migration_scope_value(matches);
         let database = util::extract_postgres_database(&model, None, use_ir).await?;
+        let yes: bool = yes_value(matches);
 
-        let mut buffer: Box<dyn Write> = open_file_for_output(output.as_deref())?;
+        let mut buffer: Box<dyn Write> = open_file_for_output(output.as_deref(), yes)?;
 
         // Creating the schema from the model is the same as migrating from an empty database.
         let migrations = Migration::from_schemas(

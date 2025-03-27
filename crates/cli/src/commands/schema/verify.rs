@@ -14,7 +14,8 @@ use postgres_core_model::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
 
 use crate::commands::command::{
-    database_arg, default_model_file, get, migration_scope_arg, CommandDefinition,
+    database_arg, database_value, default_model_file, migration_scope_arg, migration_scope_value,
+    yes_arg, CommandDefinition,
 };
 use crate::commands::util::{compute_migration_scope, use_ir_arg};
 use crate::config::Config;
@@ -31,16 +32,17 @@ impl CommandDefinition for VerifyCommandDefinition {
             .arg(database_arg())
             .arg(use_ir_arg())
             .arg(migration_scope_arg())
+            .arg(yes_arg())
     }
 
     /// Verify that a schema is compatible with a exograph model
 
     async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
         let model: PathBuf = default_model_file();
-        let database: Option<String> = get(matches, "database");
+        let database_url = database_value(matches);
         let use_ir: bool = matches.get_flag("use-ir");
-        let scope: Option<String> = get(matches, "scope");
-        let db_client = util::open_database(database.as_deref()).await?;
+        let scope: Option<String> = migration_scope_value(matches);
+        let db_client = util::open_database(database_url.as_deref()).await?;
 
         let database = util::extract_postgres_database(&model, None, use_ir).await?;
         let verification_result =
