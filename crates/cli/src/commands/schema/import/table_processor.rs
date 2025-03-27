@@ -18,7 +18,11 @@ impl ModelProcessor<DatabaseSpec> for TableSpec {
         writer: &mut (dyn std::io::Write + Send),
     ) -> Result<()> {
         if !context.generate_fragments {
-            writeln!(writer, "{INDENT}@access({})", context.access)?;
+            writeln!(
+                writer,
+                "{INDENT}@access(query={}, mutation={})",
+                context.query_access, context.mutation_access
+            )?;
 
             if !context.has_standard_mapping(&self.name) {
                 writeln!(writer, "{INDENT}@table(name=\"{}\")", self.name.name)?;
