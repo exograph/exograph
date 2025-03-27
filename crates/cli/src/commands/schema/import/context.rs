@@ -14,21 +14,24 @@ pub(super) struct ImportContext<'a> {
     table_name_to_model_name: HashMap<PhysicalTableName, String>,
     pub(super) schemas: HashSet<String>,
     pub(super) database_spec: &'a DatabaseSpec,
-    pub(super) access: bool,
+    pub(super) query_access: bool,
+    pub(super) mutation_access: bool,
     pub(super) generate_fragments: bool,
 }
 
 impl<'a> ImportContext<'a> {
     pub(super) fn new(
         database_spec: &'a DatabaseSpec,
-        access: bool,
+        query_access: bool,
+        mutation_access: bool,
         generate_fragments: bool,
     ) -> Self {
         Self {
             table_name_to_model_name: HashMap::new(),
             schemas: HashSet::new(),
             database_spec,
-            access,
+            query_access,
+            mutation_access,
             generate_fragments,
         }
     }

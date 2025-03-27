@@ -45,9 +45,17 @@ impl CommandDefinition for ImportCommandDefinition {
             .arg(output_arg())
             .arg(migration_scope_arg())
             .arg(
-                Arg::new("access")
-                    .help("Access expression to apply to all tables (default: false)")
-                    .long("access")
+                Arg::new("query-access")
+                    .help("Query access expression to apply to all tables (default: false)")
+                    .long("query-access")
+                    .required(false)
+                    .value_parser(clap::value_parser!(bool))
+                    .num_args(1),
+            )
+            .arg(
+                Arg::new("mutation-access")
+                    .help("Write access expression to apply to all tables (default: false)")
+                    .long("mutation-access")
                     .required(false)
                     .value_parser(clap::value_parser!(bool))
                     .num_args(1),
@@ -65,7 +73,8 @@ impl CommandDefinition for ImportCommandDefinition {
     async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
         let output: Option<PathBuf> = get(matches, "output");
         let database_url: Option<String> = get(matches, "database");
-        let access: bool = get(matches, "access").unwrap_or(false);
+        let query_access: bool = get(matches, "query-access").unwrap_or(false);
+        let mutation_access: bool = get(matches, "mutation-access").unwrap_or(false);
         let generate_fragments: bool = matches.get_flag("generate-fragments");
         let scope: Option<String> = get(matches, "scope");
 
@@ -73,7 +82,12 @@ impl CommandDefinition for ImportCommandDefinition {
 
         let schema = import_schema(database_url, &compute_migration_scope(scope)).await?;
 
-        let mut context = ImportContext::new(&schema.value, access, generate_fragments);
+        let mut context = ImportContext::new(
+            &schema.value,
+            query_access,
+            mutation_access,
+            generate_fragments,
+        );
 
         for table in &schema.value.tables {
             context.add_table(&table.name);
