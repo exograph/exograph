@@ -8291,6 +8291,7 @@ version = "0.12.2"
 dependencies = [
  "builder",
  "common",
+ "core-model-builder",
  "exo-env",
  "futures",
  "http 1.1.0",

@@ -11,6 +11,7 @@
 
 use std::{collections::HashMap, path::Path, sync::Arc};
 
+use core_model_builder::plugin::BuildMode;
 use exo_env::MapEnvironment;
 use serde_json::{json, Value};
 use server_aws_lambda::resolve;
@@ -66,10 +67,15 @@ pub async fn test_query(test_request: TestRequest<'_>, expected: TestResponse<'_
 
     let context = lambda_runtime::Context::default();
 
-    let model_system =
-        builder::build_system(model_path, &builder::RealFileSystem, None::<&Path>, vec![])
-            .await
-            .expect("Failed to build system");
+    let model_system = builder::build_system(
+        model_path,
+        &builder::RealFileSystem,
+        None::<&Path>,
+        vec![],
+        BuildMode::Build,
+    )
+    .await
+    .expect("Failed to build system");
 
     let system_router = create_system_router_from_system(
         model_system,

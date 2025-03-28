@@ -26,6 +26,7 @@ exo-env = { path = "../../libs/exo-env" }
 
 [target.'cfg(target_os = "linux")'.dev-dependencies]
 builder = { path = "../builder" }
+core-model-builder = { path = "../core-subsystem/core-model-builder" }
 
 [features]
 static-postgres-resolver = ["server-common/static-postgres-resolver"]
