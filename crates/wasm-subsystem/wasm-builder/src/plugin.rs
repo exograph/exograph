@@ -14,7 +14,7 @@ use async_trait::async_trait;
 use core_model_builder::{
     builder::system_builder::BaseModelSystem,
     error::ModelBuildingError,
-    plugin::CoreSubsystemBuild,
+    plugin::{BuildMode, CoreSubsystemBuild},
     typechecker::{
         annotation::{AnnotationSpec, AnnotationTarget},
         typ::TypecheckedSystem,
@@ -60,10 +60,11 @@ impl SubsystemBuilder for WasmSubsystemBuilder {
         &self,
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
+        build_mode: BuildMode,
     ) -> Result<Option<SubsystemBuild>, ModelBuildingError> {
         let graphql_subsystem = self
             .graphql_builder
-            .build(typechecked_system, base_system)
+            .build(typechecked_system, base_system, build_mode)
             .await?;
 
         Ok(graphql_subsystem.map(|graphql_subsystem| SubsystemBuild {

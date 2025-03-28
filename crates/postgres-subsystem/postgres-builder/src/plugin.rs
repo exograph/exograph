@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use core_model_builder::{
     builder::system_builder::BaseModelSystem,
     error::ModelBuildingError,
-    plugin::CoreSubsystemBuild,
+    plugin::{BuildMode, CoreSubsystemBuild},
     typechecker::{
         annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
         typ::TypecheckedSystem,
@@ -307,6 +307,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
         &self,
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
+        _build_mode: BuildMode,
     ) -> Result<Option<SubsystemBuild>, ModelBuildingError> {
         let resolved_types = postgres_core_builder::resolved_builder::build(typechecked_system)?;
 

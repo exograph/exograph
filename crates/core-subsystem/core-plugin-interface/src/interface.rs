@@ -14,7 +14,9 @@ use std::{env::current_exe, path::Path};
 
 use async_trait::async_trait;
 
-use core_model_builder::plugin::{CoreSubsystemBuild, RestSubsystemBuild, RpcSubsystemBuild};
+use core_model_builder::plugin::{
+    BuildMode, CoreSubsystemBuild, RestSubsystemBuild, RpcSubsystemBuild,
+};
 use core_model_builder::typechecker::typ::TypecheckedSystem;
 use core_model_builder::{
     builder::system_builder::BaseModelSystem, error::ModelBuildingError,
@@ -83,6 +85,7 @@ pub trait SubsystemBuilder {
         &self,
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
+        build_mode: BuildMode,
     ) -> Result<Option<SubsystemBuild>, ModelBuildingError>;
 }
 
@@ -99,6 +102,8 @@ pub trait GraphQLSubsystemBuilder {
     ///                         to composite `type`.
     /// - `base_system`: The base model system for Exograph. These are a set of common types that are
     ///                  used by all plugins, like `context`s and primitive types (`Int`, `String`, etc.)
+    /// - `check_only`: Only check the subsystem's model, don't build it. Specifically, for Deno kind of subsystem,
+    ///                 this will not create generated code based on module definitions.
     ///
     /// Return variants:
     ///
@@ -109,6 +114,7 @@ pub trait GraphQLSubsystemBuilder {
         &self,
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
+        build_mode: BuildMode,
     ) -> Result<Option<GraphQLSubsystemBuild>, ModelBuildingError>;
 }
 

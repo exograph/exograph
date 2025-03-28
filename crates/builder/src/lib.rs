@@ -41,6 +41,7 @@ use core_model_builder::{
         ast_types::{AstSystem, Untyped},
     },
     error::ModelBuildingError,
+    plugin::BuildMode,
 };
 #[cfg(not(target_family = "wasm"))]
 use regex::Regex;
@@ -72,6 +73,7 @@ pub async fn build_system(
     file_system: &impl FileSystem,
     trusted_documents_dir: Option<impl AsRef<Path>>,
     static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
+    build_mode: BuildMode,
 ) -> Result<SerializableSystem, ParserError> {
     let file_content = file_system.read_file(model_file.as_ref())?;
     let mut codemap = CodeMap::new();
@@ -86,6 +88,7 @@ pub async fn build_system(
         parser::parse_file(&model_file, file_system, &mut codemap),
         trusted_documents,
         static_builders,
+        build_mode,
     )
     .await
     {
@@ -103,12 +106,14 @@ pub async fn build_system_from_str(
     model_str: &str,
     file_name: String,
     static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
+    build_mode: BuildMode,
 ) -> Result<SerializableSystem, ParserError> {
     build_system_from_str_with_reporting(
         model_str,
         file_name,
         static_builders,
         &mut StderrReporter {},
+        build_mode,
     )
     .await
 }
@@ -118,6 +123,7 @@ pub async fn build_system_from_str_with_reporting(
     file_name: String,
     static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
     reporter: &mut impl ErrorReporter,
+    build_mode: BuildMode,
 ) -> Result<SerializableSystem, ParserError> {
     let mut codemap = CodeMap::new();
     codemap.add_file(file_name.clone(), model_str.to_string());
@@ -126,6 +132,7 @@ pub async fn build_system_from_str_with_reporting(
         parser::parse_str(model_str, &mut codemap, &file_name),
         TrustedDocuments::all(),
         static_builders,
+        build_mode,
     )
     .await
     {
@@ -186,6 +193,7 @@ pub async fn build_from_ast_system(
     ast_system: Result<AstSystem<Untyped>, ParserError>,
     trusted_documents: TrustedDocuments,
     static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
+    build_mode: BuildMode,
 ) -> Result<SerializableSystem, ParserError> {
     let subsystem_builders = load_subsystem_builders(static_builders)
         .map_err(|e| ParserError::Generic(format!("{e}")))?;
@@ -194,7 +202,13 @@ pub async fn build_from_ast_system(
 
     let typechecked_system = typechecker::build(&subsystem_builders, ast_system)?;
 
-    Ok(builder::build(&subsystem_builders, typechecked_system, trusted_documents).await?)
+    Ok(builder::build(
+        &subsystem_builders,
+        typechecked_system,
+        trusted_documents,
+        build_mode,
+    )
+    .await?)
 }
 
 #[cfg(not(target_family = "wasm"))]

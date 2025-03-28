@@ -84,7 +84,6 @@ impl ScriptProcessor for WasmScriptProcessor {
         _base_system: &BaseModelSystem,
         _typechecked_system: &TypecheckedSystem,
         module_fs_path: &Path,
-        _check_only: bool,
     ) -> Result<(String, Vec<u8>), ModelBuildingError> {
         std::fs::read(module_fs_path)
             .map(|o| (module_fs_path.to_str().unwrap().to_string(), o))

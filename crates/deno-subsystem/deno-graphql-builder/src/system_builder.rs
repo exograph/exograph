@@ -14,6 +14,7 @@ use core_model_builder::{
     ast::ast_types::{AstExpr, AstModule},
     builder::{resolved_builder::AnnotationMapHelper, system_builder::BaseModelSystem},
     error::ModelBuildingError,
+    plugin::BuildMode,
     typechecker::{typ::TypecheckedSystem, Typed},
 };
 
@@ -58,7 +59,9 @@ pub struct ModelDenoSystemWithInterceptors {
     pub interceptors: Vec<(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)>,
 }
 
-pub struct DenoScriptProcessor {}
+pub struct DenoScriptProcessor {
+    build_mode: BuildMode,
+}
 
 impl ScriptProcessor for DenoScriptProcessor {
     fn process_script(
@@ -67,14 +70,15 @@ impl ScriptProcessor for DenoScriptProcessor {
         base_system: &BaseModelSystem,
         typechecked_system: &TypecheckedSystem,
         module_fs_path: &Path,
-        _check_only: bool,
     ) -> Result<(String, Vec<u8>), ModelBuildingError> {
-        module_skeleton_generator::generate_module_skeleton(
-            module,
-            base_system,
-            typechecked_system,
-            module_fs_path,
-        )?;
+        if self.build_mode == BuildMode::Build {
+            module_skeleton_generator::generate_module_skeleton(
+                module,
+                base_system,
+                typechecked_system,
+                module_fs_path,
+            )?;
+        }
 
         fn run_local<F, R>(future: F) -> R
         where
@@ -226,11 +230,12 @@ impl ScriptProcessor for DenoScriptProcessor {
 pub async fn build(
     typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
+    build_mode: BuildMode,
 ) -> Result<Option<ModelDenoSystemWithInterceptors>, ModelBuildingError> {
     let module_selection_closure =
         |module: &AstModule<Typed>| module.annotations.get("deno").map(|_| "deno".to_string());
 
-    let script_processor = DenoScriptProcessor {};
+    let script_processor = DenoScriptProcessor { build_mode };
 
     let module_system = subsystem_model_builder_util::build_with_selection(
         typechecked_system,

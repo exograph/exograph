@@ -39,3 +39,9 @@ pub struct RpcSubsystemBuild {
 pub struct CoreSubsystemBuild {
     pub serialized_subsystem: SerializableCoreBytes,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildMode {
+    Build,
+    CheckOnly,
+}

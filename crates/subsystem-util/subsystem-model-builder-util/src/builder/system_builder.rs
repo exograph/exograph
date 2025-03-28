@@ -36,7 +36,6 @@ pub trait ScriptProcessor {
         base_system: &BaseModelSystem,
         typechecked_system: &TypecheckedSystem,
         path: &Path,
-        check_only: bool,
     ) -> Result<(String, Vec<u8>), ModelBuildingError>;
 }
 

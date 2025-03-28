@@ -12,7 +12,7 @@ use async_trait::async_trait;
 use core_model_builder::{
     builder::system_builder::BaseModelSystem,
     error::ModelBuildingError,
-    plugin::{CoreSubsystemBuild, GraphQLSubsystemBuild, Interception},
+    plugin::{BuildMode, CoreSubsystemBuild, GraphQLSubsystemBuild, Interception},
     typechecker::{
         annotation::{AnnotationSpec, AnnotationTarget},
         typ::TypecheckedSystem,
@@ -61,10 +61,11 @@ impl SubsystemBuilder for DenoSubsystemBuilder {
         &self,
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
+        build_mode: BuildMode,
     ) -> Result<Option<SubsystemBuild>, ModelBuildingError> {
         let graphql_subsystem = self
             .graphql_builder
-            .build(typechecked_system, base_system)
+            .build(typechecked_system, base_system, build_mode)
             .await?;
 
         Ok(graphql_subsystem.map(|graphql_subsystem| SubsystemBuild {
@@ -91,9 +92,14 @@ impl GraphQLSubsystemBuilder for DenoGraphQLSubsystemBuilder {
         &self,
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
+        build_mode: BuildMode,
     ) -> Result<Option<GraphQLSubsystemBuild>, ModelBuildingError> {
-        let subsystem =
-            deno_graphql_builder::system_builder::build(typechecked_system, base_system).await?;
+        let subsystem = deno_graphql_builder::system_builder::build(
+            typechecked_system,
+            base_system,
+            build_mode,
+        )
+        .await?;
 
         let Some(ModelDenoSystemWithInterceptors {
             underlying: subsystem,

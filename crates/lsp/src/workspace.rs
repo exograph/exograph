@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use dashmap::DashMap;
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 
-use core_model_builder::error::ModelBuildingError;
+use core_model_builder::{error::ModelBuildingError, plugin::BuildMode};
 use core_plugin_interface::interface::SubsystemBuilder;
 
 #[derive(Debug)]
@@ -73,6 +73,7 @@ impl Workspace {
             parser::parse_file(&index_file, self, &mut codemap),
             TrustedDocuments::all(),
             static_builders,
+            BuildMode::CheckOnly, // In the LSP mode, we do not want to cause any side effects such as generating TypeScript code
         )
         .await
         {

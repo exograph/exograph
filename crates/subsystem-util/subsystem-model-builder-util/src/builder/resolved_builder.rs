@@ -265,13 +265,8 @@ async fn resolve_module(
     source_path.pop();
     source_path.push(&module_relative_path);
 
-    let (script_path, bundled_script) = script_processor.process_script(
-        module,
-        base_system,
-        typechecked_system,
-        &source_path,
-        false,
-    )?;
+    let (script_path, bundled_script) =
+        script_processor.process_script(module, base_system, typechecked_system, &source_path)?;
 
     fn extract_intercept_annot<'a>(
         annotations: &'a AnnotationMap,
@@ -661,7 +656,6 @@ mod tests {
             _base_system: &BaseModelSystem,
             _typechecked_system: &TypecheckedSystem,
             path: &Path,
-            _check_only: bool,
         ) -> Result<(String, Vec<u8>), ModelBuildingError> {
             Ok((path.to_str().unwrap().to_string(), vec![]))
         }

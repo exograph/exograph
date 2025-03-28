@@ -26,6 +26,6 @@ wildmatch.workspace = true
 
 builder = { path = "../../builder" }
 postgres-builder = { path = "../postgres-builder" }
-
+core-model-builder = { path = "../../core-subsystem/core-model-builder" }
 [lib]
 doctest = false
