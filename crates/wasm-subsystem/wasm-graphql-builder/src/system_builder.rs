@@ -15,6 +15,7 @@ use core_model_builder::{
     typechecker::{typ::TypecheckedSystem, Typed},
 };
 use std::path::Path;
+use subsystem_model_builder_util::ScriptProcessor;
 use wasm_graphql_model::{
     interceptor::Interceptor,
     operation::{WasmMutation, WasmQuery},
@@ -37,7 +38,7 @@ pub async fn build(
         typechecked_system,
         base_system,
         module_selection_closure,
-        process_script,
+        WasmScriptProcessor {},
     )
     .await?;
 
@@ -74,15 +75,21 @@ pub async fn build(
     }))
 }
 
-fn process_script(
-    _module: &AstModule<Typed>,
-    _base_system: &BaseModelSystem,
-    _typechecked_system: &TypecheckedSystem,
-    module_fs_path: &Path,
-) -> Result<(String, Vec<u8>), ModelBuildingError> {
-    std::fs::read(module_fs_path)
-        .map(|o| (module_fs_path.to_str().unwrap().to_string(), o))
-        .map_err(|err| {
-            ModelBuildingError::Generic(format!("While trying to read bundled module: {err}"))
-        })
+struct WasmScriptProcessor {}
+
+impl ScriptProcessor for WasmScriptProcessor {
+    fn process_script(
+        &self,
+        _module: &AstModule<Typed>,
+        _base_system: &BaseModelSystem,
+        _typechecked_system: &TypecheckedSystem,
+        module_fs_path: &Path,
+        _check_only: bool,
+    ) -> Result<(String, Vec<u8>), ModelBuildingError> {
+        std::fs::read(module_fs_path)
+            .map(|o| (module_fs_path.to_str().unwrap().to_string(), o))
+            .map_err(|err| {
+                ModelBuildingError::Generic(format!("While trying to read bundled module: {err}"))
+            })
+    }
 }
