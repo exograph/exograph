@@ -20,10 +20,13 @@ pub(crate) async fn create_postgres_system_from_str(
     model_str: &str,
     file_name: String,
 ) -> Result<PostgresGraphQLSubsystem, ModelSerializationError> {
+    use core_model_builder::plugin::BuildMode;
+
     let system = builder::build_system_from_str(
         model_str,
         file_name,
         vec![Box::new(crate::PostgresSubsystemBuilder::default())],
+        BuildMode::Build,
     )
     .await
     .unwrap();

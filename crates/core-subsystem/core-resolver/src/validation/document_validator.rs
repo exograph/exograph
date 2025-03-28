@@ -111,6 +111,7 @@ mod tests {
     use super::*;
 
     use async_graphql_parser::parse_query;
+    use core_model_builder::plugin::BuildMode;
     use exo_env::MapEnvironment;
     use exo_sql::DatabaseClientManager;
 
@@ -857,6 +858,7 @@ mod tests {
             vec![Box::new(
                 postgres_builder::PostgresSubsystemBuilder::default(),
             )],
+            BuildMode::Build,
         )
         .await
         .unwrap();

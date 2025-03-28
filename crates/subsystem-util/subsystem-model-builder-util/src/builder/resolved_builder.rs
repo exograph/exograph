@@ -8,7 +8,6 @@
 // by the Apache License, Version 2.0.
 
 use std::collections::HashSet;
-use std::path::Path;
 
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
@@ -30,6 +29,7 @@ use core_model_builder::{
 use serde::{Deserialize, Serialize};
 
 use crate::builder::access_builder::build_access;
+use crate::ScriptProcessor;
 
 use super::access_builder::ResolvedAccess;
 
@@ -153,12 +153,7 @@ pub async fn build(
     typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
     module_selection_closure: impl Fn(&AstModule<Typed>) -> Option<String>,
-    process_script: impl Fn(
-        &AstModule<Typed>,
-        &BaseModelSystem,
-        &TypecheckedSystem,
-        &Path,
-    ) -> Result<(String, Vec<u8>), ModelBuildingError>,
+    script_processor: impl ScriptProcessor,
 ) -> Result<ResolvedModuleSystem, ModelBuildingError> {
     let mut errors = Vec::new();
 
@@ -167,7 +162,7 @@ pub async fn build(
         base_system,
         &mut errors,
         module_selection_closure,
-        process_script,
+        script_processor,
     )
     .await?;
 
@@ -183,19 +178,14 @@ async fn resolve(
     base_system: &BaseModelSystem,
     errors: &mut Vec<Diagnostic>,
     module_selection_closure: impl Fn(&AstModule<Typed>) -> Option<String>,
-    process_script: impl Fn(
-        &AstModule<Typed>,
-        &BaseModelSystem,
-        &TypecheckedSystem,
-        &Path,
-    ) -> Result<(String, Vec<u8>), ModelBuildingError>,
+    script_processor: impl ScriptProcessor,
 ) -> Result<ResolvedModuleSystem, ModelBuildingError> {
     let resolved_modules = resolve_modules(
         typechecked_system,
         base_system,
         errors,
         module_selection_closure,
-        &process_script,
+        script_processor,
     )
     .await?;
 
@@ -226,12 +216,7 @@ async fn resolve_modules(
     base_system: &BaseModelSystem,
     errors: &mut Vec<Diagnostic>,
     module_selection_closure: impl Fn(&AstModule<Typed>) -> Option<String>,
-    process_script: impl Fn(
-        &AstModule<Typed>,
-        &BaseModelSystem,
-        &TypecheckedSystem,
-        &Path,
-    ) -> Result<(String, Vec<u8>), ModelBuildingError>,
+    script_processor: impl ScriptProcessor,
 ) -> Result<MappedArena<ResolvedModule>, ModelBuildingError> {
     let mut resolved_modules: MappedArena<ResolvedModule> = MappedArena::default();
 
@@ -247,7 +232,7 @@ async fn resolve_modules(
                 &typechecked_system.types,
                 errors,
                 &mut resolved_modules,
-                &process_script,
+                &script_processor,
             )
             .await?;
         }
@@ -265,12 +250,7 @@ async fn resolve_module(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
     resolved_modules: &mut MappedArena<ResolvedModule>,
-    process_script: &impl Fn(
-        &AstModule<Typed>,
-        &BaseModelSystem,
-        &TypecheckedSystem,
-        &Path,
-    ) -> Result<(String, Vec<u8>), ModelBuildingError>,
+    script_processor: &impl ScriptProcessor,
 ) -> Result<(), ModelBuildingError> {
     // Extract the source path from the annotation
     // `@deno("util/auth.ts")` -> `util/auth.ts`
@@ -286,7 +266,7 @@ async fn resolve_module(
     source_path.push(&module_relative_path);
 
     let (script_path, bundled_script) =
-        process_script(module, base_system, typechecked_system, &source_path)?;
+        script_processor.process_script(module, base_system, typechecked_system, &source_path)?;
 
     fn extract_intercept_annot<'a>(
         annotations: &'a AnnotationMap,
@@ -613,6 +593,8 @@ mod tests {
         typechecker::{typ::TypecheckedSystem, Typed},
     };
 
+    use crate::ScriptProcessor;
+
     use super::{build, ResolvedModuleSystem};
 
     #[tokio::test]
@@ -665,13 +647,18 @@ mod tests {
         assert!(create_resolved_system(src).await.is_err())
     }
 
-    fn process_script(
-        _module: &AstModule<Typed>,
-        _base_system: &BaseModelSystem,
-        _typechecked_system: &TypecheckedSystem,
-        path: &Path,
-    ) -> Result<(String, Vec<u8>), ModelBuildingError> {
-        Ok((path.to_str().unwrap().to_string(), vec![]))
+    struct TestScriptProcessor {}
+
+    impl ScriptProcessor for TestScriptProcessor {
+        fn process_script(
+            &self,
+            _module: &AstModule<Typed>,
+            _base_system: &BaseModelSystem,
+            _typechecked_system: &TypecheckedSystem,
+            path: &Path,
+        ) -> Result<(String, Vec<u8>), ModelBuildingError> {
+            Ok((path.to_str().unwrap().to_string(), vec![]))
+        }
     }
 
     async fn create_resolved_system(src: &str) -> Result<ResolvedModuleSystem, ModelBuildingError> {
@@ -691,7 +678,7 @@ mod tests {
             &types,
             &base_system,
             |module| module.annotations.get("deno").map(|_| "deno".to_string()),
-            process_script,
+            TestScriptProcessor {},
         )
         .await
     }

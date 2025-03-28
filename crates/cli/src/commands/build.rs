@@ -12,6 +12,7 @@ use async_trait::async_trait;
 use builder::error::ParserError;
 use builder::RealFileSystem;
 use clap::{ArgMatches, Command};
+use core_model_builder::plugin::BuildMode;
 use core_plugin_interface::interface::SubsystemBuilder;
 use core_plugin_shared::serializable_system::SerializableSystem;
 use core_plugin_shared::system_serializer::SystemSerializer;
@@ -82,6 +83,7 @@ pub(crate) async fn build_system_with_static_builders(
         &RealFileSystem,
         trusted_documents_dir,
         static_builders,
+        BuildMode::Build,
     )
     .await
 }

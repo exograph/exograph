@@ -9,6 +9,7 @@
 
 use super::interceptor_weaver::{self, OperationKind};
 use core_model_builder::error::ModelBuildingError;
+use core_model_builder::plugin::BuildMode;
 use core_model_builder::typechecker::typ::TypecheckedSystem;
 use core_plugin_interface::interface::SubsystemBuild;
 use core_plugin_interface::interface::SubsystemBuilder;
@@ -38,6 +39,7 @@ pub async fn build(
     subsystem_builders: &[Box<dyn SubsystemBuilder + Send + Sync>],
     typechecked_system: TypecheckedSystem,
     trusted_documents: TrustedDocuments,
+    build_mode: BuildMode,
 ) -> Result<SerializableSystem, ModelBuildingError> {
     let base_system = core_model_builder::builder::system_builder::build(&typechecked_system)?;
 
@@ -52,7 +54,7 @@ pub async fn build(
     let subsystems: Vec<SerializableSubsystem> = futures::future::join_all(
         subsystem_builders
             .iter()
-            .map(|builder| builder.build(&typechecked_system, &base_system)),
+            .map(|builder| builder.build(&typechecked_system, &base_system, build_mode)),
     )
     .await
     .into_iter()

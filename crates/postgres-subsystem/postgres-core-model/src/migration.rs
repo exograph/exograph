@@ -279,6 +279,7 @@ mod tests {
     use std::path::{Path, PathBuf};
 
     use crate::subsystem::PostgresCoreSubsystem;
+    use core_model_builder::plugin::BuildMode;
     use core_plugin_shared::{
         error::ModelSerializationError, serializable_system::SerializableSystem,
     };
@@ -684,6 +685,7 @@ mod tests {
             vec![Box::new(
                 postgres_builder::PostgresSubsystemBuilder::default(),
             )],
+            BuildMode::Build,
         )
         .await
         .unwrap();

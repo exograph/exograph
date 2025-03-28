@@ -14,7 +14,7 @@ use crate::system_builder::ModelWasmSystemWithInterceptors;
 use core_model_builder::{
     builder::system_builder::BaseModelSystem,
     error::ModelBuildingError,
-    plugin::{GraphQLSubsystemBuild, Interception},
+    plugin::{BuildMode, GraphQLSubsystemBuild, Interception},
     typechecker::typ::TypecheckedSystem,
 };
 use core_plugin_interface::interface::GraphQLSubsystemBuilder;
@@ -35,6 +35,7 @@ impl GraphQLSubsystemBuilder for GraphQLWasmSubsystemBuilder {
         &self,
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
+        _build_mode: BuildMode,
     ) -> Result<Option<GraphQLSubsystemBuild>, ModelBuildingError> {
         let subsystem = crate::system_builder::build(typechecked_system, base_system).await?;
 

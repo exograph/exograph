@@ -29,6 +29,16 @@ use super::{
     type_builder::{self, ResolvedTypeEnv},
 };
 
+pub trait ScriptProcessor {
+    fn process_script(
+        &self,
+        module: &AstModule<Typed>,
+        base_system: &BaseModelSystem,
+        typechecked_system: &TypecheckedSystem,
+        path: &Path,
+    ) -> Result<(String, Vec<u8>), ModelBuildingError>;
+}
+
 #[derive(Debug)]
 pub struct SystemContextBuilding {
     pub types: MappedArena<ModuleType>,
@@ -78,19 +88,14 @@ pub async fn build_with_selection(
     typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
     module_selection_closure: impl Fn(&AstModule<Typed>) -> Option<String>,
-    process_script: impl Fn(
-        &AstModule<Typed>,
-        &BaseModelSystem,
-        &TypecheckedSystem,
-        &Path,
-    ) -> Result<(String, Vec<u8>), ModelBuildingError>,
+    script_processor: impl ScriptProcessor,
 ) -> Result<ModuleSubsystemWithInterceptors, ModelBuildingError> {
     let mut building = SystemContextBuilding::default();
     let resolved_system = resolved_builder::build(
         typechecked_system,
         base_system,
         module_selection_closure,
-        process_script,
+        script_processor,
     )
     .await?;
 

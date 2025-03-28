@@ -14,6 +14,7 @@ use core_model_builder::{
     ast::ast_types::{AstExpr, AstModule},
     builder::{resolved_builder::AnnotationMapHelper, system_builder::BaseModelSystem},
     error::ModelBuildingError,
+    plugin::BuildMode,
     typechecker::{typ::TypecheckedSystem, Typed},
 };
 
@@ -47,6 +48,7 @@ use exo_deno::{
         analyze::NodeCodeTranslator, NodeModuleKind, NodeResolution, NodeResolutionMode,
     },
 };
+use subsystem_model_builder_util::ScriptProcessor;
 use url::Url;
 
 use crate::module_skeleton_generator;
@@ -57,18 +59,189 @@ pub struct ModelDenoSystemWithInterceptors {
     pub interceptors: Vec<(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)>,
 }
 
+pub struct DenoScriptProcessor {
+    build_mode: BuildMode,
+}
+
+impl ScriptProcessor for DenoScriptProcessor {
+    fn process_script(
+        &self,
+        module: &AstModule<Typed>,
+        base_system: &BaseModelSystem,
+        typechecked_system: &TypecheckedSystem,
+        module_fs_path: &Path,
+    ) -> Result<(String, Vec<u8>), ModelBuildingError> {
+        if self.build_mode == BuildMode::Build {
+            module_skeleton_generator::generate_module_skeleton(
+                module,
+                base_system,
+                typechecked_system,
+                module_fs_path,
+            )?;
+        }
+
+        fn run_local<F, R>(future: F) -> R
+        where
+            F: std::future::Future<Output = R>,
+        {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .max_blocking_threads(32)
+                .build()
+                .unwrap();
+            let local = tokio::task::LocalSet::new();
+            local.block_on(&rt, future)
+        }
+
+        let root = Url::from_file_path(std::fs::canonicalize(module_fs_path).unwrap()).unwrap();
+        let root_clone = root.clone();
+
+        let module_fs_path = module_fs_path.to_path_buf();
+        // TODO: Make the process_script function async. Currently, we can't because `CliOptions` isn't a
+        // `Send`. But to make this useful as a callback, we would make this function return a
+        // `BoxFuture`, which has the `Send` requirement.
+        let script_defn = std::thread::spawn(move || {
+            let future = async move {
+                let permissive_cli_flags = Flags {
+                    permissions: PermissionFlags {
+                        allow_all: true,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                };
+                let cli_options = CliOptions::new(
+                    permissive_cli_flags.into(),
+                    std::env::current_dir().unwrap(),
+                    None,
+                    create_default_npmrc(),
+                    Arc::new(WorkspaceDirectory::empty(WorkspaceDirectoryEmptyOptions {
+                        root_dir: root_clone.clone().into(),
+                        use_vendor_dir: VendorEnablement::Disable,
+                    })),
+                    false,
+                )
+                .unwrap();
+                let factory = CliFactory::from_cli_options(Arc::new(cli_options));
+                let module_graph_builder = factory.module_graph_builder().await.map_err(|e| {
+                    ModelBuildingError::Generic(format!(
+                        "While trying to create Deno graph loader: {e:?}"
+                    ))
+                })?;
+                let graph = {
+                    let module_graph_creator =
+                        factory.module_graph_creator().await.map_err(|e| {
+                            ModelBuildingError::Generic(format!(
+                                "While trying to create Deno graph creator: {e:?}"
+                            ))
+                        })?;
+                    let mut loader = module_graph_builder.create_graph_loader();
+                    module_graph_creator
+                        .create_graph_with_loader(
+                            deno_graph::GraphKind::CodeOnly,
+                            vec![root_clone],
+                            &mut loader,
+                        )
+                        .await
+                        .map_err(|e| {
+                            ModelBuildingError::Generic(format!(
+                                "While trying to create Deno graph: {e:?}"
+                            ))
+                        })?
+                };
+
+                let node_resolver = factory.node_resolver().await.unwrap();
+                let npm_resolver = factory.npm_resolver().await.unwrap();
+
+                let code_translator = factory.node_code_translator().await.unwrap().clone();
+                let parsed_source_cache = factory.parsed_source_cache().clone();
+                let module_info_cache = factory.module_info_cache().unwrap().clone();
+                let npm_loader = NpmModuleLoader::new(
+                    factory.cjs_resolutions().clone(),
+                    code_translator.clone(),
+                    factory.fs().clone(),
+                    factory.cli_node_resolver().await.unwrap().clone(),
+                );
+
+                let managed_npm = npm_resolver.as_managed().unwrap();
+                let npm_cache_folder = npm_resolver
+                    .as_managed()
+                    .unwrap()
+                    .global_cache_root_folder()
+                    .join("registry.npmjs.org");
+
+                if !npm_cache_folder.exists() {
+                    std::fs::create_dir_all(&npm_cache_folder).unwrap();
+                }
+
+                let vfs = if let Ok(mut builder) = VfsBuilder::new(npm_cache_folder.clone()) {
+                    for package in managed_npm.all_system_packages(&Default::default()) {
+                        let folder = managed_npm
+                            .resolve_pkg_folder_from_pkg_id(&package.id)
+                            .unwrap();
+                        builder.add_dir_recursive(&folder).unwrap();
+                    }
+
+                    builder.with_root_dir(|vd| {
+                        vd.name = "EXOGRAPH_NPM_MODULES_SNAPSHOT".to_string();
+                    });
+
+                    builder.into_dir_and_files()
+                } else {
+                    (
+                        VirtualDirectory {
+                            name: "EXOGRAPH_NPM_MODULES_SNAPSHOT".to_string(),
+                            entries: vec![],
+                        },
+                        vec![],
+                    )
+                };
+
+                Ok::<DenoScriptDefn, ModelBuildingError>(DenoScriptDefn {
+                    modules: walk_module_graph(
+                        &module_fs_path,
+                        graph,
+                        npm_loader,
+                        node_resolver.clone(),
+                        managed_npm,
+                        code_translator,
+                        parsed_source_cache,
+                        module_info_cache,
+                        npm_cache_folder,
+                    )
+                    .await?,
+                    npm_snapshot: Some((
+                        managed_npm
+                            .serialized_valid_snapshot_for_system(&NpmSystemInfo::default())
+                            .into_serialized(),
+                        vfs.0,
+                        vfs.1,
+                    )),
+                })
+            };
+            run_local(future)
+        })
+        .join()
+        .unwrap()?;
+
+        Ok((root.to_string(), serde_json::to_vec(&script_defn).unwrap()))
+    }
+}
+
 pub async fn build(
     typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
+    build_mode: BuildMode,
 ) -> Result<Option<ModelDenoSystemWithInterceptors>, ModelBuildingError> {
     let module_selection_closure =
         |module: &AstModule<Typed>| module.annotations.get("deno").map(|_| "deno".to_string());
+
+    let script_processor = DenoScriptProcessor { build_mode };
 
     let module_system = subsystem_model_builder_util::build_with_selection(
         typechecked_system,
         base_system,
         module_selection_closure,
-        process_script,
+        script_processor,
     )
     .await?;
 
@@ -103,164 +276,6 @@ pub async fn build(
         },
         interceptors: module_system.interceptors,
     }))
-}
-
-fn process_script(
-    module: &AstModule<Typed>,
-    base_system: &BaseModelSystem,
-    typechecked_system: &TypecheckedSystem,
-    module_fs_path: &Path,
-) -> Result<(String, Vec<u8>), ModelBuildingError> {
-    module_skeleton_generator::generate_module_skeleton(
-        module,
-        base_system,
-        typechecked_system,
-        module_fs_path,
-    )?;
-
-    fn run_local<F, R>(future: F) -> R
-    where
-        F: std::future::Future<Output = R>,
-    {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .max_blocking_threads(32)
-            .build()
-            .unwrap();
-        let local = tokio::task::LocalSet::new();
-        local.block_on(&rt, future)
-    }
-
-    let root = Url::from_file_path(std::fs::canonicalize(module_fs_path).unwrap()).unwrap();
-    let root_clone = root.clone();
-
-    let module_fs_path = module_fs_path.to_path_buf();
-    // TODO: Make the process_script function async. Currently, we can't because `CliOptions` isn't a
-    // `Send`. But to make this useful as a callback, we would make this function return a
-    // `BoxFuture`, which has the `Send` requirement.
-    let script_defn = std::thread::spawn(move || {
-        let future = async move {
-            let permissive_cli_flags = Flags {
-                permissions: PermissionFlags {
-                    allow_all: true,
-                    ..Default::default()
-                },
-                ..Default::default()
-            };
-            let cli_options = CliOptions::new(
-                permissive_cli_flags.into(),
-                std::env::current_dir().unwrap(),
-                None,
-                create_default_npmrc(),
-                Arc::new(WorkspaceDirectory::empty(WorkspaceDirectoryEmptyOptions {
-                    root_dir: root_clone.clone().into(),
-                    use_vendor_dir: VendorEnablement::Disable,
-                })),
-                false,
-            )
-            .unwrap();
-            let factory = CliFactory::from_cli_options(Arc::new(cli_options));
-            let module_graph_builder = factory.module_graph_builder().await.map_err(|e| {
-                ModelBuildingError::Generic(format!(
-                    "While trying to create Deno graph loader: {e:?}"
-                ))
-            })?;
-            let graph = {
-                let module_graph_creator = factory.module_graph_creator().await.map_err(|e| {
-                    ModelBuildingError::Generic(format!(
-                        "While trying to create Deno graph creator: {e:?}"
-                    ))
-                })?;
-                let mut loader = module_graph_builder.create_graph_loader();
-                module_graph_creator
-                    .create_graph_with_loader(
-                        deno_graph::GraphKind::CodeOnly,
-                        vec![root_clone],
-                        &mut loader,
-                    )
-                    .await
-                    .map_err(|e| {
-                        ModelBuildingError::Generic(format!(
-                            "While trying to create Deno graph: {e:?}"
-                        ))
-                    })?
-            };
-
-            let node_resolver = factory.node_resolver().await.unwrap();
-            let npm_resolver = factory.npm_resolver().await.unwrap();
-
-            let code_translator = factory.node_code_translator().await.unwrap().clone();
-            let parsed_source_cache = factory.parsed_source_cache().clone();
-            let module_info_cache = factory.module_info_cache().unwrap().clone();
-            let npm_loader = NpmModuleLoader::new(
-                factory.cjs_resolutions().clone(),
-                code_translator.clone(),
-                factory.fs().clone(),
-                factory.cli_node_resolver().await.unwrap().clone(),
-            );
-
-            let managed_npm = npm_resolver.as_managed().unwrap();
-            let npm_cache_folder = npm_resolver
-                .as_managed()
-                .unwrap()
-                .global_cache_root_folder()
-                .join("registry.npmjs.org");
-
-            if !npm_cache_folder.exists() {
-                std::fs::create_dir_all(&npm_cache_folder).unwrap();
-            }
-
-            let vfs = if let Ok(mut builder) = VfsBuilder::new(npm_cache_folder.clone()) {
-                for package in managed_npm.all_system_packages(&Default::default()) {
-                    let folder = managed_npm
-                        .resolve_pkg_folder_from_pkg_id(&package.id)
-                        .unwrap();
-                    builder.add_dir_recursive(&folder).unwrap();
-                }
-
-                builder.with_root_dir(|vd| {
-                    vd.name = "EXOGRAPH_NPM_MODULES_SNAPSHOT".to_string();
-                });
-
-                builder.into_dir_and_files()
-            } else {
-                (
-                    VirtualDirectory {
-                        name: "EXOGRAPH_NPM_MODULES_SNAPSHOT".to_string(),
-                        entries: vec![],
-                    },
-                    vec![],
-                )
-            };
-
-            Ok::<DenoScriptDefn, ModelBuildingError>(DenoScriptDefn {
-                modules: walk_module_graph(
-                    &module_fs_path,
-                    graph,
-                    npm_loader,
-                    node_resolver.clone(),
-                    managed_npm,
-                    code_translator,
-                    parsed_source_cache,
-                    module_info_cache,
-                    npm_cache_folder,
-                )
-                .await?,
-                npm_snapshot: Some((
-                    managed_npm
-                        .serialized_valid_snapshot_for_system(&NpmSystemInfo::default())
-                        .into_serialized(),
-                    vfs.0,
-                    vfs.1,
-                )),
-            })
-        };
-        run_local(future)
-    })
-    .join()
-    .unwrap()?;
-
-    Ok((root.to_string(), serde_json::to_vec(&script_defn).unwrap()))
 }
 
 #[allow(clippy::too_many_arguments)]
