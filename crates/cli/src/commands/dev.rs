@@ -82,7 +82,8 @@ impl CommandDefinition for DevCommandDefinition {
             let db_client = util::open_database(None).await?;
 
             loop {
-                let database = util::extract_postgres_database(&model, None, false).await?;
+                // Pass true as use_ir to use the IR model, since we just built the model in the watcher
+                let database = util::extract_postgres_database(&model, None, true).await?;
                 let verification_result = Migration::verify(&db_client, &database, &migration_scope).await;
 
                 match verification_result {
