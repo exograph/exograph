@@ -14,6 +14,7 @@ use common::{
 };
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::{
+    introspection::definition::schema::SchemaType,
     plugin::subsystem_rpc_resolver::{
         JsonRpcId, JsonRpcRequest, SubsystemRpcError, SubsystemRpcResponse,
     },
@@ -167,7 +168,8 @@ impl McpRouter {
             operations_payload,
             &self.system_resolver,
             TrustedDocumentEnforcement::DoNotEnforce,
-            request_context,
+            &request_context.with_override_query_only(),
+            SchemaType::QueriesOnly,
         )
         .await
         .map_err(|e| {
@@ -185,6 +187,16 @@ impl McpRouter {
 
         match params {
             Some(params) => {
+                let name = params
+                    .get("name")
+                    .ok_or(SubsystemRpcError::InvalidRequest)?
+                    .as_str()
+                    .ok_or(SubsystemRpcError::InvalidRequest)?;
+
+                if name != "execute_graphql" {
+                    return Err(SubsystemRpcError::InvalidRequest);
+                }
+
                 let arguments = params
                     .get("arguments")
                     .ok_or(SubsystemRpcError::InvalidRequest)?;

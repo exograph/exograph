@@ -18,6 +18,7 @@ use common::router::Router;
 use core_plugin_shared::interception::InterceptionMap;
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_plugin_shared::trusted_documents::TrustedDocuments;
+use core_resolver::introspection::definition::schema::SchemaType;
 use core_resolver::plugin::SubsystemGraphQLResolver;
 use core_resolver::QueryResponse;
 use core_router::SystemLoadingError;
@@ -37,16 +38,24 @@ use exo_env::Environment;
 
 use crate::system_loader::SystemLoader;
 
+const EXO_GRAPHQL_ALLOW_MUTATIONS: &str = "EXO_GRAPHQL_ALLOW_MUTATIONS";
+
 pub struct GraphQLRouter {
     system_resolver: Arc<GraphQLSystemResolver>,
     env: Arc<dyn Environment>,
+    served_schema_type: SchemaType,
 }
 
 impl GraphQLRouter {
-    pub fn new(system_resolver: GraphQLSystemResolver, env: Arc<dyn Environment>) -> Self {
+    pub fn new(
+        system_resolver: GraphQLSystemResolver,
+        env: Arc<dyn Environment>,
+        served_schema_type: SchemaType,
+    ) -> Self {
         Self {
             system_resolver: Arc::new(system_resolver),
             env,
+            served_schema_type,
         }
     }
 
@@ -62,16 +71,25 @@ impl GraphQLRouter {
         trusted_documents: TrustedDocuments,
         env: Arc<dyn Environment>,
     ) -> Result<Self, SystemLoadingError> {
+        let allow_mutations = env.enabled(EXO_GRAPHQL_ALLOW_MUTATIONS, true);
+
         let graphql_resolver = SystemLoader::create_system_resolver(
             graphql_resolvers,
             query_interception_map,
             mutation_interception_map,
             trusted_documents,
             env.clone(),
+            allow_mutations,
         )
         .await?;
 
-        Ok(Self::new(graphql_resolver, env))
+        let served_schema_type = if allow_mutations {
+            SchemaType::Default
+        } else {
+            SchemaType::QueriesOnly
+        };
+
+        Ok(Self::new(graphql_resolver, env, served_schema_type))
     }
 
     pub fn system_resolver(&self) -> Arc<GraphQLSystemResolver> {
@@ -118,6 +136,7 @@ impl<'a> Router<RequestContext<'a>> for GraphQLRouter {
             &self.system_resolver,
             trusted_document_enforcement,
             request_context,
+            self.served_schema_type,
         )
         .await;
 
@@ -224,6 +243,7 @@ pub async fn resolve_in_memory<'a>(
     system_resolver: &GraphQLSystemResolver,
     trusted_document_enforcement: TrustedDocumentEnforcement,
     request_context: &RequestContext<'a>,
+    schema_type: SchemaType,
 ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
     let body = request.take_body();
 
@@ -235,6 +255,7 @@ pub async fn resolve_in_memory<'a>(
         system_resolver,
         trusted_document_enforcement,
         request_context,
+        schema_type,
     )
     .await
 }
@@ -244,12 +265,14 @@ pub async fn resolve_in_memory_for_payload<'a>(
     system_resolver: &GraphQLSystemResolver,
     trusted_document_enforcement: TrustedDocumentEnforcement,
     request_context: &RequestContext<'a>,
+    schema_type: SchemaType,
 ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
     let response = system_resolver
         .resolve_operations(
             operations_payload,
             request_context,
             trusted_document_enforcement,
+            schema_type,
         )
         .await;
 

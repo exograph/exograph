@@ -7,25 +7,27 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::sync::Arc;
+
 use async_graphql_parser::types::{FieldDefinition, OperationType, TypeDefinition};
 use common::context::RequestContext;
 use core_plugin_shared::interception::InterceptorIndex;
 use core_resolver::{
-    introspection::definition::schema::Schema,
+    introspection::definition::schema::SchemaType,
     plugin::{SubsystemGraphQLResolver, SubsystemResolutionError},
-    system_resolver::GraphQLSystemResolver,
+    system_resolver::{GraphQLSystemResolver, Schemas},
     validation::field::ValidatedField,
     InterceptedOperation, QueryResponse, QueryResponseBody,
 };
 
 use crate::{field_resolver::FieldResolver, root_element::IntrospectionRootElement};
 pub struct IntrospectionResolver {
-    schema: Schema,
+    schemas: Arc<Schemas>,
 }
 
 impl IntrospectionResolver {
-    pub fn new(schema: Schema) -> Self {
-        Self { schema }
+    pub fn new(schemas: Arc<Schemas>) -> Self {
+        Self { schemas }
     }
 }
 
@@ -44,14 +46,22 @@ impl SubsystemGraphQLResolver for IntrospectionResolver {
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         let name = field.name.as_str();
 
+        let schema_type = if request_context.is_query_only() {
+            SchemaType::QueriesOnly
+        } else {
+            SchemaType::Default
+        };
+
+        let schema = self.schemas.get(schema_type);
+
         if name.starts_with("__") {
             let introspection_root = IntrospectionRootElement {
-                schema: &self.schema,
+                schema,
                 operation_type: &operation_type,
                 name,
             };
             let body = introspection_root
-                .resolve_field(field, &self.schema, request_context)
+                .resolve_field(field, schema, request_context)
                 .await
                 .map(|body| QueryResponse {
                     body: QueryResponseBody::Json(body),

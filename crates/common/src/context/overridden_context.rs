@@ -75,4 +75,8 @@ impl<'a> OverriddenContext<'a> {
             }
         }
     }
+
+    pub fn is_query_only(&self) -> bool {
+        self.base_context.is_query_only()
+    }
 }

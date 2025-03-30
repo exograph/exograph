@@ -34,9 +34,16 @@ pub const QUERY_ROOT_TYPENAME: &str = "Query";
 pub const MUTATION_ROOT_TYPENAME: &str = "Mutation";
 pub const SUBSCRIPTION_ROOT_TYPENAME: &str = "Subscription";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SchemaType {
+    Default,
+    QueriesOnly,
+}
+
 impl Schema {
     pub fn new_from_resolvers(
         subsystem_resolvers: &[Box<dyn SubsystemGraphQLResolver + Send + Sync>],
+        allow_mutations: bool,
     ) -> Schema {
         let type_definitions: Vec<TypeDefinition> = {
             let mut typedefs = subsystem_resolvers
@@ -64,7 +71,7 @@ impl Schema {
             queries
         };
 
-        let mutations = {
+        let mutations = if allow_mutations {
             let mut mutations = subsystem_resolvers
                 .iter()
                 .fold(vec![], |mut acc, resolver| {
@@ -75,12 +82,14 @@ impl Schema {
             // ensure introspection outputs mutations in a stable order
             mutations.sort_by_key(|m| m.name.clone());
             mutations
+        } else {
+            vec![]
         };
 
         Self::new(type_definitions, queries, mutations)
     }
 
-    pub fn new(
+    pub(crate) fn new(
         type_definitions: Vec<TypeDefinition>,
         queries: Vec<FieldDefinition>,
         mutations: Vec<FieldDefinition>,
