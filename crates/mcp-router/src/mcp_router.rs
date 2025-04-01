@@ -120,7 +120,7 @@ impl McpRouter {
 
         let response_body = json!({
             "tools": [{
-                "name": "execute_graphql",
+                "name": "execute_query",
                 "description": format!("Execute a GraphQL query per the following schema: {}", introspection_schema),
                 "inputSchema": {
                     "type": "object",
@@ -193,7 +193,7 @@ impl McpRouter {
                     .as_str()
                     .ok_or(SubsystemRpcError::InvalidRequest)?;
 
-                if name != "execute_graphql" {
+                if name != "execute_query" {
                     return Err(SubsystemRpcError::InvalidRequest);
                 }
 

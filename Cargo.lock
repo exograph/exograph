@@ -4939,7 +4939,7 @@ dependencies = [
 
 [[package]]
 name = "introspection-util"
-version = "0.12.2"
+version = "0.12.3"
 dependencies = [
  "anyhow",
  "ctor",
@@ -5589,7 +5589,7 @@ checksum = "4facc753ae494aeb6e3c22f839b158aebd4f9270f55cd3c79906c45476c47ab4"
 
 [[package]]
 name = "mcp-router"
-version = "0.12.2"
+version = "0.12.3"
 dependencies = [
  "async-stream",
  "async-trait",
