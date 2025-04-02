@@ -33,7 +33,7 @@ use common::context::RequestContext;
 use common::operation_payload::OperationsPayload;
 
 use crate::{
-    introspection::definition::schema::{Schema, SchemaType},
+    introspection::definition::schema::Schema,
     plugin::{subsystem_graphql_resolver::SubsystemGraphQLResolver, SubsystemResolutionError},
     validation::{
         document_validator::DocumentValidator, field::ValidatedField,
@@ -52,28 +52,6 @@ pub type ExographExecuteQueryFn<'a> = dyn Fn(
     + Send
     + Sync;
 
-pub struct Schemas {
-    /// The default schema that allows mutations if the env EXO_GRAPHQL_ALLOW_MUTATIONS is enabled (true by default)
-    default: Arc<Schema>,
-    /// The queries only schema that does not allow mutations
-    queries_only: Arc<Schema>,
-}
-
-impl Schemas {
-    pub fn new(default: Arc<Schema>, queries_only: Arc<Schema>) -> Self {
-        Self {
-            default,
-            queries_only,
-        }
-    }
-
-    pub fn get(&self, schema_type: SchemaType) -> &Schema {
-        match schema_type {
-            SchemaType::Default => &self.default,
-            SchemaType::QueriesOnly => &self.queries_only,
-        }
-    }
-}
 /// The top-level system resolver.
 ///
 /// Delegates to subsystem resolvers to resolve individual operations.
@@ -82,7 +60,7 @@ pub struct GraphQLSystemResolver {
     query_interception_map: InterceptionMap,
     mutation_interception_map: InterceptionMap,
     trusted_documents: TrustedDocuments,
-    schemas: Arc<Schemas>,
+    schema: Arc<Schema>,
     normal_query_depth_limit: usize,
     introspection_query_depth_limit: usize,
 }
@@ -94,7 +72,7 @@ impl GraphQLSystemResolver {
         query_interception_map: InterceptionMap,
         mutation_interception_map: InterceptionMap,
         trusted_documents: TrustedDocuments,
-        schemas: Arc<Schemas>,
+        schema: Arc<Schema>,
         env: Arc<dyn Environment>,
         normal_query_depth_limit: usize,
         introspection_query_depth_limit: usize,
@@ -116,7 +94,7 @@ impl GraphQLSystemResolver {
             query_interception_map,
             mutation_interception_map,
             trusted_documents,
-            schemas,
+            schema,
             normal_query_depth_limit,
             introspection_query_depth_limit,
         }
@@ -153,7 +131,6 @@ impl GraphQLSystemResolver {
         operations_payload: OperationsPayload,
         request_context: &RequestContext<'a>,
         trusted_document_enforcement: TrustedDocumentEnforcement,
-        schema_type: SchemaType,
     ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
         let query = self.trusted_documents.resolve(
             operations_payload.query.as_deref(),
@@ -166,7 +143,6 @@ impl GraphQLSystemResolver {
                 query,
                 operations_payload.operation_name,
                 operations_payload.variables,
-                schema_type,
             )?,
             // Special handing on introspection queries made by tools to be implicitly trusted
             // Introspection queries made by the playground and tools such as graphql-codegen send queries as a string
@@ -179,7 +155,6 @@ impl GraphQLSystemResolver {
                     &query,
                     operations_payload.operation_name,
                     operations_payload.variables,
-                    schema_type,
                 )?;
 
                 for field in &operation.fields {
@@ -293,12 +268,11 @@ impl GraphQLSystemResolver {
         query: &str,
         operation_name: Option<String>,
         variables: Option<Map<String, Value>>,
-        schema_type: SchemaType,
     ) -> Result<ValidatedOperation, ValidationError> {
         let document = parse_query(query)?;
 
         let document_validator = DocumentValidator::new(
-            self.schemas.get(schema_type),
+            &self.schema,
             operation_name,
             variables,
             self.normal_query_depth_limit,
@@ -319,7 +293,6 @@ macro_rules! exograph_execute_query {
             use common::operation_payload::OperationsPayload;
             use core_resolver::QueryResponseBody;
             use futures::FutureExt;
-            use core_resolver::introspection::definition::schema::SchemaType;
 
             let new_request_context = $request_context.with_override(context_override);
             async move {
@@ -334,7 +307,6 @@ macro_rules! exograph_execute_query {
                         },
                         &new_request_context,
                         enforce_trusted_documents,
-                        SchemaType::Default,
                     )
                     .await?;
 

@@ -9,13 +9,9 @@
 
 use std::sync::Arc;
 
-use common::introspection::{introspection_mode, IntrospectionMode};
-use common::EnvError;
 use core_plugin_shared::interception::InterceptionMap;
 use core_plugin_shared::trusted_documents::TrustedDocuments;
-use core_resolver::system_resolver::Schemas;
 use core_router::SystemLoadingError;
-use introspection_resolver::IntrospectionResolver;
 
 use core_resolver::plugin::SubsystemGraphQLResolver;
 use core_resolver::{
@@ -29,28 +25,17 @@ const EXO_MAX_SELECTION_DEPTH: &str = "EXO_MAX_SELECTION_DEPTH";
 
 impl SystemLoader {
     pub async fn create_system_resolver(
-        subsystem_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
+        mut subsystem_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
+        introspection_resolver: Option<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
         query_interception_map: InterceptionMap,
         mutation_interception_map: InterceptionMap,
         trusted_documents: TrustedDocuments,
         env: Arc<dyn Environment>,
-        allow_mutations: bool,
+        schema: Arc<Schema>,
     ) -> Result<GraphQLSystemResolver, SystemLoadingError> {
-        let default_schema = Arc::new(Schema::new_from_resolvers(
-            &subsystem_resolvers,
-            allow_mutations,
-        ));
-        let queries_only_schema = if allow_mutations {
-            Arc::new(Schema::new_from_resolvers(&subsystem_resolvers, false))
-        } else {
-            // If the default schema is already queries only, we can just use that
-            default_schema.clone()
-        };
-
-        let schemas = Arc::new(Schemas::new(default_schema, queries_only_schema));
-
-        let subsystem_resolvers =
-            Self::with_introspection_resolver(subsystem_resolvers, schemas.clone(), env.as_ref())?;
+        if let Some(introspection_resolver) = introspection_resolver {
+            subsystem_resolvers.push(introspection_resolver);
+        }
 
         let (normal_query_depth_limit, introspection_query_depth_limit) =
             query_depth_limits(env.as_ref())?;
@@ -60,31 +45,11 @@ impl SystemLoader {
             query_interception_map,
             mutation_interception_map,
             trusted_documents,
-            schemas,
+            schema,
             env,
             normal_query_depth_limit,
             introspection_query_depth_limit,
         ))
-    }
-
-    fn with_introspection_resolver(
-        mut subsystem_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
-        schemas: Arc<Schemas>,
-        env: &dyn Environment,
-    ) -> Result<Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>, EnvError> {
-        Ok(match introspection_mode(env)? {
-            IntrospectionMode::Disabled => subsystem_resolvers,
-            IntrospectionMode::Enabled => {
-                let introspection_resolver = Box::new(IntrospectionResolver::new(schemas.clone()));
-                subsystem_resolvers.push(introspection_resolver);
-                subsystem_resolvers
-            }
-            IntrospectionMode::Only => {
-                // forgo all other resolvers and only use introspection
-                let introspection_resolver = Box::new(IntrospectionResolver::new(schemas.clone()));
-                vec![introspection_resolver]
-            }
-        })
     }
 }
 

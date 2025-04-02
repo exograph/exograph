@@ -123,13 +123,6 @@ impl<'a> RequestContext<'a> {
         }
     }
 
-    pub fn with_override_query_only(&'a self) -> RequestContext<'a> {
-        Self {
-            core: self.core.with_override_query_only(),
-            system_context: self.system_context.clone(),
-        }
-    }
-
     pub fn get_base_context(&self) -> &UserRequestContext<'a> {
         self.core.get_base_context()
     }
@@ -139,10 +132,6 @@ impl<'a> RequestContext<'a> {
             .system_router
             .route(&PlainRequestPayload::internal(request))
             .await
-    }
-
-    pub fn is_query_only(&self) -> bool {
-        self.core.is_query_only()
     }
 }
 
@@ -167,8 +156,6 @@ pub(super) enum CoreRequestContext<'a> {
         &'a CoreRequestContext<'a>,
         &'a (dyn RequestPayload + Send + Sync),
     ),
-
-    OverriddenQueryOnly(&'a CoreRequestContext<'a>),
 }
 
 impl<'a> CoreRequestContext<'a> {
@@ -190,19 +177,6 @@ impl<'a> CoreRequestContext<'a> {
         Self::Overridden(OverriddenContext::new(self, context_override))
     }
 
-    pub fn with_override_query_only(&'a self) -> CoreRequestContext<'a> {
-        Self::OverriddenQueryOnly(self)
-    }
-
-    pub fn is_query_only(&self) -> bool {
-        match &self {
-            Self::OverriddenQueryOnly(_) => true,
-            Self::InternalRequest(core_context, ..) => core_context.is_query_only(),
-            Self::Overridden(overridden_context) => overridden_context.is_query_only(),
-            Self::User(_) => false,
-        }
-    }
-
     pub fn get_base_context(&self) -> &UserRequestContext<'a> {
         match &self {
             Self::User(req) => req,
@@ -210,7 +184,6 @@ impl<'a> CoreRequestContext<'a> {
                 base_context.get_base_context()
             }
             Self::InternalRequest(base_context, ..) => base_context.get_base_context(),
-            Self::OverriddenQueryOnly(base_context) => base_context.get_base_context(),
         }
     }
 
@@ -248,18 +221,6 @@ impl<'a> CoreRequestContext<'a> {
                     .await
             }
             Self::InternalRequest(base_context, ..) => {
-                base_context
-                    .extract_context_field(
-                        context_type_name,
-                        source_annotation,
-                        source_annotation_key,
-                        field_name,
-                        coerce_value,
-                        request_context,
-                    )
-                    .await
-            }
-            Self::OverriddenQueryOnly(base_context) => {
                 base_context
                     .extract_context_field(
                         context_type_name,

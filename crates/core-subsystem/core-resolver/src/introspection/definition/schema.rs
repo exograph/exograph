@@ -34,12 +34,6 @@ pub const QUERY_ROOT_TYPENAME: &str = "Query";
 pub const MUTATION_ROOT_TYPENAME: &str = "Mutation";
 pub const SUBSCRIPTION_ROOT_TYPENAME: &str = "Subscription";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SchemaType {
-    Default,
-    QueriesOnly,
-}
-
 impl Schema {
     pub fn new_from_resolvers(
         subsystem_resolvers: &[Box<dyn SubsystemGraphQLResolver + Send + Sync>],

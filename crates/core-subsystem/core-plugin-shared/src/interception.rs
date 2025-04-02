@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// A map of interceptors, where the key the the name of the operation and the value is the interception tree.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct InterceptionMap {
     pub map: HashMap<String, InterceptionTree>,
 }

@@ -10,7 +10,9 @@
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 
 use common::env_const::{EXO_UNSTABLE_ENABLE_MCP_API, EXO_UNSTABLE_ENABLE_RPC_API};
+use common::introspection::{introspection_mode, IntrospectionMode};
 use common::router::PlainRequestPayload;
+use core_resolver::introspection::definition::schema::Schema;
 use core_resolver::plugin::SubsystemRpcResolver;
 use core_resolver::system_rpc_resolver::SystemRpcResolver;
 use core_resolver::{
@@ -24,7 +26,7 @@ use tracing::debug;
 use common::context::{JwtAuthenticator, RequestContext};
 use common::{
     cors::{CorsConfig, CorsRouter},
-    env_const::{EXO_CORS_DOMAINS, EXO_UNSTABLE_ENABLE_REST_API},
+    env_const::{EXO_CORS_DOMAINS, EXO_GRAPHQL_ALLOW_MUTATIONS, EXO_UNSTABLE_ENABLE_REST_API},
     http::ResponsePayload,
     router::{CompositeRouter, Router},
 };
@@ -35,7 +37,7 @@ use core_plugin_shared::{
 };
 use core_router::SystemLoadingError;
 use exo_env::Environment;
-use graphql_router::GraphQLRouter;
+use graphql_router::{GraphQLRouter, IntrospectionResolver};
 
 #[cfg(not(target_family = "wasm"))]
 use playground_router::PlaygroundRouter;
@@ -96,14 +98,59 @@ pub async fn create_system_router_from_system(
         }
     }
 
-    let graphql_router = GraphQLRouter::from_resolvers(
-        graphql_resolvers,
-        query_interception_map,
-        mutation_interception_map,
-        trusted_documents,
-        env.clone(),
-    )
-    .await?;
+    let mcp_introspection_router = {
+        let introspection_schema = Arc::new(Schema::new_from_resolvers(&graphql_resolvers, false));
+        GraphQLRouter::from_resolvers(
+            vec![],
+            Some(Box::new(IntrospectionResolver::new(
+                introspection_schema.clone(),
+            ))),
+            introspection_schema,
+            InterceptionMap::default(),
+            InterceptionMap::default(),
+            TrustedDocuments::all(),
+            env.clone(),
+        )
+        .await?
+    };
+
+    let graphql_router = {
+        let allow_mutations = env.enabled(EXO_GRAPHQL_ALLOW_MUTATIONS, true);
+
+        let introspection_schema = Arc::new(Schema::new_from_resolvers(
+            &graphql_resolvers,
+            allow_mutations,
+        ));
+
+        let (introspection_resolver, graphql_resolvers): (
+            Option<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
+            _,
+        ) = match introspection_mode(env.as_ref())? {
+            IntrospectionMode::Disabled => (None, graphql_resolvers),
+            IntrospectionMode::Enabled => {
+                let introspection_resolver =
+                    Box::new(IntrospectionResolver::new(introspection_schema.clone()));
+                (Some(introspection_resolver), graphql_resolvers)
+            }
+            IntrospectionMode::Only => {
+                // forgo all other resolvers and only use introspection
+                let introspection_resolver =
+                    Box::new(IntrospectionResolver::new(introspection_schema.clone()));
+                (Some(introspection_resolver), vec![])
+            }
+        };
+
+        GraphQLRouter::from_resolvers(
+            graphql_resolvers,
+            introspection_resolver,
+            introspection_schema,
+            query_interception_map,
+            mutation_interception_map,
+            trusted_documents,
+            env.clone(),
+        )
+        .await?
+    };
 
     let rest_resolver = SystemRestResolver::new(rest_resolvers, env.clone());
     let rest_router = RestRouter::new(rest_resolver, env.clone());
@@ -111,7 +158,11 @@ pub async fn create_system_router_from_system(
     let rpc_resolver = SystemRpcResolver::new(rpc_resolvers, env.clone());
     let rpc_router = RpcRouter::new(rpc_resolver, env.clone());
 
-    let mcp_router = McpRouter::new(env.clone(), graphql_router.system_resolver());
+    let mcp_router = McpRouter::new(
+        env.clone(),
+        graphql_router.system_resolver(),
+        mcp_introspection_router.system_resolver(),
+    );
 
     create_system_router(graphql_router, rest_router, rpc_router, mcp_router, env).await
 }

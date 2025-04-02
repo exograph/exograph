@@ -13,21 +13,21 @@ use async_graphql_parser::types::{FieldDefinition, OperationType, TypeDefinition
 use common::context::RequestContext;
 use core_plugin_shared::interception::InterceptorIndex;
 use core_resolver::{
-    introspection::definition::schema::SchemaType,
+    introspection::definition::schema::Schema,
     plugin::{SubsystemGraphQLResolver, SubsystemResolutionError},
-    system_resolver::{GraphQLSystemResolver, Schemas},
+    system_resolver::GraphQLSystemResolver,
     validation::field::ValidatedField,
     InterceptedOperation, QueryResponse, QueryResponseBody,
 };
 
 use crate::{field_resolver::FieldResolver, root_element::IntrospectionRootElement};
 pub struct IntrospectionResolver {
-    schemas: Arc<Schemas>,
+    schema: Arc<Schema>,
 }
 
 impl IntrospectionResolver {
-    pub fn new(schemas: Arc<Schemas>) -> Self {
-        Self { schemas }
+    pub fn new(schema: Arc<Schema>) -> Self {
+        Self { schema }
     }
 }
 
@@ -46,13 +46,7 @@ impl SubsystemGraphQLResolver for IntrospectionResolver {
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         let name = field.name.as_str();
 
-        let schema_type = if request_context.is_query_only() {
-            SchemaType::QueriesOnly
-        } else {
-            SchemaType::Default
-        };
-
-        let schema = self.schemas.get(schema_type);
+        let schema = &self.schema;
 
         if name.starts_with("__") {
             let introspection_root = IntrospectionRootElement {

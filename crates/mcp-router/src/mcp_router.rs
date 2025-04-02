@@ -14,7 +14,6 @@ use common::{
 };
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::{
-    introspection::definition::schema::SchemaType,
     plugin::subsystem_rpc_resolver::{
         JsonRpcId, JsonRpcRequest, SubsystemRpcError, SubsystemRpcResponse,
     },
@@ -39,14 +38,20 @@ const ERROR_METHOD_NOT_FOUND_MESSAGE: &str = "Method not found";
 /// The implementation forwards requests to the GraphQL resolver.
 pub struct McpRouter {
     api_path_prefix: String,
-    system_resolver: Arc<GraphQLSystemResolver>,
+    data_resolver: Arc<GraphQLSystemResolver>,
+    introspection_resolver: Arc<GraphQLSystemResolver>,
 }
 
 impl McpRouter {
-    pub fn new(env: Arc<dyn Environment>, system_resolver: Arc<GraphQLSystemResolver>) -> Self {
+    pub fn new(
+        env: Arc<dyn Environment>,
+        data_resolver: Arc<GraphQLSystemResolver>,
+        introspection_resolver: Arc<GraphQLSystemResolver>,
+    ) -> Self {
         Self {
             api_path_prefix: get_mcp_http_path(env.as_ref()).clone(),
-            system_resolver,
+            data_resolver,
+            introspection_resolver,
         }
     }
 
@@ -68,7 +73,11 @@ impl McpRouter {
         let query = query.as_str().ok_or(SubsystemRpcError::InternalError)?;
 
         let graphql_response = self
-            .execute_query(query.to_string(), request_context)
+            .execute_query(
+                query.to_string(),
+                &self.introspection_resolver,
+                request_context,
+            )
             .await?;
 
         let (first_name, first_response) = graphql_response.first().unwrap();
@@ -155,6 +164,7 @@ impl McpRouter {
     async fn execute_query(
         &self,
         query: String,
+        system_resolver: &GraphQLSystemResolver,
         request_context: &RequestContext<'_>,
     ) -> Result<Vec<(String, QueryResponse)>, SubsystemRpcError> {
         let operations_payload = OperationsPayload {
@@ -166,10 +176,9 @@ impl McpRouter {
 
         resolve_in_memory_for_payload(
             operations_payload,
-            &self.system_resolver,
+            system_resolver,
             TrustedDocumentEnforcement::DoNotEnforce,
-            &request_context.with_override_query_only(),
-            SchemaType::QueriesOnly,
+            request_context,
         )
         .await
         .map_err(|e| {
@@ -206,7 +215,9 @@ impl McpRouter {
                     .as_str()
                     .ok_or(SubsystemRpcError::InvalidRequest)?;
 
-                let graphql_response = self.execute_query(query.to_string(), request_context).await;
+                let graphql_response = self
+                    .execute_query(query.to_string(), &self.data_resolver, request_context)
+                    .await;
 
                 let tool_result = match graphql_response {
                     Ok(graphql_response) => {
