@@ -14,7 +14,7 @@ use crate::schema::constraint::ForeignKeyConstraintColumnPair;
 use crate::sql::connect::database_client::DatabaseClient;
 use crate::{PhysicalTable, PhysicalTableName};
 
-use super::column_spec::{ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec};
+use super::column_spec::{ColumnAttribute, ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec};
 use super::constraint::{sorted_comma_list, Constraints};
 use super::index_spec::IndexSpec;
 use super::issue::WithIssues;
@@ -87,6 +87,7 @@ impl TableSpec {
     pub(super) async fn from_live_db_table(
         client: &DatabaseClient,
         table_name: PhysicalTableName,
+        column_attributes: &HashMap<PhysicalTableName, HashMap<String, ColumnAttribute>>,
     ) -> Result<WithIssues<TableSpec>, DatabaseError> {
         // Query to get a list of columns in the table
 
@@ -104,13 +105,13 @@ impl TableSpec {
                 } = column_pair;
 
                 let mut column = ColumnSpec::from_live_db(
-                    client,
                     &foreign_constraint.foreign_table,
                     &foreign_column,
                     true,
                     None,
                     vec![],
                     Some(foreign_constraint.constraint_name.clone()),
+                    column_attributes,
                 )
                 .await?;
 
@@ -161,7 +162,6 @@ impl TableSpec {
                 .and_then(|(_, group_name)| group_name);
 
             let mut column = ColumnSpec::from_live_db(
-                client,
                 &table_name,
                 &name,
                 constraints
@@ -172,8 +172,10 @@ impl TableSpec {
                 explicit_column_type,
                 unique_constraint_names,
                 group_name,
+                column_attributes,
             )
             .await?;
+
             issues.append(&mut column.issues);
 
             if let Some(spec) = column.value {

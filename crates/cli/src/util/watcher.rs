@@ -143,6 +143,8 @@ where
                 println!("{} {}", "Error:".red().bold(), e.to_string().red().bold());
             }
 
+            println!("{}", "Starting server...".blue().bold());
+
             let mut command = tokio::process::Command::new(&server_binary);
 
             command.kill_on_drop(true);

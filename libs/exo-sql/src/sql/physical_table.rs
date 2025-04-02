@@ -35,6 +35,19 @@ impl PhysicalTableName {
         }
     }
 
+    pub fn new_with_schema_name(name: impl Into<String>, schema_name: impl Into<String>) -> Self {
+        let schema_name = schema_name.into();
+
+        Self {
+            name: name.into(),
+            schema: if &schema_name == "public" {
+                None
+            } else {
+                Some(schema_name)
+            },
+        }
+    }
+
     pub fn fully_qualified_name(&self) -> String {
         self.fully_qualified_name_with_sep(".")
     }

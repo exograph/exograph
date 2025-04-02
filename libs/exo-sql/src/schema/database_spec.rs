@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     database_error::DatabaseError,
@@ -25,6 +25,15 @@ use super::{
     table_spec::TableSpec,
     trigger_spec::{TriggerEvent, TriggerOrientation, TriggerSpec, TriggerTiming},
 };
+
+const SCHEMAS_QUERY: &str =
+    "SELECT schema_name FROM information_schema.schemata WHERE schema_name != 'information_schema' AND schema_name NOT LIKE 'pg_%'";
+
+const TABLE_NAMES_QUERY: &str =
+    "SELECT table_name FROM information_schema.tables WHERE table_schema = $1";
+
+const MATERIALIZED_VIEWS_QUERY: &str =
+    "SELECT matviewname as view_name FROM pg_matviews WHERE schemaname = $1";
 
 #[derive(Debug)]
 pub struct DatabaseSpec {
@@ -213,72 +222,54 @@ impl DatabaseSpec {
         client: &DatabaseClient,
         scope: &MigrationScopeMatches,
     ) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
-        const SCHEMAS_QUERY: &str =
-            "SELECT schema_name FROM information_schema.schemata WHERE schema_name != 'information_schema' AND schema_name NOT LIKE 'pg_%'";
-
-        // Query to get a list of all the tables in the database
-        const TABLE_NAMES_QUERY: &str =
-            "SELECT table_name FROM information_schema.tables WHERE table_schema = $1";
-
-        const MATERIALIZED_VIEWS_QUERY: &str =
-            "SELECT matviewname as view_name FROM pg_matviews WHERE schemaname = $1";
-
         let mut issues = Vec::new();
         let mut tables = Vec::new();
 
-        for schema_row in client
+        let schemas: Vec<String> = client
             .query(SCHEMAS_QUERY, &[])
             .await
             .map_err(DatabaseError::Delegate)?
-        {
-            let raw_schema_name: String = schema_row.get("schema_name");
-            let schema_name = if raw_schema_name == "public" {
-                None
-            } else {
-                Some(raw_schema_name.clone())
-            };
+            .iter()
+            .filter_map(|schema_row| {
+                let schema: String = schema_row.get("schema_name");
+                scope.matches_schema(&schema).then_some(schema)
+            })
+            .collect::<Vec<_>>();
 
-            if !scope.matches_schema(&raw_schema_name) {
-                continue;
-            }
+        let mut column_attributes = HashMap::new();
+        for schema_name in &schemas {
+            column_attributes.extend(
+                ColumnSpec::query_column_attributes(client, schema_name, &mut issues).await?,
+            );
+        }
 
+        for schema_name in schemas {
             for table_row in client
-                .query(TABLE_NAMES_QUERY, &[&raw_schema_name])
+                .query(TABLE_NAMES_QUERY, &[&schema_name])
                 .await
                 .map_err(DatabaseError::Delegate)?
             {
-                let table_name = PhysicalTableName {
-                    name: table_row.get("table_name"),
-                    schema: schema_name.clone(),
-                };
+                let table_name: String = table_row.get("table_name");
+                let table_name = PhysicalTableName::new_with_schema_name(table_name, &schema_name);
 
-                if !scope.matches(&table_name) {
-                    continue;
-                }
+                let mut table =
+                    TableSpec::from_live_db_table(client, table_name, &column_attributes).await?;
 
-                let mut table = TableSpec::from_live_db_table(client, table_name).await?;
                 issues.append(&mut table.issues);
                 tables.push(table.value);
             }
 
             for view_row in client
-                .query(MATERIALIZED_VIEWS_QUERY, &[&raw_schema_name])
+                .query(MATERIALIZED_VIEWS_QUERY, &[&schema_name])
                 .await
                 .map_err(DatabaseError::Delegate)?
             {
-                let view_name = view_row.get("view_name");
-
-                let table_name = PhysicalTableName {
-                    name: view_name,
-                    schema: schema_name.clone(),
-                };
-
-                if !scope.matches(&table_name) {
-                    continue;
-                }
+                let view_name: String = view_row.get("view_name");
+                let table_name = PhysicalTableName::new_with_schema_name(view_name, &schema_name);
 
                 let mut table =
                     TableSpec::from_live_db_materialized_view(client, table_name).await?;
+
                 issues.append(&mut table.issues);
                 tables.push(table.value);
             }
