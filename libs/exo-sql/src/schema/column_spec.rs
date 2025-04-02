@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
 use std::fmt::Write;
 
 use crate::database_error::DatabaseError;
@@ -77,30 +78,22 @@ pub enum ColumnTypeSpec {
     },
 }
 
-const DB_TYPE_QUERY: &str = "
-  SELECT format_type(atttypid, atttypmod), attndims FROM pg_attribute LEFT JOIN pg_class ON pg_attribute.attrelid = pg_class.oid 
-    LEFT JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
-  WHERE pg_class.relname = $1 AND pg_namespace.nspname = $2 AND attname = $3";
-
-const DB_NOT_NULL_QUERY: &str = "
-  SELECT attnotnull FROM pg_attribute 
+const COLUMNS_TYPE_QUERY: &str = "
+  SELECT pg_class.relname as table_name, attname as column_name, format_type(atttypid, atttypmod), attndims, attnotnull FROM pg_attribute 
     LEFT JOIN pg_class ON pg_attribute.attrelid = pg_class.oid 
     LEFT JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
-  WHERE pg_class.relname = $1 AND pg_namespace.nspname = $2 AND attname = $3";
+  WHERE attnum > 0 AND attisdropped = false AND pg_namespace.nspname = $1";
 
-const COLUMN_DEFAULT_QUERY: &str = "
-  SELECT column_default FROM information_schema.columns
-  WHERE table_schema = $1 AND table_name = $2 and column_name = $3";
-
-const IS_AUTO_INCREMENT_QUERY: &str = r#"
+const COLUMNS_DEFAULT_QUERY: &str = r#"
     SELECT 
-        pg_get_serial_sequence('"' || $1 || '"."' || $2 || '"', $3) IS NOT NULL AS is_auto_increment
+        table_name,
+        column_name,
+        column_default,
+        pg_get_serial_sequence('"' || $1 || '"."' || table_name || '"', column_name) IS NOT NULL AS is_auto_increment
     FROM 
         information_schema.columns
     WHERE 
-        table_schema = $1
-        AND table_name = $2
-        AND column_name = $3;
+        table_schema = $1;
 "#;
 
 impl ColumnSpec {
@@ -109,113 +102,48 @@ impl ColumnSpec {
     /// If the column references another table's column, the column's type can be specified with
     /// `explicit_type`.
     pub async fn from_live_db(
-        client: &DatabaseClient,
         table_name: &PhysicalTableName,
         column_name: &str,
         is_pk: bool,
         explicit_type: Option<ColumnTypeSpec>,
         unique_constraints: Vec<String>,
         group_name: Option<String>,
+        column_attributes: &HashMap<PhysicalTableName, HashMap<String, ColumnAttribute>>,
     ) -> Result<WithIssues<Option<ColumnSpec>>, DatabaseError> {
-        let mut issues = Vec::new();
+        let table_attributes = column_attributes
+            .get(table_name)
+            .ok_or(DatabaseError::Generic(format!(
+                "Table `{}` not found",
+                table_name.fully_qualified_name()
+            )))?;
 
-        let db_type = match explicit_type {
-            Some(t) => Some(t),
-            None => {
-                // Find the type of the column and the # of dimensions if the type is an array
-                let rows = client
-                    .query(
-                        DB_TYPE_QUERY,
-                        &[&table_name.name, &table_name.schema_name(), &column_name],
-                    )
-                    .await?;
+        let ColumnAttribute {
+            is_auto_increment,
+            default_value,
+            not_null,
+            db_type,
+        } = table_attributes
+            .get(column_name)
+            .ok_or(DatabaseError::Generic(format!(
+                "Column `{}` not found in table `{}`",
+                column_name,
+                table_name.fully_qualified_name()
+            )))?;
 
-                let row = rows.first().unwrap();
-
-                let mut sql_type: String = row.get("format_type");
-
-                let dims = {
-                    // depending on the version of postgres, the type of `attndims` is either `i16`
-                    // or `i32` (postgres type is `int2`` or `int4``), so try both
-                    let dims: Result<i32, _> = row.try_get("attndims");
-
-                    match dims {
-                        Ok(dims) => dims,
-                        Err(_) => {
-                            let dims: i16 = row.get("attndims");
-                            dims as i32
-                        }
-                    }
-                };
-
-                // When querying array types, the number of dimensions is not correctly shown
-                // e.g. a column declared as `INT[][][]` will be shown as `INT[]`
-                // So we manually query how many dimensions the column has and append `[]` to
-                // the type
-                sql_type += &"[]".repeat(if dims == 0 { 0 } else { (dims - 1) as usize });
-                match ColumnTypeSpec::from_string(&sql_type) {
-                    Ok(t) => Some(t),
-                    Err(e) => {
-                        issues.push(Issue::Warning(format!(
-                            "skipped column `{}.{column_name}` ({e})",
-                            table_name.fully_qualified_name()
-                        )));
-                        None
-                    }
-                }
-            }
-        };
-
-        let not_null: bool = client
-            .query(
-                DB_NOT_NULL_QUERY,
-                &[&table_name.name, &table_name.schema_name(), &column_name],
-            )
-            .await?
-            .first()
-            .map(|row| row.get("attnotnull"))
-            .unwrap();
-
-        let is_auto_increment = client
-            .query(
-                IS_AUTO_INCREMENT_QUERY,
-                &[&table_name.schema_name(), &table_name.name, &column_name],
-            )
-            .await?
-            .first()
-            .map(|row| row.get("is_auto_increment"))
-            .unwrap_or(false);
-
-        let default_value = if is_auto_increment {
-            // if this column is autoIncrement, then default value will be populated
-            // with an invocation of nextval()
-            //
-            // clear it to normalize the column
-            None
-        } else {
-            let rows = client
-                .query(
-                    COLUMN_DEFAULT_QUERY,
-                    &[&table_name.schema_name(), &table_name.name, &column_name],
-                )
-                .await?;
-
-            rows.first()
-                .and_then(|row| row.try_get("column_default").ok())
-        };
+        let db_type = explicit_type.or(db_type.clone());
 
         Ok(WithIssues {
             value: db_type.map(|typ| ColumnSpec {
                 name: column_name.to_owned(),
                 typ,
                 is_pk,
-                is_auto_increment,
+                is_auto_increment: *is_auto_increment,
                 is_nullable: !not_null,
                 unique_constraints,
-                default_value,
+                default_value: default_value.clone(),
                 group_name,
             }),
-            issues,
+            issues: vec![],
         })
     }
 
@@ -408,6 +336,102 @@ impl ColumnSpec {
             }
         })
     }
+
+    /// Compute column attributes from all tables in the given schema
+    pub async fn query_column_attributes(
+        client: &DatabaseClient,
+        schema_name: &str,
+        issues: &mut Vec<Issue>,
+    ) -> Result<HashMap<PhysicalTableName, HashMap<String, ColumnAttribute>>, DatabaseError> {
+        let mut map = HashMap::new();
+
+        for row in client.query(COLUMNS_DEFAULT_QUERY, &[&schema_name]).await? {
+            let table_name: String = row.get("table_name");
+            let column_name: String = row.get("column_name");
+            let is_auto_increment = row.get("is_auto_increment");
+
+            let table_name = PhysicalTableName::new_with_schema_name(table_name, schema_name);
+
+            // If this column is autoIncrement, then default value will be populated
+            // with an invocation of nextval(). Thus, we need to clear it to normalize the column
+            let default_value = if is_auto_increment {
+                None
+            } else {
+                row.get("column_default")
+            };
+
+            let table_attributes = map.entry(table_name).or_insert_with(HashMap::new);
+
+            table_attributes.insert(
+                column_name,
+                ColumnAttribute {
+                    is_auto_increment,
+                    default_value,
+                    db_type: None,
+                    not_null: true,
+                },
+            );
+        }
+
+        for row in client.query(COLUMNS_TYPE_QUERY, &[&schema_name]).await? {
+            let table_name: String = row.get("table_name");
+            let column_name: String = row.get("column_name");
+            let not_null: bool = row.get("attnotnull");
+
+            let table_name = PhysicalTableName::new_with_schema_name(table_name, schema_name);
+
+            let db_type = {
+                let mut sql_type: String = row.get("format_type");
+
+                let dims = {
+                    // depending on the version of postgres, the type of `attndims` is either `i16`
+                    // or `i32` (postgres type is `int2`` or `int4``), so try both
+                    let dims: Result<i32, _> = row.try_get("attndims");
+
+                    match dims {
+                        Ok(dims) => dims,
+                        Err(_) => {
+                            let dims: i16 = row.get("attndims");
+                            dims as i32
+                        }
+                    }
+                };
+
+                // When querying array types, the number of dimensions is not correctly shown
+                // e.g. a column declared as `INT[][][]` will be shown as `INT[]`
+                // So we manually query how many dimensions the column has and append `[]` to
+                // the type
+                sql_type += &"[]".repeat(if dims == 0 { 0 } else { (dims - 1) as usize });
+                match ColumnTypeSpec::from_string(&sql_type) {
+                    Ok(t) => Some(t),
+                    Err(e) => {
+                        issues.push(Issue::Warning(format!(
+                            "skipped column `{}.{column_name}` ({e})",
+                            table_name.fully_qualified_name()
+                        )));
+                        None
+                    }
+                }
+            };
+
+            let table_attributes = map.entry(table_name).or_insert_with(HashMap::new);
+
+            table_attributes.entry(column_name).and_modify(|info| {
+                info.db_type = db_type;
+                info.not_null = not_null;
+            });
+        }
+
+        Ok(map)
+    }
+}
+
+#[derive(Debug)]
+pub struct ColumnAttribute {
+    pub is_auto_increment: bool,
+    pub default_value: Option<String>,
+    pub db_type: Option<ColumnTypeSpec>,
+    pub not_null: bool,
 }
 
 impl ColumnTypeSpec {
