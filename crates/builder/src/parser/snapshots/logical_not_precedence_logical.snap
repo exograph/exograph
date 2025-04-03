@@ -1,0 +1,43 @@
+---
+source: crates/builder/src/parser/converter.rs
+expression: "convert_root(parsed.root_node(),\nr#\"\n            @postgres\n            module TestModule {       \n                @access(!a || b)\n                type Foo {\n                }\n            }\n        \"#.as_bytes(),\nfile_span, Path :: new(\"input.exo\")).unwrap()"
+---
+types: []
+modules:
+  - name: TestModule
+    annotations:
+      - name: postgres
+        params: None
+    types:
+      - name: Foo
+        kind: Type
+        fields: []
+        fragment_references: []
+        annotations:
+          - name: access
+            params:
+              Single:
+                - LogicalOp:
+                    Or:
+                      - LogicalOp:
+                          Not:
+                            - FieldSelection:
+                                Single:
+                                  - Identifier:
+                                      - a
+                                      - ~
+                                  - ~
+                            - ~
+                      - FieldSelection:
+                          Single:
+                            - Identifier:
+                                - b
+                                - ~
+                            - ~
+                      - ~
+        doc_comments: ~
+    methods: []
+    interceptors: []
+    base_exofile: input.exo
+    doc_comments: ~
+imports: []
