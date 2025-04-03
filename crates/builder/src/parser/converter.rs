@@ -845,6 +845,54 @@ mod tests {
     }
 
     #[multiplatform_test]
+    fn logical_op_precedence() {
+        // Should parse as `a || (b && c)`
+        parsing_test!(
+            r#"
+            @postgres
+            module TestModule {
+                @access(a || b && c)
+                type Foo {
+                }
+            }
+        "#,
+            "logical_op_precedence"
+        );
+    }
+
+    #[multiplatform_test]
+    fn logical_not_precedence_logical() {
+        // Should parse as `(!a) || b`
+        parsing_test!(
+            r#"
+            @postgres
+            module TestModule {       
+                @access(!a || b)
+                type Foo {
+                }
+            }
+        "#,
+            "logical_not_precedence_logical"
+        );
+    }
+
+    #[multiplatform_test]
+    fn logical_not_precedence_relational() {
+        // Should parse as `(!a) == b`
+        parsing_test!(
+            r#"
+            @postgres
+            module TestModule{            
+                @access(!a == b)
+                type Foo {
+                }
+            }
+        "#,
+            "logical_not_precedence_relational"
+        );
+    }
+
+    #[multiplatform_test]
     fn bb_schema() {
         parsing_test!(
             r#"

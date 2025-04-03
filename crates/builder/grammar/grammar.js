@@ -7,8 +7,22 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+// Set up precedence following Rust's rules (which matches JavaScript etc as well):
+// https://doc.rust-lang.org/reference/expressions.html#expression-precedence
+
+// For logical operators, `&&` has a higher precedence than `||`
+// So, `a || b && c` is parsed as `a || (b && c)`
 const logical_level = 1;
-const relational_level = logical_level + 1;
+const logical_or_level = logical_level + 1;
+const logical_and_level = logical_or_level + 1;
+
+// Relational operators have the next highest precedence
+// So, `a == b && c > d` is parsed as `(a == b) && (c > d)`
+const relational_level = logical_and_level + 1;
+
+// `!` has the highest precedence
+// So, `!a || b` is parsed as `(!a) || b`
+// And `!a == b` is parsed as `(!a) == b`
 const not_level = relational_level + 1;
 
 module.exports = grammar({
@@ -149,8 +163,8 @@ module.exports = grammar({
     ),
     expression: $ => choice(
       $.parenthetical,
-      prec(1, $.logical_op),
-      prec(3, $.relational_op),
+      prec(logical_level, $.logical_op),
+      prec(relational_level, $.relational_op),
       $.selection,
       $.literal,
     ),
@@ -200,10 +214,10 @@ module.exports = grammar({
       $.logical_and,
       $.logical_not
     ),
-    logical_or: $ => prec.left(logical_level, seq(
+    logical_or: $ => prec.left(logical_or_level, seq(
       field("left", $.expression), "||", field("right", $.expression)
     )),
-    logical_and: $ => prec.left(logical_level, seq(
+    logical_and: $ => prec.left(logical_and_level, seq(
       field("left", $.expression), "&&", field("right", $.expression)
     )),
     logical_not: $ => prec(not_level, seq(
