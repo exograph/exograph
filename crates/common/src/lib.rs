@@ -16,6 +16,7 @@ pub mod http;
 pub mod introspection;
 pub mod operation_payload;
 pub mod router;
+pub mod test_support;
 pub mod value;
 
 #[derive(Error, Debug)]

@@ -1,0 +1,8 @@
+@postgres
+module Database {
+  @access(query=true, mutation=false)
+  type Test {
+    @pk id: Int = autoIncrement()
+  }
+}
+

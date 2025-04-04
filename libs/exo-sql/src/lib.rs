@@ -65,6 +65,7 @@ pub use sql::{
     array_util::{self, ArrayEntry},
     column::Column,
     connect::creation::Connect,
+    connect::database_client::DatabaseClient,
     connect::database_client_manager::DatabaseClientManager,
     database::{Database, TableId},
     function::Function,

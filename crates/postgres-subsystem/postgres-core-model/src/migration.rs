@@ -279,6 +279,7 @@ mod tests {
     use std::path::{Path, PathBuf};
 
     use crate::subsystem::PostgresCoreSubsystem;
+    use common::test_support::read_relative_file;
     use core_model_builder::plugin::BuildMode;
     use core_plugin_shared::{
         error::ModelSerializationError, serializable_system::SerializableSystem,
@@ -287,51 +288,33 @@ mod tests {
     use sqlparser::parser::Parser;
 
     use colored::Colorize;
-    use wildmatch::WildMatch;
 
     use super::*;
 
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn all_tests() {
-        let filter = std::env::var("_EXO_DEV_MIGRATION_TEST_FILTER").unwrap_or("*".to_string());
-        let wildcard = WildMatch::new(&filter);
-
-        let test_configs_dir = relative_path("", "");
-        let test_configs = std::fs::read_dir(test_configs_dir)
-            .unwrap()
-            .filter_map(|entry| entry.ok())
-            .filter(|entry| entry.file_type().unwrap().is_dir())
-            .filter(|entry| wildcard.matches(entry.file_name().to_str().unwrap()));
-
-        let mut failed = false;
-
-        for test_config in test_configs {
-            let test_config_name = test_config.file_name();
-            let test_config_name = test_config_name.to_str().unwrap();
-            if let Err(e) = single_test(test_config_name).await {
-                println!("{}: {}", test_config_name, "failed".red());
-                println!("{}", e);
-                failed = true;
-            }
-        }
-
-        if failed {
-            panic!("{}", "Some tests failed".red());
-        }
+        common::test_support::run_tests(
+            env!("CARGO_MANIFEST_DIR"),
+            "_EXO_DEV_MIGRATION_TEST_FILTER",
+            "src/migration-test-data",
+            |test_config_name, test_path| async move { single_test(test_config_name, test_path).await },
+        )
+        .await
+        .unwrap();
     }
 
-    async fn single_test(folder: &str) -> Result<(), String> {
+    async fn single_test(folder: String, test_path: PathBuf) -> Result<(), String> {
         println!("Testing {}", folder);
-        let old_exo = read_relative_file(folder, "old/src/index.exo")
+        let old_exo = read_relative_file(&test_path, "old/src/index.exo")
             .map_err(|e| format!("Failed to read old exo: {}", e))?;
-        let new_exo = read_relative_file(folder, "new/src/index.exo")
+        let new_exo = read_relative_file(&test_path, "new/src/index.exo")
             .map_err(|e| format!("Failed to read new exo: {}", e))?;
 
         let old_system = compute_spec(&old_exo).await;
         let new_system = compute_spec(&new_exo).await;
 
-        let scope_dirs = std::fs::read_dir(relative_path(folder, ""))
+        let scope_dirs = std::fs::read_dir(&test_path)
             .unwrap()
             .filter_map(|entry| entry.ok())
             .filter(|entry| entry.file_type().unwrap().is_dir())
@@ -350,13 +333,13 @@ mod tests {
                 Err(format!("Unknown scope: {}", scope_dir_name))
             }?;
 
-            let scope_folder = format!("{}/{}", folder, scope_dir_name);
+            let scope_folder = test_path.join(scope_dir_name);
 
             println!("\tscope {}:", scope_spec_name);
 
             if let Err(e) = assert_for_scope(&old_system, &new_system, &scope_folder, &scope).await
             {
-                println!("{}: {}", scope_folder, e);
+                println!("{}: {}", scope_folder.display(), e);
                 failed = true;
             }
         }
@@ -392,7 +375,7 @@ mod tests {
     async fn assert_for_scope(
         old_system: &DatabaseSpec,
         new_system: &DatabaseSpec,
-        folder: &str,
+        folder: &PathBuf,
         scope: &MigrationScope,
     ) -> Result<(), String> {
         let old_expected_sql = read_relative_file(folder, "old.sql").unwrap_or_default();
@@ -457,7 +440,11 @@ mod tests {
         }
 
         if failed {
-            Err(format!("{}: Tests for scope {:?} failed", folder, scope))
+            Err(format!(
+                "{}: Tests for scope {:?} failed",
+                folder.display(),
+                scope
+            ))
         } else {
             Ok(())
         }
@@ -467,7 +454,7 @@ mod tests {
         system: &DatabaseSpec,
         expected: &str,
         migration_scope: &MigrationScope,
-        folder: &str,
+        folder: &Path,
         kind: TestKind,
     ) -> Result<(), String> {
         let creation =
@@ -490,7 +477,7 @@ mod tests {
         new_system: &DatabaseSpec,
         expected: &str,
         migration_scope: &MigrationScope,
-        folder: &str,
+        folder: &Path,
         kind: TestKind,
     ) -> Result<(), String> {
         let migration = Migration::from_schemas(old_system, new_system, migration_scope);
@@ -500,7 +487,7 @@ mod tests {
     fn assert_sql_eq(
         actual: Migration,
         expected: &str,
-        folder: &str,
+        folder: &Path,
         kind: TestKind,
     ) -> Result<(), String> {
         {
@@ -574,7 +561,7 @@ mod tests {
             (expected_sql_destructive, expected_sql_destructive_indices)
         };
 
-        let message = format!("{} {}", folder, kind.kind_str());
+        let message = format!("{} {}", folder.display(), kind.kind_str());
 
         if let Err(e) = assert_sql_str_eq(&actual_sql, &expected_sql, &message) {
             dump_migration(&actual, folder, kind)
@@ -594,12 +581,12 @@ mod tests {
 
     fn dump_migration(
         migration: &Migration,
-        folder: &str,
+        folder: &Path,
         kind: TestKind,
     ) -> Result<(), std::io::Error> {
         let kind_str = kind.kind_str();
 
-        let file_name = relative_path(folder, &format!("{}.actual.sql", kind_str));
+        let file_name = folder.join(format!("{}.actual.sql", kind_str));
         let mut file = std::fs::File::create(file_name)?;
         migration.write(&mut file, false)?;
         Ok(())
@@ -653,26 +640,6 @@ mod tests {
         }
 
         Ok(())
-    }
-
-    fn relative_path(folder: &str, path: &str) -> PathBuf {
-        let base_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/migration-test-data");
-
-        if folder.is_empty() {
-            return base_path;
-        }
-
-        let folder_path = base_path.join(folder);
-
-        if path.is_empty() {
-            return folder_path;
-        }
-
-        folder_path.join(path)
-    }
-
-    fn read_relative_file(folder: &str, path: &str) -> Result<String, std::io::Error> {
-        std::fs::read_to_string(relative_path(folder, path))
     }
 
     async fn create_postgres_system_from_str(
