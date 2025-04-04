@@ -337,25 +337,11 @@ impl DatabaseSpec {
 
 #[cfg(all(test, not(target_family = "wasm")))]
 mod tests {
-    use std::future::Future;
-    use std::sync::LazyLock;
-    use tokio::sync::Mutex;
+    use crate::testing::test_support::*;
 
-    use crate::testing::db::{
-        generate_random_string, EphemeralDatabaseLauncher, EphemeralDatabaseServer,
-    };
-    use crate::{DatabaseClientManager, IntBits};
+    use crate::IntBits;
 
     use super::*;
-
-    static DATABASE_SERVER: LazyLock<Mutex<Box<dyn EphemeralDatabaseServer + Send + Sync>>> =
-        LazyLock::new(|| {
-            Mutex::new(
-                EphemeralDatabaseLauncher::from_env()
-                    .create_server()
-                    .unwrap(),
-            )
-        });
 
     #[tokio::test]
     async fn empty_database() {
@@ -509,11 +495,7 @@ mod tests {
     }
 
     async fn test_database_spec(schema: &str, expected_database_spec: DatabaseSpec) {
-        let database_name = generate_random_string();
-
-        with_client(database_name, |client| async move {
-            client.batch_execute(schema).await.unwrap();
-
+        with_schema(schema, |client| async move {
             let WithIssues {
                 value: database_spec,
                 issues,
@@ -526,25 +508,6 @@ mod tests {
             assert_database_spec_eq(&database_spec, &expected_database_spec);
         })
         .await;
-    }
-
-    async fn with_client<Fut>(database_name: String, f: impl FnOnce(DatabaseClient) -> Fut)
-    where
-        Fut: Future<Output = ()>,
-    {
-        let database_server = DATABASE_SERVER.lock().await;
-        let database_server = database_server.as_ref();
-
-        let database = database_server.create_database(&database_name).unwrap();
-
-        let client = DatabaseClientManager::from_url(&database.url(), true, None)
-            .await
-            .unwrap()
-            .get_client()
-            .await
-            .unwrap();
-
-        f(client).await
     }
 
     fn assert_database_spec_eq(actual: &DatabaseSpec, expected: &DatabaseSpec) {
