@@ -1,6 +1,7 @@
 #![cfg(all(any(feature = "test-support", test), not(target_family = "wasm")))]
 
 use std::future::Future;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::LazyLock;
 use std::sync::Mutex;
 use std::sync::PoisonError;
@@ -10,6 +11,11 @@ use crate::testing::db::{
     generate_random_string, EphemeralDatabaseLauncher, EphemeralDatabaseServer,
 };
 use crate::DatabaseClientManager;
+
+/// This is used to ensure that we don't call cleanup if the database server is not initialized.
+///
+/// Implementation note: We won't need this once LazyLock::get() is stabilized.
+static DATABASE_SERVER_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 static DATABASE_SERVER: LazyLock<Mutex<Box<dyn EphemeralDatabaseServer + Send + Sync>>> =
     LazyLock::new(|| {
@@ -22,6 +28,10 @@ static DATABASE_SERVER: LazyLock<Mutex<Box<dyn EphemeralDatabaseServer + Send + 
 
 #[ctor::dtor]
 fn cleanup() {
+    if !DATABASE_SERVER_INITIALIZED.load(Ordering::Relaxed) {
+        return;
+    }
+
     let database_server = DATABASE_SERVER
         .lock()
         .unwrap_or_else(PoisonError::into_inner);
@@ -41,6 +51,8 @@ where
 
     let database_server = DATABASE_SERVER.lock().unwrap();
     let database_server = database_server.as_ref();
+
+    DATABASE_SERVER_INITIALIZED.store(true, Ordering::Relaxed);
 
     let database = database_server.create_database(&database_name).unwrap();
 
