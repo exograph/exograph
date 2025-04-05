@@ -1,0 +1,21 @@
+@postgres
+module Database {
+  @access(query=true, mutation=false)
+  type User {
+    @pk id: Int = autoIncrement()
+    @unique email: String
+    firstName: String
+    lastName: String
+    profileImageUrl: String
+    role: String = "user"
+    todos: Set<Todo>
+  }
+
+  @access(query=true, mutation=false)
+  type Todo {
+    @pk id: Int = autoIncrement()
+    title: String
+    completed: Boolean
+    user: User
+  }
+}

@@ -24,7 +24,8 @@ use crate::commands::command::{
     database_value, migration_scope_value, mutation_access_value, query_access_value,
 };
 use crate::config::Config;
-use crate::schema::import::create_model_file;
+use crate::schema::import::create_exo_model;
+use crate::schema::util::open_database;
 
 static SRC_INDEX_TEMPLATE: &[u8] = include_bytes!("templates/exo-new/src/index.exo");
 static TESTS_TEST_TEMPLATE: &[u8] = include_bytes!("templates/exo-new/tests/basic-query.exotest");
@@ -107,14 +108,18 @@ impl CommandDefinition for NewCommandDefinition {
         }
 
         if from_database {
-            create_model_file(
-                Some(&src_path.join("index.exo")),
-                database_url,
+            let mut model_file = File::create(src_path.join("index.exo"))?;
+
+            let db_client = open_database(database_url.as_deref()).await?;
+            let db_client = db_client.get_client().await?;
+
+            create_exo_model(
+                &mut model_file,
+                &db_client,
                 query_access,
                 mutation_access,
                 false,
                 scope,
-                true,
             )
             .await?;
         }

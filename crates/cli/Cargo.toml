@@ -48,5 +48,9 @@ postgres-builder = { path = "../postgres-subsystem/postgres-builder" }
 deno-builder = { path = "../deno-subsystem/deno-builder" }
 wasm-builder = { path = "../wasm-subsystem/wasm-builder" }
 
+[dev-dependencies]
+exo-sql = { path = "../../libs/exo-sql", features = ["test-support"] }
+common = { path = "../common", features = ["test-support"] }
+
 [target.'cfg(unix)'.dev-dependencies]
 rexpect = "0.6.0"

@@ -158,6 +158,7 @@ async fn setup_database(
     };
 
     let db_client = util::open_database(None).await?;
+    let mut db_client = db_client.get_client().await?;
 
     // generate migrations for current database
     let database = util::extract_postgres_database(model, None, false).await?;
@@ -166,7 +167,7 @@ async fn setup_database(
 
     // execute migration
     println!("Applying migrations...");
-    let migration_result = migrations.apply(&db_client, true).await;
+    let migration_result = migrations.apply(&mut db_client, true).await;
 
     const CONTINUE: &str = "Continue with old schema";
     const REBUILD: &str = "Rebuild Postgres schema (wipe out all data)";
@@ -178,13 +179,14 @@ async fn setup_database(
         let options = vec![CONTINUE, REBUILD, PAUSE, EXIT];
         let ans = inquire::Select::new("Choose an option:", options).prompt()?;
         let db_client = util::open_database(None).await?;
+        let mut db_client = db_client.get_client().await?;
 
         match ans {
             CONTINUE => {
                 println!("Continuing with old incompatible schema...");
             }
             REBUILD => {
-                migration::wipe_database(&db_client).await?;
+                migration::wipe_database(&mut db_client).await?;
                 setup_database(model, jwt_secret, db, None).await?;
             }
             PAUSE => {
@@ -205,7 +207,7 @@ async fn setup_database(
         }
     } else if let Some(seed) = seed {
         let seed = std::fs::read_to_string(seed)?;
-        db_client.get_client().await?.batch_execute(&seed).await?;
+        db_client.batch_execute(&seed).await?;
     }
 
     Ok(())

@@ -77,13 +77,14 @@ impl CommandDefinition for MigrateCommandDefinition {
         let database = util::extract_postgres_database(&model, None, use_ir).await?;
 
         let db_client = open_database(database_url.as_deref()).await?;
+        let mut db_client = db_client.get_client().await?;
         let migrations =
             Migration::from_db_and_model(&db_client, &database, &compute_migration_scope(scope))
                 .await?;
 
         if apply_to_database {
             migrations
-                .apply(&db_client, allow_destructive_changes)
+                .apply(&mut db_client, allow_destructive_changes)
                 .await?;
             Ok(())
         } else {

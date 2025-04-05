@@ -31,7 +31,7 @@ pub struct EphemeralDatabaseLauncher {
 
 impl EphemeralDatabaseLauncher {
     pub fn from_env() -> Self {
-        let preference_env = std::env::var("EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE");
+        let preference_env = std::env::var(EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE);
 
         let preference = match preference_env.as_deref().unwrap_or("prefer-local") {
             "prefer-local" => EphemeralDatabaseLaunchPreference::PreferLocal,

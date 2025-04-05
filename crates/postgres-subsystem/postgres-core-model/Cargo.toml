@@ -22,10 +22,11 @@ bincode.workspace = true
 exo-sql = { path = "../../../libs/exo-sql", features = ["bigdecimal"] }
 sqlparser = { git = "https://github.com/exograph/datafusion-sqlparser-rs.git", branch = "optional-columns-foreign-reference" }
 colored.workspace = true
-wildmatch.workspace = true
 
+common = { path = "../../common", features = ["test-support"] }
 builder = { path = "../../builder" }
 postgres-builder = { path = "../postgres-builder" }
 core-model-builder = { path = "../../core-subsystem/core-model-builder" }
+
 [lib]
 doctest = false

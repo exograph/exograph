@@ -1358,6 +1358,7 @@ dependencies = [
  "async-recursion",
  "async-trait",
  "bytes",
+ "colored",
  "cookie 0.18.1",
  "elsa",
  "exo-env",
@@ -1383,6 +1384,7 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "wasm-bindgen-test",
+ "wildmatch",
 ]
 
 [[package]]
@@ -6797,7 +6799,6 @@ dependencies = [
  "sqlparser",
  "tokio",
  "wasm-bindgen-test",
- "wildmatch",
 ]
 
 [[package]]

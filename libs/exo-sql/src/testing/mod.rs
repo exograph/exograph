@@ -12,3 +12,5 @@ pub mod error;
 
 mod docker;
 mod local;
+
+pub mod test_support;

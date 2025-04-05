@@ -13,8 +13,10 @@ use clap::{Arg, Command};
 use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::issue::WithIssues;
 use exo_sql::schema::spec::{MigrationScope, MigrationScopeMatches};
+use exo_sql::DatabaseClient;
 
-use std::path::{Path, PathBuf};
+use std::io::Write;
+use std::path::PathBuf;
 
 use crate::commands::command::{
     database_arg, database_value, get, migration_scope_arg, migration_scope_value,
@@ -68,14 +70,17 @@ impl CommandDefinition for ImportCommandDefinition {
         let scope: Option<String> = migration_scope_value(matches);
         let yes: bool = yes_value(matches);
 
-        create_model_file(
-            output.as_deref(),
-            database_url,
+        let mut writer = open_file_for_output(output.as_deref(), yes)?;
+        let db_client = open_database(database_url.as_deref()).await?;
+        let db_client = db_client.get_client().await?;
+
+        create_exo_model(
+            &mut writer,
+            &db_client,
             query_access,
             mutation_access,
             generate_fragments,
             scope,
-            yes,
         )
         .await?;
 
@@ -87,18 +92,15 @@ impl CommandDefinition for ImportCommandDefinition {
     }
 }
 
-pub(crate) async fn create_model_file(
-    output: Option<&Path>,
-    database_url: Option<String>,
+pub(crate) async fn create_exo_model(
+    mut writer: impl Write + Send,
+    db_client: &DatabaseClient,
     query_access: bool,
     mutation_access: bool,
     generate_fragments: bool,
     scope: Option<String>,
-    yes: bool,
 ) -> Result<()> {
-    let mut writer = open_file_for_output(output, yes)?;
-
-    let schema = import_schema(database_url, &compute_migration_scope(scope)).await?;
+    let schema = import_schema(db_client, &compute_migration_scope(scope)).await?;
 
     let mut context = ImportContext::new(
         &schema.value,
@@ -120,18 +122,83 @@ pub(crate) async fn create_model_file(
     Ok(())
 }
 
-pub(crate) async fn import_schema(
-    database_url: Option<String>,
+async fn import_schema(
+    client: &DatabaseClient,
     scope: &MigrationScope,
 ) -> Result<WithIssues<DatabaseSpec>> {
-    let db_client = open_database(database_url.as_deref()).await?;
-    let client = db_client.get_client().await?;
-
     let scope_matches = match scope {
         MigrationScope::Specified(scope) => scope,
         MigrationScope::FromNewSpec => &MigrationScopeMatches::all_schemas(),
     };
 
-    let database = DatabaseSpec::from_live_database(&client, scope_matches).await?;
+    let database = DatabaseSpec::from_live_database(client, scope_matches).await?;
     Ok(database)
+}
+
+#[cfg(all(test, not(target_family = "wasm")))]
+mod tests {
+    use std::io::BufWriter;
+
+    use common::test_support::{assert_file_content, read_relative_file};
+    use exo_sql::{testing::test_support::with_init_script, Database};
+    use postgres_core_model::{migration::Migration, subsystem::PostgresCoreSubsystem};
+
+    use crate::commands::build::build_system_with_static_builders;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_import_schema() {
+        common::test_support::run_tests(
+            env!("CARGO_MANIFEST_DIR"),
+            "_EXO_IMPORT_TEST_FILTER",
+            "src/commands/schema/import/test-data",
+            |folder, test_path| async move { single_test(folder, test_path).await },
+        )
+        .await
+        .unwrap();
+    }
+
+    async fn single_test(
+        _test_name: String,
+        test_path: PathBuf,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let schema = read_relative_file(&test_path, "schema.sql").unwrap();
+
+        with_init_script(&schema, |client| async move {
+            let mut writer = BufWriter::new(Vec::new());
+            create_exo_model(&mut writer, &client, true, false, false, None)
+                .await
+                .unwrap();
+
+            let output = String::from_utf8(writer.into_inner().unwrap()).unwrap();
+            assert_file_content(&test_path, "index.expected.exo", &output);
+
+            let expected_model_file = test_path.join("index.expected.exo");
+
+            let serialized_system = build_system_with_static_builders(&expected_model_file, None)
+                .await
+                .unwrap();
+
+            let postgres_subsystem = serialized_system
+                .subsystems
+                .into_iter()
+                .find(|subsystem| subsystem.id == "postgres");
+
+            use core_plugin_shared::system_serializer::SystemSerializer;
+            let database = match postgres_subsystem {
+                Some(subsystem) => {
+                    PostgresCoreSubsystem::deserialize(subsystem.core.0)
+                        .unwrap()
+                        .database
+                }
+                None => Database::default(),
+            };
+
+            Migration::verify(&client, &database, &MigrationScope::all_schemas()).await
+        })
+        .await?;
+
+        Ok(())
+    }
 }
