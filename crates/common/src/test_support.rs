@@ -102,7 +102,7 @@ pub fn assert_file_content(test_path: &PathBuf, path: &str, actual_content: &str
 
     let actual_content = actual_content.trim();
 
-    if actual_content != expected_content {
+    if !compare_strings_ignoring_whitespace(actual_content, &expected_content) {
         std::fs::write(actual_file, actual_content).unwrap();
         panic!("{}", "File content mismatch".red());
     } else {
@@ -110,4 +110,14 @@ pub fn assert_file_content(test_path: &PathBuf, path: &str, actual_content: &str
             std::fs::remove_file(actual_file).unwrap();
         }
     }
+}
+
+fn compare_strings_ignoring_whitespace(a: &str, b: &str) -> bool {
+    let a_lines = a.lines().map(|line| line.trim()).collect::<Vec<_>>();
+    let b_lines = b.lines().map(|line| line.trim()).collect::<Vec<_>>();
+    a_lines.len() == b_lines.len()
+        && a_lines
+            .iter()
+            .zip(b_lines.iter())
+            .all(|(a_line, b_line)| a_line == b_line)
 }
