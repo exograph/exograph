@@ -72,8 +72,14 @@ impl<'a> ImportContext<'a> {
         column_name.to_lower_camel_case()
     }
 
-    pub(super) fn standard_column_name(&self, field_name: &str) -> String {
-        field_name.to_snake_case()
+    pub(super) fn standard_column_name(&self, column: &ColumnSpec) -> String {
+        match &column.typ {
+            ColumnTypeSpec::ColumnReference(ref reference) => {
+                let field_name = reference_field_name(column, reference); // For example, `region_id` -> `region`
+                format!("{}_{}", field_name, reference.foreign_pk_column_name)
+            }
+            _ => column.name.to_snake_case(),
+        }
     }
 
     /// Converts the name of a SQL table to a exograph model name (for example, concert_artist -> ConcertArtist).

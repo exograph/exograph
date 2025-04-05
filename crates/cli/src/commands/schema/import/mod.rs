@@ -140,7 +140,7 @@ mod tests {
     use std::io::BufWriter;
 
     use common::test_support::{assert_file_content, read_relative_file};
-    use exo_sql::{testing::test_support::with_schema, Database};
+    use exo_sql::{testing::test_support::with_init_script, Database};
     use postgres_core_model::{migration::Migration, subsystem::PostgresCoreSubsystem};
 
     use crate::commands::build::build_system_with_static_builders;
@@ -151,7 +151,7 @@ mod tests {
     async fn test_import_schema() {
         common::test_support::run_tests(
             env!("CARGO_MANIFEST_DIR"),
-            "EXO_TEST_FILTER",
+            "_EXO_IMPORT_TEST_FILTER",
             "src/commands/schema/import/test-data",
             |folder, test_path| async move { single_test(folder, test_path).await },
         )
@@ -165,7 +165,7 @@ mod tests {
     ) -> Result<(), Box<dyn std::error::Error>> {
         let schema = read_relative_file(&test_path, "schema.sql").unwrap();
 
-        with_schema(&schema, |client| async move {
+        with_init_script(&schema, |client| async move {
             let mut writer = BufWriter::new(Vec::new());
             create_exo_model(&mut writer, &client, true, false, false, None)
                 .await

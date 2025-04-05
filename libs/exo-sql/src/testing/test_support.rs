@@ -40,12 +40,12 @@ where
     f(client).await
 }
 
-pub async fn with_schema<Fut, T>(schema: &str, f: impl FnOnce(DatabaseClient) -> Fut) -> T
+pub async fn with_init_script<Fut, T>(init_script: &str, f: impl FnOnce(DatabaseClient) -> Fut) -> T
 where
     Fut: Future<Output = T>,
 {
     with_client(|client| async move {
-        client.batch_execute(schema).await.unwrap();
+        client.batch_execute(init_script).await.unwrap();
 
         f(client).await
     })

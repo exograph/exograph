@@ -495,7 +495,7 @@ mod tests {
     }
 
     async fn test_database_spec(schema: &str, expected_database_spec: DatabaseSpec) {
-        with_schema(schema, |client| async move {
+        with_init_script(schema, |client| async move {
             let WithIssues {
                 value: database_spec,
                 issues,

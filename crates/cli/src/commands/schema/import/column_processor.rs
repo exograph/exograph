@@ -63,8 +63,7 @@ impl ModelProcessor<TableSpec> for ColumnSpec {
             write!(writer, "{} ", annots)?;
         }
 
-        let standard_field_name = context.standard_field_name(&self.name);
-        let standard_column_name = context.standard_column_name(&standard_field_name);
+        let standard_column_name = context.standard_column_name(self);
 
         if standard_column_name != self.name {
             write!(writer, "@column(\"{}\") ", self.name)?;
@@ -76,14 +75,17 @@ impl ModelProcessor<TableSpec> for ColumnSpec {
                 write!(writer, "{}: ", reference_field_name(self, reference))?;
             }
             _ => {
+                let standard_field_name = context.standard_field_name(&self.name);
                 write!(writer, "{}: ", standard_field_name)?;
             }
         }
 
-        match column_type_name {
-            ColumnTypeName::SelfType(data_type) => write!(writer, "{}", data_type)?,
-            ColumnTypeName::ReferenceType(data_type) => write!(writer, "{}", data_type)?,
-        }
+        let data_type = match column_type_name {
+            ColumnTypeName::SelfType(data_type) => data_type,
+            ColumnTypeName::ReferenceType(data_type) => data_type,
+        };
+
+        write!(writer, "{}", data_type)?;
 
         if self.is_nullable {
             write!(writer, "?")?;
