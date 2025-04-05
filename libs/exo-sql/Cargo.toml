@@ -18,7 +18,7 @@ postgres-url = ["tokio-postgres/runtime"]
 testing = ["which", "tempfile"]
 pool = ["deadpool-postgres"]
 bigdecimal = ["pg_bigdecimal"]
-test-support = []
+test-support = ["ctor"]
 
 [dependencies]
 bytes.workspace = true
@@ -57,6 +57,8 @@ tempfile = { workspace = true, optional = true }
 urlencoding = "2.1.2"
 
 serde_json.workspace = true
+
+ctor = { workspace = true, optional = true }
 
 [target.'cfg(target_family = "wasm")'.dependencies.tokio-postgres]
 workspace = true

@@ -39,7 +39,9 @@ impl EphemeralDatabaseLauncher {
             "local-only" => EphemeralDatabaseLaunchPreference::LocalOnly,
             "docker-only" => EphemeralDatabaseLaunchPreference::DockerOnly,
             _ => {
-                eprintln!("Invalid value for EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE: {preference_env:?}");
+                tracing::error!(
+                    "Invalid value for EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE: {preference_env:?}"
+                );
                 EphemeralDatabaseLaunchPreference::PreferLocal
             }
         };
@@ -51,10 +53,10 @@ impl EphemeralDatabaseLauncher {
     ) -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
         let local_available = LocalPostgresDatabaseServer::check_availability();
         if let Ok(true) = local_available {
-            println!("Launching PostgreSQL locally...");
+            tracing::info!("Launching PostgreSQL locally...");
             LocalPostgresDatabaseServer::start()
         } else {
-            eprintln!("Local PostgreSQL is not available");
+            tracing::error!("Local PostgreSQL is not available");
             Err(EphemeralDatabaseSetupError::Generic(
                 "Local PostgreSQL is not available".to_string(),
             ))
@@ -65,10 +67,10 @@ impl EphemeralDatabaseLauncher {
     ) -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
         let docker_available = DockerPostgresDatabaseServer::check_availability();
         if let Ok(true) = docker_available {
-            println!("Launching PostgreSQL in Docker...");
+            tracing::info!("Launching PostgreSQL in Docker...");
             DockerPostgresDatabaseServer::start()
         } else {
-            eprintln!("Docker PostgreSQL is not available");
+            tracing::error!("Docker PostgreSQL is not available");
             Err(EphemeralDatabaseSetupError::Generic(
                 "Docker PostgreSQL is not available".to_string(),
             ))
@@ -101,6 +103,8 @@ pub trait EphemeralDatabaseServer {
         &self,
         name: &str,
     ) -> Result<Box<dyn EphemeralDatabase + Send + Sync>, EphemeralDatabaseSetupError>;
+
+    fn cleanup(&self);
 }
 
 /// A ephemeral database that can be used for testing.
@@ -135,7 +139,7 @@ pub(super) fn launch_process(
             if let Some(stderr) = command.stderr.take() {
                 let stderr = std::io::BufReader::new(stderr);
                 stderr.lines().for_each(|line| {
-                    eprintln!("{}: {}", name, line.unwrap());
+                    tracing::error!("{}: {}", name, line.unwrap());
                 });
             }
         }

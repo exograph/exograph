@@ -3730,6 +3730,7 @@ version = "0.12.3"
 dependencies = [
  "bytes",
  "chrono",
+ "ctor",
  "deadpool-postgres",
  "exo-sql",
  "futures",
