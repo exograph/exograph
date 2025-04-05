@@ -14,7 +14,7 @@ use colored::Colorize;
 use common::env_const::{
     EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
 };
-use exo_sql::DatabaseClientManager;
+use exo_sql::DatabaseClient;
 use futures::FutureExt;
 use postgres_core_model::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
@@ -84,6 +84,7 @@ impl CommandDefinition for DevCommandDefinition {
             loop {
                 // Pass true as use_ir to use the IR model, since we just built the model in the watcher
                 let database = util::extract_postgres_database(&model, None, true).await?;
+                let mut db_client = db_client.get_client().await?;
                 let verification_result = Migration::verify(&db_client, &database, &migration_scope).await;
 
                 match verification_result {
@@ -92,7 +93,7 @@ impl CommandDefinition for DevCommandDefinition {
 
                         // If migrations are safe to apply, let's go ahead with those
                         if !migrations.has_destructive_changes() {
-                            if apply_migration(&db_client, &migrations).await? {
+                            if apply_migration(&mut db_client, &migrations).await? {
                                 break Ok(());
                             } else {
                                 // Migration failed, perhaps due to adding a non-nullable column and table already had rows
@@ -121,7 +122,7 @@ impl CommandDefinition for DevCommandDefinition {
                                     continue;
                                 }
 
-                                if apply_migration(&db_client, &migrations).await? {
+                                if apply_migration(&mut db_client, &migrations).await? {
                                     break Ok(());
                                 } else {
                                     continue;
@@ -153,10 +154,7 @@ impl CommandDefinition for DevCommandDefinition {
     }
 }
 
-async fn apply_migration(
-    db_client: &DatabaseClientManager,
-    migrations: &Migration,
-) -> Result<bool> {
+async fn apply_migration(db_client: &mut DatabaseClient, migrations: &Migration) -> Result<bool> {
     println!("{}", "Applying migration...".blue().bold());
     let result = migrations.apply(db_client, true).await;
     match result {

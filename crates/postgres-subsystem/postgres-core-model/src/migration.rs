@@ -17,7 +17,7 @@ use exo_sql::{
         op::SchemaOp,
         spec::{diff, MigrationScope, MigrationScopeMatches},
     },
-    Database, DatabaseClientManager,
+    Database, DatabaseClient,
 };
 use serde::Serialize;
 
@@ -32,10 +32,13 @@ pub struct MigrationStatement {
     pub is_destructive: bool,
 }
 
+#[derive(Debug)]
 pub enum VerificationErrors {
     PostgresError(DatabaseError),
     ModelNotCompatible(Vec<String>),
 }
+
+impl std::error::Error for VerificationErrors {}
 
 impl From<DatabaseError> for VerificationErrors {
     fn from(e: DatabaseError) -> Self {
@@ -127,7 +130,7 @@ impl Migration {
     }
 
     pub async fn from_db_and_model(
-        client: &DatabaseClientManager,
+        client: &DatabaseClient,
         database: &Database,
         scope: &MigrationScope,
     ) -> Result<Self, DatabaseError> {
@@ -160,7 +163,7 @@ impl Migration {
     }
 
     pub async fn verify(
-        client: &DatabaseClientManager,
+        client: &DatabaseClient,
         database: &Database,
         scope: &MigrationScope,
     ) -> Result<(), VerificationErrors> {
@@ -192,10 +195,9 @@ impl Migration {
 
     pub async fn apply(
         &self,
-        database: &DatabaseClientManager,
+        client: &mut DatabaseClient,
         allow_destructive_changes: bool,
     ) -> Result<(), anyhow::Error> {
-        let mut client = database.get_client().await?;
         let transaction = client.transaction().await?;
         for MigrationStatement {
             statement,
@@ -243,20 +245,16 @@ impl MigrationStatement {
 }
 
 async fn extract_db_schema(
-    database: &DatabaseClientManager,
+    client: &DatabaseClient,
     scope: &MigrationScopeMatches,
 ) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
-    let client = database.get_client().await?;
-
-    DatabaseSpec::from_live_database(&client, scope).await
+    DatabaseSpec::from_live_database(client, scope).await
 }
 
-pub async fn wipe_database(database: &DatabaseClientManager) -> Result<(), DatabaseError> {
-    let client = database.get_client().await?;
-
+pub async fn wipe_database(client: &mut DatabaseClient) -> Result<(), DatabaseError> {
     // wiping is equivalent to migrating to an empty database and deals with non-public schemas correctly
     let current_database_spec =
-        &DatabaseSpec::from_live_database(&client, &MigrationScopeMatches::all_schemas())
+        &DatabaseSpec::from_live_database(client, &MigrationScopeMatches::all_schemas())
             .await
             .map_err(|e| DatabaseError::BoxedError(Box::new(e)))?
             .value;
@@ -267,7 +265,7 @@ pub async fn wipe_database(database: &DatabaseClientManager) -> Result<(), Datab
         &MigrationScope::all_schemas(),
     );
     migrations
-        .apply(database, true)
+        .apply(client, true)
         .await
         .map_err(|e| DatabaseError::BoxedError(e.into()))?;
 
@@ -278,16 +276,16 @@ pub async fn wipe_database(database: &DatabaseClientManager) -> Result<(), Datab
 mod tests {
     use std::path::{Path, PathBuf};
 
-    use crate::subsystem::PostgresCoreSubsystem;
     use common::test_support::read_relative_file;
     use core_model_builder::plugin::BuildMode;
-    use core_plugin_shared::{
-        error::ModelSerializationError, serializable_system::SerializableSystem,
-    };
+    use core_plugin_shared::error::ModelSerializationError;
+    use core_plugin_shared::serializable_system::SerializableSystem;
     use sqlparser::dialect::PostgreSqlDialect;
     use sqlparser::parser::Parser;
 
     use colored::Colorize;
+
+    use crate::subsystem::PostgresCoreSubsystem;
 
     use super::*;
 

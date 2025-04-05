@@ -140,7 +140,10 @@ mod tests {
     use std::io::BufWriter;
 
     use common::test_support::{assert_file_content, read_relative_file};
-    use exo_sql::testing::test_support::with_schema;
+    use exo_sql::{testing::test_support::with_schema, Database};
+    use postgres_core_model::{migration::Migration, subsystem::PostgresCoreSubsystem};
+
+    use crate::commands::build::build_system_with_static_builders;
 
     use super::*;
 
@@ -156,7 +159,10 @@ mod tests {
         .unwrap();
     }
 
-    async fn single_test(_folder: String, test_path: PathBuf) -> Result<(), String> {
+    async fn single_test(
+        _test_name: String,
+        test_path: PathBuf,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let schema = read_relative_file(&test_path, "schema.sql").unwrap();
 
         with_schema(&schema, |client| async move {
@@ -167,8 +173,31 @@ mod tests {
 
             let output = String::from_utf8(writer.into_inner().unwrap()).unwrap();
             assert_file_content(&test_path, "index.expected.exo", &output);
+
+            let expected_model_file = test_path.join("index.expected.exo");
+
+            let serialized_system = build_system_with_static_builders(&expected_model_file, None)
+                .await
+                .unwrap();
+
+            let postgres_subsystem = serialized_system
+                .subsystems
+                .into_iter()
+                .find(|subsystem| subsystem.id == "postgres");
+
+            use core_plugin_shared::system_serializer::SystemSerializer;
+            let database = match postgres_subsystem {
+                Some(subsystem) => {
+                    PostgresCoreSubsystem::deserialize(subsystem.core.0)
+                        .unwrap()
+                        .database
+                }
+                None => Database::default(),
+            };
+
+            Migration::verify(&client, &database, &MigrationScope::all_schemas()).await
         })
-        .await;
+        .await?;
 
         Ok(())
     }

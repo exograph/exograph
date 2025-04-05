@@ -88,7 +88,16 @@ pub fn assert_file_content(test_path: &PathBuf, path: &str, actual_content: &str
     let expected_content = read_relative_file(test_path, path).unwrap();
     let expected_content = expected_content.trim();
 
-    let actual_file_name = path.replace(".expected.", ".actual.");
+    let actual_file_name = {
+        if path.contains(".expected.") {
+            path.replace(".expected.", ".actual.")
+        } else {
+            // Drop the extension and add ".actual" followed by the extension
+            let extension = path.split('.').last().unwrap();
+            let file_name = path.split('.').next().unwrap();
+            format!("{}.actual.{}", file_name, extension)
+        }
+    };
     let actual_file = test_path.join(actual_file_name);
 
     let actual_content = actual_content.trim();

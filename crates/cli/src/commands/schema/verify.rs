@@ -45,6 +45,7 @@ impl CommandDefinition for VerifyCommandDefinition {
         let db_client = util::open_database(database_url.as_deref()).await?;
 
         let database = util::extract_postgres_database(&model, None, use_ir).await?;
+        let db_client = db_client.get_client().await?;
         let verification_result =
             Migration::verify(&db_client, &database, &compute_migration_scope(scope)).await;
 
