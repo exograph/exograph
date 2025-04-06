@@ -455,7 +455,7 @@ fn process_composite_type_selection(
         }
     };
 
-    let frgamgnt_fields = composite_type_model
+    let fragment_fields = composite_type_model
         .fragment_references
         .iter()
         .flat_map(
@@ -485,7 +485,7 @@ fn process_composite_type_selection(
     if let Some(field) = composite_type_model
         .fields
         .iter()
-        .chain(frgamgnt_fields.iter())
+        .chain(fragment_fields.iter())
         .find(|f| &f.name == elem.0)
     {
         let resolved_typ = field.typ.to_typ(type_env);
