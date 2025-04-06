@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::mapped_arena::MappedArena;
 use core_model_builder::{
-    ast::ast_types::{AstExpr, FieldSelectionElement},
+    ast::ast_types::{AstExpr, AstModel, FieldSelectionElement},
     typechecker::{annotation::AnnotationSpec, Typed},
 };
 
@@ -280,125 +280,25 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                 let out_updated = if typ.is_incomplete() {
                     match prefix.typ().deref(type_env) {
                         Type::Optional(elem_type) => {
-                            // Support optional field selection by calling pass on the element. This
-                            // uniformly dealing with simple selection and hof calls on optional
-                            // fields
-                            let updated = elem.pass(
-                                type_env,
-                                annotation_env,
-                                scope,
-                                Some(&elem_type),
-                                errors,
-                            );
-                            *typ = elem.typ().clone();
-                            updated
+                            if let Type::Composite(c) = *elem_type {
+                                process_composite_type_selection(elem, &c, typ, type_env, errors)
+                            } else {
+                                // Support optional field selection by calling pass on the element. This
+                                // uniformly dealing with simple selection and hof calls on optional
+                                // fields
+                                let updated = elem.pass(
+                                    type_env,
+                                    annotation_env,
+                                    scope,
+                                    Some(&elem_type),
+                                    errors,
+                                );
+                                *typ = elem.typ().clone();
+                                updated
+                            }
                         }
                         Type::Composite(c) => {
-                            let elem = match elem {
-                                FieldSelectionElement::Identifier(value, s, _) => (value, *s),
-                                FieldSelectionElement::HofCall { span, name, .. } => {
-                                    *typ = Type::Error;
-                                    errors.push(Diagnostic {
-                                        level: Level::Error,
-                                        message: format!(
-                                            "Function call {} not supported on type {}",
-                                            name.0, c.name
-                                        ),
-                                        code: Some("C000".to_string()),
-                                        spans: vec![SpanLabel {
-                                            span: *span,
-                                            style: SpanStyle::Primary,
-                                            label: Some(
-                                                "unsupported function call target type".to_string(),
-                                            ),
-                                        }],
-                                    });
-                                    return false;
-                                }
-                                FieldSelectionElement::NormalCall {
-                                    span, name, typ, ..
-                                } => {
-                                    *typ = Type::Error;
-                                    errors.push(Diagnostic {
-                                        level: Level::Error,
-                                        message: format!(
-                                            "Function call {} not supported on type {}",
-                                            name.0, c.name
-                                        ),
-                                        code: Some("C000".to_string()),
-                                        spans: vec![SpanLabel {
-                                            span: *span,
-                                            style: SpanStyle::Primary,
-                                            label: Some(
-                                                "unsupported function call target type".to_string(),
-                                            ),
-                                        }],
-                                    });
-                                    return false;
-                                }
-                            };
-
-                            let frgamgnt_fields = c
-                                .fragment_references
-                                .iter()
-                                .flat_map(|fragment_reference| {
-                                    match type_env.get_by_key(&fragment_reference.name) {
-                                        Some(fragment_type) => {
-                                            match fragment_type.deref(type_env) {
-                                                Type::Composite(c) => c.fields,
-                                                _ => vec![],
-                                            }
-                                        }
-                                        None => {
-                                            *typ = Type::Error;
-                                            errors.push(Diagnostic {
-                                                level: Level::Error,
-                                                message: format!(
-                                                    "No such fragment: {}",
-                                                    fragment_reference.name
-                                                ),
-                                                code: Some("C000".to_string()),
-                                                spans: vec![SpanLabel {
-                                                    span: fragment_reference.span,
-                                                    style: SpanStyle::Primary,
-                                                    label: Some("unknown field".to_string()),
-                                                }],
-                                            });
-                                            vec![]
-                                        }
-                                    }
-                                })
-                                .collect::<Vec<_>>();
-
-                            if let Some(field) = c
-                                .fields
-                                .iter()
-                                .chain(frgamgnt_fields.iter())
-                                .find(|f| &f.name == elem.0)
-                            {
-                                let resolved_typ = field.typ.to_typ(type_env);
-                                if resolved_typ.is_complete() {
-                                    *typ = resolved_typ;
-                                    true
-                                } else {
-                                    *typ = Type::Error;
-                                    // no diagnostic because the prefix is incomplete
-                                    false
-                                }
-                            } else {
-                                *typ = Type::Error;
-                                errors.push(Diagnostic {
-                                    level: Level::Error,
-                                    message: format!("No such field {} on type {}", elem.0, c.name),
-                                    code: Some("C000".to_string()),
-                                    spans: vec![SpanLabel {
-                                        span: elem.1,
-                                        style: SpanStyle::Primary,
-                                        label: Some("unknown field".to_string()),
-                                    }],
-                                });
-                                false
-                            }
+                            process_composite_type_selection(elem, &c, typ, type_env, errors)
                         }
                         Type::Set(elem_type) => match elem {
                             FieldSelectionElement::Identifier(value, span, _) => {
@@ -505,5 +405,113 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                 in_updated || out_updated
             }
         }
+    }
+}
+
+fn process_composite_type_selection(
+    elem: &mut FieldSelectionElement<Typed>,
+    composite_type_model: &AstModel<Typed>,
+    typ: &mut Type,
+    type_env: &MappedArena<Type>,
+    errors: &mut Vec<Diagnostic>,
+) -> bool {
+    let elem = match elem {
+        FieldSelectionElement::Identifier(value, s, _) => (value, *s),
+        FieldSelectionElement::HofCall { span, name, .. } => {
+            *typ = Type::Error;
+            errors.push(Diagnostic {
+                level: Level::Error,
+                message: format!(
+                    "Function call {} not supported on type {}",
+                    name.0, composite_type_model.name
+                ),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: *span,
+                    style: SpanStyle::Primary,
+                    label: Some("unsupported function call target type".to_string()),
+                }],
+            });
+            return false;
+        }
+        FieldSelectionElement::NormalCall {
+            span, name, typ, ..
+        } => {
+            *typ = Type::Error;
+            errors.push(Diagnostic {
+                level: Level::Error,
+                message: format!(
+                    "Function call {} not supported on type {}",
+                    name.0, composite_type_model.name
+                ),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: *span,
+                    style: SpanStyle::Primary,
+                    label: Some("unsupported function call target type".to_string()),
+                }],
+            });
+            return false;
+        }
+    };
+
+    let fragment_fields = composite_type_model
+        .fragment_references
+        .iter()
+        .flat_map(
+            |fragment_reference| match type_env.get_by_key(&fragment_reference.name) {
+                Some(fragment_type) => match fragment_type.deref(type_env) {
+                    Type::Composite(c) => c.fields,
+                    _ => vec![],
+                },
+                None => {
+                    *typ = Type::Error;
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: format!("No such fragment: {}", fragment_reference.name),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: fragment_reference.span,
+                            style: SpanStyle::Primary,
+                            label: Some("unknown field".to_string()),
+                        }],
+                    });
+                    vec![]
+                }
+            },
+        )
+        .collect::<Vec<_>>();
+
+    if let Some(field) = composite_type_model
+        .fields
+        .iter()
+        .chain(fragment_fields.iter())
+        .find(|f| &f.name == elem.0)
+    {
+        let resolved_typ = field.typ.to_typ(type_env);
+        if resolved_typ.is_complete() {
+            *typ = resolved_typ;
+            true
+        } else {
+            *typ = Type::Error;
+            // no diagnostic because the prefix is incomplete
+            false
+        }
+    } else {
+        *typ = Type::Error;
+        errors.push(Diagnostic {
+            level: Level::Error,
+            message: format!(
+                "No such field {} on type {}",
+                elem.0, composite_type_model.name
+            ),
+            code: Some("C000".to_string()),
+            spans: vec![SpanLabel {
+                span: elem.1,
+                style: SpanStyle::Primary,
+                label: Some("unknown field".to_string()),
+            }],
+        });
+        false
     }
 }

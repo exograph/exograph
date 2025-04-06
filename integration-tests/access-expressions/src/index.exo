@@ -48,7 +48,7 @@ module DocumentModule {
   type AdminNote {
     @pk id: Int = autoIncrement()
     content: String
-    user: User
+    user: User?
   }
 
   // To set up a scenario where access control uses an optional field (and compares to a non-optional context field)

@@ -71,6 +71,9 @@ stages:
             adminNotes: createAdminNotes(data: [{content: "n1_user3", user: {id: $user3Id}}, {content: "n2_user4", user: {id: $user4Id}}]) {
                 id
             }
+            adminNoteNoUser: createAdminNote(data: {content: "n3_no_user"}) {
+                id
+            }
         }
       variable: |
         {

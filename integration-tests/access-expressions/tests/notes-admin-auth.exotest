@@ -90,6 +90,10 @@ stages:
               {
                 "id": 2,
                 "content": "n2_user4"
+              },
+              {
+                "id": 3,
+                "content": "n3_no_user"
               }
             ]
           }
