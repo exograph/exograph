@@ -111,17 +111,23 @@ impl EphemeralDatabaseServer for DockerPostgresDatabaseServer {
             name: name.into(),
         }))
     }
+
+    fn cleanup(&self) {
+        tracing::info!("Dropping docker container {}", self.container_name);
+        // kill docker, will get removed automatically on exit due to --rm provided when starting
+        if let Err(e) = launch_process("docker", &["stop", &self.container_name], true) {
+            tracing::error!(
+                "Failed to kill docker container '{}': {}",
+                self.container_name,
+                e
+            );
+        }
+    }
 }
 
 impl Drop for DockerPostgresDatabaseServer {
     fn drop(&mut self) {
-        // kill docker, will get removed automatically on exit due to --rm provided when starting
-        if let Err(e) = launch_process("docker", &["kill", &self.container_name], false) {
-            eprintln!(
-                "Failed to kill docker container '{}': {}",
-                self.container_name, e
-            );
-        }
+        self.cleanup();
     }
 }
 
@@ -142,15 +148,18 @@ impl Drop for DockerPostgresDatabase {
                 "exec",
                 &self.container_name,
                 "dropdb",
-                "-U",
+                "--force",
+                "--username",
                 "exo",
                 &self.name,
             ],
-            false,
+            true,
         ) {
-            eprintln!(
+            tracing::error!(
                 "Failed to drop database '{}' in container '{}': {}",
-                self.name, self.container_name, e
+                self.name,
+                self.container_name,
+                e
             );
         }
     }

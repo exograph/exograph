@@ -224,10 +224,8 @@ impl EphemeralDatabaseServer for LocalPostgresDatabaseServer {
             name: name.into(),
         }))
     }
-}
 
-impl Drop for LocalPostgresDatabaseServer {
-    fn drop(&mut self) {
+    fn cleanup(&self) {
         std::process::Command::new("pg_ctl")
             .args(["stop", "-D", self.data_dir.path().to_str().unwrap()])
             .stdout(Stdio::null())
@@ -238,6 +236,12 @@ impl Drop for LocalPostgresDatabaseServer {
             .unwrap();
 
         std::fs::remove_dir_all(self.data_dir.path()).unwrap();
+    }
+}
+
+impl Drop for LocalPostgresDatabaseServer {
+    fn drop(&mut self) {
+        self.cleanup();
     }
 }
 
@@ -271,7 +275,14 @@ impl Drop for LocalPostgresDatabase {
         let args = {
             #[cfg(unix)]
             {
-                vec!["-h", &self.data_dir, "--force", "-U", "exo", &self.name]
+                vec![
+                    "-h",
+                    &self.data_dir,
+                    "--force",
+                    "--username",
+                    "exo",
+                    &self.name,
+                ]
             }
 
             #[cfg(not(unix))]
@@ -282,7 +293,7 @@ impl Drop for LocalPostgresDatabase {
                     "-p",
                     port_string.as_ref().unwrap().as_str(),
                     "--force",
-                    "-U",
+                    "--username",
                     "exo",
                     &self.name,
                 ]
