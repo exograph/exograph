@@ -209,9 +209,7 @@ fn default_value(field: &ResolvedField) -> Option<String> {
         .as_ref()
         .and_then(|default_value| match default_value {
             ResolvedFieldDefault::Value(val) => match &**val {
-                AstExpr::StringLiteral(string, _) => {
-                    Some(format!("'{}'::text", string.replace('\'', "''")))
-                }
+                AstExpr::StringLiteral(string, _) => Some(string.clone()),
                 AstExpr::BooleanLiteral(boolean, _) => Some(format!("{boolean}")),
                 AstExpr::NumberLiteral(val, _) => Some(format!("{val}")),
                 AstExpr::FieldSelection(_) => None,

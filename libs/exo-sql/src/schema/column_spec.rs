@@ -96,6 +96,9 @@ const COLUMNS_DEFAULT_QUERY: &str = r#"
         table_schema = $1;
 "#;
 
+const TEXT_TYPE_CAST_PREFIX: &str = "'::text";
+const CHARACTER_VARYING_TYPE_CAST_PREFIX: &str = "'::character varying";
+
 impl ColumnSpec {
     /// Creates a new column specification from an SQL column.
     ///
@@ -165,7 +168,7 @@ impl ColumnSpec {
         } else {
             ""
         };
-        let default_value_part = if let Some(default_value) = self.default_value.as_ref() {
+        let default_value_part = if let Some(default_value) = self.default_value_sql() {
             format!(" DEFAULT {default_value}")
         } else {
             "".to_string()
@@ -179,6 +182,21 @@ impl ColumnSpec {
             pre_statements: vec![],
             post_statements,
         }
+    }
+
+    pub fn default_value_sql(&self) -> Option<String> {
+        self.default_value.as_ref().map(|default_value| {
+            if let ColumnTypeSpec::String { max_length } = &self.typ {
+                let cast = if let Some(max_length) = max_length {
+                    format!("{CHARACTER_VARYING_TYPE_CAST_PREFIX}({max_length})")
+                } else {
+                    TEXT_TYPE_CAST_PREFIX.to_string()
+                };
+                format!(" '{default_value}{cast}")
+            } else {
+                format!(" {default_value}")
+            }
+        })
     }
 
     pub fn diff<'a>(
@@ -228,12 +246,12 @@ impl ColumnSpec {
                 })
             }
         } else if !default_value_same {
-            match &new.default_value {
+            match new.default_value_sql() {
                 Some(default_value) => {
                     changes.push(SchemaOp::SetColumnDefaultValue {
                         table: new_table,
                         column: new,
-                        default_value: default_value.clone(),
+                        default_value,
                     });
                 }
                 None => {
@@ -316,22 +334,10 @@ impl ColumnSpec {
     pub fn model_default_value(&self) -> Option<String> {
         self.default_value.as_ref().map(|default_value| {
             if matches!(self.typ, ColumnTypeSpec::String { .. }) {
-                // The default value from the database is a string with a type cast to text.
-                let mut processed_default_value = default_value.clone();
-
-                if processed_default_value.ends_with("'::text") {
-                    processed_default_value =
-                        processed_default_value[..processed_default_value.len() - 7].to_string();
-                };
-
-                if processed_default_value.starts_with("'") {
-                    processed_default_value.remove(0);
-                }
-
-                format!("\"{}\"", processed_default_value)
+                format!("\"{default_value}\"")
             } else if default_value == "gen_random_uuid()" {
                 "generate_uuid()".to_string()
-            } else if default_value == "now()" {
+            } else if default_value == "CURRENT_TIMESTAMP" || default_value == "CURRENT_DATE" {
                 "now()".to_string()
             } else {
                 default_value.clone()
@@ -359,7 +365,22 @@ impl ColumnSpec {
             let default_value = if is_auto_increment {
                 None
             } else {
-                row.get("column_default")
+                let default_value: Option<String> = row.get("column_default");
+                default_value.map(|mut default_value| {
+                    // The default value from the database is a string with a type cast to text.
+
+                    if default_value.ends_with(TEXT_TYPE_CAST_PREFIX) {
+                        default_value = default_value
+                            [1..default_value.len() - TEXT_TYPE_CAST_PREFIX.len()]
+                            .to_string();
+                    } else if default_value.ends_with(CHARACTER_VARYING_TYPE_CAST_PREFIX) {
+                        default_value = default_value
+                            [1..default_value.len() - CHARACTER_VARYING_TYPE_CAST_PREFIX.len()]
+                            .to_string();
+                    }
+
+                    default_value
+                })
             };
 
             let table_attributes = map.entry(table_name).or_insert_with(HashMap::new);
