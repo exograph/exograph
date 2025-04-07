@@ -1,0 +1,7 @@
+CREATE TABLE issues (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(200) NOT NULL,
+    due_date DATE NOT NULL DEFAULT now(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
