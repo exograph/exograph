@@ -168,6 +168,9 @@ impl From<DenoExecutionError> for SubsystemResolutionError {
     fn from(e: DenoExecutionError) -> Self {
         match e {
             DenoExecutionError::Authorization => SubsystemResolutionError::Authorization,
+            DenoExecutionError::ContextExtraction(e) => {
+                SubsystemResolutionError::ContextExtraction(e)
+            }
             _ => {
                 tracing::error!("Error while resolving operation: {e}");
                 SubsystemResolutionError::UserDisplayError(

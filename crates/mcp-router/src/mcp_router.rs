@@ -183,7 +183,7 @@ impl McpRouter {
         .await
         .map_err(|e| {
             tracing::error!("Error while resolving request: {:?}", e);
-            SubsystemRpcError::InternalError
+            e.into()
         })
     }
 
@@ -198,28 +198,25 @@ impl McpRouter {
             Some(params) => {
                 let name = params
                     .get("name")
-                    .ok_or(SubsystemRpcError::InvalidRequest)?
-                    .as_str()
+                    .and_then(|v| v.as_str())
                     .ok_or(SubsystemRpcError::InvalidRequest)?;
 
                 if name != "execute_query" {
-                    return Err(SubsystemRpcError::InvalidRequest);
+                    return Err(SubsystemRpcError::MethodNotFound(name.to_string()));
                 }
 
                 let arguments = params
                     .get("arguments")
                     .ok_or(SubsystemRpcError::InvalidRequest)?;
-                let query = arguments
-                    .get("query")
-                    .ok_or(SubsystemRpcError::InvalidRequest)?
-                    .as_str()
-                    .ok_or(SubsystemRpcError::InvalidRequest)?;
+                let query = arguments.get("query").and_then(|v| v.as_str()).ok_or(
+                    SubsystemRpcError::InvalidParams("query".to_string(), "arguments"),
+                )?;
 
                 let graphql_response = self
                     .execute_query(query.to_string(), &self.data_resolver, request_context)
                     .await;
 
-                let tool_result = match graphql_response {
+                let (tool_result, status_code) = match graphql_response {
                     Ok(graphql_response) => {
                         let response_contents = graphql_response
                             .into_iter()
@@ -242,19 +239,31 @@ impl McpRouter {
                             })
                             .collect::<Vec<_>>();
 
-                        json!({
-                            "content": response_contents,
-                            "isError": false,
-                        })
+                        (
+                            json!({
+                                "content": response_contents,
+                                "isError": false,
+                            }),
+                            StatusCode::OK,
+                        )
                     }
                     Err(e) => {
-                        json!({
-                            "content": [json!({
-                                "text": format!("Error: {:?}", e),
-                                "type": "text",
-                            })],
-                            "isError": true,
-                        })
+                        let status_code = match e {
+                            SubsystemRpcError::ExpiredAuthentication => StatusCode::UNAUTHORIZED,
+                            SubsystemRpcError::Authorization => StatusCode::FORBIDDEN,
+                            _ => StatusCode::INTERNAL_SERVER_ERROR,
+                        };
+
+                        (
+                            json!({
+                                "content": [json!({
+                                    "text": e.user_error_message().unwrap_or_default(),
+                                    "type": "text",
+                                })],
+                                "isError": true,
+                            }),
+                            status_code,
+                        )
                     }
                 };
 
@@ -263,7 +272,7 @@ impl McpRouter {
                         body: QueryResponseBody::Json(tool_result),
                         headers: vec![],
                     },
-                    status_code: StatusCode::OK,
+                    status_code,
                 };
 
                 Ok(Some(response))
@@ -367,7 +376,11 @@ impl<'a> Router<RequestContext<'a>> for McpRouter {
             }
         };
 
-        // TODO: Share this code with the rpc router
+        let status_code = match &response {
+            Ok(Some(response)) => response.status_code,
+            Ok(None) => StatusCode::OK,
+            Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        };
 
         let stream = try_stream! {
             macro_rules! emit_id_and_close {
@@ -437,7 +450,7 @@ impl<'a> Router<RequestContext<'a>> for McpRouter {
         Some(ResponsePayload {
             body: ResponseBody::Stream(Box::pin(stream)),
             headers,
-            status_code: StatusCode::OK,
+            status_code,
         })
     }
 }
