@@ -8656,7 +8656,7 @@ checksum = "3b9b39299b249ad65f3b7e96443bad61c02ca5cd3589f46cb6d610a0fd6c0d6a"
 [[package]]
 name = "sqlparser"
 version = "0.53.0"
-source = "git+https://github.com/exograph/datafusion-sqlparser-rs.git?branch=optional-columns-foreign-reference#de8858305a1ba77de495091d0cb313b8133c519a"
+source = "git+https://github.com/exograph/datafusion-sqlparser-rs.git?branch=optional-columns-foreign-reference#100f02c23dd9ea6a138050bb50c52151fb893cb9"
 dependencies = [
  "log",
 ]
