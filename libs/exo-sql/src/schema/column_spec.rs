@@ -21,6 +21,7 @@ use super::op::SchemaOp;
 use super::statement::SchemaStatement;
 use super::table_spec::TableSpec;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ColumnSpec {
@@ -30,9 +31,79 @@ pub struct ColumnSpec {
     pub is_auto_increment: bool,
     pub is_nullable: bool,
     pub unique_constraints: Vec<String>,
-    pub default_value: Option<String>,
+    pub default_value: Option<ColumnDefault>,
     // A name that can be used to group columns together (for example to generate a foreign key constraint name for composite primary keys)
     pub group_name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ColumnDefault {
+    Uuid,
+    CurrentTimestamp,
+    CurrentDate,
+    Text(String),
+    VarChar(String),
+    Boolean(bool),
+    Number(i64),
+    Function(String),
+}
+
+impl ColumnDefault {
+    /// Converts a value read by the `COLUMNS_DEFAULT_QUERY` to a `ColumnDefault`.
+    pub fn from_sql(default_value: String, db_type: Option<ColumnTypeSpec>) -> ColumnDefault {
+        // The default value from the database is a string with a type cast to text.
+        if default_value.ends_with(TEXT_TYPE_CAST_PREFIX) {
+            let text_value =
+                default_value[1..default_value.len() - TEXT_TYPE_CAST_PREFIX.len()].to_string();
+            ColumnDefault::Text(text_value)
+        } else if default_value.ends_with(CHARACTER_VARYING_TYPE_CAST_PREFIX) {
+            let var_char_value = default_value
+                [1..default_value.len() - CHARACTER_VARYING_TYPE_CAST_PREFIX.len()]
+                .to_string();
+            ColumnDefault::VarChar(var_char_value)
+        } else if default_value == CURRENT_TIMESTAMP_VALUE
+            || (default_value == NOW_VALUE
+                && matches!(db_type, Some(ColumnTypeSpec::Timestamp { .. })))
+        {
+            ColumnDefault::CurrentTimestamp
+        } else if default_value == CURRENT_DATE_VALUE
+            || (default_value == NOW_VALUE && matches!(db_type, Some(ColumnTypeSpec::Date)))
+        {
+            ColumnDefault::CurrentDate
+        } else if default_value == "gen_random_uuid()" {
+            ColumnDefault::Uuid
+        } else if matches!(db_type, Some(ColumnTypeSpec::Int { .. })) {
+            ColumnDefault::Number(default_value.parse().unwrap())
+        } else if matches!(db_type, Some(ColumnTypeSpec::Boolean)) {
+            ColumnDefault::Boolean(default_value == "true")
+        } else {
+            ColumnDefault::Function(default_value)
+        }
+    }
+
+    pub fn to_sql(&self) -> String {
+        match self {
+            ColumnDefault::Uuid => "gen_random_uuid()".to_string(),
+            ColumnDefault::CurrentTimestamp => "now()".to_string(),
+            ColumnDefault::CurrentDate => "now()".to_string(),
+            ColumnDefault::Text(value) => format!("'{value}'::text"),
+            ColumnDefault::VarChar(value) => format!("'{value}'::character varying"),
+            ColumnDefault::Boolean(value) => format!("{value}"),
+            ColumnDefault::Number(value) => format!("{value}"),
+            ColumnDefault::Function(value) => value.clone(),
+        }
+    }
+
+    pub fn to_model(&self) -> String {
+        match self {
+            ColumnDefault::Uuid => "generate_uuid()".to_string(),
+            ColumnDefault::CurrentTimestamp | ColumnDefault::CurrentDate => "now()".to_string(),
+            ColumnDefault::Text(value) | ColumnDefault::VarChar(value) => format!("\"{value}\""),
+            ColumnDefault::Boolean(value) => format!("{value}"),
+            ColumnDefault::Number(value) => format!("{value}"),
+            ColumnDefault::Function(value) => value.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -98,7 +169,9 @@ const COLUMNS_DEFAULT_QUERY: &str = r#"
 
 const TEXT_TYPE_CAST_PREFIX: &str = "'::text";
 const CHARACTER_VARYING_TYPE_CAST_PREFIX: &str = "'::character varying";
-
+const CURRENT_TIMESTAMP_VALUE: &str = "CURRENT_TIMESTAMP";
+const CURRENT_DATE_VALUE: &str = "CURRENT_DATE";
+const NOW_VALUE: &str = "now()";
 impl ColumnSpec {
     /// Creates a new column specification from an SQL column.
     ///
@@ -168,7 +241,11 @@ impl ColumnSpec {
         } else {
             ""
         };
-        let default_value_part = if let Some(default_value) = self.default_value_sql() {
+        let default_value_part = if let Some(default_value) = self
+            .default_value
+            .as_ref()
+            .map(|default_value| default_value.to_sql())
+        {
             format!(" DEFAULT {default_value}")
         } else {
             "".to_string()
@@ -182,21 +259,6 @@ impl ColumnSpec {
             pre_statements: vec![],
             post_statements,
         }
-    }
-
-    pub fn default_value_sql(&self) -> Option<String> {
-        self.default_value.as_ref().map(|default_value| {
-            if let ColumnTypeSpec::String { max_length } = &self.typ {
-                let cast = if let Some(max_length) = max_length {
-                    format!("{CHARACTER_VARYING_TYPE_CAST_PREFIX}({max_length})")
-                } else {
-                    TEXT_TYPE_CAST_PREFIX.to_string()
-                };
-                format!(" '{default_value}{cast}")
-            } else {
-                format!(" {default_value}")
-            }
-        })
     }
 
     pub fn diff<'a>(
@@ -246,7 +308,11 @@ impl ColumnSpec {
                 })
             }
         } else if !default_value_same {
-            match new.default_value_sql() {
+            match new
+                .default_value
+                .as_ref()
+                .map(|default_value| default_value.to_sql())
+            {
                 Some(default_value) => {
                     changes.push(SchemaOp::SetColumnDefaultValue {
                         table: new_table,
@@ -328,23 +394,6 @@ impl ColumnSpec {
         }
     }
 
-    // The default value that should be used in the model.
-    // For text, the default value from the database is a string with a type cast to text (such as `'foo'::text`),
-    // so we need to remove the type cast.
-    pub fn model_default_value(&self) -> Option<String> {
-        self.default_value.as_ref().map(|default_value| {
-            if matches!(self.typ, ColumnTypeSpec::String { .. }) {
-                format!("\"{default_value}\"")
-            } else if default_value == "gen_random_uuid()" {
-                "generate_uuid()".to_string()
-            } else if default_value == "CURRENT_TIMESTAMP" || default_value == "CURRENT_DATE" {
-                "now()".to_string()
-            } else {
-                default_value.clone()
-            }
-        })
-    }
-
     /// Compute column attributes from all tables in the given schema
     pub async fn query_column_attributes(
         client: &DatabaseClient,
@@ -352,49 +401,6 @@ impl ColumnSpec {
         issues: &mut Vec<Issue>,
     ) -> Result<HashMap<PhysicalTableName, HashMap<String, ColumnAttribute>>, DatabaseError> {
         let mut map = HashMap::new();
-
-        for row in client.query(COLUMNS_DEFAULT_QUERY, &[&schema_name]).await? {
-            let table_name: String = row.get("table_name");
-            let column_name: String = row.get("column_name");
-            let is_auto_increment = row.get("is_auto_increment");
-
-            let table_name = PhysicalTableName::new_with_schema_name(table_name, schema_name);
-
-            // If this column is autoIncrement, then default value will be populated
-            // with an invocation of nextval(). Thus, we need to clear it to normalize the column
-            let default_value = if is_auto_increment {
-                None
-            } else {
-                let default_value: Option<String> = row.get("column_default");
-                default_value.map(|mut default_value| {
-                    // The default value from the database is a string with a type cast to text.
-
-                    if default_value.ends_with(TEXT_TYPE_CAST_PREFIX) {
-                        default_value = default_value
-                            [1..default_value.len() - TEXT_TYPE_CAST_PREFIX.len()]
-                            .to_string();
-                    } else if default_value.ends_with(CHARACTER_VARYING_TYPE_CAST_PREFIX) {
-                        default_value = default_value
-                            [1..default_value.len() - CHARACTER_VARYING_TYPE_CAST_PREFIX.len()]
-                            .to_string();
-                    }
-
-                    default_value
-                })
-            };
-
-            let table_attributes = map.entry(table_name).or_insert_with(HashMap::new);
-
-            table_attributes.insert(
-                column_name,
-                ColumnAttribute {
-                    is_auto_increment,
-                    default_value,
-                    db_type: None,
-                    not_null: true,
-                },
-            );
-        }
 
         for row in client.query(COLUMNS_TYPE_QUERY, &[&schema_name]).await? {
             let table_name: String = row.get("table_name");
@@ -439,9 +445,49 @@ impl ColumnSpec {
 
             let table_attributes = map.entry(table_name).or_insert_with(HashMap::new);
 
+            table_attributes.insert(
+                column_name,
+                ColumnAttribute {
+                    db_type,
+                    not_null,
+                    is_auto_increment: false,
+                    default_value: None,
+                },
+            );
+        }
+
+        for row in client.query(COLUMNS_DEFAULT_QUERY, &[&schema_name]).await? {
+            let table_name: String = row.get("table_name");
+            let column_name: String = row.get("column_name");
+            let is_auto_increment = row.get("is_auto_increment");
+
+            let table_name = PhysicalTableName::new_with_schema_name(table_name, schema_name);
+
+            // If this column is autoIncrement, then default value will be populated
+            // with an invocation of nextval(). Thus, we need to clear it to normalize the column
+            let default_value = if is_auto_increment {
+                None
+            } else {
+                let default_value: Option<String> = row.get("column_default");
+                default_value.map(|default_value| {
+                    ColumnDefault::from_sql(
+                        default_value,
+                        map.get(&table_name)
+                            .and_then(|table_attributes| {
+                                table_attributes
+                                    .get(&column_name)
+                                    .map(|info| info.db_type.clone())
+                            })
+                            .flatten(),
+                    )
+                })
+            };
+
+            let table_attributes = map.entry(table_name).or_insert_with(HashMap::new);
+
             table_attributes.entry(column_name).and_modify(|info| {
-                info.db_type = db_type;
-                info.not_null = not_null;
+                info.default_value = default_value;
+                info.is_auto_increment = is_auto_increment;
             });
         }
 
@@ -452,7 +498,7 @@ impl ColumnSpec {
 #[derive(Debug)]
 pub struct ColumnAttribute {
     pub is_auto_increment: bool,
-    pub default_value: Option<String>,
+    pub default_value: Option<ColumnDefault>,
     pub db_type: Option<ColumnTypeSpec>,
     pub not_null: bool,
 }

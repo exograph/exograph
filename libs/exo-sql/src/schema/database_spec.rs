@@ -303,7 +303,7 @@ impl DatabaseSpec {
                     format!(
                         "NEW.{} = {}",
                         column.name,
-                        column.default_value.clone().unwrap()
+                        column.default_value.clone().unwrap().to_sql()
                     )
                 })
                 .collect::<Vec<_>>()

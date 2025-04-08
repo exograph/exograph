@@ -8,7 +8,8 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    database_error::DatabaseError, Database, ManyToOneId, OneToManyId, PhysicalTableName, TableId,
+    database_error::DatabaseError, schema::column_spec::ColumnDefault, Database, ManyToOneId,
+    OneToManyId, PhysicalTableName, TableId,
 };
 
 use super::{ExpressionBuilder, SQLBuilder};
@@ -36,7 +37,7 @@ pub struct PhysicalColumn {
     pub unique_constraints: Vec<String>,
 
     /// optional default value for this column
-    pub default_value: Option<String>,
+    pub default_value: Option<ColumnDefault>,
     pub update_sync: bool,
 
     /// A name that can be used to group columns together (for example to generate a foreign key constraint name for composite primary keys)

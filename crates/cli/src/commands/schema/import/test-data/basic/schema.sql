@@ -2,6 +2,7 @@ CREATE TABLE "todos" (
         "id" SERIAL PRIMARY KEY,
         "title" TEXT NOT NULL,
         "completed" BOOLEAN NOT NULL,
+        "priority" INT NOT NULL DEFAULT 0,
         "user_id" INT NOT NULL
 );
 
