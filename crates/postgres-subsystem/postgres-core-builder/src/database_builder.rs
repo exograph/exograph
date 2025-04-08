@@ -19,6 +19,7 @@ use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::{primitive_type::PrimitiveType, types::FieldType};
 use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError};
 
+use exo_sql::schema::column_spec::ColumnDefault;
 use exo_sql::{
     schema::index_spec::IndexKind, ColumnId, FloatBits, IntBits, ManyToOne, PhysicalColumn,
     PhysicalColumnType, PhysicalIndex, PhysicalTable, TableId, VectorDistanceFunction,
@@ -203,21 +204,37 @@ fn expand_type_relations(
     });
 }
 
-fn default_value(field: &ResolvedField) -> Option<String> {
+fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
     field
         .default_value
         .as_ref()
         .and_then(|default_value| match default_value {
             ResolvedFieldDefault::Value(val) => match &**val {
                 AstExpr::StringLiteral(string, _) => {
-                    Some(format!("'{}'::text", string.replace('\'', "''")))
+                    let value = match field.type_hint {
+                        None => ColumnDefault::Text(string.clone()),
+                        Some(_) => ColumnDefault::VarChar(string.clone()),
+                    };
+                    Some(value)
                 }
-                AstExpr::BooleanLiteral(boolean, _) => Some(format!("{boolean}")),
-                AstExpr::NumberLiteral(val, _) => Some(format!("{val}")),
+                AstExpr::BooleanLiteral(boolean, _) => Some(ColumnDefault::Boolean(*boolean)),
+                AstExpr::NumberLiteral(val, _) => Some(ColumnDefault::Number(*val)),
                 AstExpr::FieldSelection(_) => None,
                 _ => panic!("Invalid concrete value"),
             },
-            ResolvedFieldDefault::PostgresFunction(string) => Some(string.to_string()),
+            ResolvedFieldDefault::PostgresFunction(string) => {
+                if string == "now()" {
+                    if matches!(field.typ.innermost().type_name.as_str(), "LocalDate") {
+                        Some(ColumnDefault::CurrentDate)
+                    } else {
+                        Some(ColumnDefault::CurrentTimestamp)
+                    }
+                } else if string == "gen_random_uuid()" {
+                    Some(ColumnDefault::Uuid)
+                } else {
+                    Some(ColumnDefault::Function(string.to_string()))
+                }
+            }
             ResolvedFieldDefault::AutoIncrement => None,
         })
 }

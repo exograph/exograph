@@ -16,6 +16,7 @@ module Database {
     @pk id: Int = autoIncrement()
     title: String
     completed: Boolean
+    priority: Int = 0
     user: User
   }
 }
