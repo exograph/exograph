@@ -38,3 +38,12 @@ pub enum ContextExtractionError {
     #[error("{0}")]
     Generic(String),
 }
+
+impl ContextExtractionError {
+    pub fn user_error_message(&self) -> String {
+        match self {
+            ContextExtractionError::ExpiredAuthentication => "Expired authentication".to_string(),
+            _ => "Not authorized".to_string(),
+        }
+    }
+}

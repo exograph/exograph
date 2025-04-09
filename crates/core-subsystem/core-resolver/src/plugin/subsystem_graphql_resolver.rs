@@ -13,7 +13,7 @@ use crate::{
 };
 use async_graphql_parser::types::{FieldDefinition, OperationType, TypeDefinition};
 use async_trait::async_trait;
-use common::context::RequestContext;
+use common::context::{ContextExtractionError, RequestContext};
 use core_plugin_shared::interception::InterceptorIndex;
 use thiserror::Error;
 use tokio::runtime::Handle;
@@ -113,6 +113,9 @@ pub enum SubsystemResolutionError {
     #[error("Not authorized")]
     Authorization,
 
+    #[error("Context extraction error: {0}")]
+    ContextExtraction(ContextExtractionError),
+
     #[error("{0}")]
     UserDisplayError(String), // Error message to be displayed to the user (subsystems should hide internal errors through this)
 
@@ -128,6 +131,7 @@ impl SubsystemResolutionError {
             }
             SubsystemResolutionError::Authorization => Some("Not authorized".to_string()),
             SubsystemResolutionError::UserDisplayError(message) => Some(message.to_string()),
+            SubsystemResolutionError::ContextExtraction(ce) => Some(ce.user_error_message()),
             SubsystemResolutionError::NoInterceptorFound => None,
         }
     }

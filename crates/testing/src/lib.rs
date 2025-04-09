@@ -22,17 +22,7 @@ use exo_sql::testing::db::EphemeralDatabaseLauncher;
 
 use model::TestSuite;
 
-pub use execution::{get_introspection_result, schema_sdl};
-
-#[cfg(test)]
-use ctor::ctor;
-
-#[cfg(test)]
-#[ctor]
-// Make sure deno runtime is initialized in the main thread in test executables.
-fn init_deno_runtime() {
-    deno_core::JsRuntime::init_platform(None, true);
-}
+pub use execution::get_introspection_result;
 
 /// Loads test files from the supplied directory and runs them using a thread pool.
 pub fn run(

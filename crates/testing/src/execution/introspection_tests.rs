@@ -15,14 +15,8 @@ use common::{
     operation_payload::OperationsPayload,
 };
 use core_plugin_shared::serializable_system::SerializableSystem;
-use exo_deno::{
-    deno_core::{url::Url, ModuleType},
-    deno_error::DenoError,
-    deno_executor_pool::{DenoScriptDefn, ResolvedModule},
-    Arg, DenoModule, DenoModuleSharedState, UserCode,
-};
+use exo_deno::{deno_error::DenoError, Arg};
 use exo_env::MapEnvironment;
-use include_dir::{include_dir, Dir};
 use serde_json::Value;
 use std::{collections::HashMap, path::Path, sync::Arc};
 use system_router::{
@@ -36,9 +30,6 @@ use common::env_const::{
 use super::{TestResult, TestResultKind};
 
 use super::integration_test::run_query;
-
-const INTROSPECTION_ASSERT_JS: &str = include_str!("introspection_tests.js");
-const GRAPHQL_NODE_MODULE: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/node_modules/graphql");
 
 pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
     let log_prefix = format!("(introspection: {})\n :: ", model_path.display()).purple();
@@ -74,61 +65,10 @@ pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
     }
 }
 
-async fn create_introspection_deno_module() -> Result<DenoModule> {
-    let script = INTROSPECTION_ASSERT_JS;
-
-    DenoModule::new(
-        UserCode::LoadFromMemory {
-            path: "file://internal/introspection_tests.js".to_owned(),
-            script: DenoScriptDefn {
-                modules: vec![(
-                    Url::parse("file://internal/introspection_tests.js").unwrap(),
-                    ResolvedModule::Module(
-                        script.into(),
-                        ModuleType::JavaScript,
-                        Url::parse("file://internal/introspection_tests.js").unwrap(),
-                        false,
-                    ),
-                )]
-                .into_iter()
-                .collect(),
-                npm_snapshot: None,
-            },
-        },
-        "ExographTest",
-        vec![],
-        vec![],
-        vec![],
-        DenoModuleSharedState::default(),
-        Some("Error"),
-        Some(HashMap::from([(
-            "graphql".to_string(),
-            &GRAPHQL_NODE_MODULE,
-        )])),
-        Some(vec![(
-            // TODO: move to a Rust-based solution
-            // maybe juniper: https://github.com/graphql-rust/juniper/issues/217
-
-            // We are currently importing the `graphql` NPM module used by graphiql and running it through Deno to perform schema validation
-            // As it only depends on deno_core and deno_runtime, our integration of Deno does not include the NPM implementation provided through deno_cli
-            // Therefore, we need to patch certain things in this module through extra_sources to get scripts to run in Deno
-
-            // ReferenceError: process is not defined
-            //    at embedded://graphql/jsutils/instanceOf.mjs:11:16
-            "embedded://graphql/jsutils/instanceOf.mjs",
-            GRAPHQL_NODE_MODULE
-                .get_file("jsutils/instanceOf.mjs")
-                .unwrap()
-                .contents_utf8()
-                .unwrap()
-                .replace("process.env.NODE_ENV === 'production'", "false"),
-        )]),
-    )
-    .await
-}
-
 async fn create_introspection_request() -> Result<MemoryRequestPayload> {
-    let query = execute_deno_function("introspectionQuery", vec![]).await?;
+    let query =
+        introspection_util::execute_introspection_deno_function("introspectionQuery", vec![])
+            .await?;
 
     let request_head = MemoryRequestHead::new(
         HashMap::new(),
@@ -188,21 +128,11 @@ pub async fn get_introspection_result(serialized_system: SerializableSystem) -> 
     .await?
 }
 
-pub async fn schema_sdl(schema_response: Value) -> Result<String> {
-    let sdl = execute_deno_function("schemaSDL", vec![Arg::Serde(schema_response)]).await?;
-
-    if let Value::String(s) = sdl {
-        Ok(s)
-    } else {
-        Err(anyhow!("expected string"))
-    }
-}
-
 async fn check_introspection(
     system_router: &SystemRouter,
     model_path: &Path,
 ) -> Result<Result<()>> {
-    let mut deno_module = create_introspection_deno_module().await?;
+    let mut deno_module = introspection_util::create_introspection_deno_module().await?;
 
     let request = create_introspection_request().await?;
 
@@ -218,7 +148,7 @@ async fn check_introspection(
     match assert_schema_result {
         Ok(_) => {
             // Make sure the SDL generation also works
-            let sdl = schema_sdl(introspection_result).await;
+            let sdl = introspection_util::schema_sdl(introspection_result).await;
 
             match sdl {
                 Ok(sdl) => {
@@ -286,21 +216,4 @@ async fn check_introspection(
             e => Err(e.into()),
         },
     }
-}
-
-async fn execute_deno_function(function_name: &str, args: Vec<Arg>) -> Result<Value> {
-    let function_name = function_name.to_string();
-
-    tokio::task::spawn_blocking({
-        move || {
-            tokio::runtime::Handle::current().block_on(async move {
-                let mut deno_module = create_introspection_deno_module().await?;
-                deno_module
-                    .execute_function(&function_name, args)
-                    .await
-                    .map_err(|e| anyhow!("Error executing function: {:?}", e))
-            })
-        }
-    })
-    .await?
 }

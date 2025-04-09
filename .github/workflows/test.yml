@@ -148,4 +148,4 @@ jobs:
           --exclude subsystem-model-builder-util
           --exclude server-common --exclude server-actix --exclude server-aws-lambda
           --exclude testing
-          --exclude exo-deno --exclude exo-wasm
+          --exclude exo-deno --exclude exo-wasm --exclude mcp-router --exclude introspection-util

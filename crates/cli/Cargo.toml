@@ -39,6 +39,7 @@ exo-sql = { path = "../../libs/exo-sql", features = ["pool"] }
 builder = { path = "../builder" }
 testing = { path = "../testing" }
 common = { path = "../common" }
+introspection-util = { path = "../introspection-util" }
 core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
 postgres-core-model = { path = "../postgres-subsystem/postgres-core-model" }
 postgres-core-builder = { path = "../postgres-subsystem/postgres-core-builder" }

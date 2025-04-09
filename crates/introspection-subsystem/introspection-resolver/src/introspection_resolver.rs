@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::sync::Arc;
+
 use async_graphql_parser::types::{FieldDefinition, OperationType, TypeDefinition};
 use common::context::RequestContext;
 use core_plugin_shared::interception::InterceptorIndex;
@@ -20,11 +22,11 @@ use core_resolver::{
 
 use crate::{field_resolver::FieldResolver, root_element::IntrospectionRootElement};
 pub struct IntrospectionResolver {
-    schema: Schema,
+    schema: Arc<Schema>,
 }
 
 impl IntrospectionResolver {
-    pub fn new(schema: Schema) -> Self {
+    pub fn new(schema: Arc<Schema>) -> Self {
         Self { schema }
     }
 }
@@ -44,14 +46,16 @@ impl SubsystemGraphQLResolver for IntrospectionResolver {
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         let name = field.name.as_str();
 
+        let schema = &self.schema;
+
         if name.starts_with("__") {
             let introspection_root = IntrospectionRootElement {
-                schema: &self.schema,
+                schema,
                 operation_type: &operation_type,
                 name,
             };
             let body = introspection_root
-                .resolve_field(field, &self.schema, request_context)
+                .resolve_field(field, schema, request_context)
                 .await
                 .map(|body| QueryResponse {
                     body: QueryResponseBody::Json(body),

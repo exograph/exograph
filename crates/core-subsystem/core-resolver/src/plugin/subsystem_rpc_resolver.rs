@@ -1,11 +1,13 @@
 use thiserror::Error;
 
-use crate::QueryResponse;
+use crate::{system_resolver::SystemResolutionError, QueryResponse};
 
 use async_trait::async_trait;
-use common::context::RequestContext;
+use common::context::{ContextExtractionError, RequestContext};
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
+
+use super::SubsystemResolutionError;
 
 pub struct SubsystemRpcResponse {
     pub response: QueryResponse,
@@ -16,7 +18,7 @@ pub struct SubsystemRpcResponse {
 pub struct JsonRpcRequest {
     pub jsonrpc: String,
 
-    pub id: JsonRpcId,
+    pub id: Option<JsonRpcId>,
     pub method: String,
     #[allow(dead_code)]
     pub params: Option<serde_json::Value>,
@@ -62,11 +64,11 @@ pub enum SubsystemRpcError {
     #[error("Not authorized")]
     Authorization,
 
+    #[error("Expired authentication")]
+    ExpiredAuthentication,
+
     #[error("{0}")]
     UserDisplayError(String), // Error message to be displayed to the user (subsystems should hide internal errors through this)
-
-    #[error("No interceptor found")]
-    NoInterceptorFound, // Almost certainly a programming error (we asked a wrong subsystem)
 }
 
 impl SubsystemRpcError {
@@ -81,9 +83,9 @@ impl SubsystemRpcError {
                 Some(format!("Method {method_name} not found"))
             }
             SubsystemRpcError::InvalidRequest => Some("Invalid JSON-RPC request".to_string()),
+            SubsystemRpcError::ExpiredAuthentication => Some("Expired authentication".to_string()),
             SubsystemRpcError::Authorization => Some("Not authorized".to_string()),
             SubsystemRpcError::UserDisplayError(message) => Some(message.to_string()),
-            SubsystemRpcError::NoInterceptorFound => None,
         }
     }
 
@@ -95,9 +97,36 @@ impl SubsystemRpcError {
             SubsystemRpcError::MethodNotFound(_) => "-32601",
             SubsystemRpcError::InvalidRequest => "-32600",
 
-            SubsystemRpcError::Authorization => "-32000",
             SubsystemRpcError::UserDisplayError(_) => "-32001",
-            SubsystemRpcError::NoInterceptorFound => "--32603", // Same as InternalError
+            SubsystemRpcError::Authorization => "-32000",
+            SubsystemRpcError::ExpiredAuthentication => "-32003",
+        }
+    }
+}
+
+impl From<SystemResolutionError> for SubsystemRpcError {
+    fn from(error: SystemResolutionError) -> Self {
+        match error {
+            SystemResolutionError::SubsystemResolutionError(e) => match e {
+                SubsystemResolutionError::ContextExtraction(ce) => ce.into(),
+                SubsystemResolutionError::Authorization => SubsystemRpcError::Authorization,
+                SubsystemResolutionError::UserDisplayError(message) => {
+                    SubsystemRpcError::UserDisplayError(message)
+                }
+                _ => SubsystemRpcError::InternalError,
+            },
+            _ => SubsystemRpcError::InternalError,
+        }
+    }
+}
+
+impl From<ContextExtractionError> for SubsystemRpcError {
+    fn from(error: ContextExtractionError) -> Self {
+        match error {
+            ContextExtractionError::ExpiredAuthentication => {
+                SubsystemRpcError::ExpiredAuthentication
+            }
+            _ => SubsystemRpcError::Authorization,
         }
     }
 }

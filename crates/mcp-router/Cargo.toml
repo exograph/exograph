@@ -1,0 +1,26 @@
+[package]
+name = "mcp-router"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+async-trait.workspace = true
+tracing.workspace = true
+http.workspace = true
+async-stream.workspace = true
+bytes.workspace = true
+serde_json.workspace = true
+
+common = { path = "../common" }
+exo-env = { path = "../../libs/exo-env" }
+core-resolver = { path = "../core-subsystem/core-resolver" }
+core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
+graphql-router = { path = "../graphql-router" }
+introspection-util = { path = "../introspection-util" }
+
+[dev-dependencies]
+
+
+[lib]
+doctest = false

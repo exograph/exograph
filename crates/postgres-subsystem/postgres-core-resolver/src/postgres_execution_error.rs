@@ -76,7 +76,9 @@ impl PostgresExecutionError {
 impl From<AccessSolverError> for PostgresExecutionError {
     fn from(error: AccessSolverError) -> Self {
         match error {
-            AccessSolverError::ContextExtraction(_) => PostgresExecutionError::Authorization,
+            AccessSolverError::ContextExtraction(ce) => {
+                PostgresExecutionError::ContextExtraction(ce)
+            }
             _ => PostgresExecutionError::Generic(error.to_string()),
         }
     }
@@ -96,6 +98,9 @@ impl From<PostgresExecutionError> for SubsystemResolutionError {
     fn from(e: PostgresExecutionError) -> Self {
         match e {
             PostgresExecutionError::Authorization => SubsystemResolutionError::Authorization,
+            PostgresExecutionError::ContextExtraction(ce) => {
+                SubsystemResolutionError::ContextExtraction(ce)
+            }
             _ => SubsystemResolutionError::UserDisplayError(e.user_error_message()),
         }
     }

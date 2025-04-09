@@ -38,6 +38,7 @@ impl DenoExecutionError {
     pub fn user_error_message(&self) -> Option<String> {
         match self {
             DenoExecutionError::Authorization => Some("Not authorized".to_string()),
+            DenoExecutionError::ContextExtraction(ce) => Some(ce.user_error_message()),
             DenoExecutionError::Deno(DenoError::Explicit(error)) => Some(error.to_string()),
             _ => self.explicit_message(),
         }
@@ -74,7 +75,7 @@ impl DenoExecutionError {
 impl From<AccessSolverError> for DenoExecutionError {
     fn from(error: AccessSolverError) -> Self {
         match error {
-            AccessSolverError::ContextExtraction(_) => DenoExecutionError::Authorization,
+            AccessSolverError::ContextExtraction(e) => DenoExecutionError::ContextExtraction(e),
             _ => DenoExecutionError::Generic(error.to_string()),
         }
     }

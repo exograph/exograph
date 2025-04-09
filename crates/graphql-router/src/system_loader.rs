@@ -9,12 +9,9 @@
 
 use std::sync::Arc;
 
-use common::introspection::{introspection_mode, IntrospectionMode};
-use common::EnvError;
 use core_plugin_shared::interception::InterceptionMap;
 use core_plugin_shared::trusted_documents::TrustedDocuments;
 use core_router::SystemLoadingError;
-use introspection_resolver::IntrospectionResolver;
 
 use core_resolver::plugin::SubsystemGraphQLResolver;
 use core_resolver::{
@@ -28,16 +25,17 @@ const EXO_MAX_SELECTION_DEPTH: &str = "EXO_MAX_SELECTION_DEPTH";
 
 impl SystemLoader {
     pub async fn create_system_resolver(
-        subsystem_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
+        mut subsystem_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
+        introspection_resolver: Option<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
         query_interception_map: InterceptionMap,
         mutation_interception_map: InterceptionMap,
         trusted_documents: TrustedDocuments,
         env: Arc<dyn Environment>,
+        schema: Arc<Schema>,
     ) -> Result<GraphQLSystemResolver, SystemLoadingError> {
-        let schema = Schema::new_from_resolvers(&subsystem_resolvers);
-
-        let subsystem_resolvers =
-            Self::with_introspection_resolver(subsystem_resolvers, env.as_ref())?;
+        if let Some(introspection_resolver) = introspection_resolver {
+            subsystem_resolvers.push(introspection_resolver);
+        }
 
         let (normal_query_depth_limit, introspection_query_depth_limit) =
             query_depth_limits(env.as_ref())?;
@@ -52,27 +50,6 @@ impl SystemLoader {
             normal_query_depth_limit,
             introspection_query_depth_limit,
         ))
-    }
-
-    fn with_introspection_resolver(
-        mut subsystem_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
-        env: &dyn Environment,
-    ) -> Result<Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>, EnvError> {
-        let schema = || Schema::new_from_resolvers(&subsystem_resolvers);
-
-        Ok(match introspection_mode(env)? {
-            IntrospectionMode::Disabled => subsystem_resolvers,
-            IntrospectionMode::Enabled => {
-                let introspection_resolver = Box::new(IntrospectionResolver::new(schema()));
-                subsystem_resolvers.push(introspection_resolver);
-                subsystem_resolvers
-            }
-            IntrospectionMode::Only => {
-                // forgo all other resolvers and only use introspection
-                let introspection_resolver = Box::new(IntrospectionResolver::new(schema()));
-                vec![introspection_resolver]
-            }
-        })
     }
 }
 
