@@ -2,7 +2,10 @@ use anyhow::Result;
 use builder::{build_from_ast_system, error::ParserError, parser, FileSystem};
 use codemap::CodeMap;
 use core_plugin_shared::trusted_documents::TrustedDocuments;
-use std::path::{Path, PathBuf};
+use std::{
+    panic::AssertUnwindSafe,
+    path::{Path, PathBuf},
+};
 
 use dashmap::DashMap;
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
@@ -69,15 +72,23 @@ impl Workspace {
         let mut codemap = CodeMap::new();
         codemap.add_file(index_file.display().to_string(), file_content);
 
-        match build_from_ast_system(
+        use futures::FutureExt;
+
+        // Build panics (mostly indirectly through unwraps), which typically happens
+        // when the the user is still typing and likely to be fixed in a few additional keystrokes.
+        // While we will continue to fix those panics, until we have fixed them, we can use catch_unwind to
+        // handle them and not make the LSP crash.
+        let build_result = AssertUnwindSafe(build_from_ast_system(
             parser::parse_file(&index_file, self, &mut codemap),
             TrustedDocuments::all(),
             static_builders,
             BuildMode::CheckOnly, // In the LSP mode, we do not want to cause any side effects such as generating TypeScript code
-        )
-        .await
-        {
-            Ok(_) => {
+        ))
+        .catch_unwind()
+        .await;
+
+        match build_result {
+            Ok(Ok(_)) => {
                 let diagnostics = self
                     .documents
                     .iter()
@@ -89,7 +100,7 @@ impl Workspace {
                     .collect::<Vec<_>>();
                 Ok(diagnostics)
             }
-            Err(err) => match err {
+            Ok(Err(err)) => match err {
                 ParserError::Diagnosis(diagnosis) => {
                     let diagnostics: Vec<_> = self.compute_diagnostics(diagnosis, &codemap);
                     Ok(diagnostics)
@@ -99,11 +110,15 @@ impl Workspace {
                         let diagnostics: Vec<_> = self.compute_diagnostics(diagnosis, &codemap);
                         Ok(diagnostics)
                     } else {
-                        Ok(self.generic_diagnostic(parser_error))
+                        Ok(self.generic_diagnostic(parser_error.to_string()))
                     }
                 }
-                err => Ok(self.generic_diagnostic(err)),
+                err => Ok(self.generic_diagnostic(err.to_string())),
             },
+            Err(err) => {
+                eprintln!("build_result: {:?}", err);
+                Ok(self.generic_diagnostic("Unknown error while building model".to_string()))
+            }
         }
     }
 
@@ -175,7 +190,7 @@ impl Workspace {
 
     pub fn generic_diagnostic(
         &self,
-        error: impl std::error::Error,
+        message: String,
     ) -> Vec<(PathBuf, Option<i32>, Vec<Diagnostic>)> {
         vec![(
             self.root.join("src").join("index.exo"),
@@ -191,7 +206,7 @@ impl Workspace {
                         character: 0,
                     },
                 },
-                message: error.to_string(),
+                message,
                 severity: Some(DiagnosticSeverity::ERROR),
                 ..Default::default()
             }],
