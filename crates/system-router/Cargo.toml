@@ -13,13 +13,16 @@ common = { path = "../common" }
 graphql-router = { path = "../graphql-router" }
 rest-router = { path = "../rest-router" }
 rpc-router = { path = "../rpc-router" }
-mcp-router = { path = "../mcp-router" }
 playground-router = { path = "../playground-router" }
 core-router = { path = "../core-subsystem/core-router" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 exo-env = { path = "../../libs/exo-env" }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+mcp-router = { path = "../mcp-router" }
+
 
 [lib]
 doctest = false

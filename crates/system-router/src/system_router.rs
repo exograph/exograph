@@ -19,6 +19,8 @@ use core_resolver::{
     plugin::{SubsystemGraphQLResolver, SubsystemRestResolver},
     system_rest_resolver::SystemRestResolver,
 };
+
+#[cfg(not(target_family = "wasm"))]
 use mcp_router::McpRouter;
 use rpc_router::RpcRouter;
 use tracing::debug;
@@ -98,6 +100,7 @@ pub async fn create_system_router_from_system(
         }
     }
 
+    #[cfg(not(target_family = "wasm"))]
     let mcp_introspection_router = {
         let introspection_schema = Arc::new(Schema::new_from_resolvers(&graphql_resolvers, false));
         GraphQLRouter::from_resolvers(
@@ -158,13 +161,22 @@ pub async fn create_system_router_from_system(
     let rpc_resolver = SystemRpcResolver::new(rpc_resolvers, env.clone());
     let rpc_router = RpcRouter::new(rpc_resolver, env.clone());
 
+    #[cfg(not(target_family = "wasm"))]
     let mcp_router = McpRouter::new(
         env.clone(),
         graphql_router.system_resolver(),
         mcp_introspection_router.system_resolver(),
     );
 
-    create_system_router(graphql_router, rest_router, rpc_router, mcp_router, env).await
+    #[cfg(not(target_family = "wasm"))]
+    {
+        create_system_router(graphql_router, rest_router, rpc_router, mcp_router, env).await
+    }
+
+    #[cfg(target_family = "wasm")]
+    {
+        create_system_router(graphql_router, rest_router, rpc_router, env).await
+    }
 }
 
 pub async fn create_system_resolvers(
@@ -248,7 +260,7 @@ async fn create_system_router(
     graphql_router: GraphQLRouter,
     rest_router: RestRouter,
     rpc_router: RpcRouter,
-    mcp_router: McpRouter,
+    #[cfg(not(target_family = "wasm"))] mcp_router: McpRouter,
     env: Arc<dyn Environment>,
 ) -> Result<SystemRouter, SystemLoadingError> {
     let mut routers: Vec<Box<dyn for<'a> Router<RequestContext<'a>> + Send + Sync>> =
@@ -262,8 +274,11 @@ async fn create_system_router(
         routers.push(Box::new(rpc_router));
     }
 
-    if env.enabled(EXO_UNSTABLE_ENABLE_MCP_API, false) {
-        routers.push(Box::new(mcp_router));
+    #[cfg(not(target_family = "wasm"))]
+    {
+        if env.enabled(EXO_UNSTABLE_ENABLE_MCP_API, false) {
+            routers.push(Box::new(mcp_router));
+        }
     }
 
     #[cfg(target_family = "wasm")]
