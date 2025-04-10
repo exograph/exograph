@@ -20,7 +20,7 @@ tokio.workspace = true
 wasm-bindgen-test.workspace = true
 bincode.workspace = true
 exo-sql = { path = "../../../libs/exo-sql", features = ["bigdecimal"] }
-sqlparser = { git = "https://github.com/exograph/datafusion-sqlparser-rs.git", branch = "optional-columns-foreign-reference" }
+sqlparser = "0.55.0"
 colored.workspace = true
 
 common = { path = "../../common", features = ["test-support"] }
