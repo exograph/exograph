@@ -56,7 +56,7 @@ echo "Bumping version to $NEW_VERSION"
 git checkout -b "$NEW_BRANCH"
 
 # Modify Cargo.toml to use the current version
-sed -i "s/^version = .*/version = \"$NEW_VERSION\"/" Cargo.toml
+sed -i '' "s/^version = .*/version = \"$NEW_VERSION\"/" Cargo.toml
 
 cargo build
 
