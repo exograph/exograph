@@ -5501,6 +5501,7 @@ dependencies = [
  "core-plugin-shared",
  "dashmap 6.1.0",
  "deno-builder",
+ "futures",
  "postgres-builder",
  "tokio",
  "tower-lsp",
