@@ -71,7 +71,7 @@ jobs:
           key: ${{ matrix.target }}
       - name: Build
         run: |
-          cargo build -p cli -p server-actix -p lsp --target ${{ matrix.target }} --release
+          cargo build -p cli -p server-actix -p lsp -p mcp-bridge --target ${{ matrix.target }} --release
       - name: Add Postgres to PATH
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
@@ -94,6 +94,7 @@ jobs:
           cp target/${{matrix.target}}/release/exo${{matrix.bin_extension}} dist/
           cp target/${{matrix.target}}/release/exo-server${{matrix.bin_extension}} dist/
           cp target/${{matrix.target}}/release/exo-lsp${{matrix.bin_extension}} dist/
+          cp target/${{matrix.target}}/release/exo-mcp-bridge${{matrix.bin_extension}} dist/
           cp LICENSE dist/
           cd dist/
           7z a exograph-${{matrix.target}}.zip *

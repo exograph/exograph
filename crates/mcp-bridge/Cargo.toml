@@ -1,0 +1,18 @@
+[package]
+name = "mcp-bridge"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tokio = { workspace = true, features = ["full"] }
+anyhow = { workspace = true }
+futures = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+tokio-util = { version = "0.7", features = ["io", "codec"] }
+reqwest = { workspace = true, features = ["json"] }
+clap = { workspace = true, features = ["derive"] }
+
+[[bin]]
+name = "exo-mcp-bridge"
+path = "src/main.rs"

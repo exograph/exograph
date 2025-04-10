@@ -18,7 +18,7 @@ anyhow = { workspace = true, features = ["backtrace"] }
 heck.workspace = true
 lazy_static.workspace = true
 notify-debouncer-mini = "0.4.1"
-clap = "4.5.21"
+clap.workspace = true
 futures.workspace = true
 rand.workspace = true
 ctrlc = "3.4"
