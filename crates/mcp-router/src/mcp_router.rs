@@ -251,7 +251,12 @@ impl McpRouter {
                         let status_code = match e {
                             SubsystemRpcError::ExpiredAuthentication => StatusCode::UNAUTHORIZED,
                             SubsystemRpcError::Authorization => StatusCode::FORBIDDEN,
-                            _ => StatusCode::INTERNAL_SERVER_ERROR,
+                            SubsystemRpcError::ParseError
+                            | SubsystemRpcError::InvalidParams(_, _)
+                            | SubsystemRpcError::InvalidRequest
+                            | SubsystemRpcError::UserDisplayError(_) => StatusCode::BAD_REQUEST,
+                            SubsystemRpcError::MethodNotFound(_) => StatusCode::NOT_FOUND,
+                            SubsystemRpcError::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
                         };
 
                         (
