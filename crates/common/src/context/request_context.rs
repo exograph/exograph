@@ -133,6 +133,20 @@ impl<'a> RequestContext<'a> {
             .route(&PlainRequestPayload::internal(request))
             .await
     }
+
+    /// Returns true if the request has authentication info present
+    ///
+    /// Helps identify if the request is unauthenticated or unauthorized (and send the appropriate status code)
+    pub fn is_authentication_info_present(&self) -> bool {
+        match self.system_context.jwt_authenticator {
+            Some(authenticator) => authenticator
+                .extract_jwt_token(self.get_head())
+                .ok()
+                .flatten()
+                .is_some(),
+            None => false,
+        }
+    }
 }
 
 impl<'a> RequestPayload for RequestContext<'a> {
