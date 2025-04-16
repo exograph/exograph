@@ -133,13 +133,11 @@ impl JwtAuthenticator {
     }
 
     /// Extract authentication form the source (header or cookie) with a bearer token
-    /// The claim is deserialized into an opaque json `Value`, which will be eventually be mapped to
-    /// the declared user context model
-    pub(super) async fn extract_authentication(
+    pub fn extract_jwt_token(
         &self,
         request_head: &(dyn RequestHead + Send + Sync),
-    ) -> Result<Value, ContextExtractionError> {
-        let jwt_token = match &self.authenticator_source {
+    ) -> Result<Option<String>, ContextExtractionError> {
+        match &self.authenticator_source {
             AuthenticatorSource::Header(header) => {
                 if let Some(header) = request_head.get_header(header) {
                     if header.starts_with(TOKEN_PREFIX) {
@@ -155,7 +153,18 @@ impl JwtAuthenticator {
                 let mut cookies = CookieExtractor::extract_cookies(request_head)?;
                 Ok(cookies.remove(cookie))
             }
-        }?;
+        }
+    }
+
+    /// Extract and process the JWT token.
+    ///
+    /// The claim is deserialized into an opaque json `Value`, which will be eventually be mapped to
+    /// the declared user context model
+    pub(super) async fn extract_authentication(
+        &self,
+        request_head: &(dyn RequestHead + Send + Sync),
+    ) -> Result<Value, ContextExtractionError> {
+        let jwt_token = self.extract_jwt_token(request_head)?;
 
         match jwt_token {
             Some(jwt_token) => self

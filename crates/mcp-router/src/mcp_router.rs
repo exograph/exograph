@@ -7,7 +7,7 @@ use bytes::Bytes;
 
 use common::{
     context::RequestContext,
-    env_const::get_mcp_http_path,
+    env_const::{get_mcp_http_path, EXO_WWW_AUTHENTICATE_HEADER},
     http::{Headers, RequestHead, ResponseBody, ResponsePayload},
     operation_payload::OperationsPayload,
     router::Router,
@@ -29,6 +29,8 @@ use serde_json::json;
 const ERROR_METHOD_NOT_FOUND_CODE: &str = "-32601";
 const ERROR_METHOD_NOT_FOUND_MESSAGE: &str = "Method not found";
 
+const WWW_AUTHENTICATE_HEADER: &str = "WWW-Authenticate";
+
 /// MCP router
 ///
 /// Partially supports the new [Streamable HTTP](https://spec.modelcontextprotocol.io/specification/2025-03-26/basic/transports/#streamable-http)
@@ -40,6 +42,7 @@ pub struct McpRouter {
     api_path_prefix: String,
     data_resolver: Arc<GraphQLSystemResolver>,
     introspection_resolver: Arc<GraphQLSystemResolver>,
+    www_authenticate_header: Option<String>,
 }
 
 impl McpRouter {
@@ -48,10 +51,13 @@ impl McpRouter {
         data_resolver: Arc<GraphQLSystemResolver>,
         introspection_resolver: Arc<GraphQLSystemResolver>,
     ) -> Self {
+        let www_authenticate_header = env.get(EXO_WWW_AUTHENTICATE_HEADER);
+
         Self {
             api_path_prefix: get_mcp_http_path(env.as_ref()).clone(),
             data_resolver,
             introspection_resolver,
+            www_authenticate_header,
         }
     }
 
@@ -216,28 +222,32 @@ impl McpRouter {
                     .execute_query(query.to_string(), &self.data_resolver, request_context)
                     .await;
 
-                let (tool_result, status_code) = match graphql_response {
+                let (tool_result, status_code, extra_headers) = match graphql_response {
                     Ok(graphql_response) => {
-                        let response_contents = graphql_response
-                            .into_iter()
-                            .map(|(name, response)| {
-                                let content_string = match response.body {
-                                    QueryResponseBody::Json(value) => value.to_string(),
-                                    QueryResponseBody::Raw(value) => value.unwrap_or_default(),
-                                };
+                        let (response_contents, response_headers): (Vec<_>, Vec<_>) =
+                            graphql_response
+                                .into_iter()
+                                .map(|(name, response)| {
+                                    let content_string = match response.body {
+                                        QueryResponseBody::Json(value) => value.to_string(),
+                                        QueryResponseBody::Raw(value) => value.unwrap_or_default(),
+                                    };
 
-                                let text = json!({
-                                    "name": name,
-                                    "response": content_string,
-                                })
-                                .to_string();
+                                    let text = json!({
+                                        "name": name,
+                                        "response": content_string,
+                                    })
+                                    .to_string();
 
-                                json!({
-                                    "text": text,
-                                    "type": "text",
+                                    (
+                                        json!({
+                                            "text": text,
+                                            "type": "text",
+                                        }),
+                                        response.headers,
+                                    )
                                 })
-                            })
-                            .collect::<Vec<_>>();
+                                .unzip();
 
                         (
                             json!({
@@ -245,12 +255,22 @@ impl McpRouter {
                                 "isError": false,
                             }),
                             StatusCode::OK,
+                            response_headers.into_iter().flatten().collect(),
                         )
                     }
                     Err(e) => {
+                        let authentication_present =
+                            request_context.is_authentication_info_present();
+
                         let status_code = match e {
                             SubsystemRpcError::ExpiredAuthentication => StatusCode::UNAUTHORIZED,
-                            SubsystemRpcError::Authorization => StatusCode::FORBIDDEN,
+                            SubsystemRpcError::Authorization => {
+                                if authentication_present {
+                                    StatusCode::FORBIDDEN
+                                } else {
+                                    StatusCode::UNAUTHORIZED
+                                }
+                            }
                             SubsystemRpcError::ParseError
                             | SubsystemRpcError::InvalidParams(_, _)
                             | SubsystemRpcError::InvalidRequest
@@ -258,6 +278,17 @@ impl McpRouter {
                             SubsystemRpcError::MethodNotFound(_) => StatusCode::NOT_FOUND,
                             SubsystemRpcError::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
                         };
+
+                        let extra_headers: Vec<(String, String)> =
+                            match (status_code, &self.www_authenticate_header) {
+                                (StatusCode::UNAUTHORIZED, Some(www_authenticate_header)) => {
+                                    vec![(
+                                        WWW_AUTHENTICATE_HEADER.to_string(),
+                                        www_authenticate_header.clone(),
+                                    )]
+                                }
+                                _ => vec![],
+                            };
 
                         (
                             json!({
@@ -268,6 +299,7 @@ impl McpRouter {
                                 "isError": true,
                             }),
                             status_code,
+                            extra_headers,
                         )
                     }
                 };
@@ -275,7 +307,7 @@ impl McpRouter {
                 let response = SubsystemRpcResponse {
                     response: QueryResponse {
                         body: QueryResponseBody::Json(tool_result),
-                        headers: vec![],
+                        headers: extra_headers,
                     },
                     status_code,
                 };
