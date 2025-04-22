@@ -1,0 +1,28 @@
+operation: |
+  query {
+    assignedIssues: issues {
+      id
+      title
+    }
+    
+  }
+auth: |
+  {
+    "sub": 2,
+    "role": "user"
+  }   
+response: |
+  {
+    "data": {
+      "assignedIssues": [
+        {
+          "id": 1,
+          "title": "issue1"
+        },
+        {
+          "id": 2,
+          "title": "issue2"
+        }
+      ]
+    }
+  }

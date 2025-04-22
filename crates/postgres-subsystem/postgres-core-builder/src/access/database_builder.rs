@@ -319,9 +319,28 @@ fn compute_column_selection<'a>(
                     FieldSelectionElement::Identifier(_, _, _) => {
                         let (_, column_path, field_type) =
                             compute_column_path(lead_type, path_tail);
+
+                        let column_path = column_path.expect("Unexpected empty column path");
+
+                        // If the column path points to a relation without completing the chain, substitute the relation with self column of the relation
+                        // This handles cases, where an access rule such as =`self.user != null`. Here we substitute `self.user` with the column `user_id` from the `User` table
+                        // TODO: Consider an alternative approach, where we have a special variant to express this
+                        let (head, tail) = column_path.split_head();
+                        let column_path = if tail.is_none() {
+                            if let ColumnPathLink::Relation(r) = head {
+                                PhysicalColumnPath::init(ColumnPathLink::Leaf(
+                                    r.column_pairs[0].self_column_id,
+                                ))
+                            } else {
+                                column_path
+                            }
+                        } else {
+                            column_path
+                        };
+
                         // TODO: Avoid this unwrap (parser should have caught expression "self" without any fields)
                         Ok(DatabasePathSelection::Column(
-                            column_path.unwrap(),
+                            column_path,
                             field_type.unwrap(),
                             parameter_name,
                         ))
