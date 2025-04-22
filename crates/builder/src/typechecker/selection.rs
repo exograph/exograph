@@ -116,12 +116,16 @@ impl TypecheckFunctionCallFrom<FieldSelectionElement<Untyped>> for FieldSelectio
 
                                     errors.push(Diagnostic {
                                         level: Level::Error,
-                                        message: format!("Reference to unknown context: {value}"),
+                                        message: format!(
+                                            "Reference to unknown context or enum variant: {value}"
+                                        ),
                                         code: Some("C000".to_string()),
                                         spans: vec![SpanLabel {
                                             span: *s,
                                             style: SpanStyle::Primary,
-                                            label: Some("unknown context".to_string()),
+                                            label: Some(
+                                                "unknown context or enum variant".to_string(),
+                                            ),
                                         }],
                                     });
                                     false
