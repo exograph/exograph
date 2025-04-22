@@ -1,0 +1,35 @@
+stages:
+    - operation: |
+        mutation {
+            user1: createUser(data: {name: "user1"}) {
+                id @bind(name: "user1Id")
+            }
+            user2: createUser(data: {name: "user2"}) {
+                id @bind(name: "user2Id")
+            }
+        }  
+      auth: |
+        {
+            "role": "admin"
+        }
+    - operation: |
+        mutation($user1Id: Int!, $user2Id: Int!) {
+            issue1: createIssue(data: {title: "issue1", assignee: {id: $user1Id}}) {
+                id
+            }
+            issue2: createIssue(data: {title: "issue2", assignee: {id: $user2Id}}) {
+                id
+            }
+            unassignedIssue: createIssue(data: {title: "unassigned issue"}) {
+                id
+            }
+        }
+      variable: |
+        {
+            "user1Id": $.user1Id,
+            "user2Id": $.user2Id
+        }
+      auth: |
+        {
+            "role": "admin"
+        }        

@@ -1,0 +1,31 @@
+operation: |
+  query {
+    issues {
+      id
+      title
+    }
+  }
+auth: |
+  {
+      "role": "admin"
+  }   
+response: |
+  {
+    "data": {
+      "issues": [
+        {
+          "id": 1,
+          "title": "issue1"
+        },
+        {
+          "id": 2,
+          "title": "issue2"
+        },
+        {
+          "id": 3,
+          "title": "unassigned issue"
+        }
+      ]
+    }
+  }
+

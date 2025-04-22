@@ -1,0 +1,22 @@
+operation: |
+  query {
+    issues {
+      id
+      title
+    }
+    
+  }
+auth: |
+  {
+    "sub": 2,
+    "role": "non-user"
+  }   
+response: |
+  {
+    "errors": [
+      {
+        "message": "Not authorized"
+      }
+    ]
+  }
+

@@ -1,0 +1,22 @@
+context AuthContext {
+  @jwt("sub") id: Int?
+  @jwt role: String
+}
+
+@postgres
+module JiraClone {
+  @access(true)
+  type User {
+    @pk id: Int = autoIncrement()
+    name: String
+    assignedIssues: Set<Issue>?
+  }
+
+  // Note the leaf path point to a relation without completing the chain
+  @access((self.assignee != null && AuthContext.role == "user") || AuthContext.role == "admin")
+  type Issue {
+    @pk id: Int = autoIncrement()
+    title: String
+    assignee: User?
+  }
+}
