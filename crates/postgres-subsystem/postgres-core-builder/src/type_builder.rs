@@ -20,7 +20,9 @@ use common::value::Val;
 use core_model::access::AccessPredicateExpression;
 use core_model::types::{Named, TypeValidationProvider};
 use postgres_core_model::access::{CreationAccessExpression, PrecheckAccessPrimitiveExpression};
-use postgres_core_model::types::{EntityRepresentation, PostgresFieldDefaultValue};
+use postgres_core_model::types::{
+    EntityRepresentation, PostgresFieldDefaultValue, PostgresPrimitiveTypeKind,
+};
 
 use crate::{aggregate_type_builder::aggregate_type_name, shallow::Shallow};
 
@@ -97,7 +99,7 @@ fn create_shallow_type(
                 &resolved_type.name(),
                 PostgresPrimitiveType {
                     name: resolved_type.name().to_owned(),
-                    is_enum: false,
+                    kind: PostgresPrimitiveTypeKind::Builtin,
                 },
             );
             if matches!(pt, PrimitiveType::Vector) {
@@ -112,7 +114,7 @@ fn create_shallow_type(
                 &enum_type.name,
                 PostgresPrimitiveType {
                     name: enum_type.name.clone(),
-                    is_enum: true,
+                    kind: PostgresPrimitiveTypeKind::Enum(enum_type.fields.to_vec()),
                 },
             );
         }

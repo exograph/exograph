@@ -196,7 +196,10 @@ async fn run_query(
     operation.build(database, &mut sql_builder);
     let (stmt, params) = sql_builder.into_sql();
 
-    let params: Vec<_> = params.iter().map(|p| (p.0.as_pg(), p.1.clone())).collect();
+    let params: Vec<_> = params
+        .iter()
+        .map(|p| (p.param.as_pg(), p.param_type.clone()))
+        .collect();
 
     info!("Executing SQL operation: {}", stmt);
 

@@ -81,7 +81,16 @@ pub fn cast_value(
         Val::String(v) => cast_string(v, destination_type).map(Some),
         Val::Bool(v) => Ok(Some(SQLParamContainer::bool(*v))),
         Val::Null => Ok(None),
-        Val::Enum(v) => Ok(Some(SQLParamContainer::string(v.to_string()))), // We might need guidance from the database to do a correct translation
+        Val::Enum(v) => match destination_type {
+            PhysicalColumnType::Enum { enum_name } => Ok(Some(SQLParamContainer::enum_(
+                v.to_string(),
+                enum_name.name.to_string(),
+            ))),
+            _ => Err(CastError::Generic(format!(
+                "Expected enum type, got {}",
+                destination_type.type_string()
+            ))),
+        }, // We might need guidance from the database to do a correct translation
         Val::List(elems) => cast_list(elems, destination_type, unnest),
         Val::Object(_) => Ok(Some(cast_object(value, destination_type)?)),
         Val::Binary(bytes) => Ok(Some(SQLParamContainer::bytes(bytes.clone()))),

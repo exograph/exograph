@@ -11,7 +11,8 @@ use crate::operation::{OperationParameters, PostgresOperation};
 use crate::query::CollectionQueryParameters;
 use crate::subsystem::PostgresGraphQLSubsystem;
 use async_graphql_parser::types::{
-    FieldDefinition, InputObjectType, ObjectType, TypeDefinition, TypeKind,
+    EnumType, EnumValueDefinition, FieldDefinition, InputObjectType, ObjectType, TypeDefinition,
+    TypeKind,
 };
 use core_model::access::AccessPredicateExpression;
 use core_model::primitive_type::vector_introspection_base_type;
@@ -30,7 +31,9 @@ use postgres_core_model::relation::PostgresRelation;
 
 use postgres_core_model::access::DatabaseAccessPrimitiveExpression;
 
-use postgres_core_model::types::{EntityType, PostgresField, PostgresPrimitiveType};
+use postgres_core_model::types::{
+    EntityType, PostgresField, PostgresPrimitiveType, PostgresPrimitiveTypeKind,
+};
 use serde::{Deserialize, Serialize};
 
 /// Mutation input types such as `CreatePostInput` and `UpdatePostInput`
@@ -47,12 +50,32 @@ pub struct MutationType {
 
 impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for PostgresPrimitiveType {
     fn type_definition(&self, _system: &PostgresGraphQLSubsystem) -> TypeDefinition {
-        TypeDefinition {
-            extend: false,
-            description: None,
-            name: default_positioned_name(&self.name),
-            directives: vec![],
-            kind: TypeKind::Scalar,
+        match &self.kind {
+            PostgresPrimitiveTypeKind::Builtin => TypeDefinition {
+                extend: false,
+                description: None,
+                name: default_positioned_name(&self.name),
+                directives: vec![],
+                kind: TypeKind::Scalar,
+            },
+            PostgresPrimitiveTypeKind::Enum(values) => TypeDefinition {
+                extend: false,
+                description: None,
+                name: default_positioned_name(&self.name),
+                directives: vec![],
+                kind: TypeKind::Enum(EnumType {
+                    values: values
+                        .iter()
+                        .map(|v| {
+                            default_positioned(EnumValueDefinition {
+                                description: None,
+                                value: default_positioned_name(v),
+                                directives: vec![],
+                            })
+                        })
+                        .collect(),
+                }),
+            },
         }
     }
 }

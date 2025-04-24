@@ -12,11 +12,14 @@ use core_model::{
     types::{FieldType, Named},
 };
 use exo_sql::ColumnPathLink;
-use postgres_core_model::predicate::{
-    PredicateParameter, PredicateParameterType, PredicateParameterTypeKind,
-    PredicateParameterTypeWrapper,
-};
 use postgres_core_model::types::{EntityType, PostgresField, PostgresPrimitiveType, TypeIndex};
+use postgres_core_model::{
+    predicate::{
+        PredicateParameter, PredicateParameterType, PredicateParameterTypeKind,
+        PredicateParameterTypeWrapper,
+    },
+    types::PostgresPrimitiveTypeKind,
+};
 use postgres_core_model::{relation::PostgresRelation, types::EntityRepresentation};
 
 use std::collections::HashMap;
@@ -455,7 +458,7 @@ fn create_operator_filter_type_kind(
             // type supports no specific operations, assume implicit equals
             PredicateParameterTypeKind::ImplicitEqual
         }
-    } else if primitive_type.is_enum {
+    } else if matches!(primitive_type.kind, PostgresPrimitiveTypeKind::Enum(_)) {
         PredicateParameterTypeKind::ImplicitEqual
     } else {
         todo!("{} does not support any operators", primitive_type.name)

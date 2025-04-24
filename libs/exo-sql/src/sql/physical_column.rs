@@ -317,7 +317,7 @@ impl PhysicalColumnType {
             },
             PhysicalColumnType::Numeric { .. } => Type::NUMERIC,
             PhysicalColumnType::Vector { .. } => Type::FLOAT4_ARRAY,
-            PhysicalColumnType::Enum { .. } => Type::ANYENUM,
+            PhysicalColumnType::Enum { .. } => Type::TEXT,
         }
     }
 }
