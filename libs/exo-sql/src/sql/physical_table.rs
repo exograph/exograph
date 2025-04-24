@@ -94,6 +94,13 @@ pub struct PhysicalTable {
     pub managed: bool,
 }
 
+/// A physical enum in the database such as "Priority" with variants "LOW", "MEDIUM", "HIGH".
+#[derive(Serialize, Deserialize, PartialEq, Eq)]
+pub struct PhysicalEnum {
+    pub name: PhysicalTableName,
+    pub variants: Vec<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct PhysicalIndex {
     pub name: String,

@@ -11,8 +11,8 @@ use std::collections::HashSet;
 
 use crate::naming::ToPlural;
 use crate::resolved_type::{
-    ResolvedCompositeType, ResolvedField, ResolvedFieldDefault, ResolvedFieldType,
-    ResolvedFieldTypeHelper, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
+    ResolvedCompositeType, ResolvedEnumType, ResolvedField, ResolvedFieldDefault,
+    ResolvedFieldType, ResolvedFieldTypeHelper, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
 };
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
@@ -25,7 +25,7 @@ use exo_sql::{
     PhysicalColumnType, PhysicalIndex, PhysicalTable, TableId, VectorDistanceFunction,
     DEFAULT_VECTOR_SIZE,
 };
-use exo_sql::{Database, RelationColumnPair};
+use exo_sql::{Database, PhysicalEnum, RelationColumnPair};
 
 use heck::ToSnakeCase;
 use postgres_core_model::types::EntityRepresentation;
@@ -65,6 +65,12 @@ pub fn build(resolved_env: &ResolvedTypeEnv) -> Result<Database, ModelBuildingEr
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
             expand_database_info(c, resolved_env, &mut building)?;
+        }
+    }
+
+    for (_, resolved_type) in resolved_env.resolved_types.iter() {
+        if let ResolvedType::Enum(e) = &resolved_type {
+            expand_enum_info(e, &mut building)?;
         }
     }
 
@@ -152,6 +158,20 @@ fn expand_database_info(
         });
         building.database.get_table_mut(table_id).indices = indices;
     }
+
+    Ok(())
+}
+
+fn expand_enum_info(
+    resolved_enum: &ResolvedEnumType,
+    building: &mut DatabaseBuilding,
+) -> Result<(), ModelBuildingError> {
+    let table = PhysicalEnum {
+        name: resolved_enum.enum_name.clone(),
+        variants: resolved_enum.fields.clone(),
+    };
+
+    let _ = building.database.insert_enum(table);
 
     Ok(())
 }
@@ -326,6 +346,24 @@ fn create_columns(
                         })
                         .collect())
                 }
+                ResolvedType::Enum(enum_type) => Ok(field
+                    .column_names
+                    .iter()
+                    .map(|name| PhysicalColumn {
+                        table_id,
+                        name: name.to_string(),
+                        typ: PhysicalColumnType::Enum {
+                            enum_name: enum_type.enum_name.clone(),
+                        },
+                        is_pk: field.is_pk,
+                        is_auto_increment: false,
+                        is_nullable: optional,
+                        unique_constraints: unique_constraint_name.clone(),
+                        default_value: default_value.clone(),
+                        update_sync,
+                        group_name: Some(field.name.to_string()),
+                    })
+                    .collect()),
             }
         }
         FieldType::List(typ) => {

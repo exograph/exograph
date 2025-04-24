@@ -16,7 +16,9 @@ use std::{collections::HashMap, path::Path};
 use codemap::Span;
 #[cfg(not(target_family = "wasm"))]
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use core_model_builder::ast::ast_types::{AstFragmentReference, FieldSelectionElement, Identifier};
+use core_model_builder::ast::ast_types::{
+    AstEnum, AstEnumField, AstFragmentReference, FieldSelectionElement, Identifier,
+};
 use tree_sitter_c2rust::{Node, Tree, TreeCursor};
 
 use super::{sitter_ffi, span_from_node};
@@ -215,6 +217,31 @@ fn convert_model(
     }
 }
 
+fn convert_enum(node: Node, source: &[u8], source_span: Span) -> AstEnum<Untyped> {
+    assert_eq!(node.kind(), "enum");
+
+    let mut cursor = node.walk();
+
+    let fields = node
+        .child_by_field_name("body")
+        .unwrap()
+        .children_by_field_name("name", &mut cursor)
+        .map(|c| AstEnumField {
+            name: c.utf8_text(source).unwrap().to_string(),
+            typ: (),
+            doc_comments: convert_doc_comments(c, source, source_span),
+            span: span_from_node(source_span, c),
+        })
+        .collect::<Vec<_>>();
+
+    AstEnum {
+        name: text_child(node, source, "name"),
+        fields,
+        doc_comments: convert_doc_comments(node, source, source_span),
+        span: span_from_node(source_span, node),
+    }
+}
+
 fn convert_doc_comments(node: Node, source: &[u8], _source_span: Span) -> Option<String> {
     node.child_by_field_name("doc_comment").map(|c| {
         let mut cursor = c.walk();
@@ -254,12 +281,16 @@ fn convert_module(
     let fragments: Vec<_> = matching_nodes(node, &mut node.walk(), "fragment")
         .map(|n| convert_model(n, source, source_span, AstModelKind::Fragment))
         .collect();
+    let enums: Vec<_> = matching_nodes(node, &mut node.walk(), "enum")
+        .map(|n| convert_enum(n, source, source_span))
+        .collect();
 
     types.extend(fragments);
 
     AstModule {
         name: text_child(node, source, "name"),
         types,
+        enums,
         methods: matching_nodes(node, &mut node.walk(), "module_method")
             .map(|n| convert_module_method(n, source, source_span))
             .collect(),

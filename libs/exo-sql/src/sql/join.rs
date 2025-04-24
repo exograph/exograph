@@ -82,6 +82,7 @@ mod tests {
                 ),
             ],
             vec![],
+            vec![],
         )
         .to_database();
 

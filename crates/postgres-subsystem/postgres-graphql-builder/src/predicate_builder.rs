@@ -77,6 +77,17 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
                     },
                 );
             }
+            ResolvedType::Enum(e) => {
+                let type_name = get_filter_type_name(&e.name);
+                building.predicate_types.add(
+                    &type_name,
+                    PredicateParameterType {
+                        name: type_name.to_string(),
+                        kind: PredicateParameterTypeKind::ImplicitEqual {},
+                        underlying_type: None,
+                    },
+                );
+            }
             ResolvedType::Composite(c @ ResolvedCompositeType { .. }) => {
                 if c.representation == EntityRepresentation::Json {
                     continue;
@@ -444,6 +455,8 @@ fn create_operator_filter_type_kind(
             // type supports no specific operations, assume implicit equals
             PredicateParameterTypeKind::ImplicitEqual
         }
+    } else if primitive_type.is_enum {
+        PredicateParameterTypeKind::ImplicitEqual
     } else {
         todo!("{} does not support any operators", primitive_type.name)
     } // type given is not listed in TYPE_OPERATORS?

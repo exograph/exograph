@@ -54,7 +54,7 @@ impl CommandDefinition for CreateCommandDefinition {
 
         // Creating the schema from the model is the same as migrating from an empty database.
         let migrations = Migration::from_schemas(
-            &DatabaseSpec::new(vec![], vec![]),
+            &DatabaseSpec::new(vec![], vec![], vec![]),
             &DatabaseSpec::from_database(&database),
             &compute_migration_scope(scope),
         );

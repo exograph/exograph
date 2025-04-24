@@ -16,6 +16,7 @@ use crate::{PhysicalTable, PhysicalTableName};
 
 use super::column_spec::{ColumnAttribute, ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec};
 use super::constraint::{sorted_comma_list, Constraints};
+use super::enum_spec::EnumSpec;
 use super::index_spec::IndexSpec;
 use super::issue::WithIssues;
 use super::op::SchemaOp;
@@ -210,6 +211,7 @@ impl TableSpec {
     pub(super) async fn from_live_db_materialized_view(
         client: &DatabaseClient,
         table_name: PhysicalTableName,
+        enums: &Vec<EnumSpec>,
     ) -> Result<WithIssues<TableSpec>, DatabaseError> {
         let issues = Vec::new();
 
@@ -227,7 +229,7 @@ impl TableSpec {
                 let typ: String = row.get("column_type");
                 let not_null: bool = row.get("not_null");
 
-                let column_type = ColumnTypeSpec::from_string(&typ).unwrap();
+                let column_type = ColumnTypeSpec::from_string(&typ, enums).unwrap();
 
                 ColumnSpec {
                     name,

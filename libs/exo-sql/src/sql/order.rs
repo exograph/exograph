@@ -124,6 +124,7 @@ mod test {
                 true,
             )],
             vec![],
+            vec![],
         )
         .to_database();
 
@@ -151,6 +152,7 @@ mod test {
                 vec![],
                 true,
             )],
+            vec![],
             vec![],
         )
         .to_database();

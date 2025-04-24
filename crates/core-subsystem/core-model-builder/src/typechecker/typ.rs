@@ -13,12 +13,13 @@ use serde::{Deserialize, Serialize};
 use std::{fmt::Display, ops::Deref};
 
 use super::Typed;
-use crate::ast::ast_types::{AstModel, AstModule};
+use crate::ast::ast_types::{AstEnum, AstModel, AstModule};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Type {
     Primitive(PrimitiveType),
     Composite(AstModel<Typed>),
+    Enum(AstEnum<Typed>),
     Optional(Box<Type>),
     Set(Box<Type>),
     Array(Box<Type>),
@@ -36,6 +37,7 @@ impl Display for Type {
         match self {
             Type::Primitive(p) => p.fmt(f),
             Type::Composite(c) => c.fmt(f),
+            Type::Enum(e) => e.fmt(f),
             Type::Optional(o) => {
                 o.fmt(f)?;
                 f.write_str("?")
@@ -92,6 +94,7 @@ impl Type {
     pub fn get_underlying_typename(&self, types: &MappedArena<Type>) -> Option<String> {
         match &self {
             Type::Composite(c) => Some(c.name.clone()),
+            Type::Enum(e) => Some(e.name.clone()),
             Type::Reference(_id) => self.deref(types).get_underlying_typename(types),
             Type::Primitive(pt) => Some(pt.name()),
             Type::Optional(underlying) | Type::Set(underlying) | Type::Array(underlying) => {

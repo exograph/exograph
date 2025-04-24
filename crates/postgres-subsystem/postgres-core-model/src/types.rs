@@ -61,6 +61,7 @@ impl<'a, CT: Named> PostgresType<'a, CT> {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PostgresPrimitiveType {
     pub name: String,
+    pub is_enum: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]

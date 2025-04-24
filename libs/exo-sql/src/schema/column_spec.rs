@@ -16,6 +16,7 @@ use crate::{
     Database, FloatBits, IntBits, ManyToOne, PhysicalColumn, PhysicalColumnType, PhysicalTableName,
 };
 
+use super::enum_spec::EnumSpec;
 use super::issue::{Issue, WithIssues};
 use super::op::SchemaOp;
 use super::statement::SchemaStatement;
@@ -146,6 +147,9 @@ pub enum ColumnTypeSpec {
     Numeric {
         precision: Option<usize>,
         scale: Option<usize>,
+    },
+    Enum {
+        enum_name: PhysicalTableName,
     },
 }
 
@@ -398,6 +402,7 @@ impl ColumnSpec {
     pub async fn query_column_attributes(
         client: &DatabaseClient,
         schema_name: &str,
+        enums: &Vec<EnumSpec>,
         issues: &mut Vec<Issue>,
     ) -> Result<HashMap<PhysicalTableName, HashMap<String, ColumnAttribute>>, DatabaseError> {
         let mut map = HashMap::new();
@@ -431,7 +436,7 @@ impl ColumnSpec {
                 // So we manually query how many dimensions the column has and append `[]` to
                 // the type
                 sql_type += &"[]".repeat(if dims == 0 { 0 } else { (dims - 1) as usize });
-                match ColumnTypeSpec::from_string(&sql_type) {
+                match ColumnTypeSpec::from_string(&sql_type, enums) {
                     Ok(t) => Some(t),
                     Err(e) => {
                         issues.push(Issue::Warning(format!(
@@ -506,7 +511,7 @@ pub struct ColumnAttribute {
 impl ColumnTypeSpec {
     /// Create a new physical column type given the SQL type string. This is used to reverse-engineer
     /// a database schema to a Exograph model.
-    pub fn from_string(s: &str) -> Result<ColumnTypeSpec, DatabaseError> {
+    pub fn from_string(s: &str, enums: &Vec<EnumSpec>) -> Result<ColumnTypeSpec, DatabaseError> {
         let s = s.to_uppercase();
 
         let vector_re = Regex::new(r"VECTOR\((\d+)\)").unwrap();
@@ -538,7 +543,7 @@ impl ColumnTypeSpec {
 
                 // Wrap the underlying type with `ColumnTypeSpec::Array`
                 let mut array_type = ColumnTypeSpec::Array {
-                    typ: Box::new(ColumnTypeSpec::from_string(db_type)?),
+                    typ: Box::new(ColumnTypeSpec::from_string(db_type, enums)?),
                 };
                 for _ in 0..count - 1 {
                     array_type = ColumnTypeSpec::Array {
@@ -624,7 +629,16 @@ impl ColumnTypeSpec {
 
                         ColumnTypeSpec::Numeric { precision, scale }
                     } else {
-                        return Err(DatabaseError::Validation(format!("unknown type {s}")));
+                        let enum_type = enums.iter().find(|enum_spec| {
+                            enum_spec.name.name.to_uppercase() == s.to_uppercase()
+                        });
+                        if let Some(enum_type) = enum_type {
+                            ColumnTypeSpec::Enum {
+                                enum_name: enum_type.name.clone(),
+                            }
+                        } else {
+                            return Err(DatabaseError::Validation(format!("unknown type {s}")));
+                        }
                     }
                 }
             }),
@@ -663,6 +677,9 @@ impl ColumnTypeSpec {
             ColumnTypeSpec::Numeric { precision, scale } => PhysicalColumnType::Numeric {
                 precision: *precision,
                 scale: *scale,
+            },
+            ColumnTypeSpec::Enum { enum_name } => PhysicalColumnType::Enum {
+                enum_name: enum_name.clone(),
             },
         }
     }
@@ -826,6 +843,12 @@ impl ColumnTypeSpec {
                 sql_statement
             }
 
+            Self::Enum { enum_name } => SchemaStatement {
+                statement: enum_name.sql_name(),
+                pre_statements: vec![],
+                post_statements: vec![],
+            },
+
             Self::ColumnReference(ColumnReferenceSpec {
                 foreign_pk_type, ..
             }) => foreign_pk_type.to_sql(is_auto_increment),
@@ -857,6 +880,7 @@ impl ColumnTypeSpec {
             PhysicalColumnType::Numeric { precision, scale } => {
                 ColumnTypeSpec::Numeric { precision, scale }
             }
+            PhysicalColumnType::Enum { enum_name } => ColumnTypeSpec::Enum { enum_name },
         }
     }
 }

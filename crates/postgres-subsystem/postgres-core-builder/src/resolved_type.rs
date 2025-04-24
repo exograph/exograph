@@ -37,6 +37,19 @@ impl<'a> ResolvedTypeEnv<'a> {
 pub enum ResolvedType {
     Primitive(PrimitiveType),
     Composite(ResolvedCompositeType),
+    Enum(ResolvedEnumType),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ResolvedEnumType {
+    pub name: String,
+    pub fields: Vec<String>,
+    pub enum_name: PhysicalTableName,
+    pub doc_comments: Option<String>,
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    #[serde(default = "default_span")]
+    pub span: Span,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -192,13 +205,14 @@ impl ResolvedType {
         match self {
             ResolvedType::Primitive(pt) => pt.name(),
             ResolvedType::Composite(ResolvedCompositeType { name, .. }) => name.to_owned(),
+            ResolvedType::Enum(ResolvedEnumType { name, .. }) => name.to_owned(),
         }
     }
 
     // TODO: Could this return an Option<String> instead? This would avoid the "".to_string() hack
     pub fn plural_name(&self) -> String {
         match self {
-            ResolvedType::Primitive(_) => "".to_string(), // unused
+            ResolvedType::Primitive(_) | ResolvedType::Enum(_) => "".to_string(), // unused
             ResolvedType::Composite(ResolvedCompositeType { plural_name, .. }) => {
                 plural_name.to_owned()
             }

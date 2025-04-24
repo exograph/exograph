@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::mapped_arena::MappedArena;
 use core_model_builder::{
-    ast::ast_types::AstFragmentReference,
+    ast::ast_types::{AstEnum, AstEnumField, AstFragmentReference},
     typechecker::{
         annotation::{AnnotationSpec, AnnotationTarget},
         annotation_map::AnnotationMap,
@@ -94,6 +94,48 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
         );
 
         fields_changed || annot_changed || fragment_references_changed
+    }
+}
+
+impl TypecheckFrom<AstEnum<Untyped>> for AstEnum<Typed> {
+    fn shallow(untyped: &AstEnum<Untyped>) -> AstEnum<Typed> {
+        AstEnum {
+            name: untyped.name.clone(),
+            fields: untyped.fields.iter().map(AstEnumField::shallow).collect(),
+            doc_comments: untyped.doc_comments.clone(),
+            span: untyped.span,
+        }
+    }
+
+    fn pass(
+        &mut self,
+        _type_env: &MappedArena<Type>,
+        _annotation_env: &HashMap<String, AnnotationSpec>,
+        _scope: &Scope,
+        _errors: &mut Vec<Diagnostic>,
+    ) -> bool {
+        false
+    }
+}
+
+impl TypecheckFrom<AstEnumField<Untyped>> for AstEnumField<Typed> {
+    fn shallow(untyped: &AstEnumField<Untyped>) -> AstEnumField<Typed> {
+        AstEnumField {
+            name: untyped.name.clone(),
+            typ: true,
+            doc_comments: untyped.doc_comments.clone(),
+            span: untyped.span,
+        }
+    }
+
+    fn pass(
+        &mut self,
+        _type_env: &MappedArena<Type>,
+        _annotation_env: &HashMap<String, AnnotationSpec>,
+        _scope: &Scope,
+        _errors: &mut Vec<Diagnostic>,
+    ) -> bool {
+        false
     }
 }
 

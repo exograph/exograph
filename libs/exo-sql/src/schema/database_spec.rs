@@ -18,6 +18,7 @@ use crate::{
 
 use super::{
     column_spec::{ColumnReferenceSpec, ColumnTypeSpec},
+    enum_spec::EnumSpec,
     function_spec::FunctionSpec,
     index_spec::IndexSpec,
     issue::WithIssues,
@@ -32,18 +33,26 @@ const SCHEMAS_QUERY: &str =
 const TABLE_NAMES_QUERY: &str =
     "SELECT table_name FROM information_schema.tables WHERE table_schema = $1";
 
+const ENUM_NAMES_QUERY: &str = "SELECT t.typname AS enum_name FROM pg_type t JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace 
+  WHERE t.typtype = 'e'  AND n.nspname = $1;";
+
 const MATERIALIZED_VIEWS_QUERY: &str =
     "SELECT matviewname as view_name FROM pg_matviews WHERE schemaname = $1";
 
 #[derive(Debug)]
 pub struct DatabaseSpec {
     pub tables: Vec<TableSpec>,
+    pub enums: Vec<EnumSpec>,
     pub functions: Vec<FunctionSpec>,
 }
 
 impl DatabaseSpec {
-    pub fn new(tables: Vec<TableSpec>, functions: Vec<FunctionSpec>) -> Self {
-        Self { tables, functions }
+    pub fn new(tables: Vec<TableSpec>, enums: Vec<EnumSpec>, functions: Vec<FunctionSpec>) -> Self {
+        Self {
+            tables,
+            enums,
+            functions,
+        }
     }
 
     /// Non-public schemas required by this database spec.
@@ -214,7 +223,13 @@ impl DatabaseSpec {
             })
             .collect();
 
-        DatabaseSpec::new(tables, all_function_specs)
+        let enums = database
+            .enums()
+            .into_iter()
+            .map(|(_, enum_)| EnumSpec::new(enum_.name.clone(), enum_.variants.clone()))
+            .collect();
+
+        DatabaseSpec::new(tables, enums, all_function_specs)
     }
 
     /// Creates a new schema specification from an SQL database.
@@ -224,6 +239,7 @@ impl DatabaseSpec {
     ) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
         let mut issues = Vec::new();
         let mut tables = Vec::new();
+        let mut enums = Vec::new();
 
         let schemas: Vec<String> = client
             .query(SCHEMAS_QUERY, &[])
@@ -236,10 +252,27 @@ impl DatabaseSpec {
             })
             .collect::<Vec<_>>();
 
+        for schema_name in &schemas {
+            for enum_row in client
+                .query(ENUM_NAMES_QUERY, &[&schema_name])
+                .await
+                .map_err(DatabaseError::Delegate)?
+            {
+                let enum_name: String = enum_row.get("enum_name");
+                let enum_name = PhysicalTableName::new_with_schema_name(enum_name, schema_name);
+
+                let mut enum_ = EnumSpec::from_live_db_enum(client, enum_name).await?;
+
+                issues.append(&mut enum_.issues);
+                enums.push(enum_.value);
+            }
+        }
+
         let mut column_attributes = HashMap::new();
         for schema_name in &schemas {
             column_attributes.extend(
-                ColumnSpec::query_column_attributes(client, schema_name, &mut issues).await?,
+                ColumnSpec::query_column_attributes(client, schema_name, &enums, &mut issues)
+                    .await?,
             );
         }
 
@@ -268,7 +301,7 @@ impl DatabaseSpec {
                 let table_name = PhysicalTableName::new_with_schema_name(view_name, &schema_name);
 
                 let mut table =
-                    TableSpec::from_live_db_materialized_view(client, table_name).await?;
+                    TableSpec::from_live_db_materialized_view(client, table_name, &enums).await?;
 
                 issues.append(&mut table.issues);
                 tables.push(table.value);
@@ -282,7 +315,11 @@ impl DatabaseSpec {
         issues.extend(functions_issues);
 
         Ok(WithIssues {
-            value: DatabaseSpec { tables, functions },
+            value: DatabaseSpec {
+                tables,
+                enums,
+                functions,
+            },
             issues,
         })
     }
@@ -345,7 +382,7 @@ mod tests {
 
     #[tokio::test]
     async fn empty_database() {
-        test_database_spec("", DatabaseSpec::new(vec![], vec![])).await;
+        test_database_spec("", DatabaseSpec::new(vec![], vec![], vec![])).await;
     }
 
     #[tokio::test]
@@ -397,6 +434,7 @@ mod tests {
                     true,
                 )],
                 vec![],
+                vec![],
             ),
         )
         .await;
@@ -426,6 +464,7 @@ mod tests {
                     vec![],
                     true,
                 )],
+                vec![],
                 vec![],
             ),
         )
@@ -488,6 +527,7 @@ mod tests {
                     vec![],
                     true,
                 )],
+                vec![],
                 vec![],
             ),
         )

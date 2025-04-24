@@ -9,6 +9,7 @@
 
 pub mod column_spec;
 pub mod database_spec;
+pub mod enum_spec;
 pub mod function_spec;
 pub mod index_spec;
 pub mod issue;

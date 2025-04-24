@@ -22,8 +22,8 @@ use super::{
     naming::{ToPlural, ToTableName},
 };
 use crate::resolved_type::{
-    ResolvedCompositeType, ResolvedField, ResolvedFieldDefault, ResolvedFieldType, ResolvedType,
-    ResolvedTypeHint,
+    ResolvedCompositeType, ResolvedEnumType, ResolvedField, ResolvedFieldDefault,
+    ResolvedFieldType, ResolvedType, ResolvedTypeHint,
 };
 use core_model::{
     mapped_arena::MappedArena,
@@ -71,7 +71,7 @@ fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> FieldType<Resolv
         }
         Type::Reference(id) => FieldType::Plain(ResolvedFieldType {
             type_name: types[*id].get_underlying_typename(types).unwrap(),
-            is_primitive: matches!(types[*id], Type::Primitive(_)),
+            is_primitive: matches!(types[*id], Type::Primitive(_) | Type::Enum(_)),
         }),
         Type::Set(underlying) | Type::Array(underlying) => {
             FieldType::List(Box::new(resolve_field_type(underlying.as_ref(), types)))
@@ -127,6 +127,24 @@ fn resolve(
                     errors,
                 )
                 .map_err(|e| ModelBuildingError::Diagnosis(vec![e]))?;
+            }
+        }
+
+        for typ in module.enums.iter() {
+            if let Some(Type::Enum(et)) = typechecked_system.types.get_by_key(&typ.name) {
+                resolved_postgres_types.add(
+                    &et.name,
+                    ResolvedType::Enum(ResolvedEnumType {
+                        name: et.name.clone(),
+                        fields: et.fields.iter().map(|f| f.name.clone()).collect(),
+                        enum_name: PhysicalTableName::new(
+                            et.name.to_snake_case(),
+                            module_schema_name.as_deref(),
+                        ),
+                        doc_comments: et.doc_comments.clone(),
+                        span: et.span,
+                    }),
+                );
             }
         }
     }

@@ -141,6 +141,7 @@ fn type_name(column_type: &ColumnTypeSpec, context: &ImportContext) -> ColumnTyp
                 ColumnTypeName::ReferenceType(format!("Array<{data_type}>"))
             }
         },
+        ColumnTypeSpec::Enum { enum_name } => ColumnTypeName::SelfType(enum_name.sql_name()),
         ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
             foreign_table_name,
             foreign_pk_type,

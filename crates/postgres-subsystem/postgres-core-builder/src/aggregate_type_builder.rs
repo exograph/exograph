@@ -70,6 +70,23 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
             fields: vec![],
             underlying_type: Shallow::shallow(),
         },
+        ResolvedType::Enum(_) => {
+            let fields = vec![AggregateField {
+                // For enums, we support only the count aggregate
+                name: ScalarAggregateFieldKind::Count.name().to_string(),
+                typ: AggregateFieldType::Scalar {
+                    type_name: "Int".to_string(),
+                    kind: ScalarAggregateFieldKind::Count,
+                },
+                relation: None,
+            }];
+
+            AggregateType {
+                name: aggregate_type_name.clone(),
+                fields,
+                underlying_type: Shallow::shallow(),
+            }
+        }
         ResolvedType::Primitive(_) => {
             let supported_kinds = AGG_MAP
                 .get(resolved_type.name().as_str())

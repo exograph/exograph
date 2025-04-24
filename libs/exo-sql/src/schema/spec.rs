@@ -114,6 +114,39 @@ pub fn diff<'a>(
         })
     }
 
+    let old_enums = old
+        .enums
+        .iter()
+        .filter(|enum_| scope_matches.matches(&enum_.name))
+        .collect::<Vec<_>>();
+    let new_enums = new
+        .enums
+        .iter()
+        .filter(|enum_| scope_matches.matches(&enum_.name))
+        .collect::<Vec<_>>();
+
+    for old_enum in &old_enums {
+        // try to find a enum with the same name in the new spec
+        match new_enums
+            .iter()
+            .find(|new_enum| old_enum.sql_name() == new_enum.sql_name())
+        {
+            Some(new_enum) => changes.extend(old_enum.diff(new_enum)),
+
+            // enum does not exist, deletion
+            None => changes.push(SchemaOp::DeleteEnum { enum_: old_enum }),
+        }
+    }
+
+    for new_enum in new_enums {
+        if !old_enums
+            .iter()
+            .any(|old_enum| new_enum.sql_name() == old_enum.sql_name())
+        {
+            changes.push(SchemaOp::CreateEnum { enum_: new_enum })
+        }
+    }
+
     let old_tables = old
         .tables
         .iter()
