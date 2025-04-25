@@ -11,7 +11,14 @@ module TodoDatabase {
     // The next two fields have their own index and a combined index
     @index("title", "title-completed") title: String
     @index("completed", "title-completed") completed: Boolean
+    priority: Priority = MEDIUM
     @index user: User = AuthContext.id
+  }
+
+  enum Priority {
+    LOW
+    MEDIUM
+    HIGH
   }
 
   @access(AuthContext.role == "admin")

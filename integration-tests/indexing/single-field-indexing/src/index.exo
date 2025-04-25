@@ -10,7 +10,14 @@ module TodoDatabase {
     @pk id: Int = autoIncrement()
     @index title: String
     @index completed: Boolean
+    priority: Priority = MEDIUM
     @index user: User = AuthContext.id
+  }
+
+  enum Priority {
+    LOW
+    MEDIUM
+    HIGH
   }
 
   @access(AuthContext.role == "admin")

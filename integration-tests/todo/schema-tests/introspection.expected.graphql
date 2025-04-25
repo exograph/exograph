@@ -39,8 +39,10 @@ type PriorityAgg {
   count: Int
 }
 
-"""A single value to match against using the equal operator."""
-scalar PriorityFilter
+input PriorityFilter {
+  eq: Priority
+  neq: Priority
+}
 
 type StringAgg {
   min: String
