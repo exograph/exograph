@@ -75,6 +75,12 @@ stages:
               "title": "U1-T2-updated-high",
               "completed": true,
               "priority": "HIGH"
+            },
+            {
+              "id": $.u1TodoIds[2],
+              "title": "U1-T3",
+              "completed": false,
+              "priority": "HIGH"
             }
           ]
         }

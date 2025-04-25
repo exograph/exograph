@@ -64,7 +64,7 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
                     &type_name,
                     PredicateParameterType {
                         name: type_name.to_string(),
-                        kind: PredicateParameterTypeKind::ImplicitEqual {},
+                        kind: PredicateParameterTypeKind::ImplicitEqual,
                         underlying_type: None,
                     },
                 );
@@ -75,18 +75,27 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
                     &param_type_name,
                     PredicateParameterType {
                         name: param_type_name.to_string(),
-                        kind: PredicateParameterTypeKind::ImplicitEqual {},
+                        kind: PredicateParameterTypeKind::ImplicitEqual,
                         underlying_type: None,
                     },
                 );
             }
             ResolvedType::Enum(e) => {
+                building.predicate_types.add(
+                    &e.name,
+                    PredicateParameterType {
+                        name: e.name.to_string(),
+                        kind: PredicateParameterTypeKind::ImplicitEqual,
+                        underlying_type: None,
+                    },
+                );
+
                 let type_name = get_filter_type_name(&e.name);
                 building.predicate_types.add(
                     &type_name,
                     PredicateParameterType {
                         name: type_name.to_string(),
-                        kind: PredicateParameterTypeKind::ImplicitEqual {},
+                        kind: PredicateParameterTypeKind::ImplicitEqual,
                         underlying_type: None,
                     },
                 );
@@ -184,7 +193,34 @@ fn expand_primitive_type(
     typ: &PostgresPrimitiveType,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
-    create_operator_filter_type_kind(typ, building)
+    if matches!(typ.kind, PostgresPrimitiveTypeKind::Enum(_)) {
+        expand_enum_type(typ, building)
+    } else {
+        create_operator_filter_type_kind(typ, building)
+    }
+}
+
+fn expand_enum_type(
+    typ: &PostgresPrimitiveType,
+    building: &SystemContextBuilding,
+) -> PredicateParameterTypeKind {
+    let param_type_id = building.predicate_types.get_id(&typ.name).unwrap();
+
+    let parameters: Vec<PredicateParameter> = ["eq", "neq"]
+        .iter()
+        .map(|operator| PredicateParameter {
+            name: operator.to_string(),
+            typ: FieldType::Optional(Box::new(FieldType::Plain(PredicateParameterTypeWrapper {
+                name: typ.name.to_owned(),
+                type_id: param_type_id,
+            }))),
+            column_path_link: None,
+            access: None,
+            vector_distance_function: None,
+        })
+        .collect();
+
+    PredicateParameterTypeKind::Operator(parameters)
 }
 
 fn expand_entity_type(
@@ -458,9 +494,8 @@ fn create_operator_filter_type_kind(
             // type supports no specific operations, assume implicit equals
             PredicateParameterTypeKind::ImplicitEqual
         }
-    } else if matches!(primitive_type.kind, PostgresPrimitiveTypeKind::Enum(_)) {
-        PredicateParameterTypeKind::ImplicitEqual
     } else {
+        // type given is not listed in TYPE_OPERATORS?
         todo!("{} does not support any operators", primitive_type.name)
-    } // type given is not listed in TYPE_OPERATORS?
+    }
 }

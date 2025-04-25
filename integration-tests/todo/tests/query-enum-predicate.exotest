@@ -1,0 +1,150 @@
+
+stages:
+  - operation: |
+        fragment TodoFields on Todo {
+          id
+          title
+          completed
+          priority
+        }
+        query {
+          lowPriority: todos(where: {priority: {eq: LOW}}) {
+            ...TodoFields
+          }
+          mediumPriority: todos(where: {priority: {eq: MEDIUM}}) {
+            ...TodoFields
+          }
+          highPriority: todos(where: {priority: {eq: HIGH}}) {
+            ...TodoFields
+          }
+          lowOrMediumPriority1: todos(where: {or: [{priority: {eq: LOW}}, {priority: {eq: MEDIUM}}]}) {
+            ...TodoFields
+          }
+          lowOrMediumPriority2: todos(where: {not: {priority: {eq: HIGH}}}) {
+            ...TodoFields
+          }
+        }
+    variable: |
+      {
+        "titleDefault": "U1-T3-by-admin-default",
+        "titleHigh": "U1-T3-by-admin-high",
+        "completed": true,
+        "userId": $.u1Id
+      }
+    auth: |
+      {
+          "role": "admin",
+          "sub": null
+      } 
+    response: |
+      {
+        "data": {
+          "lowPriority": [
+            {
+              "id": $.u2TodoIds[2],
+              "title": "U2-T3",
+              "completed": false,
+              "priority": "LOW"
+            }
+          ],
+          "mediumPriority": [
+            {
+              "id": $.u1TodoIds[0],
+              "title": "U1-T1",
+              "completed": false,
+              "priority": "MEDIUM"
+            },
+            {
+              "id": $.u1TodoIds[1],
+              "title": "U1-T2",
+              "completed": true,
+              "priority": "MEDIUM"
+            },
+            {
+              "id": $.u2TodoIds[0],
+              "title": "U2-T1",
+              "completed": false,
+              "priority": "MEDIUM"
+            },
+            {
+              "id": $.u2TodoIds[1],
+              "title": "U2-T2",
+              "completed": true,
+              "priority": "MEDIUM"
+            }
+          ],
+          "highPriority": [
+            {
+              "id": $.u1TodoIds[2],
+              "title": "U1-T3",
+              "completed": false,
+              "priority": "HIGH"
+            }
+          ],
+          "lowOrMediumPriority1": [
+            {
+              "id": $.u1TodoIds[0],
+              "title": "U1-T1",
+              "completed": false,
+              "priority": "MEDIUM"
+            },
+            {
+              "id": $.u1TodoIds[1],
+              "title": "U1-T2",
+              "completed": true,
+              "priority": "MEDIUM"
+            },
+            {
+              "id": $.u2TodoIds[0],
+              "title": "U2-T1",
+              "completed": false,
+              "priority": "MEDIUM"
+            },
+            {
+              "id": $.u2TodoIds[1],
+              "title": "U2-T2",
+              "completed": true,
+              "priority": "MEDIUM"
+            },
+            {
+              "id": $.u2TodoIds[2],
+              "title": "U2-T3",
+              "completed": false,
+              "priority": "LOW"
+            }
+          ],
+          "lowOrMediumPriority2": [
+            {
+              "id": $.u1TodoIds[0],
+              "title": "U1-T1",
+              "completed": false,
+              "priority": "MEDIUM"
+            },
+            {
+              "id": $.u1TodoIds[1],
+              "title": "U1-T2",
+              "completed": true,
+              "priority": "MEDIUM"
+            },
+            {
+              "id": $.u2TodoIds[0],
+              "title": "U2-T1",
+              "completed": false,
+              "priority": "MEDIUM"
+            },
+            {
+              "id": $.u2TodoIds[1],
+              "title": "U2-T2",
+              "completed": true,
+              "priority": "MEDIUM"
+            },
+            {
+              "id": $.u2TodoIds[2],
+              "title": "U2-T3",
+              "completed": false,
+              "priority": "LOW"
+            }
+          ]
+        }
+      }
+

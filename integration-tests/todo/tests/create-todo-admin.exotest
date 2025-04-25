@@ -31,13 +31,13 @@ stages:
       {
         "data": {
           "defaultPriority": {
-            "id": 5,
+            "id": $.newDefaultTodoId,
             "title": "U1-T3-by-admin-default",
             "completed": true,
             "priority": "MEDIUM"
           },
           "highPriority": {
-            "id": 6,
+            "id": $.newHighPriorityTodoId,
             "title": "U1-T3-by-admin-high",
             "completed": true,
             "priority": "HIGH"
@@ -74,6 +74,12 @@ stages:
               "title": "U1-T2",
               "completed": true,
               "priority": "MEDIUM"
+            },
+            {
+              "id": $.u1TodoIds[2],
+              "title": "U1-T3",
+              "completed": false,
+              "priority": "HIGH"
             },
             {
               "id": $.newDefaultTodoId,
