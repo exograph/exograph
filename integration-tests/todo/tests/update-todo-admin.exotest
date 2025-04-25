@@ -1,17 +1,26 @@
 
 stages:
   - operation: |
-        mutation($id: Int!, $title: String!) {
-          updateTodo(id: $id, data: { title: $title }) {
+        mutation($idDefault: Int!, $idHigh: Int!, $titleDefault: String!, $titleHigh: String!) {
+          defaultPriority: updateTodo(id: $idDefault, data: { title: $titleDefault }) {
             id
             title
             completed
+            priority
+          }
+          highPriority: updateTodo(id: $idHigh, data: { title: $titleHigh, priority: HIGH }) {
+            id
+            title
+            completed
+            priority
           }
         }
     variable: |
       {
-        "id": $.u1TodoIds[1],
-        "title": "U1-T2-updated",
+        "idDefault": $.u1TodoIds[0],
+        "idHigh": $.u1TodoIds[1],
+        "titleDefault": "U1-T1-updated",
+        "titleHigh": "U1-T2-updated-high",
         "completed": true
       }
     auth: |
@@ -22,10 +31,17 @@ stages:
     response: |
       {
         "data": {
-          "updateTodo": {
+          "defaultPriority": {
+            "id": $.u1TodoIds[0],
+            "title": "U1-T1-updated",
+            "completed": false,
+            "priority": "MEDIUM"
+          },
+          "highPriority": {
             "id": $.u1TodoIds[1],
-            "title": "U1-T2-updated",
-            "completed": true
+            "title": "U1-T2-updated-high",
+            "completed": true,
+            "priority": "HIGH"
           }
         }
       }
@@ -36,6 +52,7 @@ stages:
           id
           title
           completed
+          priority
         }
       }
     auth: |
@@ -49,13 +66,15 @@ stages:
           "todos": [
             {
               "id": $.u1TodoIds[0],
-              "title": "U1-T1",
-              "completed": false
+              "title": "U1-T1-updated",
+              "completed": false,
+              "priority": "MEDIUM"
             },
             {
               "id": $.u1TodoIds[1],
-              "title": "U1-T2-updated",
-              "completed": true
+              "title": "U1-T2-updated-high",
+              "completed": true,
+              "priority": "HIGH"
             }
           ]
         }
