@@ -3,7 +3,8 @@ module TodoModule {
     type Todo {
         @pk id: Int = autoIncrement()
         title: String
-        priority    : Priority
+        priority: Priority
+        priorityWithDefault: Priority = MEDIUM
     }
 
     enum Priority {

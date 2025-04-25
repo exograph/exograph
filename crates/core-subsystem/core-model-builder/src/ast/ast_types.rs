@@ -86,13 +86,7 @@ impl<T: NodeTypedness> Display for AstModel<T> {
 
 impl<T: NodeTypedness> Display for AstEnum<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.name.as_str())?;
-        f.write_str(" {")?;
-        for field in &self.fields {
-            f.write_str(field.name.as_str())?;
-            f.write_str(", ")?;
-        }
-        f.write_str("}")
+        f.write_str(self.name.as_str())
     }
 }
 

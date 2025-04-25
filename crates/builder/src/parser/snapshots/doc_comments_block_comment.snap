@@ -35,6 +35,7 @@ modules:
         fragment_references: []
         annotations: []
         doc_comments: "Todo database type line 1\nTodo database type line 2"
+    enums: []
     methods:
       - name: getTodo
         typ: Query

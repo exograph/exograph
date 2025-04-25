@@ -1,3 +1,4 @@
+
 context AuthContext {
   @jwt("sub") id: Int
   @jwt("role") role: String = "user"

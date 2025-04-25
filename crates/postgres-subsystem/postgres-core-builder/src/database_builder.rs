@@ -17,6 +17,7 @@ use crate::resolved_type::{
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::{primitive_type::PrimitiveType, types::FieldType};
+use core_model_builder::ast::ast_types::{FieldSelection, FieldSelectionElement};
 use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError};
 
 use exo_sql::schema::column_spec::ColumnDefault;
@@ -239,7 +240,16 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
                 }
                 AstExpr::BooleanLiteral(boolean, _) => Some(ColumnDefault::Boolean(*boolean)),
                 AstExpr::NumberLiteral(val, _) => Some(ColumnDefault::Number(*val)),
-                AstExpr::FieldSelection(_) => None,
+                AstExpr::FieldSelection(selection) => match selection {
+                    FieldSelection::Single(element, _) => match element {
+                        FieldSelectionElement::Identifier(value, _, _) => {
+                            Some(ColumnDefault::Enum(value.clone()))
+                        }
+                        FieldSelectionElement::HofCall { .. } => None,
+                        FieldSelectionElement::NormalCall { .. } => None,
+                    },
+                    FieldSelection::Select(_, _, _, _) => None,
+                },
                 _ => panic!("Invalid concrete value"),
             },
             ResolvedFieldDefault::PostgresFunction(string) => {

@@ -124,11 +124,6 @@ impl TypecheckFunctionCallFrom<FieldSelectionElement<Untyped>> for FieldSelectio
                                         *typ = enum_type.clone();
                                         true
                                     } else {
-                                        println!(
-                                            "FieldSelectionElement::Identifier value: {:?}",
-                                            value
-                                        );
-
                                         *typ = Type::Error;
 
                                         errors.push(Diagnostic {

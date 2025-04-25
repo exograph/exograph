@@ -47,38 +47,79 @@ pub enum ColumnDefault {
     Boolean(bool),
     Number(i64),
     Function(String),
+    Enum(String),
 }
 
 impl ColumnDefault {
     /// Converts a value read by the `COLUMNS_DEFAULT_QUERY` to a `ColumnDefault`.
-    pub fn from_sql(default_value: String, db_type: Option<ColumnTypeSpec>) -> ColumnDefault {
-        // The default value from the database is a string with a type cast to text.
-        if default_value.ends_with(TEXT_TYPE_CAST_PREFIX) {
-            let text_value =
-                default_value[1..default_value.len() - TEXT_TYPE_CAST_PREFIX.len()].to_string();
-            ColumnDefault::Text(text_value)
-        } else if default_value.ends_with(CHARACTER_VARYING_TYPE_CAST_PREFIX) {
-            let var_char_value = default_value
-                [1..default_value.len() - CHARACTER_VARYING_TYPE_CAST_PREFIX.len()]
-                .to_string();
-            ColumnDefault::VarChar(var_char_value)
-        } else if default_value == CURRENT_TIMESTAMP_VALUE
-            || (default_value == NOW_VALUE
-                && matches!(db_type, Some(ColumnTypeSpec::Timestamp { .. })))
-        {
-            ColumnDefault::CurrentTimestamp
-        } else if default_value == CURRENT_DATE_VALUE
-            || (default_value == NOW_VALUE && matches!(db_type, Some(ColumnTypeSpec::Date)))
-        {
-            ColumnDefault::CurrentDate
-        } else if default_value == "gen_random_uuid()" {
-            ColumnDefault::Uuid
-        } else if matches!(db_type, Some(ColumnTypeSpec::Int { .. })) {
-            ColumnDefault::Number(default_value.parse().unwrap())
-        } else if matches!(db_type, Some(ColumnTypeSpec::Boolean)) {
-            ColumnDefault::Boolean(default_value == "true")
-        } else {
-            ColumnDefault::Function(default_value)
+    pub fn from_sql(
+        default_value: String,
+        db_type: Option<ColumnTypeSpec>,
+    ) -> Result<ColumnDefault, DatabaseError> {
+        match db_type {
+            Some(ColumnTypeSpec::String { .. }) => {
+                // The default value from the database is a string with a type cast to text.
+                if default_value.ends_with(TEXT_TYPE_CAST_PREFIX) {
+                    let text_value = default_value
+                        [1..default_value.len() - TEXT_TYPE_CAST_PREFIX.len()]
+                        .to_string();
+                    Ok(ColumnDefault::Text(text_value))
+                } else if default_value.ends_with(CHARACTER_VARYING_TYPE_CAST_PREFIX) {
+                    let var_char_value = default_value
+                        [1..default_value.len() - CHARACTER_VARYING_TYPE_CAST_PREFIX.len()]
+                        .to_string();
+                    Ok(ColumnDefault::VarChar(var_char_value))
+                } else {
+                    Err(DatabaseError::Generic(format!(
+                        "Invalid default value for string column: {}",
+                        default_value
+                    )))
+                }
+            }
+            Some(ColumnTypeSpec::Timestamp { .. }) => {
+                if default_value == CURRENT_TIMESTAMP_VALUE || default_value == NOW_VALUE {
+                    Ok(ColumnDefault::CurrentTimestamp)
+                } else {
+                    Err(DatabaseError::Generic(format!(
+                        "Invalid default value for timestamp column: {}",
+                        default_value
+                    )))
+                }
+            }
+            Some(ColumnTypeSpec::Date) => {
+                if default_value == CURRENT_DATE_VALUE || default_value == NOW_VALUE {
+                    Ok(ColumnDefault::CurrentDate)
+                } else {
+                    Err(DatabaseError::Generic(format!(
+                        "Invalid default value for date column: {}",
+                        default_value
+                    )))
+                }
+            }
+            Some(ColumnTypeSpec::Uuid) => {
+                if default_value == "gen_random_uuid()" {
+                    Ok(ColumnDefault::Uuid)
+                } else {
+                    Err(DatabaseError::Generic(format!(
+                        "Invalid default value for uuid column: {}",
+                        default_value
+                    )))
+                }
+            }
+            Some(ColumnTypeSpec::Int { .. }) => {
+                Ok(ColumnDefault::Number(default_value.parse().unwrap()))
+            }
+            Some(ColumnTypeSpec::Boolean) => Ok(ColumnDefault::Boolean(default_value == "true")),
+            Some(ColumnTypeSpec::Enum { enum_name }) => {
+                // Remove the type cast from the default value
+                let default_value = default_value
+                    .strip_prefix("'")
+                    .and_then(|s| s.strip_suffix(format!("'::{}", enum_name.name).as_str()))
+                    .unwrap_or(&default_value);
+
+                Ok(ColumnDefault::Enum(default_value.to_string()))
+            }
+            _ => Ok(ColumnDefault::Function(default_value)),
         }
     }
 
@@ -92,6 +133,7 @@ impl ColumnDefault {
             ColumnDefault::Boolean(value) => format!("{value}"),
             ColumnDefault::Number(value) => format!("{value}"),
             ColumnDefault::Function(value) => value.clone(),
+            ColumnDefault::Enum(value) => format!("'{value}'"),
         }
     }
 
@@ -103,6 +145,7 @@ impl ColumnDefault {
             ColumnDefault::Boolean(value) => format!("{value}"),
             ColumnDefault::Number(value) => format!("{value}"),
             ColumnDefault::Function(value) => value.clone(),
+            ColumnDefault::Enum(value) => format!("\"{value}\""),
         }
     }
 }
@@ -176,6 +219,7 @@ const CHARACTER_VARYING_TYPE_CAST_PREFIX: &str = "'::character varying";
 const CURRENT_TIMESTAMP_VALUE: &str = "CURRENT_TIMESTAMP";
 const CURRENT_DATE_VALUE: &str = "CURRENT_DATE";
 const NOW_VALUE: &str = "now()";
+
 impl ColumnSpec {
     /// Creates a new column specification from an SQL column.
     ///
@@ -471,22 +515,24 @@ impl ColumnSpec {
             // If this column is autoIncrement, then default value will be populated
             // with an invocation of nextval(). Thus, we need to clear it to normalize the column
             let default_value = if is_auto_increment {
-                None
+                Ok(None)
             } else {
                 let default_value: Option<String> = row.get("column_default");
-                default_value.map(|default_value| {
-                    ColumnDefault::from_sql(
-                        default_value,
-                        map.get(&table_name)
-                            .and_then(|table_attributes| {
-                                table_attributes
-                                    .get(&column_name)
-                                    .map(|info| info.db_type.clone())
-                            })
-                            .flatten(),
-                    )
-                })
-            };
+                default_value
+                    .map(|default_value| {
+                        ColumnDefault::from_sql(
+                            default_value,
+                            map.get(&table_name)
+                                .and_then(|table_attributes| {
+                                    table_attributes
+                                        .get(&column_name)
+                                        .map(|info| info.db_type.clone())
+                                })
+                                .flatten(),
+                        )
+                    })
+                    .transpose()
+            }?;
 
             let table_attributes = map.entry(table_name).or_insert_with(HashMap::new);
 
