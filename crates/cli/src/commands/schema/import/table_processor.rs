@@ -4,11 +4,9 @@ use exo_sql::{
     PhysicalTableName,
 };
 
-use super::{ImportContext, ModelProcessor};
+use super::{processor::INDENT, ImportContext, ModelProcessor};
 
 use heck::ToLowerCamelCase;
-
-const INDENT: &str = "  ";
 
 impl ModelProcessor<DatabaseSpec> for TableSpec {
     fn process(

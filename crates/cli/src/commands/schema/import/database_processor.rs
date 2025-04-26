@@ -54,6 +54,23 @@ impl ModelProcessor<()> for DatabaseSpec {
                 }
             }
 
+            let matching_enums = self
+                .enums
+                .iter()
+                .filter(|enum_| enum_.name.schema == schema)
+                .collect::<Vec<_>>();
+
+            if !matching_enums.is_empty() {
+                writeln!(writer)?;
+            }
+
+            for (i, enum_) in matching_enums.iter().enumerate() {
+                enum_.process(self, context, writer)?;
+                if i < matching_enums.len() - 1 {
+                    writeln!(writer)?;
+                }
+            }
+
             writeln!(writer, "}}")?;
             writeln!(writer)?;
         }

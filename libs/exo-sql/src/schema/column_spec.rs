@@ -106,9 +106,10 @@ impl ColumnDefault {
                     )))
                 }
             }
-            Some(ColumnTypeSpec::Int { .. }) => {
-                Ok(ColumnDefault::Number(default_value.parse().unwrap()))
-            }
+            Some(ColumnTypeSpec::Int { .. }) => match default_value.parse() {
+                Ok(value) => Ok(ColumnDefault::Number(value)),
+                Err(_) => Ok(ColumnDefault::Function(default_value)),
+            },
             Some(ColumnTypeSpec::Boolean) => Ok(ColumnDefault::Boolean(default_value == "true")),
             Some(ColumnTypeSpec::Enum { enum_name }) => {
                 // Remove the type cast from the default value
@@ -145,7 +146,7 @@ impl ColumnDefault {
             ColumnDefault::Boolean(value) => format!("{value}"),
             ColumnDefault::Number(value) => format!("{value}"),
             ColumnDefault::Function(value) => value.clone(),
-            ColumnDefault::Enum(value) => format!("\"{value}\""),
+            ColumnDefault::Enum(value) => value.to_string(),
         }
     }
 }
