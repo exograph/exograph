@@ -118,8 +118,9 @@ fn get_parameter_type_name(entity_type_name: &str, is_primitive: bool) -> String
 
 fn create_shallow_type(typ: &ResolvedType) -> OrderByParameterType {
     OrderByParameterType {
-        name: match &typ {
+        name: match typ {
             ResolvedType::Primitive(p) => get_parameter_type_name(&p.name(), true),
+            ResolvedType::Enum(e) => get_parameter_type_name(&e.name, true),
             ResolvedType::Composite(c) => get_parameter_type_name(c.name.as_str(), false),
         },
         kind: OrderByParameterTypeKind::Composite { parameters: vec![] },

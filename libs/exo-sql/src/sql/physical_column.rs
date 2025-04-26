@@ -108,6 +108,9 @@ pub enum PhysicalColumnType {
         precision: Option<usize>,
         scale: Option<usize>,
     },
+    Enum {
+        enum_name: PhysicalTableName,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -163,6 +166,9 @@ impl PhysicalColumnType {
             },
             PhysicalColumnType::Numeric { precision, scale } => {
                 format!("Numeric with precision: {precision:?}, scale: {scale:?}")
+            }
+            PhysicalColumnType::Enum { enum_name } => {
+                format!("Enum with type name: {enum_name:?}")
             }
         }
     }
@@ -311,6 +317,7 @@ impl PhysicalColumnType {
             },
             PhysicalColumnType::Numeric { .. } => Type::NUMERIC,
             PhysicalColumnType::Vector { .. } => Type::FLOAT4_ARRAY,
+            PhysicalColumnType::Enum { .. } => Type::TEXT,
         }
     }
 }

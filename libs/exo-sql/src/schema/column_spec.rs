@@ -16,6 +16,7 @@ use crate::{
     Database, FloatBits, IntBits, ManyToOne, PhysicalColumn, PhysicalColumnType, PhysicalTableName,
 };
 
+use super::enum_spec::EnumSpec;
 use super::issue::{Issue, WithIssues};
 use super::op::SchemaOp;
 use super::statement::SchemaStatement;
@@ -46,38 +47,79 @@ pub enum ColumnDefault {
     Boolean(bool),
     Number(i64),
     Function(String),
+    Enum(String),
 }
 
 impl ColumnDefault {
     /// Converts a value read by the `COLUMNS_DEFAULT_QUERY` to a `ColumnDefault`.
-    pub fn from_sql(default_value: String, db_type: Option<ColumnTypeSpec>) -> ColumnDefault {
-        // The default value from the database is a string with a type cast to text.
-        if default_value.ends_with(TEXT_TYPE_CAST_PREFIX) {
-            let text_value =
-                default_value[1..default_value.len() - TEXT_TYPE_CAST_PREFIX.len()].to_string();
-            ColumnDefault::Text(text_value)
-        } else if default_value.ends_with(CHARACTER_VARYING_TYPE_CAST_PREFIX) {
-            let var_char_value = default_value
-                [1..default_value.len() - CHARACTER_VARYING_TYPE_CAST_PREFIX.len()]
-                .to_string();
-            ColumnDefault::VarChar(var_char_value)
-        } else if default_value == CURRENT_TIMESTAMP_VALUE
-            || (default_value == NOW_VALUE
-                && matches!(db_type, Some(ColumnTypeSpec::Timestamp { .. })))
-        {
-            ColumnDefault::CurrentTimestamp
-        } else if default_value == CURRENT_DATE_VALUE
-            || (default_value == NOW_VALUE && matches!(db_type, Some(ColumnTypeSpec::Date)))
-        {
-            ColumnDefault::CurrentDate
-        } else if default_value == "gen_random_uuid()" {
-            ColumnDefault::Uuid
-        } else if matches!(db_type, Some(ColumnTypeSpec::Int { .. })) {
-            ColumnDefault::Number(default_value.parse().unwrap())
-        } else if matches!(db_type, Some(ColumnTypeSpec::Boolean)) {
-            ColumnDefault::Boolean(default_value == "true")
-        } else {
-            ColumnDefault::Function(default_value)
+    pub fn from_sql(
+        default_value: String,
+        db_type: Option<ColumnTypeSpec>,
+    ) -> Result<ColumnDefault, DatabaseError> {
+        match db_type {
+            Some(ColumnTypeSpec::String { .. }) => {
+                // The default value from the database is a string with a type cast to text.
+                if default_value.ends_with(TEXT_TYPE_CAST_PREFIX) {
+                    let text_value = default_value
+                        [1..default_value.len() - TEXT_TYPE_CAST_PREFIX.len()]
+                        .to_string();
+                    Ok(ColumnDefault::Text(text_value))
+                } else if default_value.ends_with(CHARACTER_VARYING_TYPE_CAST_PREFIX) {
+                    let var_char_value = default_value
+                        [1..default_value.len() - CHARACTER_VARYING_TYPE_CAST_PREFIX.len()]
+                        .to_string();
+                    Ok(ColumnDefault::VarChar(var_char_value))
+                } else {
+                    Err(DatabaseError::Generic(format!(
+                        "Invalid default value for string column: {}",
+                        default_value
+                    )))
+                }
+            }
+            Some(ColumnTypeSpec::Timestamp { .. }) => {
+                if default_value == CURRENT_TIMESTAMP_VALUE || default_value == NOW_VALUE {
+                    Ok(ColumnDefault::CurrentTimestamp)
+                } else {
+                    Err(DatabaseError::Generic(format!(
+                        "Invalid default value for timestamp column: {}",
+                        default_value
+                    )))
+                }
+            }
+            Some(ColumnTypeSpec::Date) => {
+                if default_value == CURRENT_DATE_VALUE || default_value == NOW_VALUE {
+                    Ok(ColumnDefault::CurrentDate)
+                } else {
+                    Err(DatabaseError::Generic(format!(
+                        "Invalid default value for date column: {}",
+                        default_value
+                    )))
+                }
+            }
+            Some(ColumnTypeSpec::Uuid) => {
+                if default_value == "gen_random_uuid()" {
+                    Ok(ColumnDefault::Uuid)
+                } else {
+                    Err(DatabaseError::Generic(format!(
+                        "Invalid default value for uuid column: {}",
+                        default_value
+                    )))
+                }
+            }
+            Some(ColumnTypeSpec::Int { .. }) => {
+                Ok(ColumnDefault::Number(default_value.parse().unwrap()))
+            }
+            Some(ColumnTypeSpec::Boolean) => Ok(ColumnDefault::Boolean(default_value == "true")),
+            Some(ColumnTypeSpec::Enum { enum_name }) => {
+                // Remove the type cast from the default value
+                let default_value = default_value
+                    .strip_prefix("'")
+                    .and_then(|s| s.strip_suffix(format!("'::{}", enum_name.name).as_str()))
+                    .unwrap_or(&default_value);
+
+                Ok(ColumnDefault::Enum(default_value.to_string()))
+            }
+            _ => Ok(ColumnDefault::Function(default_value)),
         }
     }
 
@@ -91,6 +133,7 @@ impl ColumnDefault {
             ColumnDefault::Boolean(value) => format!("{value}"),
             ColumnDefault::Number(value) => format!("{value}"),
             ColumnDefault::Function(value) => value.clone(),
+            ColumnDefault::Enum(value) => format!("'{value}'"),
         }
     }
 
@@ -102,6 +145,7 @@ impl ColumnDefault {
             ColumnDefault::Boolean(value) => format!("{value}"),
             ColumnDefault::Number(value) => format!("{value}"),
             ColumnDefault::Function(value) => value.clone(),
+            ColumnDefault::Enum(value) => format!("\"{value}\""),
         }
     }
 }
@@ -147,6 +191,9 @@ pub enum ColumnTypeSpec {
         precision: Option<usize>,
         scale: Option<usize>,
     },
+    Enum {
+        enum_name: PhysicalTableName,
+    },
 }
 
 const COLUMNS_TYPE_QUERY: &str = "
@@ -172,6 +219,7 @@ const CHARACTER_VARYING_TYPE_CAST_PREFIX: &str = "'::character varying";
 const CURRENT_TIMESTAMP_VALUE: &str = "CURRENT_TIMESTAMP";
 const CURRENT_DATE_VALUE: &str = "CURRENT_DATE";
 const NOW_VALUE: &str = "now()";
+
 impl ColumnSpec {
     /// Creates a new column specification from an SQL column.
     ///
@@ -398,6 +446,7 @@ impl ColumnSpec {
     pub async fn query_column_attributes(
         client: &DatabaseClient,
         schema_name: &str,
+        enums: &Vec<EnumSpec>,
         issues: &mut Vec<Issue>,
     ) -> Result<HashMap<PhysicalTableName, HashMap<String, ColumnAttribute>>, DatabaseError> {
         let mut map = HashMap::new();
@@ -431,7 +480,7 @@ impl ColumnSpec {
                 // So we manually query how many dimensions the column has and append `[]` to
                 // the type
                 sql_type += &"[]".repeat(if dims == 0 { 0 } else { (dims - 1) as usize });
-                match ColumnTypeSpec::from_string(&sql_type) {
+                match ColumnTypeSpec::from_string(&sql_type, enums) {
                     Ok(t) => Some(t),
                     Err(e) => {
                         issues.push(Issue::Warning(format!(
@@ -466,22 +515,24 @@ impl ColumnSpec {
             // If this column is autoIncrement, then default value will be populated
             // with an invocation of nextval(). Thus, we need to clear it to normalize the column
             let default_value = if is_auto_increment {
-                None
+                Ok(None)
             } else {
                 let default_value: Option<String> = row.get("column_default");
-                default_value.map(|default_value| {
-                    ColumnDefault::from_sql(
-                        default_value,
-                        map.get(&table_name)
-                            .and_then(|table_attributes| {
-                                table_attributes
-                                    .get(&column_name)
-                                    .map(|info| info.db_type.clone())
-                            })
-                            .flatten(),
-                    )
-                })
-            };
+                default_value
+                    .map(|default_value| {
+                        ColumnDefault::from_sql(
+                            default_value,
+                            map.get(&table_name)
+                                .and_then(|table_attributes| {
+                                    table_attributes
+                                        .get(&column_name)
+                                        .map(|info| info.db_type.clone())
+                                })
+                                .flatten(),
+                        )
+                    })
+                    .transpose()
+            }?;
 
             let table_attributes = map.entry(table_name).or_insert_with(HashMap::new);
 
@@ -506,7 +557,7 @@ pub struct ColumnAttribute {
 impl ColumnTypeSpec {
     /// Create a new physical column type given the SQL type string. This is used to reverse-engineer
     /// a database schema to a Exograph model.
-    pub fn from_string(s: &str) -> Result<ColumnTypeSpec, DatabaseError> {
+    pub fn from_string(s: &str, enums: &Vec<EnumSpec>) -> Result<ColumnTypeSpec, DatabaseError> {
         let s = s.to_uppercase();
 
         let vector_re = Regex::new(r"VECTOR\((\d+)\)").unwrap();
@@ -538,7 +589,7 @@ impl ColumnTypeSpec {
 
                 // Wrap the underlying type with `ColumnTypeSpec::Array`
                 let mut array_type = ColumnTypeSpec::Array {
-                    typ: Box::new(ColumnTypeSpec::from_string(db_type)?),
+                    typ: Box::new(ColumnTypeSpec::from_string(db_type, enums)?),
                 };
                 for _ in 0..count - 1 {
                     array_type = ColumnTypeSpec::Array {
@@ -624,7 +675,16 @@ impl ColumnTypeSpec {
 
                         ColumnTypeSpec::Numeric { precision, scale }
                     } else {
-                        return Err(DatabaseError::Validation(format!("unknown type {s}")));
+                        let enum_type = enums.iter().find(|enum_spec| {
+                            enum_spec.name.name.to_uppercase() == s.to_uppercase()
+                        });
+                        if let Some(enum_type) = enum_type {
+                            ColumnTypeSpec::Enum {
+                                enum_name: enum_type.name.clone(),
+                            }
+                        } else {
+                            return Err(DatabaseError::Validation(format!("unknown type {s}")));
+                        }
                     }
                 }
             }),
@@ -663,6 +723,9 @@ impl ColumnTypeSpec {
             ColumnTypeSpec::Numeric { precision, scale } => PhysicalColumnType::Numeric {
                 precision: *precision,
                 scale: *scale,
+            },
+            ColumnTypeSpec::Enum { enum_name } => PhysicalColumnType::Enum {
+                enum_name: enum_name.clone(),
             },
         }
     }
@@ -826,6 +889,12 @@ impl ColumnTypeSpec {
                 sql_statement
             }
 
+            Self::Enum { enum_name } => SchemaStatement {
+                statement: enum_name.sql_name(),
+                pre_statements: vec![],
+                post_statements: vec![],
+            },
+
             Self::ColumnReference(ColumnReferenceSpec {
                 foreign_pk_type, ..
             }) => foreign_pk_type.to_sql(is_auto_increment),
@@ -857,6 +926,7 @@ impl ColumnTypeSpec {
             PhysicalColumnType::Numeric { precision, scale } => {
                 ColumnTypeSpec::Numeric { precision, scale }
             }
+            PhysicalColumnType::Enum { enum_name } => ColumnTypeSpec::Enum { enum_name },
         }
     }
 }

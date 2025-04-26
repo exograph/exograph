@@ -13,7 +13,7 @@ use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
 use core_model_builder::{
-    ast::ast_types::{AstModel, AstModelKind, AstModule, AstSystem, Untyped},
+    ast::ast_types::{AstEnum, AstModel, AstModelKind, AstModule, AstSystem, Untyped},
     typechecker::{
         annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
         typ::{Module, Type, TypecheckedSystem},
@@ -258,6 +258,13 @@ pub fn build(
         ast_module_types.extend(module.types.clone());
         modules_arena.add(&module.name, Module(AstModule::shallow(module)));
 
+        for ast_enum in module.enums.iter() {
+            types_arena.add(
+                ast_enum.name.as_str(),
+                Type::Enum(AstEnum::shallow(ast_enum)),
+            );
+        }
+
         validate_module(module)?;
     }
 
@@ -383,6 +390,13 @@ fn validate_module(module: &AstModule<Untyped>) -> Result<(), ParserError> {
         "model/type",
     ))?;
 
+    process_err(validate_no_duplicates(
+        &module.enums,
+        |enum_| &enum_.name,
+        |enum_| enum_.span,
+        "enum",
+    ))?;
+
     // iterate over module.types and validate that all fields in each type is unique
     for model in module.types.iter() {
         process_err(validate_no_duplicates(
@@ -390,6 +404,16 @@ fn validate_module(module: &AstModule<Untyped>) -> Result<(), ParserError> {
             |field| &field.name,
             |field| field.span,
             "field",
+        ))?;
+    }
+
+    // iterate over module.enums and validate that all fields in each enum are unique
+    for enum_ in module.enums.iter() {
+        process_err(validate_no_duplicates(
+            &enum_.fields,
+            |field| &field.name,
+            |field| field.span,
+            "enum field",
         ))?;
     }
 

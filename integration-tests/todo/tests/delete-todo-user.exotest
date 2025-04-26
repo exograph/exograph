@@ -74,6 +74,11 @@ stages:
               "id": $.u1TodoIds[0],
               "title": "U1-T1",
               "completed": false
+            },
+            {
+              "id": $.u1TodoIds[2],
+              "title": "U1-T3",
+              "completed": false
             }
           ]
         }

@@ -1,0 +1,15 @@
+@postgres
+module TodoModule {
+    type Todo {
+        @pk id: Int = autoIncrement()
+        title: String
+        priority: Priority
+        priorityWithDefault: Priority = MEDIUM
+    }
+
+    enum Priority {
+        LOW
+        MEDIUM
+        HIGH
+    }
+}

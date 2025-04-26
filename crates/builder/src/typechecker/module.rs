@@ -34,6 +34,7 @@ impl TypecheckFrom<AstModule<Untyped>> for AstModule<Typed> {
         AstModule {
             name: untyped.name.clone(),
             types: typed(&untyped.types),
+            enums: typed(&untyped.enums),
             methods: typed(&untyped.methods),
             interceptors: typed(&untyped.interceptors),
             annotations: annotation_map,
@@ -58,6 +59,14 @@ impl TypecheckFrom<AstModule<Untyped>> for AstModule<Typed> {
 
                 m.pass(type_env, annotation_env, &model_scope, errors)
             })
+            .filter(|v| *v)
+            .count()
+            > 0;
+
+        let enums_changed = self
+            .enums
+            .iter_mut()
+            .map(|e| e.pass(type_env, annotation_env, scope, errors))
             .filter(|v| *v)
             .count()
             > 0;
@@ -110,7 +119,7 @@ impl TypecheckFrom<AstModule<Untyped>> for AstModule<Typed> {
             })
         }
 
-        types_changed || methods_changed || interceptor_changed || annot_changed
+        types_changed || enums_changed || methods_changed || interceptor_changed || annot_changed
     }
 }
 

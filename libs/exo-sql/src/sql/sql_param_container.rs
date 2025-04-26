@@ -35,7 +35,7 @@ impl ToSql for SQLParamContainer {
         ty: &Type,
         out: &mut bytes::BytesMut,
     ) -> Result<tokio_postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
-        self.0 .0.as_ref().to_sql_checked(ty, out)
+        self.0.param.as_ref().to_sql_checked(ty, out)
     }
 
     fn accepts(_ty: &Type) -> bool {
@@ -47,7 +47,12 @@ impl ToSql for SQLParamContainer {
 
 impl SQLParamContainer {
     pub fn new<T: SQLParam + 'static>(param: T, param_type: Type) -> Self {
-        Self((Arc::new(param), param_type, false))
+        Self(SQLParamWithType {
+            param: Arc::new(param),
+            param_type,
+            is_array: false,
+            enum_type: None,
+        })
     }
 
     pub fn string(value: String) -> Self {
@@ -131,6 +136,15 @@ impl SQLParamContainer {
         Self::new(value, Type::TEXT_ARRAY)
     }
 
+    pub fn enum_(value: String, enum_type: String) -> Self {
+        Self(SQLParamWithType {
+            param: Arc::new(value),
+            param_type: Type::TEXT,
+            is_array: false,
+            enum_type: Some(enum_type),
+        })
+    }
+
     pub fn from_sql_values(params: Vec<SQLValue>, elem_type: Type) -> Self {
         let collection_type = to_pg_array_type(&elem_type);
 
@@ -143,17 +157,22 @@ impl SQLParamContainer {
     }
 
     pub fn with_unnest(self) -> Self {
-        Self((self.0 .0, self.0 .1, true))
+        Self(SQLParamWithType {
+            param: self.0.param,
+            param_type: self.0.param_type,
+            is_array: true,
+            enum_type: self.0.enum_type,
+        })
     }
 
     pub fn has_unnest(&self) -> bool {
-        self.0 .2
+        self.0.is_array
     }
 }
 
 impl PartialEq for SQLParamContainer {
     fn eq(&self, other: &Self) -> bool {
-        self.0.eq(&other.0)
+        self.0.param.eq(&other.0.param)
     }
 }
 

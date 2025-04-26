@@ -8,6 +8,8 @@ Types are the building blocks of a Postgres module since they define the entitie
 
 Exograph maps each type to a table in the database and each field to a column of a table or a relation to another table. Using the convention over configuration approach, Exograph will automatically deduce the appropriate table names, column names, column types, foreign key constraints, etc. Usually, the automatically deduced mapping should suffice, especially for a green field project. However, if necessary, you may [customize](customizing-types.md) them.
 
+Exograph also supports [enums](defining-enums.md), which are a way to define a set of allowed values for a field.
+
 Exograph processes types in the exo file to create appropriate [queries](operations/queries.md) and [mutations](operations/mutations.md) and apply [access control rules](access-control.md). The Postgres plugin doesn't allow you to define your own queries (however, you may use the [Deno module](/deno/overview.md) to do so).
 
 ## Defining a type

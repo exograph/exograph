@@ -13,6 +13,7 @@ use crate::schema::{constraint::sorted_comma_list, index_spec::IndexSpec};
 
 use super::{
     column_spec::{ColumnReferenceSpec, ColumnSpec},
+    enum_spec::EnumSpec,
     function_spec::FunctionSpec,
     statement::SchemaStatement,
     table_spec::TableSpec,
@@ -34,6 +35,13 @@ pub enum SchemaOp<'a> {
     },
     DeleteTable {
         table: &'a TableSpec,
+    },
+
+    CreateEnum {
+        enum_: &'a EnumSpec,
+    },
+    DeleteEnum {
+        enum_: &'a EnumSpec,
     },
 
     CreateColumn {
@@ -130,6 +138,9 @@ impl SchemaOp<'_> {
 
             SchemaOp::CreateTable { table } => table.creation_sql(),
             SchemaOp::DeleteTable { table } => table.deletion_sql(),
+
+            SchemaOp::CreateEnum { enum_ } => enum_.creation_sql(),
+            SchemaOp::DeleteEnum { enum_ } => enum_.deletion_sql(),
 
             SchemaOp::CreateColumn { table, column } => {
                 let column_stmt = column.to_sql(table.has_single_pk());
@@ -327,6 +338,9 @@ impl SchemaOp<'_> {
 
             SchemaOp::CreateTable { table } => Some(format!("The table `{}` exists in the model, but does not exist in the database.", table.sql_name())),
             SchemaOp::DeleteTable { .. } => None, // An extra table in the database is not a problem
+
+            SchemaOp::CreateEnum { enum_ } => Some(format!("The enum `{}` exists in the model, but does not exist in the database.", enum_.sql_name())),
+            SchemaOp::DeleteEnum { .. } => None, // An extra enum in the database is not a problem
 
             SchemaOp::CreateColumn { table, column } => Some(format!("The column `{}` in the table `{}` exists in the model, but does not exist in the database table.", column.name, table.sql_name())),
             SchemaOp::DeleteColumn { table, column } => {

@@ -14,18 +14,25 @@ use crate::{ColumnId, ManyToOne, PhysicalColumn, PhysicalTable, PhysicalTableNam
 use serde::{Deserialize, Serialize};
 use typed_generational_arena::{Arena, IgnoreGeneration, Index};
 
+use super::physical_table::PhysicalEnum;
+
 pub type SerializableSlab<T> = Arena<T, usize, IgnoreGeneration>;
 pub type TableId = Index<PhysicalTable, usize, IgnoreGeneration>;
-
+pub type EnumId = Index<PhysicalEnum, usize, IgnoreGeneration>;
 #[derive(Serialize, Deserialize)]
 pub struct Database {
     tables: SerializableSlab<PhysicalTable>,
+    enums: SerializableSlab<PhysicalEnum>,
     pub relations: Vec<ManyToOne>,
 }
 
 impl Database {
     pub fn get_table(&self, id: TableId) -> &PhysicalTable {
         &self.tables[id]
+    }
+
+    pub fn get_enum(&self, id: EnumId) -> &PhysicalEnum {
+        &self.enums[id]
     }
 
     pub fn get_column_ids(&self, table_id: TableId) -> Vec<ColumnId> {
@@ -38,17 +45,39 @@ impl Database {
         &mut self.tables[id]
     }
 
+    pub fn get_enum_mut(&mut self, id: EnumId) -> &mut PhysicalEnum {
+        &mut self.enums[id]
+    }
+
     pub fn tables(&self) -> &SerializableSlab<PhysicalTable> {
         &self.tables
+    }
+
+    pub fn enums(&self) -> &SerializableSlab<PhysicalEnum> {
+        &self.enums
     }
 
     pub fn insert_table(&mut self, table: PhysicalTable) -> TableId {
         self.tables.insert(table)
     }
 
+    pub fn insert_enum(&mut self, enum_: PhysicalEnum) -> EnumId {
+        self.enums.insert(enum_)
+    }
+
     pub fn get_table_id(&self, table_name: &PhysicalTableName) -> Option<TableId> {
         self.tables.iter().find_map(|(id, table)| {
             if &table.name == table_name {
+                Some(id)
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn get_enum_id(&self, enum_name: &PhysicalTableName) -> Option<EnumId> {
+        self.enums.iter().find_map(|(id, enum_)| {
+            if &enum_.name == enum_name {
                 Some(id)
             } else {
                 None
@@ -99,6 +128,7 @@ impl Default for Database {
     fn default() -> Self {
         Database {
             tables: SerializableSlab::new(),
+            enums: SerializableSlab::new(),
             relations: vec![],
         }
     }

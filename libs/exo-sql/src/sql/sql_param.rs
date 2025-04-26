@@ -11,8 +11,13 @@ use std::{any::Any, sync::Arc};
 
 use tokio_postgres::types::{ToSql, Type};
 
-// The third boolean is true if the param is an array and we need to unnest it.
-pub type SQLParamWithType = (Arc<dyn SQLParam>, Type, bool);
+#[derive(Debug, Clone)]
+pub struct SQLParamWithType {
+    pub param: Arc<dyn SQLParam>,
+    pub param_type: Type,
+    pub is_array: bool,
+    pub enum_type: Option<String>,
+}
 
 /// A trait to simplify our use of SQL parameters, specifically to have the [Send] and [Sync] bounds.
 pub trait SQLParam: ToSql + Send + Sync {

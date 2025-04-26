@@ -854,6 +854,7 @@ modules:
             annotations:
               annotations: {}
             doc_comments: ~
+        enums: []
         methods: []
         interceptors: []
         base_exofile: input.exo

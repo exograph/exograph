@@ -1,3 +1,4 @@
+
 context AuthContext {
   @jwt("sub") id: Int
   @jwt("role") role: String = "user"
@@ -10,7 +11,14 @@ module TodoDatabase {
     @pk id: Int = autoIncrement()
     title: String
     completed: Boolean
+    priority: Priority = MEDIUM
     user: User = AuthContext.id
+  }
+
+  enum Priority {
+    LOW
+    MEDIUM
+    HIGH
   }
 
   @access(AuthContext.role == "admin")

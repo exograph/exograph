@@ -100,9 +100,18 @@ impl SQLBuilder {
     /// Push a parameter, which will be replaced with a placeholder in the SQL string
     /// and the parameter will be added to the list of parameters.
     pub fn push_param(&mut self, param: SQLParamWithType) {
+        let enum_cast = param
+            .enum_type
+            .as_ref()
+            .map(|enum_type| format!("::{}", enum_type));
+
         self.params.push(param);
         self.push('$');
         self.push_str(self.params.len().to_string());
+
+        if let Some(enum_cast) = enum_cast {
+            self.push_str(&enum_cast);
+        }
     }
 
     /// Push elements of an iterator, separated by `sep`. The `push_elem` function provides

@@ -179,7 +179,7 @@ mod tests {
     }
 
     fn to_debug_string(array: &Array<SQLParamContainer>) -> Vec<String> {
-        array.iter().map(|e| format!("{e:?}")).collect()
+        array.iter().map(|e| format!("{:?}", e.param())).collect()
     }
 
     #[multiplatform_test]
@@ -201,9 +201,9 @@ mod tests {
         assert_eq!(
             to_debug_string(&array),
             [
-                "(Some((1, Int4, false)), Int4, false)",
-                "(Some((2, Int4, false)), Int4, false)",
-                "(Some((3, Int4, false)), Int4, false)"
+                "SQLParamWithType { param: Some(SQLParamWithType { param: 1, param_type: Int4, is_array: false, enum_type: None }), param_type: Int4, is_array: false, enum_type: None }", 
+                "SQLParamWithType { param: Some(SQLParamWithType { param: 2, param_type: Int4, is_array: false, enum_type: None }), param_type: Int4, is_array: false, enum_type: None }", 
+                "SQLParamWithType { param: Some(SQLParamWithType { param: 3, param_type: Int4, is_array: false, enum_type: None }), param_type: Int4, is_array: false, enum_type: None }"
             ]
         );
     }
@@ -250,12 +250,12 @@ mod tests {
         assert_eq!(
             to_debug_string(&array),
             vec![
-                "(Some((1, Int4, false)), Int4, false)",
-                "(Some((2, Int4, false)), Int4, false)",
-                "(Some((3, Int4, false)), Int4, false)",
-                "(Some((4, Int4, false)), Int4, false)",
-                "(Some((5, Int4, false)), Int4, false)",
-                "(Some((6, Int4, false)), Int4, false)"
+                "SQLParamWithType { param: Some(SQLParamWithType { param: 1, param_type: Int4, is_array: false, enum_type: None }), param_type: Int4, is_array: false, enum_type: None }",
+                "SQLParamWithType { param: Some(SQLParamWithType { param: 2, param_type: Int4, is_array: false, enum_type: None }), param_type: Int4, is_array: false, enum_type: None }",
+                "SQLParamWithType { param: Some(SQLParamWithType { param: 3, param_type: Int4, is_array: false, enum_type: None }), param_type: Int4, is_array: false, enum_type: None }",
+                "SQLParamWithType { param: Some(SQLParamWithType { param: 4, param_type: Int4, is_array: false, enum_type: None }), param_type: Int4, is_array: false, enum_type: None }",
+                "SQLParamWithType { param: Some(SQLParamWithType { param: 5, param_type: Int4, is_array: false, enum_type: None }), param_type: Int4, is_array: false, enum_type: None }",
+                "SQLParamWithType { param: Some(SQLParamWithType { param: 6, param_type: Int4, is_array: false, enum_type: None }), param_type: Int4, is_array: false, enum_type: None }"
             ]
         );
     }
@@ -306,12 +306,12 @@ mod tests {
         assert_eq!(
             to_debug_string(&array),
             vec![
-                "(Some((1, Int4, false)), Int4, false)",
-                "(Some((2, Int4, false)), Int4, false)",
-                "(Some((3, Int4, false)), Int4, false)",
-                "(Some((4, Int4, false)), Int4, false)",
-                "(Some((5, Int4, false)), Int4, false)",
-                "(Some((6, Int4, false)), Int4, false)"
+                "SQLParamWithType { param: Some(SQLParamWithType { param: 1, param_type: Int4, is_array: false, enum_type: None }), param_type: Int4, is_array: false, enum_type: None }",
+                "SQLParamWithType { param: Some(SQLParamWithType { param: 2, param_type: Int4, is_array: false, enum_type: None }), param_type: Int4, is_array: false, enum_type: None }",
+                "SQLParamWithType { param: Some(SQLParamWithType { param: 3, param_type: Int4, is_array: false, enum_type: None }), param_type: Int4, is_array: false, enum_type: None }",
+                "SQLParamWithType { param: Some(SQLParamWithType { param: 4, param_type: Int4, is_array: false, enum_type: None }), param_type: Int4, is_array: false, enum_type: None }",
+                "SQLParamWithType { param: Some(SQLParamWithType { param: 5, param_type: Int4, is_array: false, enum_type: None }), param_type: Int4, is_array: false, enum_type: None }",
+                "SQLParamWithType { param: Some(SQLParamWithType { param: 6, param_type: Int4, is_array: false, enum_type: None }), param_type: Int4, is_array: false, enum_type: None }"
             ]
         );
     }

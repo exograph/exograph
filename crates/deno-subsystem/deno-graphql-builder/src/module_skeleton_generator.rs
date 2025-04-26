@@ -623,6 +623,7 @@ mod tests {
                 fabricate_model("TestType2"),
                 fabricate_model_with_collection("EdgeType"),
             ],
+            enums: vec![],
             annotations: Default::default(),
             base_exofile: PathBuf::new(),
             interceptors: vec![],

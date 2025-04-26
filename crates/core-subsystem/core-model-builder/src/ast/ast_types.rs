@@ -84,6 +84,12 @@ impl<T: NodeTypedness> Display for AstModel<T> {
     }
 }
 
+impl<T: NodeTypedness> Display for AstEnum<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.name.as_str())
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstFragmentReference<T: NodeTypedness> {
     pub name: String,
@@ -102,10 +108,33 @@ impl<T: NodeTypedness> Display for AstFragmentReference<T> {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AstEnum<T: NodeTypedness> {
+    pub name: String,
+    pub fields: Vec<AstEnumField<T>>,
+    pub doc_comments: Option<String>,
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    #[serde(default = "default_span")]
+    pub span: Span,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AstEnumField<T: NodeTypedness> {
+    pub name: String,
+    pub typ: T::Type,
+    pub doc_comments: Option<String>,
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    #[serde(default = "default_span")]
+    pub span: Span,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstModule<T: NodeTypedness> {
     pub name: String,
     pub annotations: T::Annotations,
     pub types: Vec<AstModel<T>>,
+    pub enums: Vec<AstEnum<T>>,
     pub methods: Vec<AstMethod<T>>,
     pub interceptors: Vec<AstInterceptor<T>>,
     pub base_exofile: PathBuf, // The exo file in which this module is defined. Used to resolve relative imports and js/ts/wasm sources

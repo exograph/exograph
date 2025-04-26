@@ -29,6 +29,21 @@ enum Ordering {
   DESC
 }
 
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+type PriorityAgg {
+  count: Int
+}
+
+input PriorityFilter {
+  eq: Priority
+  neq: Priority
+}
+
 type StringAgg {
   min: String
   max: String
@@ -52,6 +67,7 @@ type Todo {
   id: Int!
   title: String!
   completed: Boolean!
+  priority: Priority!
   user: User!
 }
 
@@ -60,17 +76,20 @@ type TodoAgg {
   id: IntAgg
   title: StringAgg
   completed: BooleanAgg
+  priority: PriorityAgg
 }
 
 input TodoCreationInput {
   title: String!
   completed: Boolean!
+  priority: Priority
   user: UserReferenceInput
 }
 
 input TodoCreationInputFromUser {
   title: String!
   completed: Boolean!
+  priority: Priority
 }
 
 """
@@ -82,6 +101,7 @@ input TodoFilter {
   id: IntFilter
   title: StringFilter
   completed: BooleanFilter
+  priority: PriorityFilter
   user: UserFilter
   and: [TodoFilter!]
   or: [TodoFilter!]
@@ -92,6 +112,7 @@ input TodoOrdering {
   id: Ordering
   title: Ordering
   completed: Ordering
+  priority: Ordering
   user: [UserOrdering!]
 }
 
@@ -103,6 +124,7 @@ input TodoUpdateInput {
   id: Int
   title: String
   completed: Boolean
+  priority: Priority
   user: UserReferenceInput
 }
 
@@ -116,6 +138,7 @@ input TodoUpdateInputFromUserNested {
   id: Int!
   title: String
   completed: Boolean
+  priority: Priority
 }
 
 type User {

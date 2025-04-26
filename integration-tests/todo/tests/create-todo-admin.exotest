@@ -1,16 +1,24 @@
 
 stages:
   - operation: |
-        mutation createTodo($title: String!, $completed: Boolean!, $userId: Int!) {
-          createTodo(data: { title: $title, completed: $completed, user: {id: $userId} }) {
-            id @bind(name: "newTodoId")
+        mutation createTodo($titleDefault: String!, $titleHigh: String!, $completed: Boolean!, $userId: Int!) {
+          defaultPriority: createTodo(data: { title: $titleDefault, completed: $completed, user: {id: $userId} }) {
+            id @bind(name: "newDefaultTodoId")
             title
             completed
+            priority
+          }
+          highPriority: createTodo(data: { title: $titleHigh, completed: $completed, user: {id: $userId}, priority: HIGH }) {
+            id @bind(name: "newHighPriorityTodoId")
+            title
+            completed
+            priority
           }
         }
     variable: |
       {
-        "title": "U1-T3-by-admin",
+        "titleDefault": "U1-T3-by-admin-default",
+        "titleHigh": "U1-T3-by-admin-high",
         "completed": true,
         "userId": $.u1Id
       }
@@ -22,10 +30,17 @@ stages:
     response: |
       {
         "data": {
-          "createTodo": {
-            "id": 5,
-            "title": "U1-T3-by-admin",
-            "completed": true
+          "defaultPriority": {
+            "id": $.newDefaultTodoId,
+            "title": "U1-T3-by-admin-default",
+            "completed": true,
+            "priority": "MEDIUM"
+          },
+          "highPriority": {
+            "id": $.newHighPriorityTodoId,
+            "title": "U1-T3-by-admin-high",
+            "completed": true,
+            "priority": "HIGH"
           }
         }
       }
@@ -36,6 +51,7 @@ stages:
           id
           title
           completed
+          priority
         }
       }
     auth: |
@@ -50,17 +66,32 @@ stages:
             {
               "id": $.u1TodoIds[0],
               "title": "U1-T1",
-              "completed": false
+              "completed": false,
+              "priority": "MEDIUM"
             },
             {
               "id": $.u1TodoIds[1],
               "title": "U1-T2",
-              "completed": true
+              "completed": true,
+              "priority": "MEDIUM"
             },
             {
-              "id": $.newTodoId,
-              "title": "U1-T3-by-admin",
-              "completed": true
+              "id": $.u1TodoIds[2],
+              "title": "U1-T3",
+              "completed": false,
+              "priority": "HIGH"
+            },
+            {
+              "id": $.newDefaultTodoId,
+              "title": "U1-T3-by-admin-default",
+              "completed": true,
+              "priority": "MEDIUM"
+            },
+            {
+              "id": $.newHighPriorityTodoId,
+              "title": "U1-T3-by-admin-high",
+              "completed": true,
+              "priority": "HIGH"
             }
           ]
         }

@@ -78,11 +78,13 @@ impl Migration {
                 SchemaOp::DeleteSchema { .. }
                 | SchemaOp::DeleteTable { .. }
                 | SchemaOp::DeleteColumn { .. }
-                | SchemaOp::RemoveExtension { .. } => true,
+                | SchemaOp::RemoveExtension { .. }
+                | SchemaOp::DeleteEnum { .. } => true,
 
                 // Explicitly matching the other cases here to ensure that we have thought about each case
                 SchemaOp::CreateSchema { .. }
                 | SchemaOp::CreateTable { .. }
+                | SchemaOp::CreateEnum { .. }
                 | SchemaOp::CreateColumn { .. }
                 | SchemaOp::CreateIndex { .. }
                 | SchemaOp::DeleteIndex { .. } // Creating and deleting index is not considered destructive (they affect performance but not data loss)
@@ -261,7 +263,7 @@ pub async fn wipe_database(client: &mut DatabaseClient) -> Result<(), DatabaseEr
 
     let migrations = Migration::from_schemas(
         current_database_spec,
-        &DatabaseSpec::new(vec![], vec![]),
+        &DatabaseSpec::new(vec![], vec![], vec![]),
         &MigrationScope::all_schemas(),
     );
     migrations
@@ -455,8 +457,11 @@ mod tests {
         folder: &Path,
         kind: TestKind,
     ) -> Result<(), String> {
-        let creation =
-            Migration::from_schemas(&DatabaseSpec::new(vec![], vec![]), system, migration_scope);
+        let creation = Migration::from_schemas(
+            &DatabaseSpec::new(vec![], vec![], vec![]),
+            system,
+            migration_scope,
+        );
         assert_sql_eq(creation, expected, folder, kind)?;
 
         let self_migration = Migration::from_schemas(system, system, migration_scope);

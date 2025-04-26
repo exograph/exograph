@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use crate::Database;
 
-use super::{ExpressionBuilder, SQLBuilder};
+use super::{sql_param::SQLParamWithType, ExpressionBuilder, SQLBuilder};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Limit(pub i64);
@@ -20,6 +20,11 @@ impl ExpressionBuilder for Limit {
     /// Build expression of the form `LIMIT <limit>`
     fn build(&self, _database: &Database, builder: &mut SQLBuilder) {
         builder.push_str("LIMIT ");
-        builder.push_param((Arc::new(self.0), tokio_postgres::types::Type::INT8, false));
+        builder.push_param(SQLParamWithType {
+            param: Arc::new(self.0),
+            param_type: tokio_postgres::types::Type::INT8,
+            is_array: false,
+            enum_type: None,
+        });
     }
 }

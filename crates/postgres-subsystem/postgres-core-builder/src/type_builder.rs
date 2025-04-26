@@ -20,7 +20,9 @@ use common::value::Val;
 use core_model::access::AccessPredicateExpression;
 use core_model::types::{Named, TypeValidationProvider};
 use postgres_core_model::access::{CreationAccessExpression, PrecheckAccessPrimitiveExpression};
-use postgres_core_model::types::{EntityRepresentation, PostgresFieldDefaultValue};
+use postgres_core_model::types::{
+    EntityRepresentation, PostgresFieldDefaultValue, PostgresPrimitiveTypeKind,
+};
 
 use crate::{aggregate_type_builder::aggregate_type_name, shallow::Shallow};
 
@@ -96,7 +98,8 @@ fn create_shallow_type(
             building.primitive_types.add(
                 &resolved_type.name(),
                 PostgresPrimitiveType {
-                    name: resolved_type.name(),
+                    name: resolved_type.name().to_owned(),
+                    kind: PostgresPrimitiveTypeKind::Builtin,
                 },
             );
             if matches!(pt, PrimitiveType::Vector) {
@@ -105,6 +108,15 @@ fn create_shallow_type(
                     .vector_distance_types
                     .add("VectorDistance", vector_distance_type);
             }
+        }
+        ResolvedType::Enum(enum_type) => {
+            building.primitive_types.add(
+                &enum_type.name,
+                PostgresPrimitiveType {
+                    name: enum_type.name.clone(),
+                    kind: PostgresPrimitiveTypeKind::Enum(enum_type.fields.to_vec()),
+                },
+            );
         }
         ResolvedType::Composite(composite) => {
             let typ = EntityType {
@@ -510,26 +522,39 @@ fn create_persistent_field(
     env: &ResolvedTypeEnv,
     expand_foreign_relations: bool,
 ) -> Result<PostgresField<EntityType>, ModelBuildingError> {
-    let base_field_type = {
-        let ResolvedFieldType {
-            type_name,
-            is_primitive,
-        } = field.typ.innermost();
+    let base_field_type =
+        {
+            let ResolvedFieldType {
+                type_name,
+                is_primitive,
+            } = field.typ.innermost();
 
-        if *is_primitive {
-            let type_id = building.primitive_types.get_id(type_name).unwrap();
-            PostgresFieldType {
-                type_name: type_name.clone(),
-                type_id: TypeIndex::Primitive(type_id),
+            if *is_primitive {
+                let type_id = building.primitive_types.get_id(type_name).ok_or(
+                    ModelBuildingError::Generic(format!(
+                        "Primitive type `{}` not found",
+                        type_name
+                    )),
+                )?;
+                Ok::<_, ModelBuildingError>(PostgresFieldType {
+                    type_name: type_name.to_owned(),
+                    type_id: TypeIndex::Primitive(type_id),
+                })
+            } else {
+                let type_id =
+                    building
+                        .entity_types
+                        .get_id(type_name)
+                        .ok_or(ModelBuildingError::Generic(format!(
+                            "Composite type `{}` not found",
+                            type_name
+                        )))?;
+                Ok::<_, ModelBuildingError>(PostgresFieldType {
+                    type_name: type_name.to_owned(),
+                    type_id: TypeIndex::Composite(type_id),
+                })
             }
-        } else {
-            let type_id = building.entity_types.get_id(type_name).unwrap();
-            PostgresFieldType {
-                type_name: type_name.clone(),
-                type_id: TypeIndex::Composite(type_id),
-            }
-        }
-    };
+        }?;
 
     let relation = create_relation(field, *type_id, building, env, expand_foreign_relations)?;
 
@@ -706,6 +731,9 @@ fn create_relation(
                             .unwrap(),
                         is_pk: false,
                     }),
+                    ResolvedType::Enum(_) => Err(ModelBuildingError::Generic(
+                        "Enum types are not supported in relations".to_string(),
+                    )),
                     ResolvedType::Composite(foreign_field_type) => {
                         if foreign_field_type.representation == EntityRepresentation::Json {
                             Ok(PostgresRelation::Scalar {
@@ -734,7 +762,7 @@ fn create_relation(
             let foreign_resolved_type = resolved_env.get_by_key(type_name).unwrap();
 
             match foreign_resolved_type {
-                ResolvedType::Primitive(_) => {
+                ResolvedType::Primitive(_) | ResolvedType::Enum(_) => {
                     if self_type.representation == EntityRepresentation::Json {
                         Ok(PostgresRelation::Embedded)
                     } else {

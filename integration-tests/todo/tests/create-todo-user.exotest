@@ -22,7 +22,7 @@ stages:
       {
         "data": {
           "createTodo": {
-            "id": 5,
+            "id": $.newTodoId,
             "title": "U1-T3",
             "completed": true
           }
@@ -55,6 +55,11 @@ stages:
               "id": $.u1TodoIds[1],
               "title": "U1-T2",
               "completed": true
+            },
+            {
+              "id": $.u1TodoIds[2],
+              "title": "U1-T3",
+              "completed": false
             },
             {
               "id": $.newTodoId,
