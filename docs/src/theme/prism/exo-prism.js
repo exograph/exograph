@@ -1,5 +1,5 @@
 Prism.languages.exo = {
-	'keyword': /\b(?:context|type|module|interceptor|query|mutation|self)\b/,
+	'keyword': /\b(?:context|type|enum|module|interceptor|query|mutation|self)\b/,
 
 	'number': /-?\b\d+(?:\.\d+)?(?:e[+-]?\d+)?\b/i,
 	'string': {
@@ -10,7 +10,7 @@ Prism.languages.exo = {
 	'boolean': /\b(?:false|true)\b/,
 
 	'type-name': {
-		pattern: /(\b(?:type|context)\s+)\w+/i,
+		pattern: /(\b(?:type|context|enum)\s+)\w+/i,
 		lookbehind: true,
 	},
 	'module-name': {
@@ -22,7 +22,7 @@ Prism.languages.exo = {
 		lookbehind: true,
 	},
 
-	'field-access': { 
+	'field-access': {
 		pattern: /(?:[.]\s*\w+)|(?:\w+\s*[.]\s*\w+)/,
 	},
 
@@ -30,7 +30,7 @@ Prism.languages.exo = {
 		pattern: /(\w+)\s*:/i,
 	},
 	'builtin': /\b(?:Array|Set|Int|Float|Boolean|String)\b/,
-	'comment': { 	
+	'comment': {
 		pattern: /\/\/.*|\/\*[\s\S]*?(?:\*\/|$)/,
 		greedy: true
 	},
