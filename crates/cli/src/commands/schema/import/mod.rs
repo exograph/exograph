@@ -34,6 +34,7 @@ mod processor;
 
 mod column_processor;
 mod database_processor;
+mod enum_processor;
 mod table_processor;
 
 use context::ImportContext;

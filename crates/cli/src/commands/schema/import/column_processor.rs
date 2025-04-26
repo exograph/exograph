@@ -8,6 +8,8 @@ use exo_sql::{FloatBits, IntBits};
 use super::context::reference_field_name;
 use super::{ImportContext, ModelProcessor};
 
+use heck::ToUpperCamelCase;
+
 const INDENT: &str = "    ";
 
 impl ModelProcessor<TableSpec> for ColumnSpec {
@@ -141,7 +143,9 @@ fn type_name(column_type: &ColumnTypeSpec, context: &ImportContext) -> ColumnTyp
                 ColumnTypeName::ReferenceType(format!("Array<{data_type}>"))
             }
         },
-        ColumnTypeSpec::Enum { enum_name } => ColumnTypeName::SelfType(enum_name.sql_name()),
+        ColumnTypeSpec::Enum { enum_name } => {
+            ColumnTypeName::SelfType(enum_name.name.to_upper_camel_case())
+        }
         ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
             foreign_table_name,
             foreign_pk_type,
