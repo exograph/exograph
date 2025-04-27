@@ -235,7 +235,6 @@ impl TableSpec {
                     name,
                     typ: column_type,
                     is_pk: false,
-                    is_auto_increment: false,
                     is_nullable: !not_null,
                     unique_constraints: vec![],
                     default_value: None,

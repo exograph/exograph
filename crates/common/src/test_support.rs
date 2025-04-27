@@ -53,7 +53,10 @@ where
     }
 
     if failed {
-        panic!("{}", "Some tests failed".red());
+        panic!(
+            "{} (filter: '{filter_env_var}' set to '{filter}')",
+            "Some tests failed".red()
+        );
     } else {
         Ok(())
     }

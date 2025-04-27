@@ -29,7 +29,6 @@ pub struct ColumnSpec {
     pub name: String,
     pub typ: ColumnTypeSpec,
     pub is_pk: bool,
-    pub is_auto_increment: bool,
     pub is_nullable: bool,
     pub unique_constraints: Vec<String>,
     pub default_value: Option<ColumnDefault>,
@@ -48,9 +47,14 @@ pub enum ColumnDefault {
     Number(i64),
     Function(String),
     Enum(String),
+    Autoincrement(ColumnAutoincrement),
 }
 
 impl ColumnDefault {
+    pub fn is_autoincrement(&self) -> bool {
+        matches!(self, ColumnDefault::Autoincrement(_))
+    }
+
     /// Converts a value read by the `COLUMNS_DEFAULT_QUERY` to a `ColumnDefault`.
     pub fn from_sql(
         default_value: String,
@@ -124,29 +128,41 @@ impl ColumnDefault {
         }
     }
 
-    pub fn to_sql(&self) -> String {
+    pub fn to_sql(&self) -> Option<String> {
         match self {
-            ColumnDefault::Uuid => "gen_random_uuid()".to_string(),
-            ColumnDefault::CurrentTimestamp => "now()".to_string(),
-            ColumnDefault::CurrentDate => "now()".to_string(),
-            ColumnDefault::Text(value) => format!("'{value}'::text"),
-            ColumnDefault::VarChar(value) => format!("'{value}'::character varying"),
-            ColumnDefault::Boolean(value) => format!("{value}"),
-            ColumnDefault::Number(value) => format!("{value}"),
-            ColumnDefault::Function(value) => value.clone(),
-            ColumnDefault::Enum(value) => format!("'{value}'"),
+            ColumnDefault::Uuid => Some("gen_random_uuid()".to_string()),
+            ColumnDefault::CurrentTimestamp => Some("now()".to_string()),
+            ColumnDefault::CurrentDate => Some("now()".to_string()),
+            ColumnDefault::Text(value) => Some(format!("'{value}'::text")),
+            ColumnDefault::VarChar(value) => Some(format!("'{value}'::character varying")),
+            ColumnDefault::Boolean(value) => Some(format!("{value}")),
+            ColumnDefault::Number(value) => Some(format!("{value}")),
+            ColumnDefault::Function(value) => Some(value.clone()),
+            ColumnDefault::Enum(value) => Some(format!("'{value}'")),
+            ColumnDefault::Autoincrement(_) => None,
         }
     }
 
-    pub fn to_model(&self) -> String {
+    pub fn to_model(&self) -> Option<String> {
         match self {
-            ColumnDefault::Uuid => "generate_uuid()".to_string(),
-            ColumnDefault::CurrentTimestamp | ColumnDefault::CurrentDate => "now()".to_string(),
-            ColumnDefault::Text(value) | ColumnDefault::VarChar(value) => format!("\"{value}\""),
-            ColumnDefault::Boolean(value) => format!("{value}"),
-            ColumnDefault::Number(value) => format!("{value}"),
-            ColumnDefault::Function(value) => value.clone(),
-            ColumnDefault::Enum(value) => value.to_string(),
+            ColumnDefault::Uuid => Some("generate_uuid()".to_string()),
+            ColumnDefault::CurrentTimestamp | ColumnDefault::CurrentDate => {
+                Some("now()".to_string())
+            }
+            ColumnDefault::Text(value) | ColumnDefault::VarChar(value) => {
+                Some(format!("\"{value}\""))
+            }
+            ColumnDefault::Boolean(value) => Some(format!("{value}")),
+            ColumnDefault::Number(value) => Some(format!("{value}")),
+            ColumnDefault::Function(value) => Some(value.clone()),
+            ColumnDefault::Enum(value) => Some(value.to_string()),
+            ColumnDefault::Autoincrement(autoincrement) => {
+                if matches!(autoincrement, ColumnAutoincrement::Serial) {
+                    Some("autoIncrement()".to_string())
+                } else {
+                    None
+                }
+            }
         }
     }
 }
@@ -204,15 +220,56 @@ const COLUMNS_TYPE_QUERY: &str = "
   WHERE attnum > 0 AND attisdropped = false AND pg_namespace.nspname = $1";
 
 const COLUMNS_DEFAULT_QUERY: &str = r#"
-    SELECT 
-        table_name,
-        column_name,
-        column_default,
-        pg_get_serial_sequence('"' || $1 || '"."' || table_name || '"', column_name) IS NOT NULL AS is_auto_increment
+    SELECT
+        t.table_name,
+        c.column_name,
+        c.column_default,
+        CASE
+            WHEN c.is_identity = 'YES' THEN true
+            ELSE false
+        END AS is_identity,
+        c.identity_generation,
+        CASE 
+            WHEN c.column_default LIKE 'nextval%' THEN 
+                CASE 
+                    WHEN substring(c.column_default from '''(.*)''') LIKE '%.%' THEN
+                        split_part(substring(c.column_default from '''(.*)'''), '.', 1)
+                    ELSE
+                        t.table_schema -- Default to table's schema if no schema in sequence
+                END
+            WHEN c.is_identity = 'YES' THEN
+                split_part(pg_get_serial_sequence(t.table_schema || '.' || t.table_name, c.column_name), '.', 1)
+            ELSE NULL
+        END AS sequence_schema,
+        CASE 
+            WHEN c.column_default LIKE 'nextval%' THEN 
+                CASE 
+                    WHEN substring(c.column_default from '''(.*)''') LIKE '%.%' THEN
+                        split_part(substring(c.column_default from '''(.*)'''), '.', 2)
+                    ELSE
+                        regexp_replace(substring(c.column_default from '''(.*)'''), '''::.*$', '')
+                END
+            WHEN c.is_identity = 'YES' THEN
+                split_part(pg_get_serial_sequence(t.table_schema || '.' || t.table_name, c.column_name), '.', 2)
+            ELSE NULL
+        END AS sequence_name,
+        CASE 
+            WHEN c.is_identity = 'YES' THEN true
+            WHEN c.column_default LIKE 'nextval%' THEN true
+            ELSE false
+        END AS is_autoincrement
     FROM 
-        information_schema.columns
+        information_schema.tables t
+    JOIN 
+        information_schema.columns c 
+        ON t.table_name = c.table_name 
+        AND t.table_schema = c.table_schema
     WHERE 
-        table_schema = $1;
+        t.table_schema = $1
+        AND t.table_type = 'BASE TABLE'
+    ORDER BY 
+        t.table_name, 
+        c.ordinal_position;
 "#;
 
 const TEXT_TYPE_CAST_PREFIX: &str = "'::text";
@@ -243,7 +300,6 @@ impl ColumnSpec {
             )))?;
 
         let ColumnAttribute {
-            is_auto_increment,
             default_value,
             not_null,
             db_type,
@@ -262,7 +318,6 @@ impl ColumnSpec {
                 name: column_name.to_owned(),
                 typ,
                 is_pk,
-                is_auto_increment: *is_auto_increment,
                 is_nullable: !not_null,
                 unique_constraints,
                 default_value: default_value.clone(),
@@ -278,7 +333,7 @@ impl ColumnSpec {
             statement,
             post_statements,
             ..
-        } = self.typ.to_sql(self.is_auto_increment);
+        } = self.typ.to_sql(self.default_value.as_ref());
         let pk_str = if self.is_pk && attach_pk_column_to_column_stmt {
             " PRIMARY KEY"
         } else {
@@ -290,15 +345,11 @@ impl ColumnSpec {
         } else {
             ""
         };
-        let default_value_part = if let Some(default_value) = self
+        let default_value_part = self
             .default_value
             .as_ref()
-            .map(|default_value| default_value.to_sql())
-        {
-            format!(" DEFAULT {default_value}")
-        } else {
-            "".to_string()
-        };
+            .and_then(|default_value| default_value.to_sql().map(|s| format!(" DEFAULT {s}")))
+            .unwrap_or_default();
 
         SchemaStatement {
             statement: format!(
@@ -321,7 +372,6 @@ impl ColumnSpec {
         let column_name_same = self.name == new.name;
         let type_same = self.typ == new.typ;
         let is_pk_same = self.is_pk == new.is_pk;
-        let is_auto_increment_same = self.is_auto_increment == new.is_auto_increment;
         let is_nullable_same = self.is_nullable == new.is_nullable;
         let default_value_same = self.default_value == new.default_value;
 
@@ -330,9 +380,8 @@ impl ColumnSpec {
         }
 
         // If the column type differs only in reference type, that is taken care by table-level migration
-        if (!type_same && !self.differs_only_in_reference_column(new))
-            || !is_pk_same
-            || !is_auto_increment_same
+        if (!type_same && !self.differs_only_in_reference_column(new)) || !is_pk_same
+        // || !is_auto_increment_same
         {
             changes.push(SchemaOp::DeleteColumn {
                 table: self_table,
@@ -360,7 +409,7 @@ impl ColumnSpec {
             match new
                 .default_value
                 .as_ref()
-                .map(|default_value| default_value.to_sql())
+                .and_then(|default_value| default_value.to_sql())
             {
                 Some(default_value) => {
                     changes.push(SchemaOp::SetColumnDefaultValue {
@@ -416,7 +465,6 @@ impl ColumnSpec {
             name: column.name,
             typ,
             is_pk: column.is_pk,
-            is_auto_increment: column.is_auto_increment,
             is_nullable: column.is_nullable,
             unique_constraints: column.unique_constraints,
             default_value: column.default_value,
@@ -500,7 +548,6 @@ impl ColumnSpec {
                 ColumnAttribute {
                     db_type,
                     not_null,
-                    is_auto_increment: false,
                     default_value: None,
                 },
             );
@@ -509,14 +556,54 @@ impl ColumnSpec {
         for row in client.query(COLUMNS_DEFAULT_QUERY, &[&schema_name]).await? {
             let table_name: String = row.get("table_name");
             let column_name: String = row.get("column_name");
-            let is_auto_increment = row.get("is_auto_increment");
+            let is_autoincrement = row.get("is_autoincrement");
 
             let table_name = PhysicalTableName::new_with_schema_name(table_name, schema_name);
 
             // If this column is autoIncrement, then default value will be populated
             // with an invocation of nextval(). Thus, we need to clear it to normalize the column
-            let default_value = if is_auto_increment {
-                Ok(None)
+            let default_value = if is_autoincrement {
+                let is_identity = row.get("is_identity");
+                let sequence_schema = row.get("sequence_schema");
+                let sequence_name = row.get("sequence_name");
+
+                let autoincrement = if is_identity {
+                    let generation_str: Option<String> = row.get("identity_generation");
+                    let generation = match generation_str.as_deref() {
+                        Some("ALWAYS") => IdentityGeneration::Always,
+                        Some("DEFAULT") => IdentityGeneration::Default,
+                        _ => {
+                            return Err(DatabaseError::Validation(format!(
+                                "unknown identity generation {generation_str:?}"
+                            )));
+                        }
+                    };
+                    ColumnAutoincrement::Identity {
+                        sequence_schema,
+                        sequence_name,
+                        generation,
+                    }
+                } else {
+                    let serial_sequence_name = format!("{}_{}_seq", table_name.name, column_name);
+
+                    println!(
+                        "serial_schema_name: {:?} {:?} {:?} {:?}",
+                        table_name.schema, sequence_schema, serial_sequence_name, sequence_name
+                    );
+                    if (table_name.schema.as_ref() == Some(&sequence_schema)
+                        || (table_name.schema.is_none() && sequence_schema == "public"))
+                        && serial_sequence_name == sequence_name
+                    {
+                        ColumnAutoincrement::Serial
+                    } else {
+                        ColumnAutoincrement::Sequence {
+                            sequence_schema,
+                            sequence_name: serial_sequence_name,
+                        }
+                    }
+                };
+
+                Ok(Some(ColumnDefault::Autoincrement(autoincrement)))
             } else {
                 let default_value: Option<String> = row.get("column_default");
                 default_value
@@ -539,7 +626,6 @@ impl ColumnSpec {
 
             table_attributes.entry(column_name).and_modify(|info| {
                 info.default_value = default_value;
-                info.is_auto_increment = is_auto_increment;
             });
         }
 
@@ -549,10 +635,29 @@ impl ColumnSpec {
 
 #[derive(Debug)]
 pub struct ColumnAttribute {
-    pub is_auto_increment: bool,
     pub default_value: Option<ColumnDefault>,
     pub db_type: Option<ColumnTypeSpec>,
     pub not_null: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
+pub enum ColumnAutoincrement {
+    Serial, // Maps to `SERIAL` in postgres (sequence is `{schema}.{table}_{column}_id_seq`)
+    Sequence {
+        sequence_schema: String,
+        sequence_name: String,
+    },
+    Identity {
+        sequence_schema: String,
+        sequence_name: String,
+        generation: IdentityGeneration,
+    },
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
+pub enum IdentityGeneration {
+    Always,
+    Default,
 }
 
 impl ColumnTypeSpec {
@@ -731,11 +836,11 @@ impl ColumnTypeSpec {
         }
     }
 
-    pub(super) fn to_sql(&self, is_auto_increment: bool) -> SchemaStatement {
+    pub(super) fn to_sql(&self, default_value: Option<&ColumnDefault>) -> SchemaStatement {
         match self {
             Self::Int { bits } => SchemaStatement {
                 statement: {
-                    if is_auto_increment {
+                    if matches!(default_value, Some(ColumnDefault::Autoincrement(_))) {
                         match bits {
                             IntBits::_16 => "SMALLSERIAL",
                             IntBits::_32 => "SERIAL",
@@ -885,7 +990,7 @@ impl ColumnTypeSpec {
                     write!(&mut dimensions_part, "[]").unwrap();
                 }
 
-                let mut sql_statement = underlying_typ.to_sql(is_auto_increment);
+                let mut sql_statement = underlying_typ.to_sql(default_value);
                 sql_statement.statement += &dimensions_part;
                 sql_statement
             }
@@ -898,7 +1003,7 @@ impl ColumnTypeSpec {
 
             Self::ColumnReference(ColumnReferenceSpec {
                 foreign_pk_type, ..
-            }) => foreign_pk_type.to_sql(is_auto_increment),
+            }) => foreign_pk_type.to_sql(default_value),
         }
     }
 

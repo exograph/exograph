@@ -28,8 +28,6 @@ pub struct PhysicalColumn {
     pub typ: PhysicalColumnType,
     /// Is this column a part of the PK for the table
     pub is_pk: bool,
-    /// Is this column an auto-incrementing column (TODO: temporarily keeping it here until we revamp how we represent types and column attributes)
-    pub is_auto_increment: bool,
     /// should this type have a NOT NULL constraint or not?
     pub is_nullable: bool,
 
