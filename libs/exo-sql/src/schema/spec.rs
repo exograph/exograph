@@ -7,7 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::{hash_map::RandomState, hash_set::Difference};
+use std::{
+    collections::{hash_map::RandomState, hash_set::Difference},
+    hash::Hash,
+};
 
 use wildmatch::WildMatch;
 
@@ -96,7 +99,7 @@ pub fn diff<'a>(
 
     // extension creation
     let extensions_to_create =
-        sorted_strings(new_required_extensions.difference(&old_required_extensions));
+        sorted_values(new_required_extensions.difference(&old_required_extensions));
     for extension in extensions_to_create {
         changes.push(SchemaOp::CreateExtension {
             extension: extension.clone(),
@@ -107,10 +110,29 @@ pub fn diff<'a>(
     let new_required_schemas = new.required_schemas(scope_matches);
 
     // schema creation
-    let schemas_to_create = sorted_strings(new_required_schemas.difference(&old_required_schemas));
+    let schemas_to_create = sorted_values(new_required_schemas.difference(&old_required_schemas));
     for schema in schemas_to_create {
         changes.push(SchemaOp::CreateSchema {
             schema: schema.clone(),
+        })
+    }
+
+    let old_required_sequences = old.required_sequences(scope_matches);
+    let new_required_sequences = new.required_sequences(scope_matches);
+
+    let sequences_to_create =
+        sorted_values(new_required_sequences.difference(&old_required_sequences));
+    for sequence in sequences_to_create {
+        changes.push(SchemaOp::CreateSequence {
+            sequence: sequence.clone(),
+        })
+    }
+
+    let sequences_to_drop =
+        sorted_values(old_required_sequences.difference(&new_required_sequences));
+    for sequence in sequences_to_drop {
+        changes.push(SchemaOp::DeleteSequence {
+            sequence: sequence.clone(),
         })
     }
 
@@ -216,7 +238,7 @@ pub fn diff<'a>(
 
     // extension removal
     let extensions_to_drop =
-        sorted_strings(old_required_extensions.difference(&new_required_extensions));
+        sorted_values(old_required_extensions.difference(&new_required_extensions));
     for extension in extensions_to_drop {
         changes.push(SchemaOp::RemoveExtension {
             extension: extension.clone(),
@@ -224,7 +246,7 @@ pub fn diff<'a>(
     }
 
     // schema removal
-    let schemas_to_drop = sorted_strings(old_required_schemas.difference(&new_required_schemas));
+    let schemas_to_drop = sorted_values(old_required_schemas.difference(&new_required_schemas));
     for schema in schemas_to_drop {
         changes.push(SchemaOp::DeleteSchema {
             schema: schema.clone(),
@@ -245,8 +267,8 @@ pub fn diff<'a>(
     changes
 }
 
-fn sorted_strings(strings: Difference<String, RandomState>) -> Vec<&String> {
-    let mut strings: Vec<_> = strings.into_iter().collect();
+fn sorted_values<T: Ord + Eq + Hash>(values: Difference<T, RandomState>) -> Vec<&T> {
+    let mut strings: Vec<_> = values.into_iter().collect();
     strings.sort();
     strings
 }

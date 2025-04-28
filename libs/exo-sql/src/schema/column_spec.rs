@@ -139,7 +139,15 @@ impl ColumnDefault {
             ColumnDefault::Number(value) => Some(format!("{value}")),
             ColumnDefault::Function(value) => Some(value.clone()),
             ColumnDefault::Enum(value) => Some(format!("'{value}'")),
-            ColumnDefault::Autoincrement(_) => None,
+            ColumnDefault::Autoincrement(autoincrement) => match autoincrement {
+                ColumnAutoincrement::Serial => None, // The type `SERIAL` takes care of the default value
+                ColumnAutoincrement::Sequence { name } => Some(format!(
+                    "nextval('{}.{}'::regclass)",
+                    name.schema.as_deref().unwrap_or("public"),
+                    name.name
+                )),
+                ColumnAutoincrement::Identity { .. } => None,
+            },
         }
     }
 
@@ -156,13 +164,17 @@ impl ColumnDefault {
             ColumnDefault::Number(value) => Some(format!("{value}")),
             ColumnDefault::Function(value) => Some(value.clone()),
             ColumnDefault::Enum(value) => Some(value.to_string()),
-            ColumnDefault::Autoincrement(autoincrement) => {
-                if matches!(autoincrement, ColumnAutoincrement::Serial) {
-                    Some("autoIncrement()".to_string())
-                } else {
-                    None
+            ColumnDefault::Autoincrement(autoincrement) => match autoincrement {
+                ColumnAutoincrement::Serial => Some("autoIncrement()".to_string()),
+                ColumnAutoincrement::Sequence { name } => Some(format!(
+                    "autoIncrement(\"{}.{}\")",
+                    name.schema.as_deref().unwrap_or("public"),
+                    name.name
+                )),
+                ColumnAutoincrement::Identity { .. } => {
+                    todo!()
                 }
-            }
+            },
         }
     }
 }
@@ -380,9 +392,7 @@ impl ColumnSpec {
         }
 
         // If the column type differs only in reference type, that is taken care by table-level migration
-        if (!type_same && !self.differs_only_in_reference_column(new)) || !is_pk_same
-        // || !is_auto_increment_same
-        {
+        if (!type_same && !self.differs_only_in_reference_column(new)) || !is_pk_same {
             changes.push(SchemaOp::DeleteColumn {
                 table: self_table,
                 column: self,
@@ -564,8 +574,8 @@ impl ColumnSpec {
             // with an invocation of nextval(). Thus, we need to clear it to normalize the column
             let default_value = if is_autoincrement {
                 let is_identity = row.get("is_identity");
-                let sequence_schema = row.get("sequence_schema");
-                let sequence_name = row.get("sequence_name");
+                let sequence_schema: String = row.get("sequence_schema");
+                let sequence_name: String = row.get("sequence_name");
 
                 let autoincrement = if is_identity {
                     let generation_str: Option<String> = row.get("identity_generation");
@@ -578,27 +588,20 @@ impl ColumnSpec {
                             )));
                         }
                     };
-                    ColumnAutoincrement::Identity {
-                        sequence_schema,
-                        sequence_name,
-                        generation,
-                    }
+                    ColumnAutoincrement::Identity { generation }
                 } else {
-                    let serial_sequence_name = format!("{}_{}_seq", table_name.name, column_name);
-
-                    println!(
-                        "serial_schema_name: {:?} {:?} {:?} {:?}",
-                        table_name.schema, sequence_schema, serial_sequence_name, sequence_name
+                    let serial_sequence_name = PhysicalTableName::new(
+                        format!("{}_{}_seq", table_name.name, column_name),
+                        table_name.schema.as_deref(),
                     );
-                    if (table_name.schema.as_ref() == Some(&sequence_schema)
-                        || (table_name.schema.is_none() && sequence_schema == "public"))
-                        && serial_sequence_name == sequence_name
-                    {
+                    let from_db_sequence_name =
+                        PhysicalTableName::new_with_schema_name(sequence_name, sequence_schema);
+
+                    if serial_sequence_name == from_db_sequence_name {
                         ColumnAutoincrement::Serial
                     } else {
                         ColumnAutoincrement::Sequence {
-                            sequence_schema,
-                            sequence_name: serial_sequence_name,
+                            name: from_db_sequence_name,
                         }
                     }
                 };
@@ -643,15 +646,8 @@ pub struct ColumnAttribute {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
 pub enum ColumnAutoincrement {
     Serial, // Maps to `SERIAL` in postgres (sequence is `{schema}.{table}_{column}_id_seq`)
-    Sequence {
-        sequence_schema: String,
-        sequence_name: String,
-    },
-    Identity {
-        sequence_schema: String,
-        sequence_name: String,
-        generation: IdentityGeneration,
-    },
+    Sequence { name: PhysicalTableName },
+    Identity { generation: IdentityGeneration },
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
@@ -840,7 +836,10 @@ impl ColumnTypeSpec {
         match self {
             Self::Int { bits } => SchemaStatement {
                 statement: {
-                    if matches!(default_value, Some(ColumnDefault::Autoincrement(_))) {
+                    if matches!(
+                        default_value,
+                        Some(ColumnDefault::Autoincrement(ColumnAutoincrement::Serial))
+                    ) {
                         match bits {
                             IntBits::_16 => "SMALLSERIAL",
                             IntBits::_32 => "SERIAL",

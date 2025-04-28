@@ -350,7 +350,7 @@ fn resolve_field_default_type(
 
     match &default_value.kind {
         AstFieldDefaultKind::Value(expr) => ResolvedFieldDefault::Value(Box::new(expr.to_owned())),
-        AstFieldDefaultKind::Function(fn_name, _args) => match fn_name.as_str() {
+        AstFieldDefaultKind::Function(fn_name, args) => match fn_name.as_str() {
             DEFAULT_FN_AUTO_INCREMENT => {
                 match field_underlying_type {
                     "Int" => {}
@@ -370,7 +370,52 @@ fn resolve_field_default_type(
                     }
                 }
 
-                ResolvedFieldDefault::AutoIncrement
+                match &args[..] {
+                    [] => ResolvedFieldDefault::AutoIncrement(None),
+                    [AstExpr::StringLiteral(sequence_name, _)] => {
+                        // Split the sequence name by '.' and use the last part as the sequence name
+                        match sequence_name.split('.').collect::<Vec<&str>>()[..] {
+                            [schema, name] => ResolvedFieldDefault::AutoIncrement(Some(
+                                PhysicalTableName::new(name.to_string(), Some(schema)),
+                            )),
+                            [name] => ResolvedFieldDefault::AutoIncrement(Some(
+                                PhysicalTableName::new(name.to_string(), None),
+                            )),
+                            _ => {
+                                errors.push(Diagnostic {
+                                    level: Level::Error,
+                                    message: format!(
+                                        "{}() can have arguments of the form 'schema.name' or 'name'",
+                                        DEFAULT_FN_AUTO_INCREMENT
+                                    ),
+                                    code: Some("C000".to_string()),
+                                    spans: vec![SpanLabel {
+                                        span: default_value.span,
+                                        style: SpanStyle::Primary,
+                                        label: None,
+                                    }],
+                                });
+                                ResolvedFieldDefault::AutoIncrement(None)
+                            }
+                        }
+                    }
+                    _ => {
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: format!(
+                                "{}() can only have 0 (for default serial) or 1 argument (for a custom sequence name like 'schema.name')",
+                                DEFAULT_FN_AUTO_INCREMENT
+                            ),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: default_value.span,
+                                style: SpanStyle::Primary,
+                                label: None,
+                            }],
+                        });
+                        ResolvedFieldDefault::AutoIncrement(None)
+                    }
+                }
             }
             DEFAULT_FN_CURRENT_TIME => {
                 match field_underlying_type {

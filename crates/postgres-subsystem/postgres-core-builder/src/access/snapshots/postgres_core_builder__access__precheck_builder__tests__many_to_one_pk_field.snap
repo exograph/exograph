@@ -33,7 +33,7 @@ Path:
       Normal:
         - - assignee
           - id
-        - AutoIncrement
+        - AutoIncrement: ~
   - Plain:
       type_id:
         Primitive:

@@ -161,7 +161,7 @@ mod tests {
     }
 
     async fn single_test(
-        _test_name: String,
+        test_name: String,
         test_path: PathBuf,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let schema = read_relative_file(&test_path, "schema.sql").unwrap();
@@ -173,7 +173,7 @@ mod tests {
                 .unwrap();
 
             let output = String::from_utf8(writer.into_inner().unwrap()).unwrap();
-            assert_file_content(&test_path, "index.expected.exo", &output);
+            assert_file_content(&test_path, "index.expected.exo", &output, &test_name);
 
             let expected_model_file = test_path.join("index.expected.exo");
 

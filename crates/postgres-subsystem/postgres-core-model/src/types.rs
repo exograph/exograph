@@ -21,7 +21,7 @@ use core_model::{
 
 use crate::access::Access;
 
-use exo_sql::PhysicalTable;
+use exo_sql::{PhysicalTable, PhysicalTableName};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
@@ -153,7 +153,7 @@ pub enum PostgresFieldDefaultValue {
     Static(Val),
     Dynamic(ContextSelection),
     Function(String), // Postgres function name such as `now()`
-    AutoIncrement,
+    AutoIncrement(Option<PhysicalTableName>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

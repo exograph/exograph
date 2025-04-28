@@ -8,8 +8,9 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    database_error::DatabaseError, schema::column_spec::ColumnDefault, Database, ManyToOneId,
-    OneToManyId, PhysicalTableName, TableId,
+    database_error::DatabaseError,
+    schema::column_spec::{ColumnAutoincrement, ColumnDefault},
+    Database, ManyToOneId, OneToManyId, PhysicalTableName, TableId,
 };
 
 use super::{ExpressionBuilder, SQLBuilder};
@@ -60,6 +61,15 @@ impl std::fmt::Debug for PhysicalColumn {
 impl PhysicalColumn {
     pub fn get_table_name(&self, database: &Database) -> PhysicalTableName {
         database.get_table(self.table_id).name.clone()
+    }
+
+    pub fn get_sequence_name(&self) -> Option<PhysicalTableName> {
+        match &self.default_value {
+            Some(ColumnDefault::Autoincrement(ColumnAutoincrement::Sequence { name })) => {
+                Some(name.clone())
+            }
+            _ => None,
+        }
     }
 }
 

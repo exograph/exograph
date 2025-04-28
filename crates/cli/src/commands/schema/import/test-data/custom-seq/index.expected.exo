@@ -2,21 +2,16 @@
 module Database {
   @access(query=true, mutation=false)
   type Todo {
-    @pk id: Int = autoIncrement()
+    @pk id: Int = autoIncrement("public.my_sequence")
     title: String
     completed: Boolean
-    priority: Int = 0
     user: User
   }
 
   @access(query=true, mutation=false)
   type User {
-    @pk id: Int = autoIncrement()
-    @unique email: String
-    firstName: String
-    lastName: String
-    profileImageUrl: String
-    role: String = "user"
+    @pk id: Int = autoIncrement("public.my_sequence")
+    name: String
     todos: Set<Todo>
   }
 }

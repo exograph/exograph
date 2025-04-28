@@ -9,7 +9,10 @@
 
 use std::collections::HashSet;
 
-use crate::schema::{constraint::sorted_comma_list, index_spec::IndexSpec};
+use crate::{
+    schema::{constraint::sorted_comma_list, index_spec::IndexSpec},
+    PhysicalTableName,
+};
 
 use super::{
     column_spec::{ColumnReferenceSpec, ColumnSpec},
@@ -28,6 +31,13 @@ pub enum SchemaOp<'a> {
     },
     DeleteSchema {
         schema: String,
+    },
+
+    CreateSequence {
+        sequence: PhysicalTableName,
+    },
+    DeleteSequence {
+        sequence: PhysicalTableName,
     },
 
     CreateTable {
@@ -133,6 +143,15 @@ impl SchemaOp<'_> {
             },
             SchemaOp::DeleteSchema { schema } => SchemaStatement {
                 statement: format!("DROP SCHEMA IF EXISTS \"{schema}\" CASCADE;"),
+                ..Default::default()
+            },
+
+            SchemaOp::CreateSequence { sequence } => SchemaStatement {
+                statement: format!("CREATE SEQUENCE IF NOT EXISTS \"{}\";", sequence.name),
+                ..Default::default()
+            },
+            SchemaOp::DeleteSequence { sequence } => SchemaStatement {
+                statement: format!("DROP SEQUENCE IF EXISTS \"{}\";", sequence.name),
                 ..Default::default()
             },
 
@@ -335,6 +354,9 @@ impl SchemaOp<'_> {
         match self {
             SchemaOp::CreateSchema { schema } => Some(format!("The schema `{schema}` exists in the model, but does not exist in the database.")),
             SchemaOp::DeleteSchema { .. } => None, // An extra schema in the database is not a problem
+
+            SchemaOp::CreateSequence { sequence } => Some(format!("The sequence `{}` exists in the model, but does not exist in the database.", sequence.name)),
+            SchemaOp::DeleteSequence { .. } => None, // An extra sequence in the database is not a problem
 
             SchemaOp::CreateTable { table } => Some(format!("The table `{}` exists in the model, but does not exist in the database.", table.sql_name())),
             SchemaOp::DeleteTable { .. } => None, // An extra table in the database is not a problem

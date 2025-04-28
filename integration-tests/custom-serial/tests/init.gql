@@ -1,0 +1,15 @@
+operation: |
+    mutation {
+        u1: createUser(data: {name: "U1", todos: [{title: "U1-T1", completed: true}, {title: "U1-T2", completed: false}]}) {
+            id @bind(name: "u1id")
+            todos {
+                id @bind(name: "u1todoIds")
+            }
+        }
+        u2: createUser(data: {name: "U2", todos: [{title: "U2-T1", completed: true}, {title: "U2-T2", completed: false}]}) {
+            id @bind(name: "u2id")
+            todos {
+                id @bind(name: "u2todoIds")
+            }
+        }
+    }

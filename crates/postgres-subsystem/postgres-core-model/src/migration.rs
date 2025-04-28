@@ -79,10 +79,12 @@ impl Migration {
                 | SchemaOp::DeleteTable { .. }
                 | SchemaOp::DeleteColumn { .. }
                 | SchemaOp::RemoveExtension { .. }
-                | SchemaOp::DeleteEnum { .. } => true,
+                | SchemaOp::DeleteEnum { .. }
+                | SchemaOp::DeleteSequence { .. } => true,
 
                 // Explicitly matching the other cases here to ensure that we have thought about each case
                 SchemaOp::CreateSchema { .. }
+                | SchemaOp::CreateSequence { .. }
                 | SchemaOp::CreateTable { .. }
                 | SchemaOp::CreateEnum { .. }
                 | SchemaOp::CreateColumn { .. }

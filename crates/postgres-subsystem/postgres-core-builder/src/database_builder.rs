@@ -265,8 +265,13 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
                     Some(ColumnDefault::Function(string.to_string()))
                 }
             }
-            ResolvedFieldDefault::AutoIncrement => {
-                Some(ColumnDefault::Autoincrement(ColumnAutoincrement::Serial))
+            ResolvedFieldDefault::AutoIncrement(value) => {
+                Some(ColumnDefault::Autoincrement(match value {
+                    Some(sequence_name) => ColumnAutoincrement::Sequence {
+                        name: sequence_name.clone(),
+                    },
+                    None => ColumnAutoincrement::Serial,
+                }))
             }
         })
 }
