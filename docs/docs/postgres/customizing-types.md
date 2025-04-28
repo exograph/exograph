@@ -244,6 +244,36 @@ type Concert {
 
 With this arrangement, clients cannot specify the value of the `id` field when creating a concert. Exograph will automatically assign a value to the `id` field.
 
+When you use the `autoIncrement()` function without an argument, Exograph will use the sequence named `{schema}.{table}_{column}_id_seq` by default (which is how Postgres handles `SERIAL` types). You can customize the sequence name using the `@autoIncrement` annotation. For example, if you want to use the sequence named `my_sequence` for the `id` field, you can use the following definition:
+
+```exo
+type Concert {
+  @pk id: Int = autoIncrement("my_sequence")
+  ...
+}
+
+type Venue {
+  @pk id: Int = autoIncrement("my_sequence")
+  ...
+}
+```
+
+If you want to use sequence from a specific schema, you can use the `@autoIncrement` annotation. For example, if you want to use the sequence named `my_sequence` from the `my_schema` schema, you can use the following definition:
+
+```exo
+type Concert {
+  @pk id: Int = autoIncrement("my_schema.my_sequence")
+  ...
+}
+
+type Venue {
+  @pk id: Int = autoIncrement("my_schema.my_sequence")
+  ...
+}
+```
+
+In either case, both the `Concert` and `Venue` types will use the the specified sequence to generate the primary key values. This kind of arrangement is useful when you want to address multiple entities just by their id (akin to how Github uses ids for issues, pull requests, etc.).
+
 #### Auto-generated Uuid key
 
 To use the primary key of Uuid type, specify the field's type to be `Uuid` type with the default value of `generate_uuid()`. In the following example, the `id` field is the primary key, and it will be automatically assigned a value when you create a new concert. Behind the scenes, Exograph will use the `UUID` type in PostgreSQL.

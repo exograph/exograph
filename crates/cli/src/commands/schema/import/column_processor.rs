@@ -93,13 +93,7 @@ impl ModelProcessor<TableSpec> for ColumnSpec {
             write!(writer, "?")?;
         }
 
-        if self.is_auto_increment {
-            write!(writer, " = autoIncrement()")?
-        } else if let Some(default_value) = &self
-            .default_value
-            .as_ref()
-            .map(|default_value| default_value.to_model())
-        {
+        if let Some(default_value) = self.default_value.as_ref().and_then(|v| v.to_model()) {
             write!(writer, " = {default_value}")?;
         }
 

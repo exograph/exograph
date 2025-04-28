@@ -1,17 +1,17 @@
 @postgres
 module Database {
   @access(query=true, mutation=false)
+  type Concert {
+    @pk @maxLength(10) concertId: String
+    @maxLength(20) concertName: String
+    @column("venue_id") venue: Venue
+  }
+
+  @access(query=true, mutation=false)
   @table(name="venue")
   type Venue {
     @pk @bits16 venueId: Int
     @maxLength(20) venueName: String
     concerts: Set<Concert>
-  }
-
-  @access(query=true, mutation=false)
-  type Concert {
-    @pk @maxLength(10) concertId: String
-    @maxLength(20) concertName: String
-    @column("venue_id") venue: Venue
   }
 }

@@ -2,7 +2,9 @@
 
 use crate::PhysicalTableName;
 
-use super::column_spec::{ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec};
+use super::column_spec::{
+    ColumnAutoincrement, ColumnDefault, ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec,
+};
 
 pub fn pk_column(name: impl Into<String>) -> ColumnSpec {
     ColumnSpec {
@@ -11,10 +13,9 @@ pub fn pk_column(name: impl Into<String>) -> ColumnSpec {
             bits: crate::IntBits::_16,
         },
         is_pk: true,
-        is_auto_increment: true,
         is_nullable: false,
         unique_constraints: vec![],
-        default_value: None,
+        default_value: Some(ColumnDefault::Autoincrement(ColumnAutoincrement::Serial)),
         group_name: None,
     }
 }
@@ -37,7 +38,6 @@ pub fn pk_reference_column(
             }),
         }),
         is_pk: false,
-        is_auto_increment: false,
         is_nullable: false,
         unique_constraints: vec![],
         default_value: None,
@@ -52,7 +52,6 @@ pub fn int_column(name: impl Into<String>) -> ColumnSpec {
             bits: crate::IntBits::_16,
         },
         is_pk: false,
-        is_auto_increment: false,
         is_nullable: false,
         unique_constraints: vec![],
         default_value: None,
@@ -65,7 +64,6 @@ pub fn string_column(name: impl Into<String>) -> ColumnSpec {
         name: name.into(),
         typ: ColumnTypeSpec::String { max_length: None },
         is_pk: false,
-        is_auto_increment: false,
         is_nullable: false,
         unique_constraints: vec![],
         default_value: None,
@@ -78,7 +76,6 @@ pub fn json_column(name: impl Into<String>) -> ColumnSpec {
         name: name.into(),
         typ: ColumnTypeSpec::Json,
         is_pk: false,
-        is_auto_increment: false,
         is_nullable: false,
         unique_constraints: vec![],
         default_value: None,

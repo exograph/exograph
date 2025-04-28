@@ -787,7 +787,7 @@ async fn resolve_value<'a>(
                 Ok(value.map(|v| v.into()))
             }
             PostgresFieldDefaultValue::Function(_) => Ok(None),
-            PostgresFieldDefaultValue::AutoIncrement => Ok(None),
+            PostgresFieldDefaultValue::AutoIncrement(_) => Ok(None),
         },
         _ => Ok(None),
     }

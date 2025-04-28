@@ -1,0 +1,17 @@
+@postgres
+module Database {
+  @access(true)
+  type Todo {
+    @pk id: Int = autoIncrement("my_sequence")
+    title: String
+    completed: Boolean
+    user: User
+  }
+
+  @access(true)
+  type User {
+    @pk id: Int = autoIncrement("my_sequence")
+    name: String
+    todos: Set<Todo>
+  }
+}

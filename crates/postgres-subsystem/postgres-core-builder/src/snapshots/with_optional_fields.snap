@@ -64,7 +64,8 @@ values:
             unique_constraints: []
             indices: []
             cardinality: ~
-            default_value: AutoIncrement
+            default_value:
+              AutoIncrement: ~
             update_sync: false
             readonly: false
             doc_comments: ~
@@ -187,7 +188,8 @@ values:
             unique_constraints: []
             indices: []
             cardinality: ~
-            default_value: AutoIncrement
+            default_value:
+              AutoIncrement: ~
             update_sync: false
             readonly: false
             doc_comments: ~

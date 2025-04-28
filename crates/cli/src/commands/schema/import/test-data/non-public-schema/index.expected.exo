@@ -1,5 +1,5 @@
-@postgres
-module Database {
+@postgres(schema="t")
+module TDatabase {
   @access(query=true, mutation=false)
   type Todo {
     @pk id: Int = autoIncrement()
@@ -8,7 +8,10 @@ module Database {
     priority: Int = 0
     user: User
   }
+}
 
+@postgres(schema="u")
+module UDatabase {
   @access(query=true, mutation=false)
   type User {
     @pk id: Int = autoIncrement()

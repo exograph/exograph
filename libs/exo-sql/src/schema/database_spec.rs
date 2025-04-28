@@ -17,7 +17,7 @@ use crate::{
 };
 
 use super::{
-    column_spec::{ColumnReferenceSpec, ColumnTypeSpec},
+    column_spec::{ColumnAutoincrement, ColumnDefault, ColumnReferenceSpec, ColumnTypeSpec},
     enum_spec::EnumSpec,
     function_spec::FunctionSpec,
     index_spec::IndexSpec,
@@ -28,16 +28,19 @@ use super::{
 };
 
 const SCHEMAS_QUERY: &str =
-    "SELECT schema_name FROM information_schema.schemata WHERE schema_name != 'information_schema' AND schema_name NOT LIKE 'pg_%'";
+    "SELECT schema_name FROM information_schema.schemata WHERE schema_name != 'information_schema' AND schema_name NOT LIKE 'pg_%' ORDER BY schema_name";
 
 const TABLE_NAMES_QUERY: &str =
-    "SELECT table_name FROM information_schema.tables WHERE table_schema = $1";
+    "SELECT table_name FROM information_schema.tables WHERE table_schema = $1 ORDER BY table_name";
 
 const ENUM_NAMES_QUERY: &str = "SELECT t.typname AS enum_name FROM pg_type t JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace 
-  WHERE t.typtype = 'e'  AND n.nspname = $1;";
+  WHERE t.typtype = 'e'  AND n.nspname = $1 ORDER BY enum_name";
 
 const MATERIALIZED_VIEWS_QUERY: &str =
-    "SELECT matviewname as view_name FROM pg_matviews WHERE schemaname = $1";
+    "SELECT matviewname as view_name FROM pg_matviews WHERE schemaname = $1 ORDER BY view_name";
+
+const SEQUENCE_NAMES_QUERY: &str =
+    "SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = $1 ORDER BY sequence_name";
 
 #[derive(Debug)]
 pub struct DatabaseSpec {
@@ -61,6 +64,25 @@ impl DatabaseSpec {
             .iter()
             .filter(|table| scope.matches(&table.name) && table.managed)
             .flat_map(|table| table.name.schema.clone())
+            .collect()
+    }
+
+    // Explicitly required sequences for this database spec.
+    pub fn required_sequences(&self, scope: &MigrationScopeMatches) -> HashSet<PhysicalTableName> {
+        self.tables
+            .iter()
+            .filter(|table| scope.matches(&table.name) && table.managed)
+            .flat_map(|table| {
+                table
+                    .columns
+                    .iter()
+                    .flat_map(|column| match &column.default_value {
+                        Some(ColumnDefault::Autoincrement(ColumnAutoincrement::Sequence {
+                            name,
+                        })) => Some(name.clone()),
+                        _ => None,
+                    })
+            })
             .collect()
     }
 
@@ -102,7 +124,6 @@ impl DatabaseSpec {
                     name: column_spec.name.to_owned(),
                     typ: column_spec.typ.to_database_type(),
                     is_pk: column_spec.is_pk,
-                    is_auto_increment: column_spec.is_auto_increment,
                     is_nullable: column_spec.is_nullable,
                     unique_constraints: column_spec.unique_constraints.to_owned(),
                     default_value: column_spec.default_value.to_owned(),
@@ -240,6 +261,7 @@ impl DatabaseSpec {
         let mut issues = Vec::new();
         let mut tables = Vec::new();
         let mut enums = Vec::new();
+        let mut sequences = Vec::new();
 
         let schemas: Vec<String> = client
             .query(SCHEMAS_QUERY, &[])
@@ -306,6 +328,18 @@ impl DatabaseSpec {
                 issues.append(&mut table.issues);
                 tables.push(table.value);
             }
+
+            for sequence_row in client
+                .query(SEQUENCE_NAMES_QUERY, &[&schema_name])
+                .await
+                .map_err(DatabaseError::Delegate)?
+            {
+                let sequence_name: String = sequence_row.get("sequence_name");
+                sequences.push(PhysicalTableName::new_with_schema_name(
+                    sequence_name,
+                    &schema_name,
+                ));
+            }
         }
 
         let WithIssues {
@@ -340,7 +374,7 @@ impl DatabaseSpec {
                     format!(
                         "NEW.{} = {}",
                         column.name,
-                        column.default_value.clone().unwrap().to_sql()
+                        column.default_value.clone().unwrap().to_sql().unwrap()
                     )
                 })
                 .collect::<Vec<_>>()
@@ -374,6 +408,7 @@ impl DatabaseSpec {
 
 #[cfg(all(test, not(target_family = "wasm")))]
 mod tests {
+    use crate::schema::column_spec::{ColumnAutoincrement, ColumnDefault};
     use crate::testing::test_support::*;
 
     use crate::IntBits;
@@ -400,10 +435,11 @@ mod tests {
                             name: "id".into(),
                             typ: ColumnTypeSpec::Int { bits: IntBits::_32 },
                             is_pk: true,
-                            is_auto_increment: true,
                             is_nullable: false,
                             unique_constraints: vec![],
-                            default_value: None,
+                            default_value: Some(ColumnDefault::Autoincrement(
+                                ColumnAutoincrement::Serial,
+                            )),
                             group_name: None,
                         },
                         ColumnSpec {
@@ -412,7 +448,6 @@ mod tests {
                                 max_length: Some(255),
                             },
                             is_pk: false,
-                            is_auto_increment: false,
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
@@ -422,7 +457,6 @@ mod tests {
                             name: "email".into(),
                             typ: ColumnTypeSpec::String { max_length: None },
                             is_pk: false,
-                            is_auto_increment: false,
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
@@ -454,7 +488,6 @@ mod tests {
                         name: "complete".into(),
                         typ: ColumnTypeSpec::Boolean,
                         is_pk: false,
-                        is_auto_increment: false,
                         is_nullable: true,
                         unique_constraints: vec![],
                         default_value: None,
@@ -490,7 +523,6 @@ mod tests {
                                 scale: Some(2),
                             },
                             is_pk: false,
-                            is_auto_increment: false,
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
@@ -503,7 +535,6 @@ mod tests {
                                 scale: Some(0), // Default scale for NUMERIC is 0 (https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-NUMERIC-DECIMAL)
                             },
                             is_pk: false,
-                            is_auto_increment: false,
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
@@ -516,7 +547,6 @@ mod tests {
                                 scale: None,
                             },
                             is_pk: false,
-                            is_auto_increment: false,
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
@@ -602,7 +632,6 @@ mod tests {
         assert_eq!(actual.name, expected.name);
         assert_eq!(actual.typ, expected.typ);
         assert_eq!(actual.is_pk, expected.is_pk);
-        assert_eq!(actual.is_auto_increment, expected.is_auto_increment);
         assert_eq!(actual.is_nullable, expected.is_nullable);
         assert_eq!(actual.unique_constraints, expected.unique_constraints);
         assert_eq!(actual.default_value, expected.default_value);

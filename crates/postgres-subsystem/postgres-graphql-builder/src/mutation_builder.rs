@@ -305,7 +305,11 @@ pub trait DataParamBuilder<D> {
                     // https://github.com/exograph/exograph/issues/926)
                     let column = column_id.get_column(&building.core_subsystem.database);
 
-                    if column.is_auto_increment {
+                    if column
+                        .default_value
+                        .as_ref()
+                        .map_or(false, |default_value| default_value.is_autoincrement())
+                    {
                         None
                     } else {
                         let base_mutation_type =

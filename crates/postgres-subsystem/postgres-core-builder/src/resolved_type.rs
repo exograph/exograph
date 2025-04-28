@@ -106,7 +106,7 @@ impl ResolvedField {
     pub fn get_is_auto_increment(&self) -> bool {
         matches!(
             &self.default_value,
-            Some(ResolvedFieldDefault::AutoIncrement)
+            Some(ResolvedFieldDefault::AutoIncrement(_))
         )
     }
 
@@ -197,7 +197,7 @@ impl ResolvedCompositeType {
 pub enum ResolvedFieldDefault {
     Value(Box<AstExpr<Typed>>),
     PostgresFunction(String),
-    AutoIncrement,
+    AutoIncrement(Option<PhysicalTableName>),
 }
 
 impl ResolvedType {

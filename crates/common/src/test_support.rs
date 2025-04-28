@@ -53,7 +53,10 @@ where
     }
 
     if failed {
-        panic!("{}", "Some tests failed".red());
+        panic!(
+            "{} (filter: '{filter_env_var}' set to '{filter}')",
+            "Some tests failed".red()
+        );
     } else {
         Ok(())
     }
@@ -84,7 +87,7 @@ pub fn read_relative_file(test_path: &PathBuf, path: &str) -> Result<String, std
     std::fs::read_to_string(test_path.join(path))
 }
 
-pub fn assert_file_content(test_path: &PathBuf, path: &str, actual_content: &str) {
+pub fn assert_file_content(test_path: &PathBuf, path: &str, actual_content: &str, test_name: &str) {
     let expected_content = read_relative_file(test_path, path).unwrap();
     let expected_content = expected_content.trim();
 
@@ -98,13 +101,13 @@ pub fn assert_file_content(test_path: &PathBuf, path: &str, actual_content: &str
             format!("{}.actual.{}", file_name, extension)
         }
     };
-    let actual_file = test_path.join(actual_file_name);
+    let actual_file = test_path.join(&actual_file_name);
 
     let actual_content = actual_content.trim();
 
     if !compare_strings_ignoring_whitespace(actual_content, &expected_content) {
         std::fs::write(actual_file, actual_content).unwrap();
-        panic!("{}", "File content mismatch".red());
+        panic!("{}: {}", "File content mismatch".red(), test_name);
     } else {
         if actual_file.exists() {
             std::fs::remove_file(actual_file).unwrap();

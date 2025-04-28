@@ -8,8 +8,9 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    database_error::DatabaseError, schema::column_spec::ColumnDefault, Database, ManyToOneId,
-    OneToManyId, PhysicalTableName, TableId,
+    database_error::DatabaseError,
+    schema::column_spec::{ColumnAutoincrement, ColumnDefault},
+    Database, ManyToOneId, OneToManyId, PhysicalTableName, TableId,
 };
 
 use super::{ExpressionBuilder, SQLBuilder};
@@ -28,8 +29,6 @@ pub struct PhysicalColumn {
     pub typ: PhysicalColumnType,
     /// Is this column a part of the PK for the table
     pub is_pk: bool,
-    /// Is this column an auto-incrementing column (TODO: temporarily keeping it here until we revamp how we represent types and column attributes)
-    pub is_auto_increment: bool,
     /// should this type have a NOT NULL constraint or not?
     pub is_nullable: bool,
 
@@ -62,6 +61,15 @@ impl std::fmt::Debug for PhysicalColumn {
 impl PhysicalColumn {
     pub fn get_table_name(&self, database: &Database) -> PhysicalTableName {
         database.get_table(self.table_id).name.clone()
+    }
+
+    pub fn get_sequence_name(&self) -> Option<PhysicalTableName> {
+        match &self.default_value {
+            Some(ColumnDefault::Autoincrement(ColumnAutoincrement::Sequence { name })) => {
+                Some(name.clone())
+            }
+            _ => None,
+        }
     }
 }
 

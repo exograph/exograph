@@ -1,0 +1,51 @@
+operation: |
+  query {
+      users {
+          id
+          name
+          todos {
+            id
+            title
+            completed
+          }
+      }
+  }
+response: |
+  {
+    "data": {
+      "users": [
+        {
+          "id": $.u1id,
+          "name": "U1",
+          "todos": [
+            {
+              "id": $.u1todoIds[0],
+              "title": "U1-T1",
+              "completed": true
+            },
+            {
+              "id": $.u1todoIds[1],
+              "title": "U1-T2",
+              "completed": false
+            }
+          ]
+        },
+        {
+          "id": $.u2id,
+          "name": "U2",
+          "todos": [
+            {
+              "id": $.u2todoIds[0],
+              "title": "U2-T1",
+              "completed": true
+            },
+            {
+              "id": $.u2todoIds[1],
+              "title": "U2-T2",
+              "completed": false
+            }
+          ]
+        }
+      ]
+    }
+  }

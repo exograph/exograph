@@ -12,7 +12,9 @@ impl ModelProcessor<()> for DatabaseSpec {
         context: &ImportContext,
         writer: &mut (dyn std::io::Write + Send),
     ) -> Result<()> {
-        for schema in &context.schemas {
+        let mut schemas = context.schemas.iter().collect::<Vec<_>>();
+        schemas.sort(); // Sort schemas to ensure consistent output
+        for schema in schemas {
             let schema = if schema == "public" {
                 None
             } else {

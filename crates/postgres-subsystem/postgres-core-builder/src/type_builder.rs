@@ -601,7 +601,9 @@ fn create_persistent_field(
             ResolvedFieldDefault::PostgresFunction(function) => {
                 Ok(PostgresFieldDefaultValue::Function(function.to_string()))
             }
-            ResolvedFieldDefault::AutoIncrement => Ok(PostgresFieldDefaultValue::AutoIncrement),
+            ResolvedFieldDefault::AutoIncrement(name) => {
+                Ok(PostgresFieldDefaultValue::AutoIncrement(name.to_owned()))
+            }
         })
         .transpose()?;
 

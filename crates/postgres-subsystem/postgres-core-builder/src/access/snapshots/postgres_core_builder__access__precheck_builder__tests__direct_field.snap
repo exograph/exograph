@@ -12,7 +12,7 @@ Path:
     field_path:
       Normal:
         - - id
-        - AutoIncrement
+        - AutoIncrement: ~
   - Plain:
       type_id:
         Primitive:

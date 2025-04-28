@@ -12,7 +12,7 @@ use std::collections::HashSet;
 use crate::naming::ToPlural;
 use crate::resolved_type::{
     ResolvedCompositeType, ResolvedEnumType, ResolvedField, ResolvedFieldDefault,
-    ResolvedFieldType, ResolvedFieldTypeHelper, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
+    ResolvedFieldType, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
 };
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
@@ -20,7 +20,7 @@ use core_model::{primitive_type::PrimitiveType, types::FieldType};
 use core_model_builder::ast::ast_types::{FieldSelection, FieldSelectionElement};
 use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError};
 
-use exo_sql::schema::column_spec::ColumnDefault;
+use exo_sql::schema::column_spec::{ColumnAutoincrement, ColumnDefault};
 use exo_sql::{
     schema::index_spec::IndexKind, ColumnId, FloatBits, IntBits, ManyToOne, PhysicalColumn,
     PhysicalColumnType, PhysicalIndex, PhysicalTable, TableId, VectorDistanceFunction,
@@ -265,7 +265,14 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
                     Some(ColumnDefault::Function(string.to_string()))
                 }
             }
-            ResolvedFieldDefault::AutoIncrement => None,
+            ResolvedFieldDefault::AutoIncrement(value) => {
+                Some(ColumnDefault::Autoincrement(match value {
+                    Some(sequence_name) => ColumnAutoincrement::Sequence {
+                        name: sequence_name.clone(),
+                    },
+                    None => ColumnAutoincrement::Serial,
+                }))
+            }
         })
 }
 
@@ -311,15 +318,6 @@ fn create_columns(
                         name: name.to_string(),
                         typ: determine_column_type(pt, field),
                         is_pk: field.is_pk,
-                        is_auto_increment: if field.get_is_auto_increment() {
-                            assert!(matches!(
-                                typ.deref(env),
-                                &ResolvedType::Primitive(PrimitiveType::Int)
-                            ));
-                            true
-                        } else {
-                            false
-                        },
                         is_nullable: optional,
                         unique_constraints: unique_constraint_name.clone(),
                         default_value: default_value.clone(),
@@ -346,7 +344,6 @@ fn create_columns(
                                     PhysicalColumnType::Boolean
                                 },
                                 is_pk: field.is_pk,
-                                is_auto_increment: false,
                                 is_nullable: optional,
                                 unique_constraints: unique_constraint_name.clone(),
                                 default_value: default_value.clone(),
@@ -366,7 +363,6 @@ fn create_columns(
                             enum_name: enum_type.enum_name.clone(),
                         },
                         is_pk: field.is_pk,
-                        is_auto_increment: false,
                         is_nullable: optional,
                         unique_constraints: unique_constraint_name.clone(),
                         default_value: default_value.clone(),
@@ -417,7 +413,6 @@ fn create_columns(
                         name: name.to_string(),
                         typ: determine_column_type(&pt, field),
                         is_pk: false,
-                        is_auto_increment: false,
                         is_nullable: optional,
                         unique_constraints: unique_constraint_name.clone(),
                         default_value: default_value.clone(),

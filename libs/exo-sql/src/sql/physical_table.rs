@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashSet;
+use std::{cmp::Ordering, collections::HashSet, hash::Hash};
 
 use crate::{schema::index_spec::IndexKind, Database};
 
@@ -19,7 +19,7 @@ use super::{
 use maybe_owned::MaybeOwned;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Serialize, Deserialize, Debug, Eq, Clone)]
 pub struct PhysicalTableName {
     /// The name of the table.
     pub name: String,
@@ -27,11 +27,47 @@ pub struct PhysicalTableName {
     pub schema: Option<String>,
 }
 
+impl PartialOrd for PhysicalTableName {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for PhysicalTableName {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (&self.name, self.schema.as_deref()).cmp(&(&other.name, other.schema.as_deref()))
+    }
+}
+
+impl PartialEq for PhysicalTableName {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && match (self.schema.as_deref(), other.schema.as_deref()) {
+                (Some(s1), Some(s2)) => s1 == s2,
+                (None, None) | (Some("public"), None) | (None, Some("public")) => true,
+                _ => false,
+            }
+    }
+}
+
+impl Hash for PhysicalTableName {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        match &self.schema {
+            Some(schema) if schema != "public" => schema.hash(state),
+            _ => (),
+        }
+    }
+}
+
 impl PhysicalTableName {
     pub fn new(name: impl Into<String>, schema: Option<&str>) -> Self {
         Self {
             name: name.into(),
-            schema: schema.map(Into::into),
+            schema: match schema {
+                Some(schema) if schema != "public" => Some(schema.to_string()),
+                _ => None,
+            },
         }
     }
 
@@ -40,10 +76,9 @@ impl PhysicalTableName {
 
         Self {
             name: name.into(),
-            schema: if &schema_name == "public" {
-                None
-            } else {
-                Some(schema_name)
+            schema: match schema_name.as_str() {
+                "public" => None,
+                _ => Some(schema_name),
             },
         }
     }
@@ -131,6 +166,13 @@ impl std::fmt::Debug for PhysicalTable {
 impl PhysicalTable {
     pub fn get_pk_physical_columns(&self) -> Vec<&PhysicalColumn> {
         self.columns.iter().filter(|column| column.is_pk).collect()
+    }
+
+    pub fn get_sequence_names(&self) -> Vec<PhysicalTableName> {
+        self.columns
+            .iter()
+            .flat_map(|column| column.get_sequence_name())
+            .collect()
     }
 
     pub fn insert<'a, C>(

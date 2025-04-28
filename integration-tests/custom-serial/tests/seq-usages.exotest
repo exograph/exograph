@@ -1,0 +1,37 @@
+deno: |
+  function monotonicallyIncreasing(data) {
+    // Since a single sequence drives all the ids, we can assert that the ids are monotonically increasing
+    let u1Id = data.users.find(user => user.name === "U1").id;
+    let u2Id = data.users.find(user => user.name === "U2").id;
+    
+    let u1Todos = data.users.find(user => user.name === "U1").todos;
+    let u2Todos = data.users.find(user => user.name === "U2").todos;
+
+    let u1Todo1Id = u1Todos[0].id;
+    let u1Todo2Id = u1Todos[1].id;
+    let u2Todo1Id = u2Todos[0].id;
+    let u2Todo2Id = u2Todos[1].id;
+
+    let insertionOrder = [u1Id,u1Todo1Id, u1Todo2Id, u2Id, u2Todo1Id, u2Todo2Id];
+    for (let i = 0; i < insertionOrder.length - 1; i++) {
+      if (insertionOrder[i] > insertionOrder[i + 1]) {
+        return false;
+      }
+    }
+    return true;
+  }
+operation: |
+  query {
+      users {
+          id
+          name
+          todos {
+            id
+            title
+          }
+      }
+  }
+response: |
+  {
+    "data": (data) => monotonicallyIncreasing(data)
+  }
