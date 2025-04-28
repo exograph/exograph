@@ -9,7 +9,7 @@
 
 use crate::database_error::DatabaseError;
 use crate::sql::connect::database_client::DatabaseClient;
-use crate::PhysicalTableName;
+use crate::SchemaObjectName;
 
 use super::issue::WithIssues;
 use super::op::SchemaOp;
@@ -20,12 +20,12 @@ const ENUM_VARIANTS_QUERY: &str = "SELECT e.enumlabel AS enum_value FROM pg_type
 
 #[derive(Debug)]
 pub struct EnumSpec {
-    pub name: PhysicalTableName,
+    pub name: SchemaObjectName,
     pub variants: Vec<String>,
 }
 
 impl EnumSpec {
-    pub fn new(name: PhysicalTableName, variants: Vec<String>) -> Self {
+    pub fn new(name: SchemaObjectName, variants: Vec<String>) -> Self {
         Self { name, variants }
     }
 
@@ -35,7 +35,7 @@ impl EnumSpec {
 
     pub(super) async fn from_live_db_enum(
         client: &DatabaseClient,
-        name: PhysicalTableName,
+        name: SchemaObjectName,
     ) -> Result<WithIssues<EnumSpec>, DatabaseError> {
         let mut variants = Vec::new();
 

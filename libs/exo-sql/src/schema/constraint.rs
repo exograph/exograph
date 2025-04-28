@@ -13,7 +13,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 use crate::{
-    database_error::DatabaseError, sql::connect::database_client::DatabaseClient, PhysicalTableName,
+    database_error::DatabaseError, sql::connect::database_client::DatabaseClient, SchemaObjectName,
 };
 
 pub(super) struct PrimaryKeyConstraint {
@@ -29,7 +29,7 @@ pub(super) struct ForeignKeyConstraintColumnPair {
 pub(super) struct ForeignKeyConstraint {
     pub(super) constraint_name: String,
     pub(super) column_pairs: Vec<ForeignKeyConstraintColumnPair>,
-    pub(super) foreign_table: PhysicalTableName,
+    pub(super) foreign_table: SchemaObjectName,
 }
 
 #[derive(Debug)]
@@ -74,7 +74,7 @@ WHERE
 impl Constraints {
     pub(super) async fn from_live_db(
         client: &DatabaseClient,
-        table_name: &PhysicalTableName,
+        table_name: &SchemaObjectName,
     ) -> Result<Constraints, DatabaseError> {
         // Get a list of constraints in the table (primary key and foreign key constraints)
         let constraints = client
@@ -119,7 +119,7 @@ impl Constraints {
             .iter()
             .filter(|(contype, _, _, _, _)| *contype == 'f')
             .map(|(_, conname, condef, foreign_table, foreign_schema)| {
-                let foreign_table = PhysicalTableName {
+                let foreign_table = SchemaObjectName {
                     name: foreign_table.clone().unwrap(),
                     schema: match foreign_schema {
                         Some(schema) if schema != "public" => Some(schema.to_string()),

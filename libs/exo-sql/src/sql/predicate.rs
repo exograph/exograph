@@ -322,7 +322,7 @@ mod tests {
     use crate::schema::table_spec::TableSpec;
     use crate::schema::test_helper::{int_column, json_column, pk_column, string_column};
     use crate::{schema::database_spec::DatabaseSpec, sql::SQLParamContainer};
-    use crate::{ColumnId, PhysicalTableName};
+    use crate::{ColumnId, SchemaObjectName};
     use multiplatform_test::multiplatform_test;
 
     use super::*;
@@ -343,7 +343,7 @@ mod tests {
     fn eq_predicate() {
         let database = DatabaseSpec::new(
             vec![TableSpec::new(
-                PhysicalTableName::new("people", None),
+                SchemaObjectName::new("people", None),
                 vec![pk_column("id"), int_column("age")],
                 vec![],
                 vec![],
@@ -355,7 +355,7 @@ mod tests {
         .to_database();
 
         let people_table_id = database
-            .get_table_id(&PhysicalTableName::new("people", None))
+            .get_table_id(&SchemaObjectName::new("people", None))
             .unwrap();
         let age_column_id = database.get_column_id(people_table_id, "age").unwrap();
 
@@ -371,7 +371,7 @@ mod tests {
     fn and_predicate() {
         let database = DatabaseSpec::new(
             vec![TableSpec::new(
-                PhysicalTableName::new("people", None),
+                SchemaObjectName::new("people", None),
                 vec![pk_column("id"), string_column("name"), int_column("age")],
                 vec![],
                 vec![],
@@ -383,7 +383,7 @@ mod tests {
         .to_database();
 
         let people_table_id = database
-            .get_table_id(&PhysicalTableName::new("people", None))
+            .get_table_id(&SchemaObjectName::new("people", None))
             .unwrap();
 
         let name_col_id = database.get_column_id(people_table_id, "name").unwrap();
@@ -411,7 +411,7 @@ mod tests {
     fn string_predicates() {
         let database = DatabaseSpec::new(
             vec![TableSpec::new(
-                PhysicalTableName::new("videos", None),
+                SchemaObjectName::new("videos", None),
                 vec![pk_column("id"), string_column("title")],
                 vec![],
                 vec![],
@@ -423,7 +423,7 @@ mod tests {
         .to_database();
 
         let table_id = database
-            .get_table_id(&PhysicalTableName::new("videos", None))
+            .get_table_id(&SchemaObjectName::new("videos", None))
             .unwrap();
 
         let title_col_id = database.get_column_id(table_id, "title").unwrap();
@@ -482,7 +482,7 @@ mod tests {
     fn json_predicates() {
         let database = DatabaseSpec::new(
             vec![TableSpec::new(
-                PhysicalTableName::new("card", None),
+                SchemaObjectName::new("card", None),
                 vec![pk_column("id"), json_column("data")],
                 vec![],
                 vec![],
@@ -494,7 +494,7 @@ mod tests {
         .to_database();
 
         let table_id = database
-            .get_table_id(&PhysicalTableName::new("card", None))
+            .get_table_id(&SchemaObjectName::new("card", None))
             .unwrap();
 
         let json_col_id = database.get_column_id(table_id, "data").unwrap();

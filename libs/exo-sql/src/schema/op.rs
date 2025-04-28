@@ -11,7 +11,7 @@ use std::collections::HashSet;
 
 use crate::{
     schema::{constraint::sorted_comma_list, index_spec::IndexSpec},
-    PhysicalTableName,
+    SchemaObjectName,
 };
 
 use super::{
@@ -34,10 +34,10 @@ pub enum SchemaOp<'a> {
     },
 
     CreateSequence {
-        sequence: PhysicalTableName,
+        sequence: SchemaObjectName,
     },
     DeleteSequence {
-        sequence: PhysicalTableName,
+        sequence: SchemaObjectName,
     },
 
     CreateTable {

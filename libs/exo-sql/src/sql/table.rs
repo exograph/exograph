@@ -10,8 +10,7 @@
 use crate::{Database, TableId};
 
 use super::{
-    join::LeftJoin, physical_table::PhysicalTableName, select::Select, ExpressionBuilder,
-    SQLBuilder,
+    join::LeftJoin, schema_object::SchemaObjectName, select::Select, ExpressionBuilder, SQLBuilder,
 };
 
 /// A table-like concept that can be used in in place of `SELECT FROM <table-query> ...`.
@@ -28,7 +27,7 @@ pub enum Table {
     SubSelect {
         select: Box<Select>,
         /// The alias of the sub-select (optional, since we need to alias the sub-select when used in a FROM clause)
-        alias: Option<(String, PhysicalTableName)>,
+        alias: Option<(String, SchemaObjectName)>,
     },
 }
 

@@ -105,7 +105,7 @@ mod tests {
             test_helper::{int_column, pk_column, string_column},
         },
         sql::json_object::{JsonObject, JsonObjectElement},
-        PhysicalTableName,
+        SchemaObjectName,
     };
 
     use multiplatform_test::multiplatform_test;
@@ -116,7 +116,7 @@ mod tests {
     fn json_object() {
         let database = DatabaseSpec::new(
             vec![TableSpec::new(
-                PhysicalTableName {
+                SchemaObjectName {
                     name: "people".to_owned(),
                     schema: None,
                 },
@@ -131,7 +131,7 @@ mod tests {
         .to_database();
 
         let table_id = database
-            .get_table_id(&PhysicalTableName::new("people", None))
+            .get_table_id(&SchemaObjectName::new("people", None))
             .unwrap();
         let age_col_id = database.get_column_id(table_id, "age").unwrap();
         let age_col2_id = database.get_column_id(table_id, "age").unwrap();

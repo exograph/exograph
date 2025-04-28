@@ -14,7 +14,7 @@ use std::{
 
 use wildmatch::WildMatch;
 
-use crate::PhysicalTableName;
+use crate::SchemaObjectName;
 
 use super::{database_spec::DatabaseSpec, op::SchemaOp};
 
@@ -38,7 +38,7 @@ impl MigrationScopeMatches {
         Self(vec![(NameMatching::new("*"), NameMatching::new("*"))])
     }
 
-    pub fn matches(&self, table_name: &PhysicalTableName) -> bool {
+    pub fn matches(&self, table_name: &SchemaObjectName) -> bool {
         self.0.iter().any(|(schema_pattern, table_pattern)| {
             schema_pattern.matches(&table_name.schema_name())
                 && table_pattern.matches(&table_name.name)

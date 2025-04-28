@@ -73,9 +73,10 @@ pub use sql::{
     offset::Offset,
     order::Ordering,
     physical_column::{ColumnId, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
-    physical_table::{PhysicalEnum, PhysicalIndex, PhysicalTable, PhysicalTableName},
+    physical_table::{PhysicalEnum, PhysicalIndex, PhysicalTable},
     predicate::{CaseSensitivity, NumericComparator, ParamEquality, Predicate},
     relation::{ManyToOne, ManyToOneId, OneToMany, OneToManyId, RelationColumnPair, RelationId},
+    schema_object::SchemaObjectName,
     vector::{VectorDistanceFunction, DEFAULT_VECTOR_SIZE},
     SQLBytes, SQLParam, SQLParamContainer,
 };

@@ -10,7 +10,7 @@
 use crate::Database;
 
 use super::{
-    physical_table::PhysicalTableName, select::Select, sql_operation::SQLOperation,
+    schema_object::SchemaObjectName, select::Select, sql_operation::SQLOperation,
     ExpressionBuilder, SQLBuilder,
 };
 
@@ -29,13 +29,13 @@ pub struct CteExpression<'a> {
     /// The name of the expression
     pub name: String,
     /// The name of the table that this operation stands for. This allows us to substitute the table name in the select statement of `WithQuery`.
-    pub table_name: Option<PhysicalTableName>,
+    pub table_name: Option<SchemaObjectName>,
     /// The SQL operation to be bound to the name
     pub operation: SQLOperation<'a>,
 }
 
 impl<'a> CteExpression<'a> {
-    pub fn new_auto_name(table_name: &PhysicalTableName, operation: SQLOperation<'a>) -> Self {
+    pub fn new_auto_name(table_name: &SchemaObjectName, operation: SQLOperation<'a>) -> Self {
         Self {
             name: table_name.synthetic_name(),
             table_name: Some(table_name.clone()),
