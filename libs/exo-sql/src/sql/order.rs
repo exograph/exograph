@@ -109,7 +109,7 @@ mod test {
     use super::*;
     use crate::schema::test_helper::{int_column, pk_column, string_column};
     use crate::schema::{database_spec::DatabaseSpec, table_spec::TableSpec};
-    use crate::PhysicalTableName;
+    use crate::SchemaObjectName;
 
     use multiplatform_test::multiplatform_test;
 
@@ -117,7 +117,7 @@ mod test {
     fn single() {
         let database = DatabaseSpec::new(
             vec![TableSpec::new(
-                PhysicalTableName::new("people", None),
+                SchemaObjectName::new("people", None),
                 vec![pk_column("id"), int_column("age")],
                 vec![],
                 vec![],
@@ -129,7 +129,7 @@ mod test {
         .to_database();
 
         let people_table_id = database
-            .get_table_id(&PhysicalTableName::new("people", None))
+            .get_table_id(&SchemaObjectName::new("people", None))
             .unwrap();
 
         let age_col = database.get_column_id(people_table_id, "age").unwrap();
@@ -146,7 +146,7 @@ mod test {
     fn multiple() {
         let database = DatabaseSpec::new(
             vec![TableSpec::new(
-                PhysicalTableName::new("people", None),
+                SchemaObjectName::new("people", None),
                 vec![pk_column("id"), string_column("name"), int_column("age")],
                 vec![],
                 vec![],
@@ -158,7 +158,7 @@ mod test {
         .to_database();
 
         let table_id = database
-            .get_table_id(&PhysicalTableName::new("people", None))
+            .get_table_id(&SchemaObjectName::new("people", None))
             .unwrap();
 
         let name_col = database.get_column_id(table_id, "name").unwrap();

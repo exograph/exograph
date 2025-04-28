@@ -9,8 +9,7 @@
 
 use crate::{
     sql::{
-        physical_table::PhysicalTableName, predicate::ConcretePredicate, select::Select,
-        table::Table,
+        predicate::ConcretePredicate, schema_object::SchemaObjectName, select::Select, table::Table,
     },
     transform::{
         join_util,
@@ -79,7 +78,7 @@ pub(super) fn nest_subselect(
     inner_select: Select,
     selection: Selection,
     selection_level: &SelectionLevel,
-    alias: (String, PhysicalTableName),
+    alias: (String, SchemaObjectName),
     transformer: &Postgres,
     database: &Database,
 ) -> Select {

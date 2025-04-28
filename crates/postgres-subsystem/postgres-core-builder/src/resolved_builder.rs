@@ -41,7 +41,7 @@ use core_model_builder::{
         Typed,
     },
 };
-use exo_sql::{PhysicalTableName, VectorDistanceFunction};
+use exo_sql::{SchemaObjectName, VectorDistanceFunction};
 
 use heck::ToSnakeCase;
 
@@ -137,7 +137,7 @@ fn resolve(
                     ResolvedType::Enum(ResolvedEnumType {
                         name: et.name.clone(),
                         fields: et.fields.iter().map(|f| f.name.clone()).collect(),
-                        enum_name: PhysicalTableName::new(
+                        enum_name: SchemaObjectName::new(
                             et.name.to_snake_case(),
                             module_schema_name.as_deref(),
                         ),
@@ -236,7 +236,7 @@ fn resolve_composite_type(
                 plural_name: plural_name.clone(),
                 representation,
                 fields: resolved_fields,
-                table_name: PhysicalTableName {
+                table_name: SchemaObjectName {
                     name: table_name,
                     schema: schema_name,
                 },
@@ -376,10 +376,10 @@ fn resolve_field_default_type(
                         // Split the sequence name by '.' and use the last part as the sequence name
                         match sequence_name.split('.').collect::<Vec<&str>>()[..] {
                             [schema, name] => ResolvedFieldDefault::AutoIncrement(Some(
-                                PhysicalTableName::new(name.to_string(), Some(schema)),
+                                SchemaObjectName::new(name.to_string(), Some(schema)),
                             )),
                             [name] => ResolvedFieldDefault::AutoIncrement(Some(
-                                PhysicalTableName::new(name.to_string(), None),
+                                SchemaObjectName::new(name.to_string(), None),
                             )),
                             _ => {
                                 errors.push(Diagnostic {

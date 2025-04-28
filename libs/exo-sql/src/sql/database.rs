@@ -9,7 +9,7 @@
 
 use std::fmt::{Debug, Formatter};
 
-use crate::{ColumnId, ManyToOne, PhysicalColumn, PhysicalTable, PhysicalTableName};
+use crate::{ColumnId, ManyToOne, PhysicalColumn, PhysicalTable, SchemaObjectName};
 
 use serde::{Deserialize, Serialize};
 use typed_generational_arena::{Arena, IgnoreGeneration, Index};
@@ -65,7 +65,7 @@ impl Database {
         self.enums.insert(enum_)
     }
 
-    pub fn get_table_id(&self, table_name: &PhysicalTableName) -> Option<TableId> {
+    pub fn get_table_id(&self, table_name: &SchemaObjectName) -> Option<TableId> {
         self.tables.iter().find_map(|(id, table)| {
             if &table.name == table_name {
                 Some(id)
@@ -75,7 +75,7 @@ impl Database {
         })
     }
 
-    pub fn get_enum_id(&self, enum_name: &PhysicalTableName) -> Option<EnumId> {
+    pub fn get_enum_id(&self, enum_name: &SchemaObjectName) -> Option<EnumId> {
         self.enums.iter().find_map(|(id, enum_)| {
             if &enum_.name == enum_name {
                 Some(id)

@@ -10,7 +10,7 @@
 use crate::{
     database_error::DatabaseError,
     schema::column_spec::{ColumnAutoincrement, ColumnDefault},
-    Database, ManyToOneId, OneToManyId, PhysicalTableName, TableId,
+    Database, ManyToOneId, OneToManyId, SchemaObjectName, TableId,
 };
 
 use super::{ExpressionBuilder, SQLBuilder};
@@ -59,11 +59,11 @@ impl std::fmt::Debug for PhysicalColumn {
 }
 
 impl PhysicalColumn {
-    pub fn get_table_name(&self, database: &Database) -> PhysicalTableName {
+    pub fn get_table_name(&self, database: &Database) -> SchemaObjectName {
         database.get_table(self.table_id).name.clone()
     }
 
-    pub fn get_sequence_name(&self) -> Option<PhysicalTableName> {
+    pub fn get_sequence_name(&self) -> Option<SchemaObjectName> {
         match &self.default_value {
             Some(ColumnDefault::Autoincrement(ColumnAutoincrement::Sequence { name })) => {
                 Some(name.clone())
@@ -117,7 +117,7 @@ pub enum PhysicalColumnType {
         scale: Option<usize>,
     },
     Enum {
-        enum_name: PhysicalTableName,
+        enum_name: SchemaObjectName,
     },
 }
 

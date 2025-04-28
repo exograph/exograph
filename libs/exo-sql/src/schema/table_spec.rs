@@ -12,7 +12,7 @@ use std::collections::{HashMap, HashSet};
 use crate::database_error::DatabaseError;
 use crate::schema::constraint::ForeignKeyConstraintColumnPair;
 use crate::sql::connect::database_client::DatabaseClient;
-use crate::{PhysicalTable, PhysicalTableName};
+use crate::{PhysicalTable, SchemaObjectName};
 
 use super::column_spec::{ColumnAttribute, ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec};
 use super::constraint::{sorted_comma_list, Constraints};
@@ -32,7 +32,7 @@ const MATERIALIZED_VIEW_COLUMNS_QUERY: &str = r#"
 
 #[derive(Debug)]
 pub struct TableSpec {
-    pub name: PhysicalTableName,
+    pub name: SchemaObjectName,
     pub columns: Vec<ColumnSpec>,
     pub indices: Vec<IndexSpec>,
     pub triggers: Vec<TriggerSpec>,
@@ -41,7 +41,7 @@ pub struct TableSpec {
 
 impl TableSpec {
     pub fn new(
-        name: PhysicalTableName,
+        name: SchemaObjectName,
         columns: Vec<ColumnSpec>,
         indices: Vec<IndexSpec>,
         triggers: Vec<TriggerSpec>,
@@ -87,8 +87,8 @@ impl TableSpec {
 
     pub(super) async fn from_live_db_table(
         client: &DatabaseClient,
-        table_name: PhysicalTableName,
-        column_attributes: &HashMap<PhysicalTableName, HashMap<String, ColumnAttribute>>,
+        table_name: SchemaObjectName,
+        column_attributes: &HashMap<SchemaObjectName, HashMap<String, ColumnAttribute>>,
     ) -> Result<WithIssues<TableSpec>, DatabaseError> {
         // Query to get a list of columns in the table
 
@@ -210,7 +210,7 @@ impl TableSpec {
 
     pub(super) async fn from_live_db_materialized_view(
         client: &DatabaseClient,
-        table_name: PhysicalTableName,
+        table_name: SchemaObjectName,
         enums: &Vec<EnumSpec>,
     ) -> Result<WithIssues<TableSpec>, DatabaseError> {
         let issues = Vec::new();

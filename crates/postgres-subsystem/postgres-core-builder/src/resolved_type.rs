@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use codemap::Span;
-use exo_sql::{PhysicalTableName, VectorDistanceFunction};
+use exo_sql::{SchemaObjectName, VectorDistanceFunction};
 use postgres_core_model::types::EntityRepresentation;
 use serde::{Deserialize, Serialize};
 
@@ -44,7 +44,7 @@ pub enum ResolvedType {
 pub struct ResolvedEnumType {
     pub name: String,
     pub fields: Vec<String>,
-    pub enum_name: PhysicalTableName,
+    pub enum_name: SchemaObjectName,
     pub doc_comments: Option<String>,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
@@ -59,7 +59,7 @@ pub struct ResolvedCompositeType {
     pub representation: EntityRepresentation,
 
     pub fields: Vec<ResolvedField>,
-    pub table_name: PhysicalTableName,
+    pub table_name: SchemaObjectName,
     pub access: ResolvedAccess,
     pub doc_comments: Option<String>,
     #[serde(skip_serializing)]
@@ -197,7 +197,7 @@ impl ResolvedCompositeType {
 pub enum ResolvedFieldDefault {
     Value(Box<AstExpr<Typed>>),
     PostgresFunction(String),
-    AutoIncrement(Option<PhysicalTableName>),
+    AutoIncrement(Option<SchemaObjectName>),
 }
 
 impl ResolvedType {

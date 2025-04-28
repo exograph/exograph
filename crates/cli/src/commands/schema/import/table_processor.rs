@@ -1,7 +1,7 @@
 use anyhow::Result;
 use exo_sql::{
     schema::{database_spec::DatabaseSpec, table_spec::TableSpec},
-    PhysicalTableName,
+    SchemaObjectName,
 };
 
 use super::{processor::INDENT, ImportContext, ModelProcessor};
@@ -62,7 +62,7 @@ impl ModelProcessor<DatabaseSpec> for TableSpec {
 fn write_references(
     writer: &mut (dyn std::io::Write + Send),
     context: &ImportContext,
-    table_name: &PhysicalTableName,
+    table_name: &SchemaObjectName,
 ) -> Result<()> {
     for (table_name, column, _) in context.referenced_columns(table_name) {
         let model_name = context.model_name(&table_name);

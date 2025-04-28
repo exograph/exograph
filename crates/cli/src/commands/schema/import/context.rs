@@ -5,13 +5,13 @@ use exo_sql::{
         column_spec::{ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec},
         database_spec::DatabaseSpec,
     },
-    PhysicalTableName,
+    SchemaObjectName,
 };
 
 use heck::{ToLowerCamelCase, ToSnakeCase, ToUpperCamelCase};
 
 pub(super) struct ImportContext<'a> {
-    table_name_to_model_name: HashMap<PhysicalTableName, String>,
+    table_name_to_model_name: HashMap<SchemaObjectName, String>,
     pub(super) schemas: HashSet<String>,
     pub(super) database_spec: &'a DatabaseSpec,
     pub(super) query_access: bool,
@@ -36,13 +36,13 @@ impl<'a> ImportContext<'a> {
         }
     }
 
-    pub(super) fn model_name(&self, table_name: &PhysicalTableName) -> Option<&str> {
+    pub(super) fn model_name(&self, table_name: &SchemaObjectName) -> Option<&str> {
         self.table_name_to_model_name
             .get(table_name)
             .map(|name| name.as_str())
     }
 
-    pub(super) fn has_standard_mapping(&self, table_name: &PhysicalTableName) -> bool {
+    pub(super) fn has_standard_mapping(&self, table_name: &SchemaObjectName) -> bool {
         let model_name = self.model_name(table_name);
 
         let standard_table_name = model_name.map(|model_name| {
@@ -56,7 +56,7 @@ impl<'a> ImportContext<'a> {
     ///
     /// todos -> Todo
     /// news -> News
-    pub(super) fn standard_model_name(&self, table_name: &PhysicalTableName) -> String {
+    pub(super) fn standard_model_name(&self, table_name: &SchemaObjectName) -> String {
         let singular_name = pluralizer::pluralize(&table_name.name, 1, false);
         let model_name = singular_name.to_upper_camel_case();
 
@@ -83,7 +83,7 @@ impl<'a> ImportContext<'a> {
     }
 
     /// Converts the name of a SQL table to a exograph model name (for example, concert_artist -> ConcertArtist).
-    pub(super) fn add_table(&mut self, table_name: &PhysicalTableName) {
+    pub(super) fn add_table(&mut self, table_name: &SchemaObjectName) {
         if let Some(schema) = &table_name.schema {
             self.schemas.insert(schema.clone());
         } else {
@@ -94,7 +94,7 @@ impl<'a> ImportContext<'a> {
 
         // If the model name is already taken, try adding a number to the end.
         fn create_unique_model_name(
-            table_name_to_model_name: &HashMap<PhysicalTableName, String>,
+            table_name_to_model_name: &HashMap<SchemaObjectName, String>,
             model_name: &str,
             attempt: u32,
         ) -> String {
@@ -122,8 +122,8 @@ impl<'a> ImportContext<'a> {
 
     pub(super) fn referenced_columns(
         &self,
-        table_name: &PhysicalTableName,
-    ) -> Vec<(PhysicalTableName, &ColumnSpec, &ColumnReferenceSpec)> {
+        table_name: &SchemaObjectName,
+    ) -> Vec<(SchemaObjectName, &ColumnSpec, &ColumnReferenceSpec)> {
         let other_tables = self
             .database_spec
             .tables

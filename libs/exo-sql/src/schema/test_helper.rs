@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use crate::PhysicalTableName;
+use crate::SchemaObjectName;
 
 use super::column_spec::{
     ColumnAutoincrement, ColumnDefault, ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec,
@@ -28,7 +28,7 @@ pub fn pk_reference_column(
     ColumnSpec {
         name: name.into(),
         typ: ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
-            foreign_table_name: PhysicalTableName::new(
+            foreign_table_name: SchemaObjectName::new(
                 foreign_table_name,
                 foreign_table_schema_name,
             ),

@@ -13,7 +13,7 @@ use crate::{
     database_error::DatabaseError,
     schema::column_spec::ColumnSpec,
     sql::{connect::database_client::DatabaseClient, relation::RelationColumnPair},
-    Database, ManyToOne, PhysicalColumn, PhysicalIndex, PhysicalTable, PhysicalTableName, TableId,
+    Database, ManyToOne, PhysicalColumn, PhysicalIndex, PhysicalTable, SchemaObjectName, TableId,
 };
 
 use super::{
@@ -68,7 +68,7 @@ impl DatabaseSpec {
     }
 
     // Explicitly required sequences for this database spec.
-    pub fn required_sequences(&self, scope: &MigrationScopeMatches) -> HashSet<PhysicalTableName> {
+    pub fn required_sequences(&self, scope: &MigrationScopeMatches) -> HashSet<SchemaObjectName> {
         self.tables
             .iter()
             .filter(|table| scope.matches(&table.name) && table.managed)
@@ -281,7 +281,7 @@ impl DatabaseSpec {
                 .map_err(DatabaseError::Delegate)?
             {
                 let enum_name: String = enum_row.get("enum_name");
-                let enum_name = PhysicalTableName::new_with_schema_name(enum_name, schema_name);
+                let enum_name = SchemaObjectName::new_with_schema_name(enum_name, schema_name);
 
                 let mut enum_ = EnumSpec::from_live_db_enum(client, enum_name).await?;
 
@@ -305,7 +305,7 @@ impl DatabaseSpec {
                 .map_err(DatabaseError::Delegate)?
             {
                 let table_name: String = table_row.get("table_name");
-                let table_name = PhysicalTableName::new_with_schema_name(table_name, &schema_name);
+                let table_name = SchemaObjectName::new_with_schema_name(table_name, &schema_name);
 
                 let mut table =
                     TableSpec::from_live_db_table(client, table_name, &column_attributes).await?;
@@ -320,7 +320,7 @@ impl DatabaseSpec {
                 .map_err(DatabaseError::Delegate)?
             {
                 let view_name: String = view_row.get("view_name");
-                let table_name = PhysicalTableName::new_with_schema_name(view_name, &schema_name);
+                let table_name = SchemaObjectName::new_with_schema_name(view_name, &schema_name);
 
                 let mut table =
                     TableSpec::from_live_db_materialized_view(client, table_name, &enums).await?;
@@ -335,7 +335,7 @@ impl DatabaseSpec {
                 .map_err(DatabaseError::Delegate)?
             {
                 let sequence_name: String = sequence_row.get("sequence_name");
-                sequences.push(PhysicalTableName::new_with_schema_name(
+                sequences.push(SchemaObjectName::new_with_schema_name(
                     sequence_name,
                     &schema_name,
                 ));
@@ -426,7 +426,7 @@ mod tests {
             "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(255), email VARCHAR)",
             DatabaseSpec::new(
                 vec![TableSpec::new(
-                    PhysicalTableName {
+                    SchemaObjectName {
                         name: "users".into(),
                         schema: None,
                     },
@@ -480,7 +480,7 @@ mod tests {
             "CREATE TABLE users (complete BOOLEAN)",
             DatabaseSpec::new(
                 vec![TableSpec::new(
-                    PhysicalTableName {
+                    SchemaObjectName {
                         name: "users".into(),
                         schema: None,
                     },
@@ -511,7 +511,7 @@ mod tests {
             "CREATE TABLE items (precision_and_scale NUMERIC(10, 2), just_precision NUMERIC(20), no_precision_and_scale NUMERIC)",
             DatabaseSpec::new(
                 vec![TableSpec::new(
-                    PhysicalTableName {
+                    SchemaObjectName {
                         name: "items".into(),
                         schema: None,
                     },

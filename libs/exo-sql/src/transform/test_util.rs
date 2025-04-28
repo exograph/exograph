@@ -11,7 +11,7 @@
 
 use crate::schema::test_helper::{pk_column, pk_reference_column, string_column};
 use crate::schema::{database_spec::DatabaseSpec, table_spec::TableSpec};
-use crate::{ColumnId, Database, PhysicalTableName, TableId};
+use crate::{ColumnId, Database, SchemaObjectName, TableId};
 
 pub struct TestSetup {
     pub database: Database,
@@ -52,7 +52,7 @@ impl TestSetup {
         let database = DatabaseSpec::new(
             vec![
                 TableSpec::new(
-                    PhysicalTableName::new("concerts", None),
+                    SchemaObjectName::new("concerts", None),
                     vec![
                         pk_column("id"),
                         pk_reference_column("venue_id", "venues", None),
@@ -63,7 +63,7 @@ impl TestSetup {
                     true,
                 ),
                 TableSpec::new(
-                    PhysicalTableName::new("venues", None),
+                    SchemaObjectName::new("venues", None),
                     vec![
                         pk_column("id"),
                         string_column("name"),
@@ -74,7 +74,7 @@ impl TestSetup {
                     true,
                 ),
                 TableSpec::new(
-                    PhysicalTableName::new("concert_artists", None),
+                    SchemaObjectName::new("concert_artists", None),
                     vec![
                         pk_column("id"),
                         pk_reference_column("concert_id", "concerts", None),
@@ -85,7 +85,7 @@ impl TestSetup {
                     true,
                 ),
                 TableSpec::new(
-                    PhysicalTableName::new("artists", None),
+                    SchemaObjectName::new("artists", None),
                     vec![
                         pk_column("id"),
                         string_column("name"),
@@ -96,7 +96,7 @@ impl TestSetup {
                     true,
                 ),
                 TableSpec::new(
-                    PhysicalTableName::new("addresses", None),
+                    SchemaObjectName::new("addresses", None),
                     vec![pk_column("id"), string_column("city")],
                     vec![],
                     vec![],
@@ -109,7 +109,7 @@ impl TestSetup {
         .to_database();
 
         let concert_table_id = database
-            .get_table_id(&PhysicalTableName::new("concerts", None))
+            .get_table_id(&SchemaObjectName::new("concerts", None))
             .unwrap();
 
         let concerts_id_column = database.get_column_id(concert_table_id, "id").unwrap();
@@ -119,7 +119,7 @@ impl TestSetup {
             .unwrap();
 
         let venues_table_id = database
-            .get_table_id(&PhysicalTableName::new("venues", None))
+            .get_table_id(&SchemaObjectName::new("venues", None))
             .unwrap();
         let venues_id_column = database.get_column_id(venues_table_id, "id").unwrap();
         let venues_name_column = database.get_column_id(venues_table_id, "name").unwrap();
@@ -128,7 +128,7 @@ impl TestSetup {
             .unwrap();
 
         let concert_artists_table_id = database
-            .get_table_id(&PhysicalTableName::new("concert_artists", None))
+            .get_table_id(&SchemaObjectName::new("concert_artists", None))
             .unwrap();
         let _concert_artists_id_column = database
             .get_column_id(concert_artists_table_id, "id")
@@ -141,7 +141,7 @@ impl TestSetup {
             .unwrap();
 
         let artists_table_id = database
-            .get_table_id(&PhysicalTableName::new("artists", None))
+            .get_table_id(&SchemaObjectName::new("artists", None))
             .unwrap();
         let artists_id_column = database.get_column_id(artists_table_id, "id").unwrap();
         let artists_name_column = database.get_column_id(artists_table_id, "name").unwrap();
@@ -150,7 +150,7 @@ impl TestSetup {
             .unwrap();
 
         let addresses_table_id = database
-            .get_table_id(&PhysicalTableName::new("addresses", None))
+            .get_table_id(&SchemaObjectName::new("addresses", None))
             .unwrap();
         let addresses_id_column = database.get_column_id(addresses_table_id, "id").unwrap();
         let addresses_city_column = database.get_column_id(addresses_table_id, "city").unwrap();

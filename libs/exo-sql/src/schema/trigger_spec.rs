@@ -1,7 +1,7 @@
 use std::{str::FromStr, vec};
 
 use crate::{
-    database_error::DatabaseError, sql::connect::database_client::DatabaseClient, PhysicalTableName,
+    database_error::DatabaseError, sql::connect::database_client::DatabaseClient, SchemaObjectName,
 };
 
 use super::{issue::WithIssues, op::SchemaOp};
@@ -118,7 +118,7 @@ pub struct TriggerSpec {
     pub timing: TriggerTiming,
     pub orientation: TriggerOrientation,
     pub event: TriggerEvent,
-    pub table: PhysicalTableName,
+    pub table: SchemaObjectName,
 }
 
 impl TriggerSpec {
@@ -128,7 +128,7 @@ impl TriggerSpec {
         timing: TriggerTiming,
         orientation: TriggerOrientation,
         event: TriggerEvent,
-        table: PhysicalTableName,
+        table: SchemaObjectName,
     ) -> Self {
         Self {
             name,
@@ -142,7 +142,7 @@ impl TriggerSpec {
 
     pub async fn from_live_db(
         client: &DatabaseClient,
-        table_name: &PhysicalTableName,
+        table_name: &SchemaObjectName,
     ) -> Result<WithIssues<Vec<TriggerSpec>>, DatabaseError> {
         let triggers = client
             .query(TRIGGERS_QUERY, &[&table_name.fully_qualified_name()])
@@ -163,7 +163,7 @@ impl TriggerSpec {
                     timing_string.parse()?,
                     orientation_string.parse()?,
                     event_string.parse()?,
-                    PhysicalTableName::new(table_name, Some(&table_schema)),
+                    SchemaObjectName::new(table_name, Some(&table_schema)),
                 ))
             })
             .collect::<Result<Vec<_>, DatabaseError>>()?;

@@ -17,7 +17,7 @@ mod tests {
 
     use exo_env::MapEnvironment;
     use exo_sql::{
-        AbstractPredicate, ColumnPath, PhysicalColumnPath, PhysicalTableName, SQLParamContainer,
+        AbstractPredicate, ColumnPath, PhysicalColumnPath, SQLParamContainer, SchemaObjectName,
     };
     use postgres_core_model::access::DatabaseAccessPrimitiveExpression;
     use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
@@ -90,7 +90,7 @@ mod tests {
         let database = &postgres_subsystem.core_subsystem.database;
 
         let article_table_id = database
-            .get_table_id(&PhysicalTableName::new("articles", None))
+            .get_table_id(&SchemaObjectName::new("articles", None))
             .unwrap();
 
         let get_column_id = |column_name: &str| {

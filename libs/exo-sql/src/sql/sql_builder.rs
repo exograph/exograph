@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 use crate::Database;
 
-use super::{physical_table::PhysicalTableName, sql_param::SQLParamWithType, ExpressionBuilder};
+use super::{schema_object::SchemaObjectName, sql_param::SQLParamWithType, ExpressionBuilder};
 
 pub struct SQLBuilder {
     /// The SQL being built with placeholders for each parameter
@@ -25,7 +25,7 @@ pub struct SQLBuilder {
     /// For example, for a CTE, the alias would the name of the CTE ("WITH <alias> as
     /// (...table...)"). Similarly, for a sub-select, the alias would be the name of the sub-select.
     /// This is used to render alias in lieu of table names for the related expressions.
-    table_alias_map: HashMap<PhysicalTableName, String>,
+    table_alias_map: HashMap<SchemaObjectName, String>,
 }
 
 impl SQLBuilder {
@@ -68,7 +68,7 @@ impl SQLBuilder {
     }
 
     /// Push a table name. If the table name has an alias, push the alias instead.
-    pub fn push_table(&mut self, table_name: &PhysicalTableName) {
+    pub fn push_table(&mut self, table_name: &SchemaObjectName) {
         match &self.table_alias_map.get(table_name).cloned() {
             Some(alias) => {
                 self.push_identifier(alias);
@@ -85,7 +85,7 @@ impl SQLBuilder {
 
     /// Push a table prefix (for a column). Push `<table_name>.` if in fully_qualify_column_names
     /// mode, otherwise an empty string.
-    pub fn push_table_prefix(&mut self, table_name: &PhysicalTableName) {
+    pub fn push_table_prefix(&mut self, table_name: &SchemaObjectName) {
         if self.fully_qualify_column_names {
             self.push_table(table_name);
             self.push('.');
@@ -170,7 +170,7 @@ impl SQLBuilder {
 
     pub fn with_table_alias_map<F, R>(
         &mut self,
-        table_alias_map: HashMap<PhysicalTableName, String>,
+        table_alias_map: HashMap<SchemaObjectName, String>,
         func: F,
     ) -> R
     where

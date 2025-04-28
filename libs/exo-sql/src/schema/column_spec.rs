@@ -13,7 +13,7 @@ use std::fmt::Write;
 use crate::database_error::DatabaseError;
 use crate::sql::connect::database_client::DatabaseClient;
 use crate::{
-    Database, FloatBits, IntBits, ManyToOne, PhysicalColumn, PhysicalColumnType, PhysicalTableName,
+    Database, FloatBits, IntBits, ManyToOne, PhysicalColumn, PhysicalColumnType, SchemaObjectName,
 };
 
 use super::enum_spec::EnumSpec;
@@ -181,7 +181,7 @@ impl ColumnDefault {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ColumnReferenceSpec {
-    pub foreign_table_name: PhysicalTableName,
+    pub foreign_table_name: SchemaObjectName,
     pub foreign_pk_column_name: String,
     pub foreign_pk_type: Box<ColumnTypeSpec>,
 }
@@ -221,7 +221,7 @@ pub enum ColumnTypeSpec {
         scale: Option<usize>,
     },
     Enum {
-        enum_name: PhysicalTableName,
+        enum_name: SchemaObjectName,
     },
 }
 
@@ -296,13 +296,13 @@ impl ColumnSpec {
     /// If the column references another table's column, the column's type can be specified with
     /// `explicit_type`.
     pub async fn from_live_db(
-        table_name: &PhysicalTableName,
+        table_name: &SchemaObjectName,
         column_name: &str,
         is_pk: bool,
         explicit_type: Option<ColumnTypeSpec>,
         unique_constraints: Vec<String>,
         group_name: Option<String>,
-        column_attributes: &HashMap<PhysicalTableName, HashMap<String, ColumnAttribute>>,
+        column_attributes: &HashMap<SchemaObjectName, HashMap<String, ColumnAttribute>>,
     ) -> Result<WithIssues<Option<ColumnSpec>>, DatabaseError> {
         let table_attributes = column_attributes
             .get(table_name)
@@ -507,7 +507,7 @@ impl ColumnSpec {
         schema_name: &str,
         enums: &Vec<EnumSpec>,
         issues: &mut Vec<Issue>,
-    ) -> Result<HashMap<PhysicalTableName, HashMap<String, ColumnAttribute>>, DatabaseError> {
+    ) -> Result<HashMap<SchemaObjectName, HashMap<String, ColumnAttribute>>, DatabaseError> {
         let mut map = HashMap::new();
 
         for row in client.query(COLUMNS_TYPE_QUERY, &[&schema_name]).await? {
@@ -515,7 +515,7 @@ impl ColumnSpec {
             let column_name: String = row.get("column_name");
             let not_null: bool = row.get("attnotnull");
 
-            let table_name = PhysicalTableName::new_with_schema_name(table_name, schema_name);
+            let table_name = SchemaObjectName::new_with_schema_name(table_name, schema_name);
 
             let db_type = {
                 let mut sql_type: String = row.get("format_type");
@@ -568,7 +568,7 @@ impl ColumnSpec {
             let column_name: String = row.get("column_name");
             let is_autoincrement = row.get("is_autoincrement");
 
-            let table_name = PhysicalTableName::new_with_schema_name(table_name, schema_name);
+            let table_name = SchemaObjectName::new_with_schema_name(table_name, schema_name);
 
             // If this column is autoIncrement, then default value will be populated
             // with an invocation of nextval(). Thus, we need to clear it to normalize the column
@@ -590,12 +590,12 @@ impl ColumnSpec {
                     };
                     ColumnAutoincrement::Identity { generation }
                 } else {
-                    let serial_sequence_name = PhysicalTableName::new(
+                    let serial_sequence_name = SchemaObjectName::new(
                         format!("{}_{}_seq", table_name.name, column_name),
                         table_name.schema.as_deref(),
                     );
                     let from_db_sequence_name =
-                        PhysicalTableName::new_with_schema_name(sequence_name, sequence_schema);
+                        SchemaObjectName::new_with_schema_name(sequence_name, sequence_schema);
 
                     if serial_sequence_name == from_db_sequence_name {
                         ColumnAutoincrement::Serial
@@ -646,7 +646,7 @@ pub struct ColumnAttribute {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
 pub enum ColumnAutoincrement {
     Serial, // Maps to `SERIAL` in postgres (sequence is `{schema}.{table}_{column}_id_seq`)
-    Sequence { name: PhysicalTableName },
+    Sequence { name: SchemaObjectName },
     Identity { generation: IdentityGeneration },
 }
 

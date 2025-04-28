@@ -12,8 +12,8 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    database_error::DatabaseError, sql::connect::database_client::DatabaseClient,
-    PhysicalTableName, VectorDistanceFunction,
+    database_error::DatabaseError, sql::connect::database_client::DatabaseClient, SchemaObjectName,
+    VectorDistanceFunction,
 };
 
 use super::{column_spec::ColumnSpec, issue::WithIssues, op::SchemaOp, table_spec::TableSpec};
@@ -90,7 +90,7 @@ impl IndexSpec {
 
     pub async fn from_live_db(
         client: &DatabaseClient,
-        table_name: &PhysicalTableName,
+        table_name: &SchemaObjectName,
         columns: &[ColumnSpec],
     ) -> Result<WithIssues<Vec<IndexSpec>>, DatabaseError> {
         let indices = client
@@ -171,7 +171,7 @@ impl IndexSpec {
         ]
     }
 
-    pub fn creation_sql(&self, table_name: &PhysicalTableName) -> String {
+    pub fn creation_sql(&self, table_name: &SchemaObjectName) -> String {
         let sorted_columns = {
             let mut columns = self.columns.iter().collect::<Vec<_>>();
             columns.sort();

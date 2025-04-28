@@ -9,7 +9,7 @@
 
 use maybe_owned::MaybeOwned;
 
-use crate::{ColumnId, Database, ParamEquality, PhysicalTableName, Predicate};
+use crate::{ColumnId, Database, ParamEquality, Predicate, SchemaObjectName};
 
 use super::{
     function::Function, json_agg::JsonAgg, json_object::JsonObject, select::Select,
@@ -54,7 +54,7 @@ pub enum Column {
     /// have a query return __typename set to a constant value
     Constant(String),
     /// All columns of a table. If the table is `None` should translate to `*`, else  `"table_name".*` or "schema"."table_name".*
-    Star(Option<PhysicalTableName>),
+    Star(Option<SchemaObjectName>),
     /// A null value
     Null,
     /// A function applied to a column. For example, `count(id)` or `lower(first_name)`.
