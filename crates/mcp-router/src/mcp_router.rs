@@ -24,7 +24,7 @@ use core_resolver::{
 use exo_env::Environment;
 use graphql_router::resolve_in_memory_for_payload;
 use http::{Method, StatusCode};
-use serde_json::json;
+use serde_json::{json, Map, Value};
 
 const ERROR_METHOD_NOT_FOUND_CODE: &str = "-32601";
 const ERROR_METHOD_NOT_FOUND_MESSAGE: &str = "Method not found";
@@ -81,6 +81,7 @@ impl McpRouter {
         let graphql_response = self
             .execute_query(
                 query.to_string(),
+                None,
                 &self.introspection_resolver,
                 request_context,
             )
@@ -170,12 +171,13 @@ impl McpRouter {
     async fn execute_query(
         &self,
         query: String,
+        variables: Option<Map<String, Value>>,
         system_resolver: &GraphQLSystemResolver,
         request_context: &RequestContext<'_>,
     ) -> Result<Vec<(String, QueryResponse)>, SubsystemRpcError> {
         let operations_payload = OperationsPayload {
             query: Some(query),
-            variables: None,
+            variables,
             operation_name: None,
             query_hash: None,
         };
@@ -202,24 +204,24 @@ impl McpRouter {
 
         match params {
             Some(params) => {
-                let name = params
-                    .get("name")
-                    .and_then(|v| v.as_str())
-                    .ok_or(SubsystemRpcError::InvalidRequest)?;
+                let payload: ExecuteQueryPayload = serde_json::from_value(params)
+                    .map_err(|_| SubsystemRpcError::InvalidRequest)?;
+
+                let name = payload.name;
 
                 if name != "execute_query" {
-                    return Err(SubsystemRpcError::MethodNotFound(name.to_string()));
+                    return Err(SubsystemRpcError::MethodNotFound(name));
                 }
 
-                let arguments = params
-                    .get("arguments")
-                    .ok_or(SubsystemRpcError::InvalidRequest)?;
-                let query = arguments.get("query").and_then(|v| v.as_str()).ok_or(
-                    SubsystemRpcError::InvalidParams("query".to_string(), "arguments"),
-                )?;
+                let arguments = payload.arguments;
 
                 let graphql_response = self
-                    .execute_query(query.to_string(), &self.data_resolver, request_context)
+                    .execute_query(
+                        arguments.query,
+                        arguments.variables,
+                        &self.data_resolver,
+                        request_context,
+                    )
                     .await;
 
                 let (tool_result, status_code, extra_headers) = match graphql_response {
@@ -352,6 +354,18 @@ impl McpRouter {
         };
         Ok(Some(response))
     }
+}
+
+#[derive(serde::Deserialize)]
+struct ExecuteQueryPayload {
+    name: String,
+    arguments: ExecuteQueryArguments,
+}
+
+#[derive(serde::Deserialize)]
+struct ExecuteQueryArguments {
+    query: String,
+    variables: Option<Map<String, Value>>,
 }
 
 #[async_trait]

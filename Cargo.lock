@@ -5629,6 +5629,7 @@ dependencies = [
  "graphql-router",
  "http 1.1.0",
  "introspection-util",
+ "serde",
  "serde_json",
  "tracing",
 ]
