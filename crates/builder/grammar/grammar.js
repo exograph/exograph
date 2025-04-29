@@ -265,7 +265,7 @@ module.exports = grammar({
     )),
     term: $ => /[a-zA-Z_][a-zA-Z0-9_]*/,
     str: $ => /(?:[^"\\]|\\.)*/, // string with escaped quotes
-    number: $ => /\d+/,
+    number: $ => /-?\d+(\.\d+)?([eE][-+]?\d+)?/,
     literal_str: $ => seq("\"", field("value", $.str), "\""),
     literal_boolean: $ => choice("true", "false"),
     literal_number: $ => field("value", $.number),

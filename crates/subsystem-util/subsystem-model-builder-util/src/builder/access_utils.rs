@@ -121,7 +121,7 @@ fn compute_primitive_expr(
             CommonAccessPrimitiveExpression::BooleanLiteral(*value),
         )),
         AstExpr::NumberLiteral(value, _) => Ok(ModuleAccessPrimitiveExpression::Common(
-            CommonAccessPrimitiveExpression::NumberLiteral(*value),
+            CommonAccessPrimitiveExpression::NumberLiteral(value.clone()),
         )),
         AstExpr::NullLiteral(_) => Ok(ModuleAccessPrimitiveExpression::Common(
             CommonAccessPrimitiveExpression::NullLiteral,

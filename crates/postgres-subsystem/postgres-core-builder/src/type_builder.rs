@@ -585,9 +585,34 @@ fn create_persistent_field(
                 AstExpr::BooleanLiteral(boolean, _) => {
                     Ok(PostgresFieldDefaultValue::Static(Val::Bool(*boolean)))
                 }
-                AstExpr::NumberLiteral(number, _) => Ok(PostgresFieldDefaultValue::Static(
-                    Val::Number(ValNumber::I64(*number)),
-                )),
+                AstExpr::NumberLiteral(number, _) => {
+                    let parsed_number = if field.typ.name() == "Float" {
+                        let float_number = number.parse::<f64>().map_err(|_| {
+                            ModelBuildingError::Generic(format!(
+                                "Invalid float default value: {}",
+                                number
+                            ))
+                        })?;
+                        Ok(ValNumber::F64(float_number))
+                    } else if field.typ.name() == "Int" {
+                        let int_number = number.parse::<i64>().map_err(|_| {
+                            ModelBuildingError::Generic(format!(
+                                "Invalid int default value: {}",
+                                number
+                            ))
+                        })?;
+                        Ok(ValNumber::I64(int_number))
+                    } else {
+                        Err(ModelBuildingError::Generic(format!(
+                            "Unsupported number type: {}",
+                            field.typ.name()
+                        )))
+                    }?;
+
+                    Ok(PostgresFieldDefaultValue::Static(Val::Number(
+                        parsed_number,
+                    )))
+                }
                 AstExpr::FieldSelection(_) => {
                     // Set some value. Will be overridden by expand_dynamic_default_values later
                     Ok(PostgresFieldDefaultValue::Static(Val::Bool(false)))

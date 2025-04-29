@@ -15,7 +15,7 @@ use core_model::{
         ContextContainer, ContextField, ContextFieldType, ContextSelection,
         ContextSelectionElement, ContextType,
     },
-    primitive_type::{PrimitiveType, PrimitiveValue},
+    primitive_type::{NumberLiteral, PrimitiveType, PrimitiveValue},
     types::FieldType,
 };
 use futures::StreamExt;
@@ -124,9 +124,18 @@ pub trait ContextExtractor {
                                                     Val::String(s),
                                                     PrimitiveValue::String(search),
                                                 ) => s == search,
-                                                (Val::Number(n), PrimitiveValue::Int(search)) => {
-                                                    n.as_i64().unwrap() == *search
-                                                }
+                                                (
+                                                    Val::Number(ValNumber::I64(i)),
+                                                    PrimitiveValue::Number(NumberLiteral::Int(
+                                                        search,
+                                                    )),
+                                                ) => *i == *search,
+                                                (
+                                                    Val::Number(ValNumber::F64(f)),
+                                                    PrimitiveValue::Number(NumberLiteral::Float(
+                                                        search,
+                                                    )),
+                                                ) => *f == *search,
                                                 (Val::Bool(b), PrimitiveValue::Boolean(search)) => {
                                                     *b == *search
                                                 }

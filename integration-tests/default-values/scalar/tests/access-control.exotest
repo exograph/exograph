@@ -1,0 +1,33 @@
+stages:
+    - operation: |
+        mutation {
+            createItem(data: {name: "i1", purchasePrice: 10.0}) {
+                name
+                purchasePrice
+            }
+        }
+      response: |
+        {
+            "data": {
+                "createItem": {
+                    "name": "i1",
+                    "purchasePrice": 10.0
+                }
+            }
+        }
+
+    - operation: |
+        mutation {
+            createItem(data: {name: "i2", purchasePrice: -5.0}) {
+                name
+                purchasePrice
+            }
+        }
+      response: |
+        {
+            "errors": [
+                {
+                    "message": "Not authorized"
+                }
+            ]
+        }

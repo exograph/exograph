@@ -109,7 +109,13 @@ pub fn vector_introspection_type(optional: bool) -> Type {
 // TODO: We should refactor `PrimitiveValue` along with `Val` to be a single enum
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PrimitiveValue {
-    Int(i64),
+    Number(NumberLiteral),
     String(String),
     Boolean(bool),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum NumberLiteral {
+    Int(i64),
+    Float(f64),
 }

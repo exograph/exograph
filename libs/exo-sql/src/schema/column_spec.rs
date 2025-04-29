@@ -44,7 +44,7 @@ pub enum ColumnDefault {
     Text(String),
     VarChar(String),
     Boolean(bool),
-    Number(i64),
+    Number(String),
     Function(String),
     Enum(String),
     Autoincrement(ColumnAutoincrement),
@@ -110,10 +110,12 @@ impl ColumnDefault {
                     )))
                 }
             }
-            Some(ColumnTypeSpec::Int { .. }) => match default_value.parse() {
-                Ok(value) => Ok(ColumnDefault::Number(value)),
-                Err(_) => Ok(ColumnDefault::Function(default_value)),
-            },
+            Some(ColumnTypeSpec::Int { .. }) | Some(ColumnTypeSpec::Float { .. }) => {
+                match default_value.parse() {
+                    Ok(value) => Ok(ColumnDefault::Number(value)),
+                    Err(_) => Ok(ColumnDefault::Function(default_value)),
+                }
+            }
             Some(ColumnTypeSpec::Boolean) => Ok(ColumnDefault::Boolean(default_value == "true")),
             Some(ColumnTypeSpec::Enum { enum_name }) => {
                 // Remove the type cast from the default value
@@ -140,7 +142,7 @@ impl ColumnDefault {
             ColumnDefault::Text(value) => Some(format!("'{value}'::text")),
             ColumnDefault::VarChar(value) => Some(format!("'{value}'::character varying")),
             ColumnDefault::Boolean(value) => Some(format!("{value}")),
-            ColumnDefault::Number(value) => Some(format!("{value}")),
+            ColumnDefault::Number(value) => Some(value.to_string()),
             ColumnDefault::Function(value) => Some(value.clone()),
             ColumnDefault::Enum(value) => Some(format!("'{value}'")),
             ColumnDefault::Autoincrement(autoincrement) => match autoincrement {
@@ -163,7 +165,7 @@ impl ColumnDefault {
                 Some(format!("\"{value}\""))
             }
             ColumnDefault::Boolean(value) => Some(format!("{value}")),
-            ColumnDefault::Number(value) => Some(format!("{value}")),
+            ColumnDefault::Number(value) => Some(value.to_string()),
             ColumnDefault::Function(value) => Some(value.clone()),
             ColumnDefault::Enum(value) => Some(value.to_string()),
             ColumnDefault::Autoincrement(autoincrement) => match autoincrement {

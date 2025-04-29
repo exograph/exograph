@@ -12,9 +12,17 @@ module EventModule {
         timestamp: Instant = now()
         category: String = "INFO"
         priority: Int = 0
+        price: Float = 10.0
         message: String
         is_system: Boolean = true
         clientId: String = ClientContext.id
         orgId: String? = ClientContext.org
+    }
+
+    @access(self.purchasePrice > 0.0)
+    type Item {
+        @pk id: Int = autoIncrement()
+        name: String
+        purchasePrice: Float = 10.0
     }
 }
