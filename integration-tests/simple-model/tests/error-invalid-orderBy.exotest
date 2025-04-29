@@ -1,0 +1,12 @@
+operation: |
+  query {
+    result: logs(orderBy: [text_DESC])
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Invalid field 'orderBy': Invalid argument ('text_DESC')"
+      }
+    ]
+  }
