@@ -28,7 +28,7 @@ inquire = "0.7.5"
 reqwest = { workspace = true, features = ["stream"] }
 serde.workspace = true
 serde_json.workspace = true
-indicatif = "0.17.9"
+indicatif = "0.17.11"
 tempfile.workspace = true
 which.workspace = true
 toml = { version = "0.8.20", features = ["parse"] }
