@@ -77,7 +77,10 @@ impl<'a> SQLMapper<'a, AbstractOrderBy> for OrderByParameterInput<'a> {
                 flatten(mapped)
             }
 
-            _ => todo!(), // Invalid
+            _ => Err(PostgresExecutionError::Validation(
+                self.param.name.clone(),
+                format!("Invalid argument ('{argument}')"),
+            )),
         }
     }
 
