@@ -238,7 +238,7 @@ impl SchemaOp<'_> {
             },
             SchemaOp::RemoveUniqueConstraint { table, constraint } => SchemaStatement {
                 statement: format!(
-                    "ALTER TABLE {} DROP CONSTRAINT \"{}\";",
+                    "ALTER TABLE {} DROP CONSTRAINT IF EXISTS \"{}\";",
                     table.sql_name(),
                     constraint
                 ),
