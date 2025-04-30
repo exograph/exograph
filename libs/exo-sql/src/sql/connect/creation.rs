@@ -51,8 +51,14 @@ impl DatabaseCreation {
                 .with_context("Failed to parse PostgreSQL connection string".into())
         })?;
 
+        // Only if there is any TCP host, use the TLS connector (with the new Rustls version, SSL over unix sockets errors out)
+        let has_tcp_hosts = config
+            .get_hosts()
+            .iter()
+            .any(|host| matches!(host, tokio_postgres::config::Host::Tcp(_)));
+
         match ssl_config {
-            Some(ssl_config) => {
+            Some(ssl_config) if has_tcp_hosts => {
                 let (config, tls) = ssl_config.updated_config(config)?;
 
                 let (client, connection) = config.connect(tls).await?;
@@ -65,7 +71,7 @@ impl DatabaseCreation {
 
                 Ok(DatabaseClient::Direct(client))
             }
-            None => {
+            _ => {
                 let tls = tokio_postgres::NoTls;
                 let (client, connection) = config.connect(tls).await?;
 

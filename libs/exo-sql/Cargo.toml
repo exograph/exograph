@@ -18,7 +18,7 @@ postgres-url = ["tokio-postgres/runtime"]
 testing = ["which", "tempfile"]
 pool = ["deadpool-postgres"]
 bigdecimal = ["pg_bigdecimal"]
-test-support = ["ctor"]
+test-support = ["ctor", "postgres-url", "tls"]
 
 [dependencies]
 bytes.workspace = true

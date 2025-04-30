@@ -39,7 +39,7 @@ mod sql;
 mod asql;
 mod transform;
 
-#[cfg(feature = "testing")]
+#[cfg(feature = "test-support")]
 pub mod testing;
 
 pub mod database_error;

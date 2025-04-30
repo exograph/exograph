@@ -81,7 +81,7 @@ impl DatabaseClientManager {
     pub async fn from_url(
         url: &str,
         check_connection: bool,
-        pool_size: Option<usize>,
+        #[allow(unused_variables)] pool_size: Option<usize>,
     ) -> Result<Self, DatabaseError> {
         #[cfg(feature = "pool")]
         {

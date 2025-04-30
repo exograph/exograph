@@ -56,7 +56,7 @@ where
 
     let database = database_server.create_database(&database_name).unwrap();
 
-    let client = DatabaseClientManager::from_url(&database.url(), true, None)
+    let client = DatabaseClientManager::from_url_direct(&database.url(), false)
         .await
         .unwrap()
         .get_client()
