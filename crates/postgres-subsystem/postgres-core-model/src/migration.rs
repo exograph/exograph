@@ -429,7 +429,9 @@ mod tests {
             scope,
             folder,
             TestKind::Migration(SystemKind::Old, SystemKind::New),
-        ) {
+        )
+        .await
+        {
             println!("Up failed: {}", e);
             failed = true;
         } else {
@@ -443,7 +445,9 @@ mod tests {
             scope,
             folder,
             TestKind::Migration(SystemKind::New, SystemKind::Old),
-        ) {
+        )
+        .await
+        {
             println!("Down failed: {}", e);
             failed = true;
         } else {
@@ -511,7 +515,7 @@ mod tests {
         Ok(())
     }
 
-    fn assert_migration(
+    async fn assert_migration(
         old_system: &DatabaseSpec,
         new_system: &DatabaseSpec,
         expected: &str,
@@ -520,7 +524,52 @@ mod tests {
         kind: TestKind,
     ) -> Result<(), String> {
         let migration = Migration::from_schemas(old_system, new_system, migration_scope);
-        assert_sql_eq(&migration, expected, folder, kind)
+        assert_sql_eq(&migration, expected, folder, kind)?;
+
+        test_support::with_client(move |mut client| async move {
+            let creation = Migration::from_schemas(
+                &DatabaseSpec::new(vec![], vec![], vec![]),
+                old_system,
+                migration_scope,
+            );
+
+            // If the creation is empty, we had been working with a non-managed schema and can skip the migration
+            // TODO: Make this a more robust check
+            if creation.statements.is_empty() {
+                return Ok(());
+            }
+
+            creation
+                .apply(&mut client, true)
+                .await
+                .map_err(|e| e.to_string())?;
+
+            migration
+                .apply(&mut client, true)
+                .await
+                .map_err(|e| e.to_string())?;
+
+            let scope_matches = match migration_scope {
+                MigrationScope::Specified(scope) => scope,
+                MigrationScope::FromNewSpec => {
+                    &MigrationScopeMatches::from_specs_schemas(&[new_system])
+                }
+            };
+
+            let live_db_spec = extract_db_schema(&client, scope_matches)
+                .await
+                .map_err(|e| format!("Failed to extract live db spec: {}", e))?;
+
+            if live_db_spec.issues.is_empty() {
+                Ok(())
+            } else {
+                Err(format!(
+                    "Live db spec has issues: {:?}",
+                    live_db_spec.issues
+                ))
+            }
+        })
+        .await
     }
 
     fn assert_sql_eq(

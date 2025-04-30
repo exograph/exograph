@@ -87,9 +87,9 @@ impl EnumSpec {
 
     pub(super) fn deletion_sql(&self) -> SchemaStatement {
         SchemaStatement {
-            statement: format!("DROP TYPE {} CASCADE;", self.sql_name()),
+            statement: "".to_string(),
             pre_statements: vec![],
-            post_statements: vec![],
+            post_statements: vec![format!("DROP TYPE {} CASCADE;", self.sql_name())],
         }
     }
 }
