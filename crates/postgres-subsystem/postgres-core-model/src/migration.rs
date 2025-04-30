@@ -354,23 +354,27 @@ mod tests {
         }
     }
 
-    #[derive(Debug, PartialEq, Eq)]
+    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
     enum TestKind {
-        OldCreation,
-        NewCreation,
-        IdempotentSelfMigration,
-        Up,
-        Down,
+        Creation(SystemKind),
+        Migration(SystemKind, SystemKind),
+    }
+
+    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+    enum SystemKind {
+        Old,
+        New,
     }
 
     impl TestKind {
         fn kind_str(&self) -> &str {
             match self {
-                TestKind::OldCreation => "old",
-                TestKind::NewCreation => "new",
-                TestKind::IdempotentSelfMigration => "idempotent",
-                TestKind::Up => "up",
-                TestKind::Down => "down",
+                TestKind::Creation(SystemKind::Old) => "old",
+                TestKind::Creation(SystemKind::New) => "new",
+                TestKind::Migration(SystemKind::Old, SystemKind::New) => "up",
+                TestKind::Migration(SystemKind::New, SystemKind::Old) => "down",
+                TestKind::Migration(SystemKind::Old, SystemKind::Old) => "idempotent-old",
+                TestKind::Migration(SystemKind::New, SystemKind::New) => "idempotent-new",
             }
         }
     }
@@ -393,7 +397,7 @@ mod tests {
             &old_expected_sql,
             scope,
             folder,
-            TestKind::OldCreation,
+            SystemKind::Old,
         )
         .await
         {
@@ -408,7 +412,7 @@ mod tests {
             &new_expected_sql,
             scope,
             folder,
-            TestKind::NewCreation,
+            SystemKind::New,
         )
         .await
         {
@@ -424,7 +428,7 @@ mod tests {
             &up_expected_sql,
             scope,
             folder,
-            TestKind::Up,
+            TestKind::Migration(SystemKind::Old, SystemKind::New),
         ) {
             println!("Up failed: {}", e);
             failed = true;
@@ -438,7 +442,7 @@ mod tests {
             &down_expected_sql,
             scope,
             folder,
-            TestKind::Down,
+            TestKind::Migration(SystemKind::New, SystemKind::Old),
         ) {
             println!("Down failed: {}", e);
             failed = true;
@@ -462,14 +466,14 @@ mod tests {
         expected: &str,
         migration_scope: &MigrationScope,
         folder: &Path,
-        kind: TestKind,
+        kind: SystemKind,
     ) -> Result<(), String> {
         let creation = Migration::from_schemas(
             &DatabaseSpec::new(vec![], vec![], vec![]),
             model_spec,
             migration_scope,
         );
-        assert_sql_eq(&creation, expected, folder, kind)?;
+        assert_sql_eq(&creation, expected, folder, TestKind::Creation(kind))?;
 
         let live_migrated_spec = test_support::with_client(move |mut client| async move {
             creation
@@ -501,12 +505,7 @@ mod tests {
 
         for spec in [model_spec, &live_migrated_spec] {
             let self_migration = Migration::from_schemas(spec, spec, migration_scope);
-            assert_sql_eq(
-                &self_migration,
-                "",
-                folder,
-                TestKind::IdempotentSelfMigration,
-            )?;
+            assert_sql_eq(&self_migration, "", folder, TestKind::Migration(kind, kind))?;
         }
 
         Ok(())
@@ -530,6 +529,13 @@ mod tests {
         folder: &Path,
         kind: TestKind,
     ) -> Result<(), String> {
+        let remove_previous_file = || {
+            let previous_file_path = dump_migration_path(folder, kind).unwrap();
+            if previous_file_path.exists() {
+                std::fs::remove_file(previous_file_path).unwrap();
+            }
+        };
+
         {
             // Check if strings match. This lets us avoid parsing the SQL (which in some cases doesn't work with syntax such as pgvector indexes)
             // TODO: Contribute to sqlparser to support pgvector and other cases where parsing fails
@@ -543,6 +549,7 @@ mod tests {
                     .zip(expected.lines())
                     .all(|(a, e)| a.trim() == e.trim())
             {
+                remove_previous_file();
                 return Ok(());
             }
         }
@@ -607,6 +614,8 @@ mod tests {
             dump_migration(actual, folder, kind)
                 .map_err(|e| format!("Failed to dump migration: {}", e))?;
             return Err(e);
+        } else {
+            remove_previous_file();
         }
 
         if actual_destructive_indices != expected_destructive_indices {
@@ -624,12 +633,18 @@ mod tests {
         folder: &Path,
         kind: TestKind,
     ) -> Result<(), std::io::Error> {
-        let kind_str = kind.kind_str();
+        let path = dump_migration_path(folder, kind)?;
+        let mut file = std::fs::File::create(path)?;
 
-        let file_name = folder.join(format!("{}.actual.sql", kind_str));
-        let mut file = std::fs::File::create(file_name)?;
         migration.write(&mut file, false)?;
         Ok(())
+    }
+
+    fn dump_migration_path(folder: &Path, kind: TestKind) -> Result<PathBuf, std::io::Error> {
+        let kind_str = kind.kind_str();
+
+        let path = folder.join(format!("{}.actual.sql", kind_str));
+        Ok(path)
     }
 
     fn assert_sql_str_eq(actual: &str, expected: &str, message: &str) -> Result<(), String> {
