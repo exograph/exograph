@@ -19,7 +19,11 @@ common = { path = "../../common" }
 tokio.workspace = true
 wasm-bindgen-test.workspace = true
 bincode.workspace = true
-exo-sql = { path = "../../../libs/exo-sql", features = ["bigdecimal"] }
+exo-sql = { path = "../../../libs/exo-sql", features = [
+  "bigdecimal",
+  "test-support",
+  "testing",
+] }
 sqlparser = "0.55.0"
 colored.workspace = true
 

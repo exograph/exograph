@@ -284,6 +284,7 @@ mod tests {
     use core_model_builder::plugin::BuildMode;
     use core_plugin_shared::error::ModelSerializationError;
     use core_plugin_shared::serializable_system::SerializableSystem;
+    use exo_sql::testing::test_support;
     use sqlparser::dialect::PostgreSqlDialect;
     use sqlparser::parser::Parser;
 
@@ -393,7 +394,9 @@ mod tests {
             scope,
             folder,
             TestKind::OldCreation,
-        ) {
+        )
+        .await
+        {
             println!("Old creation failed: {}", e);
             failed = true;
         } else {
@@ -406,7 +409,9 @@ mod tests {
             scope,
             folder,
             TestKind::NewCreation,
-        ) {
+        )
+        .await
+        {
             println!("New creation failed: {}", e);
             failed = true;
         } else {
@@ -452,8 +457,8 @@ mod tests {
         }
     }
 
-    fn assert_creation_and_self_migration(
-        system: &DatabaseSpec,
+    async fn assert_creation_and_self_migration(
+        model_spec: &DatabaseSpec,
         expected: &str,
         migration_scope: &MigrationScope,
         folder: &Path,
@@ -461,18 +466,48 @@ mod tests {
     ) -> Result<(), String> {
         let creation = Migration::from_schemas(
             &DatabaseSpec::new(vec![], vec![], vec![]),
-            system,
+            model_spec,
             migration_scope,
         );
-        assert_sql_eq(creation, expected, folder, kind)?;
+        assert_sql_eq(&creation, expected, folder, kind)?;
 
-        let self_migration = Migration::from_schemas(system, system, migration_scope);
-        assert_sql_eq(
-            self_migration,
-            "",
-            folder,
-            TestKind::IdempotentSelfMigration,
-        )?;
+        let live_migrated_spec = test_support::with_client(move |mut client| async move {
+            creation
+                .apply(&mut client, true)
+                .await
+                .map_err(|e| e.to_string())?;
+
+            let scope_matches = match migration_scope {
+                MigrationScope::Specified(scope) => scope,
+                MigrationScope::FromNewSpec => {
+                    &MigrationScopeMatches::from_specs_schemas(&[model_spec])
+                }
+            };
+
+            let live_db_spec = extract_db_schema(&client, scope_matches)
+                .await
+                .map_err(|e| format!("Failed to extract live db spec: {}", e))?;
+
+            if live_db_spec.issues.is_empty() {
+                Ok(live_db_spec.value)
+            } else {
+                Err(format!(
+                    "Live db spec has issues: {:?}",
+                    live_db_spec.issues
+                ))
+            }
+        })
+        .await?;
+
+        for spec in [model_spec, &live_migrated_spec] {
+            let self_migration = Migration::from_schemas(spec, spec, migration_scope);
+            assert_sql_eq(
+                &self_migration,
+                "",
+                folder,
+                TestKind::IdempotentSelfMigration,
+            )?;
+        }
 
         Ok(())
     }
@@ -486,11 +521,11 @@ mod tests {
         kind: TestKind,
     ) -> Result<(), String> {
         let migration = Migration::from_schemas(old_system, new_system, migration_scope);
-        assert_sql_eq(migration, expected, folder, kind)
+        assert_sql_eq(&migration, expected, folder, kind)
     }
 
     fn assert_sql_eq(
-        actual: Migration,
+        actual: &Migration,
         expected: &str,
         folder: &Path,
         kind: TestKind,
@@ -569,7 +604,7 @@ mod tests {
         let message = format!("{} {}", folder.display(), kind.kind_str());
 
         if let Err(e) = assert_sql_str_eq(&actual_sql, &expected_sql, &message) {
-            dump_migration(&actual, folder, kind)
+            dump_migration(actual, folder, kind)
                 .map_err(|e| format!("Failed to dump migration: {}", e))?;
             return Err(e);
         }

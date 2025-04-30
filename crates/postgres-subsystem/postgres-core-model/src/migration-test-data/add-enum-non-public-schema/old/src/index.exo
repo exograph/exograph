@@ -1,0 +1,7 @@
+@postgres(schema="non_public")
+module TodoModule {
+    type Todo {
+        @pk id: Int = autoIncrement()
+        title: String
+    }
+}

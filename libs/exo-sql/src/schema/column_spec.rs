@@ -117,9 +117,13 @@ impl ColumnDefault {
             Some(ColumnTypeSpec::Boolean) => Ok(ColumnDefault::Boolean(default_value == "true")),
             Some(ColumnTypeSpec::Enum { enum_name }) => {
                 // Remove the type cast from the default value
+                let enum_name = match &enum_name.schema {
+                    Some(schema) => format!("{}.{}", schema, enum_name.name),
+                    None => enum_name.name.clone(),
+                };
                 let default_value = default_value
                     .strip_prefix("'")
-                    .and_then(|s| s.strip_suffix(format!("'::{}", enum_name.name).as_str()))
+                    .and_then(|s| s.strip_suffix(format!("'::{}", enum_name).as_str()))
                     .unwrap_or(&default_value);
 
                 Ok(ColumnDefault::Enum(default_value.to_string()))
@@ -778,7 +782,11 @@ impl ColumnTypeSpec {
                         ColumnTypeSpec::Numeric { precision, scale }
                     } else {
                         let enum_type = enums.iter().find(|enum_spec| {
-                            enum_spec.name.name.to_uppercase() == s.to_uppercase()
+                            let enum_spec_name = match &enum_spec.name.schema {
+                                Some(schema) => format!("{}.{}", schema, enum_spec.name.name),
+                                None => enum_spec.name.name.clone(),
+                            };
+                            enum_spec_name.to_uppercase() == s.to_uppercase()
                         });
                         if let Some(enum_type) = enum_type {
                             ColumnTypeSpec::Enum {

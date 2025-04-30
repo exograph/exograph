@@ -1,0 +1,18 @@
+@postgres(schema="non_public")
+module NonPublicDatabase {
+  @access(query=true, mutation=false)
+  type Todo {
+    @pk id: Int = autoIncrement()
+    title: String
+    completed: Boolean
+    priorityWithDefault: Priority = MEDIUM
+    priorityNullable: Priority?
+    priority: Priority
+  }
+
+  enum Priority {
+    LOW
+    MEDIUM
+    HIGH
+  }
+}

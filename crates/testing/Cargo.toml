@@ -38,7 +38,7 @@ introspection-util = { path = "../introspection-util" }
 exo-sql = { path = "../../libs/exo-sql", features = [
   "tls",
   "postgres-url",
-  "testing",
+  "test-support",
   "pool",
 ] }
 exo-deno = { path = "../../libs/exo-deno", features = ["typescript-loader"] }
