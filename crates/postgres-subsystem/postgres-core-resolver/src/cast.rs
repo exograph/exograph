@@ -84,7 +84,7 @@ pub fn cast_value(
         Val::Enum(v) => match destination_type {
             PhysicalColumnType::Enum { enum_name } => Ok(Some(SQLParamContainer::enum_(
                 v.to_string(),
-                enum_name.name.to_string(),
+                enum_name.clone(),
             ))),
             _ => Err(CastError::Generic(format!(
                 "Expected enum type, got {}",

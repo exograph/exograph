@@ -16,7 +16,7 @@ use std::{
 };
 use tokio_postgres::types::{to_sql_checked, ToSql, Type};
 
-use crate::{SQLBytes, SQLParam};
+use crate::{SQLBytes, SQLParam, SchemaObjectName};
 
 use super::{physical_column::to_pg_array_type, sql_param::SQLParamWithType, SQLValue};
 
@@ -136,7 +136,7 @@ impl SQLParamContainer {
         Self::new(value, Type::TEXT_ARRAY)
     }
 
-    pub fn enum_(value: String, enum_type: String) -> Self {
+    pub fn enum_(value: String, enum_type: SchemaObjectName) -> Self {
         Self(SQLParamWithType {
             param: Arc::new(value),
             param_type: Type::TEXT,
