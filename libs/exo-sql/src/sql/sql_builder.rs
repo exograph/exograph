@@ -103,7 +103,7 @@ impl SQLBuilder {
         let enum_cast = param
             .enum_type
             .as_ref()
-            .map(|enum_type| format!("::{}", enum_type));
+            .map(|enum_type| format!("::{}", enum_type.sql_name()));
 
         self.params.push(param);
         self.push('$');

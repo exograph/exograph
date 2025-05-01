@@ -1,0 +1,34 @@
+
+context AuthContext {
+  @jwt("sub") id: Int
+  @jwt("role") role: String = "user"
+}
+
+@postgres(schema="t_schema")
+module TodoDatabase {
+  @access(self.user.id == AuthContext.id || AuthContext.role == "admin")
+  type Todo {
+    @pk id: Int = autoIncrement()
+    title: String
+    completed: Boolean
+    priority: Priority = MEDIUM
+    user: User = AuthContext.id
+  }
+
+  enum Priority {
+    LOW
+    MEDIUM
+    HIGH
+  }
+
+  @access(AuthContext.role == "admin")
+  type User {
+    @pk id: Int = autoIncrement()
+    @unique email: String
+    firstName: String
+    lastName: String
+    profileImageUrl: String
+    role: String = "user"
+    todos: Set<Todo>?
+  }
+}

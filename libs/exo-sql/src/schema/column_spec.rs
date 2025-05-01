@@ -145,11 +145,9 @@ impl ColumnDefault {
             ColumnDefault::Enum(value) => Some(format!("'{value}'")),
             ColumnDefault::Autoincrement(autoincrement) => match autoincrement {
                 ColumnAutoincrement::Serial => None, // The type `SERIAL` takes care of the default value
-                ColumnAutoincrement::Sequence { name } => Some(format!(
-                    "nextval('{}.{}'::regclass)",
-                    name.schema.as_deref().unwrap_or("public"),
-                    name.name
-                )),
+                ColumnAutoincrement::Sequence { name } => {
+                    Some(format!("nextval('{}'::regclass)", name.sql_name()))
+                }
                 ColumnAutoincrement::Identity { .. } => None,
             },
         }
