@@ -1,14 +1,11 @@
 use anyhow::Result;
 
-use exo_sql::schema::column_spec::{ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec};
+use exo_sql::schema::column_spec::{ColumnSpec, ColumnTypeSpec};
 
 use exo_sql::schema::table_spec::TableSpec;
 use exo_sql::{FloatBits, IntBits};
 
-use super::context::reference_field_name;
 use super::{ImportContext, ModelProcessor};
-
-use heck::ToUpperCamelCase;
 
 const INDENT: &str = "    ";
 
@@ -22,7 +19,7 @@ impl ModelProcessor<TableSpec> for ColumnSpec {
     ) -> Result<()> {
         // [@pk] [type-annotations] [name]: [data-type] = [default-value]
 
-        let column_type_name = type_name(&self.typ, context);
+        let column_type_name = context.type_name(&self.typ);
         let is_column_type_name_reference =
             matches!(column_type_name, ColumnTypeName::ReferenceType(_));
 
@@ -65,22 +62,13 @@ impl ModelProcessor<TableSpec> for ColumnSpec {
             write!(writer, "{} ", annots)?;
         }
 
-        let standard_column_name = context.standard_column_name(self);
+        let (standard_field_name, needs_column_annotation) = context.standard_field_naming(self);
 
-        if standard_column_name != self.name {
+        if needs_column_annotation {
             write!(writer, "@column(\"{}\") ", self.name)?;
         }
 
-        match &self.typ {
-            // If the column references to a table and that table is in the context, we use the reference field name (for example `venue_id` -> `venue`)
-            ColumnTypeSpec::ColumnReference(ref reference) if is_column_type_name_reference => {
-                write!(writer, "{}: ", reference_field_name(self, reference))?;
-            }
-            _ => {
-                let standard_field_name = context.standard_field_name(&self.name);
-                write!(writer, "{}: ", standard_field_name)?;
-            }
-        }
+        write!(writer, "{}: ", standard_field_name)?;
 
         let data_type = match column_type_name {
             ColumnTypeName::SelfType(data_type) => data_type,
@@ -103,55 +91,9 @@ impl ModelProcessor<TableSpec> for ColumnSpec {
     }
 }
 
-enum ColumnTypeName {
+pub enum ColumnTypeName {
     SelfType(String),
     ReferenceType(String),
-}
-
-fn type_name(column_type: &ColumnTypeSpec, context: &ImportContext) -> ColumnTypeName {
-    match column_type {
-        ColumnTypeSpec::Int { .. } => ColumnTypeName::SelfType("Int".to_string()),
-        ColumnTypeSpec::Float { .. } => ColumnTypeName::SelfType("Float".to_string()),
-        ColumnTypeSpec::Numeric { .. } => ColumnTypeName::SelfType("Decimal".to_string()),
-        ColumnTypeSpec::String { .. } => ColumnTypeName::SelfType("String".to_string()),
-        ColumnTypeSpec::Boolean => ColumnTypeName::SelfType("Boolean".to_string()),
-        ColumnTypeSpec::Timestamp { timezone, .. } => ColumnTypeName::SelfType(
-            if *timezone {
-                "Instant"
-            } else {
-                "LocalDateTime"
-            }
-            .to_string(),
-        ),
-        ColumnTypeSpec::Time { .. } => ColumnTypeName::SelfType("LocalTime".to_string()),
-        ColumnTypeSpec::Date => ColumnTypeName::SelfType("LocalDate".to_string()),
-        ColumnTypeSpec::Json => ColumnTypeName::SelfType("Json".to_string()),
-        ColumnTypeSpec::Blob => ColumnTypeName::SelfType("Blob".to_string()),
-        ColumnTypeSpec::Uuid => ColumnTypeName::SelfType("Uuid".to_string()),
-        ColumnTypeSpec::Vector { .. } => ColumnTypeName::SelfType("Vector".to_string()),
-        ColumnTypeSpec::Array { typ } => match type_name(typ, context) {
-            ColumnTypeName::SelfType(data_type) => {
-                ColumnTypeName::SelfType(format!("Array<{data_type}>"))
-            }
-            ColumnTypeName::ReferenceType(data_type) => {
-                ColumnTypeName::ReferenceType(format!("Array<{data_type}>"))
-            }
-        },
-        ColumnTypeSpec::Enum { enum_name } => {
-            ColumnTypeName::SelfType(enum_name.name.to_upper_camel_case())
-        }
-        ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
-            foreign_table_name,
-            foreign_pk_type,
-            ..
-        }) => {
-            let model_name = context.model_name(foreign_table_name);
-            match model_name {
-                Some(model_name) => ColumnTypeName::ReferenceType(model_name.to_string()),
-                None => type_name(foreign_pk_type, context),
-            }
-        }
-    }
 }
 
 fn type_annotation(column_type: &ColumnTypeSpec) -> String {

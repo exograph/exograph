@@ -10,6 +10,8 @@ use exo_sql::{
 
 use heck::{ToLowerCamelCase, ToSnakeCase, ToUpperCamelCase};
 
+use super::column_processor::ColumnTypeName;
+
 pub(super) struct ImportContext<'a> {
     table_name_to_model_name: HashMap<SchemaObjectName, String>,
     pub(super) schemas: HashSet<String>,
@@ -68,18 +70,67 @@ impl<'a> ImportContext<'a> {
         }
     }
 
-    pub(super) fn standard_field_name(&self, column_name: &str) -> String {
+    fn standard_field_name(&self, column_name: &str) -> String {
         column_name.to_lower_camel_case()
     }
 
-    pub(super) fn standard_column_name(&self, column: &ColumnSpec) -> String {
-        match &column.typ {
-            ColumnTypeSpec::ColumnReference(ref reference) => {
-                let field_name = reference_field_name(column, reference); // For example, `region_id` -> `region`
-                format!("{}_{}", field_name, reference.foreign_pk_column_name)
-            }
-            _ => column.name.to_snake_case(),
-        }
+    pub(super) fn standard_field_naming(&self, column: &ColumnSpec) -> (String, bool) {
+        let column_type_name = self.type_name(&column.typ);
+        let is_column_type_name_reference =
+            matches!(column_type_name, ColumnTypeName::ReferenceType(_));
+
+        let (field_name, column_name_from_field_name, field_name_from_column_name) =
+            match &column.typ {
+                ColumnTypeSpec::ColumnReference(ref reference) if is_column_type_name_reference => {
+                    let field_name = reference_field_name(&column.name, reference); // For example, `sales_region_id` -> `salesRegion`
+                    let column_name_from_field_name = format!(
+                        "{}_{}",
+                        field_name.to_snake_case(),
+                        reference.foreign_pk_column_name
+                    );
+                    let field_name_from_column_name =
+                        reference_field_name(&column_name_from_field_name, reference);
+
+                    (
+                        field_name,
+                        column_name_from_field_name,
+                        field_name_from_column_name,
+                    )
+                }
+                _ => {
+                    let field_name = self.standard_field_name(&column.name);
+                    let column_name_from_field_name = field_name.to_snake_case();
+                    let field_name_from_column_name =
+                        self.standard_field_name(&column_name_from_field_name);
+
+                    (
+                        field_name,
+                        column_name_from_field_name,
+                        field_name_from_column_name,
+                    )
+                }
+            };
+
+        // An explicit @column annotation is needed if *either* of the following is true:
+        //
+        // 1. The column name derived from the field name does not match the actual column name.
+        //    Example: The column is named `EmployeeId`.
+        //      - The importer infers the field name as `employeeId` (lowerCamelCase).
+        //      - The builder infers the column name as `employee_id` (snake_case).
+        //      - To avoid mismatch, annotate explicitly:
+        //        @column("EmployeeId") employeeId: Int
+        //
+        // 2. The field name derived from the column name does not map back to the original column name.
+        //    Example: The column is named `min_30d_price`.
+        //      - The standard field name becomes `min30dPrice` (lowerCamelCase).
+        //      - But the builder infers `min30d_price` as the column name (snake_case of field name), causing a mismatch.
+        //      - This (snake_case(lowerCamelCase(column-name)) != column-name) happens when digits are involved.
+        //      - To avoid mismatch, annotate explicitly:
+        //        @column("min_30d_price") min30dPrice: Float
+
+        let needs_column_annotation =
+            column_name_from_field_name != column.name || field_name_from_column_name != field_name;
+        (field_name, needs_column_annotation)
     }
 
     /// Converts the name of a SQL table to a exograph model name (for example, concert_artist -> ConcertArtist).
@@ -146,21 +197,64 @@ impl<'a> ImportContext<'a> {
             })
             .collect()
     }
+
+    pub(super) fn type_name(&self, column_type: &ColumnTypeSpec) -> ColumnTypeName {
+        match column_type {
+            ColumnTypeSpec::Int { .. } => ColumnTypeName::SelfType("Int".to_string()),
+            ColumnTypeSpec::Float { .. } => ColumnTypeName::SelfType("Float".to_string()),
+            ColumnTypeSpec::Numeric { .. } => ColumnTypeName::SelfType("Decimal".to_string()),
+            ColumnTypeSpec::String { .. } => ColumnTypeName::SelfType("String".to_string()),
+            ColumnTypeSpec::Boolean => ColumnTypeName::SelfType("Boolean".to_string()),
+            ColumnTypeSpec::Timestamp { timezone, .. } => ColumnTypeName::SelfType(
+                if *timezone {
+                    "Instant"
+                } else {
+                    "LocalDateTime"
+                }
+                .to_string(),
+            ),
+            ColumnTypeSpec::Time { .. } => ColumnTypeName::SelfType("LocalTime".to_string()),
+            ColumnTypeSpec::Date => ColumnTypeName::SelfType("LocalDate".to_string()),
+            ColumnTypeSpec::Json => ColumnTypeName::SelfType("Json".to_string()),
+            ColumnTypeSpec::Blob => ColumnTypeName::SelfType("Blob".to_string()),
+            ColumnTypeSpec::Uuid => ColumnTypeName::SelfType("Uuid".to_string()),
+            ColumnTypeSpec::Vector { .. } => ColumnTypeName::SelfType("Vector".to_string()),
+            ColumnTypeSpec::Array { typ } => match self.type_name(typ) {
+                ColumnTypeName::SelfType(data_type) => {
+                    ColumnTypeName::SelfType(format!("Array<{data_type}>"))
+                }
+                ColumnTypeName::ReferenceType(data_type) => {
+                    ColumnTypeName::ReferenceType(format!("Array<{data_type}>"))
+                }
+            },
+            ColumnTypeSpec::Enum { enum_name } => {
+                ColumnTypeName::SelfType(enum_name.name.to_upper_camel_case())
+            }
+            ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
+                foreign_table_name,
+                foreign_pk_type,
+                ..
+            }) => {
+                let model_name = self.model_name(foreign_table_name);
+                match model_name {
+                    Some(model_name) => ColumnTypeName::ReferenceType(model_name.to_string()),
+                    None => self.type_name(foreign_pk_type),
+                }
+            }
+        }
+    }
 }
 
-pub(super) fn reference_field_name(column: &ColumnSpec, reference: &ColumnReferenceSpec) -> String {
-    if column
-        .name
-        .ends_with(&format!("_{}", reference.foreign_pk_column_name))
-    {
+fn reference_field_name(column_name: &str, reference: &ColumnReferenceSpec) -> String {
+    if column_name.ends_with(&format!("_{}", reference.foreign_pk_column_name)) {
         // Drop the trailing underscore and the foreign key column name
-        column.name[..column.name.len() - reference.foreign_pk_column_name.len() - 1].to_string()
-    } else if column.name.ends_with("id") || column.name.ends_with("Id") {
+        column_name[..column_name.len() - reference.foreign_pk_column_name.len() - 1].to_string()
+    } else if column_name.ends_with("id") || column_name.ends_with("Id") {
         // Some databases (for example, a version of "chinook") uses `ArtistId` as the primary key column name and `ArtistId` to refer to this column.
         // Drop the trailing "id" or "Id"
-        column.name[..column.name.len() - 2].to_string()
+        column_name[..column_name.len() - 2].to_string()
     } else {
-        column.name.to_string()
+        column_name.to_string()
     }
     .to_lower_camel_case()
 }
