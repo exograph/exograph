@@ -19,6 +19,8 @@ allow = [
     "OpenSSL",
     "Unicode-DFS-2016",
     "Zlib",
+    "Unicode-3.0",
+    "CDLA-Permissive-2.0",
     "BSL-1.0",                        # Boost
 ]
 confidence-threshold = 0.8
