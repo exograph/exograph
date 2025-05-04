@@ -25,6 +25,7 @@ pub struct SerializableSystem {
     pub query_interception_map: InterceptionMap,
     pub mutation_interception_map: InterceptionMap,
     pub trusted_documents: TrustedDocuments,
+    pub declaration_doc_comments: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -207,6 +208,7 @@ mod test {
                 rpc: Some(super::SerializableRpcBytes(vec![])),
                 core: super::SerializableCoreBytes(vec![]),
             }],
+            declaration_doc_comments: None,
         }
     }
 

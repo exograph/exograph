@@ -42,3 +42,4 @@ types:
     doc_comments: ~
 modules: []
 imports: []
+declaration_doc_comments: ~

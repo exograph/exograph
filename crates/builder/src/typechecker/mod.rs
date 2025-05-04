@@ -358,6 +358,7 @@ pub fn build(
                 return Ok(TypecheckedSystem {
                     types: types_arena,
                     modules: modules_arena,
+                    declaration_doc_comments: ast_system.declaration_doc_comments,
                 });
             }
         }

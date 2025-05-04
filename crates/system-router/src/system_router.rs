@@ -77,8 +77,15 @@ pub async fn create_system_router_from_system(
     static_loaders: StaticLoaders,
     env: Arc<dyn Environment>,
 ) -> Result<SystemRouter, SystemLoadingError> {
-    let (subsystem_resolvers, query_interception_map, mutation_interception_map, trusted_documents) =
-        create_system_resolvers(system, static_loaders, env.clone()).await?;
+    let (
+        subsystem_resolvers,
+        query_interception_map,
+        mutation_interception_map,
+        trusted_documents,
+        declaration_doc_comments,
+    ) = create_system_resolvers(system, static_loaders, env.clone()).await?;
+
+    let declaration_doc_comments = Arc::new(declaration_doc_comments);
 
     let mut graphql_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>> = vec![];
     let mut rest_resolvers: Vec<Box<dyn SubsystemRestResolver + Send + Sync>> = vec![];
@@ -102,7 +109,11 @@ pub async fn create_system_router_from_system(
 
     #[cfg(not(target_family = "wasm"))]
     let mcp_introspection_router = {
-        let introspection_schema = Arc::new(Schema::new_from_resolvers(&graphql_resolvers, false));
+        let introspection_schema = Arc::new(Schema::new_from_resolvers(
+            &graphql_resolvers,
+            false,
+            declaration_doc_comments.clone(),
+        ));
         GraphQLRouter::from_resolvers(
             vec![],
             Some(Box::new(IntrospectionResolver::new(
@@ -123,6 +134,7 @@ pub async fn create_system_router_from_system(
         let introspection_schema = Arc::new(Schema::new_from_resolvers(
             &graphql_resolvers,
             allow_mutations,
+            declaration_doc_comments,
         ));
 
         let (introspection_resolver, graphql_resolvers): (
@@ -189,6 +201,7 @@ pub async fn create_system_resolvers(
         InterceptionMap,
         InterceptionMap,
         TrustedDocuments,
+        Option<String>,
     ),
     SystemLoadingError,
 > {
@@ -235,6 +248,7 @@ pub async fn create_system_resolvers(
         query_interception_map,
         mutation_interception_map,
         trusted_documents,
+        declaration_doc_comments,
     } = system;
 
     for subsystem in subsystems {
@@ -253,6 +267,7 @@ pub async fn create_system_resolvers(
         query_interception_map,
         mutation_interception_map,
         trusted_documents,
+        declaration_doc_comments,
     ))
 }
 

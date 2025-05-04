@@ -303,3 +303,4 @@ modules:
     DocumentModule:
       index: 0
       generation: ~
+declaration_doc_comments: ~

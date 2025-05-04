@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
 
 use async_graphql_parser::{
     types::{
@@ -28,6 +28,7 @@ pub struct Schema {
     pub type_definitions: Vec<TypeDefinition>,
     pub(crate) schema_field_definition: FieldDefinition,
     pub(crate) type_field_definition: FieldDefinition,
+    pub declaration_doc_comments: Arc<Option<String>>,
 }
 
 pub const QUERY_ROOT_TYPENAME: &str = "Query";
@@ -38,6 +39,7 @@ impl Schema {
     pub fn new_from_resolvers(
         subsystem_resolvers: &[Box<dyn SubsystemGraphQLResolver + Send + Sync>],
         allow_mutations: bool,
+        declaration_doc_comments: Arc<Option<String>>,
     ) -> Schema {
         let type_definitions: Vec<TypeDefinition> = {
             let mut typedefs = subsystem_resolvers
@@ -80,13 +82,19 @@ impl Schema {
             vec![]
         };
 
-        Self::new(type_definitions, queries, mutations)
+        Self::new(
+            type_definitions,
+            queries,
+            mutations,
+            declaration_doc_comments,
+        )
     }
 
     pub(crate) fn new(
         type_definitions: Vec<TypeDefinition>,
         queries: Vec<FieldDefinition>,
         mutations: Vec<FieldDefinition>,
+        declaration_doc_comments: Arc<Option<String>>,
     ) -> Schema {
         let mut type_definitions = type_definitions;
 
@@ -185,6 +193,7 @@ impl Schema {
                 })],
             )
             .node,
+            declaration_doc_comments,
         }
     }
 

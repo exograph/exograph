@@ -32,7 +32,7 @@ impl CommandDefinition for SchemaCommandDefinition {
         Command::new("schema")
             .about("Obtain GraphQL schema")
             .arg(output_arg().long_help(
-                "Output file for the introspection result. Default: generated/schema.json",
+                "Output file for the introspection result. Default: generated/schema.graphql or generated/schema.json (depending on format)",
             ))
             .arg(
                 Arg::new("format")

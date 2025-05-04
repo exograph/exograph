@@ -108,6 +108,8 @@ impl<'a> DocumentValidator<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
 
     use async_graphql_parser::parse_query;
@@ -829,6 +831,7 @@ mod tests {
                 .as_ref()
                 .unwrap()
                 .schema_mutations(),
+            Arc::new(None),
         )
     }
 

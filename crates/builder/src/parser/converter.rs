@@ -43,8 +43,30 @@ pub fn convert_root(
 ) -> Result<AstSystem<Untyped>, ParserError> {
     assert_eq!(node.kind(), "source_file");
 
+    fn collect_declaration_doc_comments(
+        node: Node,
+        source: &[u8],
+        source_span: Span,
+    ) -> Option<String> {
+        // Take all the declaration doc comments and join them with a newline. This allows developers to, for example, write a declaration doc comment
+        // in each imported file.
+        let mut cursor = node.walk();
+        let doc_comments = node
+            .children(&mut cursor)
+            .filter(|n| n.kind() == "declaration")
+            .filter_map(|c| convert_declaration_doc_comments(c, source, source_span))
+            .collect::<Vec<_>>();
+
+        if doc_comments.is_empty() {
+            None
+        } else {
+            Some(doc_comments.join("\n"))
+        }
+    }
+
     let mut cursor = node.walk();
     Ok(AstSystem {
+        declaration_doc_comments: collect_declaration_doc_comments(node, source, source_span),
         types: node
             .children(&mut cursor)
             .filter(|n| n.kind() == "declaration")
@@ -243,13 +265,30 @@ fn convert_enum(node: Node, source: &[u8], source_span: Span) -> AstEnum<Untyped
 }
 
 fn convert_doc_comments(node: Node, source: &[u8], _source_span: Span) -> Option<String> {
-    node.child_by_field_name("doc_comment").map(|c| {
-        let mut cursor = c.walk();
-        c.children_by_field_name("doc_line", &mut cursor)
-            .map(|c| c.utf8_text(source).unwrap().trim().to_string())
-            .collect::<Vec<_>>()
-            .join("\n")
-    })
+    node.child_by_field_name("doc_comment")
+        .map(|c| doc_comment_to_string(c, source))
+}
+
+fn convert_declaration_doc_comments(
+    node: Node,
+    source: &[u8],
+    _source_span: Span,
+) -> Option<String> {
+    let first_child = node.child(0).unwrap();
+
+    if first_child.kind() == "declaration_doc_comment" {
+        Some(doc_comment_to_string(first_child, source))
+    } else {
+        None
+    }
+}
+
+fn doc_comment_to_string(node: Node, source: &[u8]) -> String {
+    let mut cursor = node.walk();
+    node.children_by_field_name("doc_line", &mut cursor)
+        .map(|c| c.utf8_text(source).unwrap().trim().to_string())
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 fn convert_module(

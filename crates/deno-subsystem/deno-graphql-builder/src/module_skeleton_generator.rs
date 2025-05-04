@@ -642,6 +642,7 @@ mod tests {
             &TypecheckedSystem {
                 types: Default::default(),
                 modules: Default::default(),
+                declaration_doc_comments: None,
             },
             &mut temp_file,
         )
@@ -667,6 +668,7 @@ mod tests {
             &TypecheckedSystem {
                 types: Default::default(),
                 modules: Default::default(),
+                declaration_doc_comments: None,
             },
             &mut temp_file,
         )
@@ -699,6 +701,7 @@ mod tests {
             &TypecheckedSystem {
                 types: Default::default(),
                 modules: Default::default(),
+                declaration_doc_comments: None,
             },
         )
         .unwrap();

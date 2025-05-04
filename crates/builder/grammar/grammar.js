@@ -36,6 +36,7 @@ module.exports = grammar({
   rules: {
     source_file: $ => repeat($.declaration),
     declaration: $ => choice(
+      $.declaration_doc_comment,
       $.context,
       $.module,
       $.import
@@ -290,6 +291,14 @@ module.exports = grammar({
         /\*\//
       ),
       repeat1(seq('///', field("doc_line", $.doc_line_content)))
+    ),
+    declaration_doc_comment: $ => choice(
+      seq(
+        /\/\*\![ \t]*\n/,
+        repeat1(seq('*', field("doc_line", $.doc_line_content))),
+        /\*\//
+      ),
+      prec(1, repeat1(seq('//!', field("doc_line", $.doc_line_content))))
     ),
 
     doc_line_content: $ => /.*/,

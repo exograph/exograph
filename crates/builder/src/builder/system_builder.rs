@@ -118,5 +118,6 @@ pub async fn build(
         query_interception_map,
         mutation_interception_map,
         trusted_documents,
+        declaration_doc_comments: typechecked_system.declaration_doc_comments,
     })
 }
