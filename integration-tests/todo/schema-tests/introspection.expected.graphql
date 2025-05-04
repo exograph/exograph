@@ -1,3 +1,13 @@
+"""
+Multi-user todo application model. Users can only query/mutate their own todos. Admins can query/mutate all todos.
+The default user role is "user".
+The default priority is "medium".
+"""
+schema {
+  query: Query
+  mutation: Mutation
+}
+
 type BooleanAgg {
   count: Int
 }

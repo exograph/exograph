@@ -121,4 +121,5 @@ impl Type {
 pub struct TypecheckedSystem {
     pub types: MappedArena<Type>,
     pub modules: MappedArena<Module>,
+    pub declaration_doc_comments: Option<String>,
 }

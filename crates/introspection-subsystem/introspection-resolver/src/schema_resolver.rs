@@ -51,7 +51,12 @@ impl FieldResolver<Value, SubsystemResolutionError> for Schema {
                     .await
             }
             "directives" => Ok(Value::Array(vec![])), // TODO
-            "description" => Ok(Value::String("Top-level schema".to_string())),
+            "description" => Ok(self
+                .declaration_doc_comments
+                .as_ref()
+                .as_ref()
+                .map(|s| Value::String(s.clone()))
+                .unwrap_or(Value::Null)),
             "__typename" => Ok(Value::String("__Schema".to_string())),
             field_name => Err(SubsystemResolutionError::InvalidField(
                 field_name.to_owned(),

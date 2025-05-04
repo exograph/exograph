@@ -77,3 +77,4 @@ modules:
     base_exofile: input.exo
     doc_comments: ~
 imports: []
+declaration_doc_comments: ~

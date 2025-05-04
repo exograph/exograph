@@ -62,6 +62,7 @@ pub struct AstSystem<T: NodeTypedness> {
     pub types: Vec<AstModel<T>>,
     pub modules: Vec<AstModule<T>>,
     pub imports: Vec<PathBuf>,
+    pub declaration_doc_comments: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

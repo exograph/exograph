@@ -13,7 +13,7 @@ import { printSchema } from "embedded://graphql/utilities/printSchema.mjs"
 import { assertValidSchema } from "embedded://graphql/type/validate.mjs"
 
 export async function introspectionQuery() {
-    return getIntrospectionQuery();
+    return getIntrospectionQuery({ schemaDescription: true });
 }
 
 export async function assertSchema(response) {

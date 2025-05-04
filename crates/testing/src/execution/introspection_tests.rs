@@ -176,6 +176,7 @@ async fn check_introspection(
 
                         if sdl_line_count != expected_sdl_line_count {
                             std::fs::write(&actual_sdl_path, &sdl)?;
+                            print_diff(&expected_sdl_path, &actual_sdl_path)?;
                             return Err(anyhow!(
                                 "SDL does not match the expected schema in {}. Expected {} lines, got {} lines",
                                 model_path.display(),
@@ -192,6 +193,7 @@ async fn check_introspection(
                         {
                             if sdl_line.trim() != expected_sdl_line.trim() {
                                 std::fs::write(&actual_sdl_path, &sdl)?;
+                                print_diff(&expected_sdl_path, &actual_sdl_path)?;
                                 return Err(anyhow!(
                                     "SDL does not match the expected schema in {}. Difference at line {}",
                                     model_path.display(),
@@ -215,5 +217,26 @@ async fn check_introspection(
             DenoError::Explicit(e) => Err(anyhow!(e)),
             e => Err(e.into()),
         },
+    }
+}
+
+fn print_diff(expected_file: &Path, actual_file: &Path) -> Result<()> {
+    let diff_output = std::process::Command::new("diff")
+        .arg("-u")
+        .arg("-b")
+        .arg(expected_file)
+        .arg(actual_file)
+        .output()?;
+
+    if diff_output.status.success() {
+        Ok(())
+    } else {
+        // If the files are different, print the diff
+        eprintln!("{}", String::from_utf8(diff_output.stdout)?);
+        Err(anyhow!(
+            "Files {} and {} differ",
+            expected_file.display(),
+            actual_file.display()
+        ))
     }
 }
