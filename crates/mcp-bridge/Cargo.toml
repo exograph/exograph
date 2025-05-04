@@ -2,6 +2,7 @@
 name = "mcp-bridge"
 version.workspace = true
 edition.workspace = true
+publish = false
 
 [dependencies]
 tokio = { workspace = true, features = ["full"] }
