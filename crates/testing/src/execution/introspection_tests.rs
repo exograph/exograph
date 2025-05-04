@@ -223,6 +223,7 @@ async fn check_introspection(
 fn print_diff(expected_file: &Path, actual_file: &Path) -> Result<()> {
     let diff_output = std::process::Command::new("diff")
         .arg("-u")
+        .arg("-b")
         .arg(expected_file)
         .arg(actual_file)
         .output()?;

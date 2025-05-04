@@ -286,7 +286,7 @@ module.exports = grammar({
     ),
     doc_comment: $ => choice(
       seq(
-        /\/\*\*[ \t]*\n/,
+        /\/\*\*[ \t]*(?:\r?\n)/,
         repeat1(seq('*', field("doc_line", $.doc_line_content))),
         /\*\//
       ),
@@ -294,7 +294,7 @@ module.exports = grammar({
     ),
     declaration_doc_comment: $ => choice(
       seq(
-        /\/\*\![ \t]*\n/,
+        /\/\*\![ \t]*(?:\r?\n)/,
         repeat1(seq('*', field("doc_line", $.doc_line_content))),
         /\*\//
       ),
