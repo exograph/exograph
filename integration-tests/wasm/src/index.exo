@@ -1,4 +1,4 @@
-@wasm("./wasm-source/target/wasm32-wasi/debug/wasi_add.wasm")
+@wasm("./wasm-source/target/wasm32-unknown-unknown/debug/wasi_add.wasm")
 module ArithmeticModule {
     query add(a: Int, b: Int): Int
 }
