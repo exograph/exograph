@@ -1,1 +1,1 @@
-(cd "$( dirname -- "$0"; )/../src/wasm-source" && cargo build --target wasm32-wasip2)
+(cd "$( dirname -- "$0"; )/../src/wasm-source" && cargo build --target wasm32-unknown-unknown)
