@@ -18,6 +18,10 @@ pub trait Environment: Send + Sync {
             None => default_value,
         }
     }
+
+    fn get_or_else(&self, key: &str, default_value: &str) -> String {
+        self.get(key).unwrap_or(default_value.to_string())
+    }
 }
 
 pub struct SystemEnvironment;
