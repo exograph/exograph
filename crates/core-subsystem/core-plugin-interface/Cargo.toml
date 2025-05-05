@@ -5,7 +5,7 @@ edition.workspace = true
 publish = false
 
 [build-dependencies]
-built = "0.7.5"
+built = "0.8.0"
 
 [dependencies]
 thiserror.workspace = true
