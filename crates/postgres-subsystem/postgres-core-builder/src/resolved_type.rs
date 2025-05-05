@@ -26,7 +26,7 @@ pub struct ResolvedTypeEnv<'a> {
     pub function_definitions: &'a MappedArena<FunctionDefinition>,
 }
 
-impl<'a> ResolvedTypeEnv<'a> {
+impl ResolvedTypeEnv<'_> {
     pub fn get_by_key(&self, key: &str) -> Option<&ResolvedType> {
         self.resolved_types.get_by_key(key)
     }

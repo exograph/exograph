@@ -46,13 +46,13 @@ impl<'a> ArgumentValidator<'a> {
     /// Validations performed:
     /// - Ensure that all required arguments are provided
     /// - Ensure that there are no stray arguments (arguments that are not defined in the field)
-    /// - TODO: Ensure that the argument type is compatible with the argument definition
-    ///         (currently, we do a partial check: object-shape, matched scalar, but no checks such
-    ///          as a LocalTime argument is valid or the numbers fit the expected range).
     pub(super) fn validate(
         &self,
         field_argument_definition: &[&InputValueDefinition],
     ) -> Result<IndexMap<String, Val>, ValidationError> {
+        // TODO: Ensure that the argument type is compatible with the argument definition
+        // (currently, we do a partial check: object-shape, matched scalar, but no checks such
+        // as a LocalTime argument is valid or the numbers fit the expected range).
         self.validate_arguments(field_argument_definition, &self.field.node.arguments)
     }
 

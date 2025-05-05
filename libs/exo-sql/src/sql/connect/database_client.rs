@@ -45,7 +45,7 @@ pub enum TransactionWrapper<'a> {
     Direct(tokio_postgres::Transaction<'a>),
 }
 
-impl<'a> TransactionWrapper<'a> {
+impl TransactionWrapper<'_> {
     pub async fn commit(self) -> Result<(), tokio_postgres::Error> {
         match self {
             #[cfg(feature = "pool")]
@@ -75,7 +75,7 @@ impl<'a> Deref for TransactionWrapper<'a> {
     }
 }
 
-impl<'a> DerefMut for TransactionWrapper<'a> {
+impl DerefMut for TransactionWrapper<'_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self {
             #[cfg(feature = "pool")]

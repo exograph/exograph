@@ -35,7 +35,7 @@ pub struct Update<'a> {
     pub returning: Vec<MaybeOwned<'a, Column>>,
 }
 
-impl<'a> ExpressionBuilder for Update<'a> {
+impl ExpressionBuilder for Update<'_> {
     /// Build the update statement for the form `UPDATE <table> SET <column = value, ...> WHERE
     /// <predicate> RETURNING <returning-columns>`. The `WHERE` is omitted if the predicate is
     /// `True` and `RETURNING` is omitted if the list of columns to return is empty.

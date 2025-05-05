@@ -316,9 +316,9 @@ async fn map_aggregate_field<'content>(
     }
 }
 
-async fn map_vector_distance_field<'content>(
+async fn map_vector_distance_field(
     vector_distance_field: &VectorDistanceField,
-    field: &'content ValidatedField,
+    field: &ValidatedField,
 ) -> Result<SelectionElement, PostgresExecutionError> {
     let to_arg = field.arguments.get("to").ok_or_else(|| {
         PostgresExecutionError::Generic(

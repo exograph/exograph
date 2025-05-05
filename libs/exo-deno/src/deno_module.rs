@@ -222,20 +222,19 @@ impl NpmProcessStateProvider for NpmProcessStateProviderImpl {
 /// * `user_code` - The user code with exported functions (which may then be invoked using `DenoModule.execute_function` ).
 /// * `user_agent_name` - The name of the user agent
 /// * `shims` - A list of shims to load (each tuple is the name of the shim and a list of the source code).
-///             Each source code must define an object with properties that become the property of the name of the shim.
+///   Each source code must define an object with properties that become the property of the name of the shim.
 /// * `additional_code` - Any additional code (such as definition of a global type or a global function) to load.
 /// * `extensions` - A list of extensions to load.
 /// * `shared_state` - A shared state object to pass to the worker.
 /// * `explicit_error_class_name` - The name of the class whose message will be used to report errors.
 /// * `embedded_script_dirs` - A HashMap containing include_dir!() directories to provide to the script.
-///                            They may be accessed through the `embedded://` module specifier:
-///                            ```ts
-///                            import { example } from "embedded://key/path/in/directory";
-///                            ```
+///   They may be accessed through the `embedded://` module specifier:
+///   ```ts
+///   import { example } from "embedded://key/path/in/directory";
+///   ```
 /// * `extra_sources` - A Vec of (URL, code) pairs to include in the source map.
-///                     As the source map is the first thing queried during module resolution, this is useful for overriding
-///                     scripts at certain paths with your own version.
-///
+///   As the source map is the first thing queried during module resolution, this is useful for overriding
+///   scripts at certain paths with your own version.
 impl DenoModule {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(

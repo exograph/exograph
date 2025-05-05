@@ -1102,12 +1102,7 @@ fn compute_column_info(
                     if let Type::Composite(field_type) = typ.deref(types) {
                         // OneToMany
                         let matching_field =
-                            get_matching_field(field, enclosing_type, &field_type, types);
-
-                        let matching_field = match matching_field {
-                            Ok(matching_field) => matching_field,
-                            Err(err) => return Err(err),
-                        };
+                            get_matching_field(field, enclosing_type, &field_type, types)?;
 
                         let matching_field_cardinality = field_cardinality(&matching_field.typ);
 

@@ -65,7 +65,7 @@ pub enum AccessInputPathElement<'a> {
     Index(usize),
 }
 
-impl<'a> std::fmt::Debug for AccessInputPathElement<'a> {
+impl std::fmt::Debug for AccessInputPathElement<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             AccessInputPathElement::Property(s) => write!(f, "{}", s),
@@ -91,7 +91,7 @@ impl<'a> std::ops::Index<usize> for AccessInputPath<'a> {
     }
 }
 
-impl<'a> std::fmt::Debug for AccessInputPath<'a> {
+impl std::fmt::Debug for AccessInputPath<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (i, e) in self.0.iter().enumerate() {
             if i > 0 && matches!(e, AccessInputPathElement::Property(_)) {
@@ -354,7 +354,6 @@ where
 }
 
 /// A primitive expression that has been reduced to a JSON value or an unresolved context
-
 pub async fn reduce_common_primitive_expression<'a>(
     context_extractor: &(impl ContextExtractor + Send + Sync),
     request_context: &RequestContext<'a>,

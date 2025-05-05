@@ -106,7 +106,7 @@ impl LanguageServer for Backend {
                     params
                         .content_changes
                         .into_iter()
-                        .last()
+                        .next_back()
                         .expect("no content changes")
                         .text,
                     Some(params.text_document.version),

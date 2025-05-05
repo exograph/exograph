@@ -244,11 +244,11 @@ pub async fn resolve_in_memory<'a>(
     .await
 }
 
-pub async fn resolve_in_memory_for_payload<'a>(
+pub async fn resolve_in_memory_for_payload(
     operations_payload: OperationsPayload,
     system_resolver: &GraphQLSystemResolver,
     trusted_document_enforcement: TrustedDocumentEnforcement,
-    request_context: &RequestContext<'a>,
+    request_context: &RequestContext<'_>,
 ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
     let response = system_resolver
         .resolve_operations(

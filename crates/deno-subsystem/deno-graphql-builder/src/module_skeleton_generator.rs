@@ -444,14 +444,14 @@ trait Type {
     fn fields<'a>(
         &'a self,
         typechecked_system: &'a TypecheckedSystem,
-    ) -> Vec<(&str, &'a dyn TypeScriptType)>;
+    ) -> Vec<(&'a str, &'a dyn TypeScriptType)>;
 }
 
 impl Type for AstModel<Typed> {
     fn fields<'a>(
         &'a self,
         typechecked_system: &'a TypecheckedSystem,
-    ) -> Vec<(&str, &'a dyn TypeScriptType)> {
+    ) -> Vec<(&'a str, &'a dyn TypeScriptType)> {
         let fragment_fields = compute_fragment_fields(self, &mut vec![], typechecked_system);
         self.fields
             .iter()

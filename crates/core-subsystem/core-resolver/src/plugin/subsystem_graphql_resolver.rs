@@ -98,7 +98,6 @@ pub trait SubsystemGraphQLResolver: Sync {
     /// Queries supported by this subsystem
     fn schema_queries(&self) -> Vec<FieldDefinition>;
     /// Mutations supported by this subsystem
-
     fn schema_mutations(&self) -> Vec<FieldDefinition>;
     /// Types supported by this subsystem. This includes types explicitly defined by user types as
     /// well as types derived from user types (such as for predicates)

@@ -44,7 +44,7 @@ impl<'a> CteExpression<'a> {
     }
 }
 
-impl<'a> ExpressionBuilder for WithQuery<'a> {
+impl ExpressionBuilder for WithQuery<'_> {
     /// Build a CTE for the `WITH <expressions> <select>` syntax.
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         builder.push_str("WITH ");

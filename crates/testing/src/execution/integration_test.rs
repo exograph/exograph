@@ -512,7 +512,7 @@ pub async fn run_query(
         .unwrap();
 
     res.headers.into_iter().for_each(|(k, v)| {
-        if k.to_ascii_lowercase() == "set-cookie" {
+        if k.eq_ignore_ascii_case("set-cookie") {
             let cookie = v.split(';').next().unwrap();
             let mut cookie = cookie.split('=');
             let key = cookie.next().unwrap();

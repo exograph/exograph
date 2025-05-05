@@ -120,7 +120,7 @@ impl FieldResolver<Value, SubsystemResolutionError> for Type {
 /// determines the `ofType` value and the type_kind determines the `kind`, all
 /// other fields evaluate to null
 #[async_trait]
-impl<'a> FieldResolver<Value, SubsystemResolutionError> for BoxedType<'a> {
+impl FieldResolver<Value, SubsystemResolutionError> for BoxedType<'_> {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,

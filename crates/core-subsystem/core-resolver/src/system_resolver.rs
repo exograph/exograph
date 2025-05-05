@@ -200,11 +200,11 @@ impl GraphQLSystemResolver {
         }
     }
 
-    pub(super) async fn resolve_operation<'a>(
+    pub(super) async fn resolve_operation(
         &self,
         operation_type: OperationType,
         operation: &ValidatedField,
-        request_context: &RequestContext<'a>,
+        request_context: &RequestContext<'_>,
     ) -> Result<QueryResponse, SystemResolutionError> {
         let stream =
             futures::stream::iter(self.subsystem_resolvers.iter()).then(|resolver| async {
@@ -233,13 +233,13 @@ impl GraphQLSystemResolver {
         Err(SystemResolutionError::NoResolverFound)
     }
 
-    pub(super) async fn invoke_interceptor<'a>(
+    pub(super) async fn invoke_interceptor(
         &self,
         interceptor: &InterceptorIndexWithSubsystemIndex,
         operation_type: OperationType,
         operation: &ValidatedField,
         proceeding_interception_tree: Option<&InterceptionTree>,
-        request_context: &RequestContext<'a>,
+        request_context: &RequestContext<'_>,
     ) -> Result<Option<QueryResponse>, SystemResolutionError> {
         let interceptor_subsystem = &self.subsystem_resolvers[interceptor.subsystem_index];
 

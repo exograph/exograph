@@ -36,7 +36,6 @@ impl CommandDefinition for VerifyCommandDefinition {
     }
 
     /// Verify that a schema is compatible with a exograph model
-
     async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
         let model: PathBuf = default_model_file();
         let database_url = database_value(matches);

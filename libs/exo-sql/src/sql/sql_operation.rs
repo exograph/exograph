@@ -30,7 +30,7 @@ pub enum SQLOperation<'a> {
     WithQuery(WithQuery<'a>),
 }
 
-impl<'a> ExpressionBuilder for SQLOperation<'a> {
+impl ExpressionBuilder for SQLOperation<'_> {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         match self {
             SQLOperation::Select(select) => select.build(database, builder),

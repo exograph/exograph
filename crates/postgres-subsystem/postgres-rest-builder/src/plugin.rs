@@ -25,9 +25,9 @@ use postgres_rest_model::subsystem::PostgresRestSubsystem;
 pub struct PostgresRestSubsystemBuilder {}
 
 impl PostgresRestSubsystemBuilder {
-    pub async fn build<'a>(
+    pub async fn build(
         &self,
-        resolved_env: &ResolvedTypeEnv<'a>,
+        resolved_env: &ResolvedTypeEnv<'_>,
         core_subsystem_building: Arc<postgres_core_builder::SystemContextBuilding>,
     ) -> Result<Option<RestSubsystemBuild>, ModelBuildingError> {
         let mut operations = vec![];

@@ -176,7 +176,7 @@ pub enum ProxyColumn<'a> {
     },
 }
 
-impl<'a> ParamEquality for ProxyColumn<'a> {
+impl ParamEquality for ProxyColumn<'_> {
     fn param_eq(&self, other: &Self) -> Option<bool> {
         match (self, other) {
             (Self::Concrete(l), Self::Concrete(r)) => l.param_eq(r),
@@ -185,7 +185,7 @@ impl<'a> ParamEquality for ProxyColumn<'a> {
     }
 }
 
-impl<'a> PartialEq for ProxyColumn<'a> {
+impl PartialEq for ProxyColumn<'_> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Concrete(l), Self::Concrete(r)) => l == r,

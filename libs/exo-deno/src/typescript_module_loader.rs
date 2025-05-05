@@ -54,7 +54,7 @@ impl ModuleLoader for TypescriptLoader {
             String(String),
         }
 
-        impl<'a> Code<'a> {
+        impl Code<'_> {
             pub fn to_string(&self) -> Result<String, AnyError> {
                 match self {
                     Code::Slice(slice) => Ok(std::str::from_utf8(slice)?.to_string()),

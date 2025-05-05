@@ -158,7 +158,7 @@ impl<T> OperationReturnType<T> {
         }
     }
 
-    pub fn typ<'a>(&'a self, types: &'a SerializableSlab<T>) -> &T {
+    pub fn typ<'a>(&'a self, types: &'a SerializableSlab<T>) -> &'a T {
         match self {
             OperationReturnType::Plain(BaseOperationReturnType {
                 associated_type_id, ..

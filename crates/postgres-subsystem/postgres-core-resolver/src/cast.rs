@@ -282,9 +282,7 @@ fn cast_string(
                         PhysicalColumnType::Time { .. } => {
                             SQLParamContainer::time(naive_datetime.time())
                         }
-                        PhysicalColumnType::Date { .. } => {
-                            SQLParamContainer::date(naive_datetime.date())
-                        }
+                        PhysicalColumnType::Date => SQLParamContainer::date(naive_datetime.date()),
                         _ => {
                             return Err(CastError::Generic(
                                 "missing case for datetime in inner match".into(),
