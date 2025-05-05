@@ -60,7 +60,7 @@ pub struct GraphQLSystemResolver {
     query_interception_map: InterceptionMap,
     mutation_interception_map: InterceptionMap,
     trusted_documents: TrustedDocuments,
-    schema: Arc<Schema>,
+    pub schema: Arc<Schema>,
     normal_query_depth_limit: usize,
     introspection_query_depth_limit: usize,
 }
