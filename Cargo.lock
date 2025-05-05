@@ -1253,7 +1253,7 @@ dependencies = [
  "rand 0.8.5",
  "reqwest",
  "rexpect",
- "semver 1.0.25",
+ "semver 1.0.26",
  "serde",
  "serde_json",
  "tempfile",
@@ -7931,7 +7931,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfa0f585226d2e68097d4f95d113b15b83a82e819ab25717ec0590d9584ef366"
 dependencies = [
- "semver 1.0.25",
+ "semver 1.0.26",
 ]
 
 [[package]]
@@ -8198,9 +8198,9 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "1.0.25"
+version = "1.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f79dfe2d285b0488816f30e700a7438c5a73d816b5b7d3ac72fbc48b0d185e03"
+checksum = "56e6fa9c48d24d85fb3de5ad847117517440f6beceb7798af16b4a87d616b8d0"
 dependencies = [
  "serde",
 ]
@@ -10143,7 +10143,7 @@ dependencies = [
  "regex",
  "regex-syntax 0.8.5",
  "rustc-hash 2.1.1",
- "semver 1.0.25",
+ "semver 1.0.26",
  "serde",
  "serde_json",
  "smallbitvec",
@@ -10825,7 +10825,7 @@ dependencies = [
  "bitflags 2.5.0",
  "hashbrown 0.14.5",
  "indexmap 2.8.0",
- "semver 1.0.25",
+ "semver 1.0.26",
  "serde",
 ]
 
@@ -10882,7 +10882,7 @@ dependencies = [
  "pulley-interpreter",
  "rayon",
  "rustix",
- "semver 1.0.25",
+ "semver 1.0.26",
  "serde",
  "serde_derive",
  "serde_json",
@@ -10998,7 +10998,7 @@ dependencies = [
  "object 0.36.1",
  "postcard",
  "rustc-demangle",
- "semver 1.0.25",
+ "semver 1.0.26",
  "serde",
  "serde_derive",
  "smallvec",
@@ -11648,7 +11648,7 @@ dependencies = [
  "id-arena",
  "indexmap 2.8.0",
  "log",
- "semver 1.0.25",
+ "semver 1.0.26",
  "serde",
  "serde_derive",
  "serde_json",
