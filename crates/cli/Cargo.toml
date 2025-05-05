@@ -32,7 +32,7 @@ indicatif = "0.17.11"
 tempfile.workspace = true
 which.workspace = true
 toml = { version = "0.8.20", features = ["parse"] }
-semver = "1.0.25"
+semver = "1.0.26"
 pluralizer.workspace = true
 
 exo-sql = { path = "../../libs/exo-sql", features = ["pool"] }
