@@ -33,7 +33,7 @@ pub struct Delete<'a> {
     pub returning: Vec<MaybeOwned<'a, Column>>,
 }
 
-impl<'a> ExpressionBuilder for Delete<'a> {
+impl ExpressionBuilder for Delete<'_> {
     /// Build a delete operation for the `DELETE FROM <table> WHERE <predicate> RETURNING <returning>`.
     /// The `WHERE` clause is omitted if the predicate is `true` and the `RETURNING` clause is omitted
     /// if the list of columns to return is empty.

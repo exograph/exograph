@@ -138,9 +138,7 @@ fn create_shallow_type(
 
 /// Expand a composite type except for creating its fields.
 ///
-/// Specifically: Create and set the table along with its columns. However, columns will not have its references set
-
-///
+/// Specifically: Create and set the table along with its columns. However, columns will not have its references set.
 /// This allows the type to become `Composite` and `table_id` for any type can be accessed when building fields in the next step of expansion.
 /// We can't expand fields yet since creating a field requires access to columns (self as well as those in a referred field in case a relation)
 /// and we may not have expanded a referred type yet.

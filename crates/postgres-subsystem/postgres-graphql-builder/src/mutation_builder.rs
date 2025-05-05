@@ -308,7 +308,7 @@ pub trait DataParamBuilder<D> {
                     if column
                         .default_value
                         .as_ref()
-                        .map_or(false, |default_value| default_value.is_autoincrement())
+                        .is_some_and(|default_value| default_value.is_autoincrement())
                     {
                         None
                     } else {

@@ -91,11 +91,10 @@ impl<C> DenoExecutorConfig<C> {
 ///
 /// # Type Parameters
 /// - `C`: The type of the call context (for example, `Option<InterceptedOperationName>`). This object
-///        is set into the `DenoModule`s GothamState and may be resolved synchronously or asynchronously.
+///   is set into the `DenoModule`s GothamState and may be resolved synchronously or asynchronously.
 /// - `M`: The type of the callback message.
 /// - `R`: An opaque return type to also return from GothamStorage with each method execution. Useful for
-///        returning out-of-band information that should not be a part of the return value.
-///               ...
+///   returning out-of-band information that should not be a part of the return value.
 pub struct DenoExecutorPool<C, M, R> {
     config: DenoExecutorConfig<C>,
     actor_pool_map: Arc<Mutex<DenoActorPoolMap<C, M, R>>>,

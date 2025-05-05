@@ -225,7 +225,7 @@ impl<CT> FieldDefinitionProvider<PostgresGraphQLSubsystem> for PostgresField<CT>
 // To get around the orphan rule, we wrap the field in a struct
 struct PostgresMutationField<'a>(&'a PostgresField<MutationType>);
 
-impl<'a> Parameter for PostgresMutationField<'a> {
+impl Parameter for PostgresMutationField<'_> {
     fn name(&self) -> &str {
         &self.0.name
     }

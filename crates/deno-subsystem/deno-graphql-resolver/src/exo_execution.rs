@@ -59,7 +59,7 @@ pub struct ExoCallbackProcessor<'a, 'b> {
 }
 
 #[async_trait]
-impl<'a> CallbackProcessor<RequestFromDenoMessage> for ExoCallbackProcessor<'a, '_> {
+impl CallbackProcessor<RequestFromDenoMessage> for ExoCallbackProcessor<'_, '_> {
     async fn process_callback(&self, req: RequestFromDenoMessage) {
         match req {
             RequestFromDenoMessage::InterceptedOperationProceed { response_sender } => {

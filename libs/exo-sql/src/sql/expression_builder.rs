@@ -45,7 +45,7 @@ where
     }
 }
 
-impl<'a, T> ExpressionBuilder for MaybeOwned<'a, T>
+impl<T> ExpressionBuilder for MaybeOwned<'_, T>
 where
     T: ExpressionBuilder,
 {

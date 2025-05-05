@@ -57,7 +57,7 @@ impl ToSql for SQLValue {
     to_sql_checked!();
 }
 
-impl<'a> FromSql<'a> for SQLValue {
+impl FromSql<'_> for SQLValue {
     fn from_sql(ty: &Type, raw: &[u8]) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
         Ok(SQLValue {
             value: raw.to_owned(), // TODO: do we need to do this?

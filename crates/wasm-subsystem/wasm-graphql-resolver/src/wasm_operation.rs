@@ -28,7 +28,7 @@ pub struct WasmOperation<'a> {
     pub system_resolver: &'a GraphQLSystemResolver,
 }
 
-impl<'a> WasmOperation<'a> {
+impl WasmOperation<'_> {
     pub async fn execute(&self) -> Result<QueryResponse, WasmExecutionError> {
         let script = &self.subsystem_resolver.subsystem.scripts[self.method.script];
 

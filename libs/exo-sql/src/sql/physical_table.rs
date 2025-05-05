@@ -84,7 +84,7 @@ impl PhysicalTable {
         columns: Vec<&'a PhysicalColumn>,
         column_values_seq: Vec<Vec<C>>,
         returning: Vec<MaybeOwned<'a, Column>>,
-    ) -> Insert
+    ) -> Insert<'a>
     where
         C: Into<MaybeOwned<'a, Column>>,
     {
@@ -113,7 +113,7 @@ impl PhysicalTable {
         column_values: Vec<(&'a PhysicalColumn, C)>,
         predicate: MaybeOwned<'a, ConcretePredicate>,
         returning: Vec<MaybeOwned<'a, Column>>,
-    ) -> Update
+    ) -> Update<'a>
     where
         C: Into<MaybeOwned<'a, Column>>,
     {

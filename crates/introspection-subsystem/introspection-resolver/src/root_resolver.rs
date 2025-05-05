@@ -27,7 +27,7 @@ use crate::root_element::IntrospectionRootElement;
 use super::resolver_support::Resolver;
 
 #[async_trait]
-impl<'a> FieldResolver<Value, SubsystemResolutionError> for IntrospectionRootElement<'a> {
+impl FieldResolver<Value, SubsystemResolutionError> for IntrospectionRootElement<'_> {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,

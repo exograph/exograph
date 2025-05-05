@@ -77,7 +77,7 @@ impl<'a> TransactionScript<'a> {
         transaction_context
             .results
             .into_iter()
-            .last()
+            .next_back()
             .ok_or_else(|| DatabaseError::Transaction("".into()))
     }
 
@@ -102,7 +102,7 @@ pub enum TransactionStep<'a> {
     Precheck(Select),
 }
 
-impl<'a> TransactionStep<'a> {
+impl TransactionStep<'_> {
     #[instrument(
         name = "TransactionStep::execute"
         level = "trace"

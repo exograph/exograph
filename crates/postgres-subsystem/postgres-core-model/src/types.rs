@@ -49,7 +49,7 @@ pub enum PostgresType<'a, CT> {
     Composite(&'a CT),
 }
 
-impl<'a, CT: Named> PostgresType<'a, CT> {
+impl<CT: Named> PostgresType<'_, CT> {
     pub fn name(&self) -> &str {
         match self {
             PostgresType::Primitive(primitive_type) => &primitive_type.name,

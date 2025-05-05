@@ -18,9 +18,9 @@ use postgres_core_builder::resolved_type::ResolvedTypeEnv;
 pub struct PostgresGraphQLSubsystemBuilder {}
 
 impl PostgresGraphQLSubsystemBuilder {
-    pub async fn build<'a>(
+    pub async fn build(
         &self,
-        resolved_env: &ResolvedTypeEnv<'a>,
+        resolved_env: &ResolvedTypeEnv<'_>,
         core_subsystem_building: Arc<postgres_core_builder::SystemContextBuilding>,
     ) -> Result<Option<GraphQLSubsystemBuild>, ModelBuildingError> {
         let subsystem = crate::system_builder::build(resolved_env, core_subsystem_building)?;

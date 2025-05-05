@@ -72,7 +72,7 @@ struct DenoCall<C, R> {
 ///   operation) that the message processing may need
 /// * `M` - The type of the message that the actor will receive.
 /// * `R` - An opaque, optional, out-of-band type to also return with the method result. This type is
-///         extracted from Deno's GothamStorage. Useful for returning information from #[op] blocks.
+///   extracted from Deno's GothamStorage. Useful for returning information from #[op] blocks.
 pub(crate) struct DenoActor<C, M, R> {
     // Receiver to poll for callback messages such as `proceed` or `executeQuery`.
     callback_receiver: Arc<Mutex<Receiver<M>>>,

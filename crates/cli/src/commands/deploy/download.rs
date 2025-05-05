@@ -28,7 +28,7 @@ pub(super) async fn download_if_needed(url: &str, info_name: &str) -> Result<Pat
     // Download filename is the same as the last segment of the URL
     let download_file_name = url
         .split('/')
-        .last()
+        .next_back()
         .ok_or(anyhow!("Failed to extract filename from URL"))?;
     let download_file_path = download_dir.join(download_file_name);
 

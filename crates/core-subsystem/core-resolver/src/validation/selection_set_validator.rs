@@ -335,7 +335,7 @@ impl<'a> SelectionSetValidator<'a> {
     fn get_field_definition(
         &'a self,
         field: &Positioned<Field>,
-    ) -> Result<&FieldDefinition, ValidationError> {
+    ) -> Result<&'a FieldDefinition, ValidationError> {
         let field_definition = &self
             .container_type
             .fields()

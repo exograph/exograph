@@ -27,11 +27,11 @@ impl SystemRpcResolver {
         }
     }
 
-    pub async fn resolve<'a>(
+    pub async fn resolve(
         &self,
         request_method: &str,
         request_params: &Option<serde_json::Value>,
-        request_context: &RequestContext<'a>,
+        request_context: &RequestContext<'_>,
     ) -> Result<Option<SubsystemRpcResponse>, SubsystemRpcError> {
         let resolver_stream = futures::stream::iter(self.subsystem_resolvers.iter());
 

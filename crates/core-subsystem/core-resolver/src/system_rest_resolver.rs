@@ -24,9 +24,9 @@ impl SystemRestResolver {
         }
     }
 
-    pub async fn resolve<'a>(
+    pub async fn resolve(
         &self,
-        request_context: &RequestContext<'a>,
+        request_context: &RequestContext<'_>,
     ) -> Result<Option<ResponsePayload>, SubsystemResolutionError> {
         let resolver_stream = futures::stream::iter(self.subsystem_resolvers.iter());
 

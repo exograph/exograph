@@ -174,8 +174,7 @@ impl TypecheckFunctionCallFrom<FieldSelectionElement<Untyped>> for FieldSelectio
             } => {
                 let updated = params
                     .iter_mut()
-                    .map(|p| p.pass(type_env, annotation_env, scope, errors))
-                    .all(|b| b);
+                    .all(|p| p.pass(type_env, annotation_env, scope, errors));
 
                 if name.0 != "contains" {
                     *typ = Type::Error;

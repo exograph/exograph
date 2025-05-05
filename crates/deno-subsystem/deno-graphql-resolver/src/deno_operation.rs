@@ -44,7 +44,7 @@ pub struct DenoOperation<'a> {
     pub system_resolver: &'a GraphQLSystemResolver,
 }
 
-impl<'a> DenoOperation<'a> {
+impl DenoOperation<'_> {
     pub async fn execute(&self) -> Result<QueryResponse, DenoExecutionError> {
         let access_predicate = self.compute_module_access_predicate().await?;
 

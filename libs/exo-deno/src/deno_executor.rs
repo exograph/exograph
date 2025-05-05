@@ -38,7 +38,6 @@ impl CallbackProcessor<()> for () {
 }
 
 impl<
-        'a,
         C: Sync + Send + Debug + 'static,
         M: Sync + Send + 'static,
         R: Debug + Sync + Send + 'static,

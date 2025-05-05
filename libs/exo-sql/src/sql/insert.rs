@@ -31,7 +31,7 @@ pub struct Insert<'a> {
     pub returning: Vec<MaybeOwned<'a, Column>>,
 }
 
-impl<'a> ExpressionBuilder for Insert<'a> {
+impl ExpressionBuilder for Insert<'_> {
     /// Build the insert statement for the form `INSERT INTO <table> (<columns>) VALUES (<values>)
     /// RETURNING <returning-columns>`. The `RETURNING` clause is omitted if the list of columns to
     /// return is empty.

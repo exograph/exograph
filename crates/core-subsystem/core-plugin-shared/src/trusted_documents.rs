@@ -36,7 +36,7 @@ impl TrustedDocuments {
         query: Option<&'a str>,
         query_hash: Option<&str>,
         enforcement: TrustedDocumentEnforcement,
-    ) -> Result<&str, TrustedDocumentResolutionError> {
+    ) -> Result<&'a str, TrustedDocumentResolutionError> {
         let allow_untrusted = matches!(self, TrustedDocuments::All(_))
             || matches!(enforcement, TrustedDocumentEnforcement::DoNotEnforce);
 

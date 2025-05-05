@@ -94,8 +94,8 @@ pub(crate) async fn build_system_with_static_builders(
 /// * `model` - exograph model file path
 /// * `output` - output file path
 /// * `print_message` - if true, it will print a message indicating the time it took to build the model. We need this
-///                        to avoid printing the message when building the model through `exo dev`, where we don't want to print the message
-///                        upon detecting changes
+///   to avoid printing the message when building the model through `exo dev`, where we don't want to print the message
+///   upon detecting changes
 pub(crate) async fn build(print_message: bool, config: &Config) -> Result<(), BuildError> {
     ensure_exo_project_dir(&PathBuf::from("."))?;
 
