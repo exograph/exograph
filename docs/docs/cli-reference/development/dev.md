@@ -23,6 +23,8 @@ By default, it will start the server on port 9876. You can change this by passin
 
 By default, it will enforce [trusted documents](../../production/trusted-documents.md). You can turn this off by passing the `--enforce-trusted-documents=false` option.
 
+By default, it will apply migrations and if a migration fails, it will pause to allow you to fix the problem. You can turn this off by passing the `--ignore-migration-errors` option.
+
 ```shell-session
 # shell-command-next-line
 exo dev --port 8888
