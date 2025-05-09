@@ -9,7 +9,7 @@
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use clap::{ArgMatches, Command};
+use clap::{Arg, ArgMatches, Command};
 use colored::Colorize;
 use common::env_const::{
     EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
@@ -47,6 +47,13 @@ impl CommandDefinition for DevCommandDefinition {
             .arg(port_arg())
             .arg(enforce_trusted_documents_arg())
             .arg(migration_scope_arg())
+            .arg(
+                Arg::new("ignore-migration-errors")
+                    .help("Ignore migration errors")
+                    .long("ignore-migration-errors")
+                    .required(false)
+                    .num_args(0),
+            )
     }
 
     /// Run local exograph server
@@ -58,6 +65,9 @@ impl CommandDefinition for DevCommandDefinition {
         let port: Option<u32> = get(matches, "port");
 
         setup_trusted_documents_enforcement(matches);
+
+        let ignore_migration_errors: bool =
+            get(matches, "ignore-migration-errors").unwrap_or(false);
 
         println!(
             "{}",
@@ -93,7 +103,7 @@ impl CommandDefinition for DevCommandDefinition {
 
                         // If migrations are safe to apply, let's go ahead with those
                         if !migrations.has_destructive_changes() {
-                            if apply_migration(&mut db_client, &migrations).await? {
+                            if apply_migration(&mut db_client, &migrations, ignore_migration_errors).await? {
                                 break Ok(());
                             } else {
                                 // Migration failed, perhaps due to adding a non-nullable column and table already had rows
@@ -122,7 +132,7 @@ impl CommandDefinition for DevCommandDefinition {
                                     continue;
                                 }
 
-                                if apply_migration(&mut db_client, &migrations).await? {
+                                if apply_migration(&mut db_client, &migrations, ignore_migration_errors).await? {
                                     break Ok(());
                                 } else {
                                     continue;
@@ -154,7 +164,11 @@ impl CommandDefinition for DevCommandDefinition {
     }
 }
 
-async fn apply_migration(db_client: &mut DatabaseClient, migrations: &Migration) -> Result<bool> {
+async fn apply_migration(
+    db_client: &mut DatabaseClient,
+    migrations: &Migration,
+    ignore_migration_errors: bool,
+) -> Result<bool> {
     println!("{}", "Applying migration...".blue().bold());
     let result = migrations.apply(db_client, true).await;
     match result {
@@ -165,8 +179,20 @@ async fn apply_migration(db_client: &mut DatabaseClient, migrations: &Migration)
         Err(e) => {
             println!("{}", "Migration failed!".red().bold());
             println!("{}", e.to_string().red().bold());
-            wait_for_enter(&"Press enter to re-verify.".blue().bold())?;
-            Ok(false)
+
+            if ignore_migration_errors {
+                println!(
+                    "{}",
+                    "Continuing (ignoring migration errors)..."
+                        .red()
+                        .italic()
+                        .bold()
+                );
+                Ok(true)
+            } else {
+                wait_for_enter(&"Press enter to re-verify.".blue().bold())?;
+                Ok(false)
+            }
         }
     }
 }
