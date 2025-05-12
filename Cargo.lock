@@ -2035,7 +2035,7 @@ dependencies = [
  "deno_runtime",
  "deno_semver",
  "deno_task_shell",
- "deno_terminal 0.2.0",
+ "deno_terminal 0.2.2",
  "deno_virtual_fs",
  "dissimilar",
  "dotenvy",
@@ -2842,7 +2842,7 @@ source = "git+https://github.com/exograph/deno.git?branch=patched_2_0_2#f90ee946
 dependencies = [
  "deno_core",
  "deno_path_util",
- "deno_terminal 0.2.0",
+ "deno_terminal 0.2.2",
  "fqdn",
  "libc",
  "log",
@@ -2894,7 +2894,7 @@ dependencies = [
  "deno_node",
  "deno_path_util",
  "deno_permissions",
- "deno_terminal 0.2.0",
+ "deno_terminal 0.2.2",
  "deno_tls",
  "deno_url",
  "deno_web",
@@ -2977,9 +2977,9 @@ dependencies = [
 
 [[package]]
 name = "deno_terminal"
-version = "0.2.0"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "daef12499e89ee99e51ad6000a91f600d3937fb028ad4918af76810c5bc9e0d5"
+checksum = "23f71c27009e0141dedd315f1dfa3ebb0a6ca4acce7c080fac576ea415a465f6"
 dependencies = [
  "once_cell",
  "termcolor",
@@ -3720,7 +3720,7 @@ dependencies = [
  "deno_npm",
  "deno_runtime",
  "deno_semver",
- "deno_terminal 0.2.0",
+ "deno_terminal 0.2.2",
  "deno_virtual_fs",
  "futures",
  "include_dir",

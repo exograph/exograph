@@ -28,7 +28,7 @@ deno_ast = { workspace = true, features = ["transpiling"], optional = true }
 deno_semver.workspace = true
 deno_npm.workspace = true
 node_resolver.workspace = true
-deno_terminal = "0.2.0"
+deno_terminal = "0.2.2"
 tokio.workspace = true
 reqwest = { workspace = true, features = ["blocking"] }
 futures.workspace = true
