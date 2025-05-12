@@ -114,7 +114,7 @@ thiserror = "2.0.12"
 tracing = "0.1.41"
 tokio = "1"
 tokio-postgres = { version = "0.7.12", default-features = false }
-deadpool-postgres = { version = "0.14.0", default-features = false }
+deadpool-postgres = { version = "0.14.1", default-features = false }
 tree-sitter = { git = "https://github.com/exograph/tree-sitter-c2rust.git", branch = "generate-loading-feature-flag" }
 tree-sitter-c2rust = "0.25.1"
 tree-sitter-generate = { git = "https://github.com/exograph/tree-sitter-c2rust.git", branch = "generate-loading-feature-flag" }
