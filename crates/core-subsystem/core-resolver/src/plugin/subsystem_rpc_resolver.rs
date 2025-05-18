@@ -69,6 +69,9 @@ pub enum SubsystemRpcError {
 
     #[error("{0}")]
     UserDisplayError(String), // Error message to be displayed to the user (subsystems should hide internal errors through this)
+
+    #[error("{0}")]
+    SystemResolutionError(SystemResolutionError),
 }
 
 impl SubsystemRpcError {
@@ -86,6 +89,22 @@ impl SubsystemRpcError {
             SubsystemRpcError::ExpiredAuthentication => Some("Expired authentication".to_string()),
             SubsystemRpcError::Authorization => Some("Not authorized".to_string()),
             SubsystemRpcError::UserDisplayError(message) => Some(message.to_string()),
+            SubsystemRpcError::SystemResolutionError(e) => match e {
+                SystemResolutionError::Validation(validation_error) => {
+                    let positions = validation_error.positions();
+                    let mut error_message = e.user_error_message();
+                    error_message += ", \"locations\": [";
+                    for (i, position) in positions.iter().enumerate() {
+                        error_message += &position.to_string();
+                        if i < positions.len() - 1 {
+                            error_message += ",";
+                        }
+                    }
+                    error_message += "]";
+                    Some(error_message)
+                }
+                _ => Some(e.user_error_message()),
+            },
         }
     }
 
@@ -100,6 +119,7 @@ impl SubsystemRpcError {
             SubsystemRpcError::UserDisplayError(_) => "-32001",
             SubsystemRpcError::Authorization => "-32000",
             SubsystemRpcError::ExpiredAuthentication => "-32003",
+            SubsystemRpcError::SystemResolutionError(_) => "-32002",
         }
     }
 }
@@ -110,12 +130,15 @@ impl From<SystemResolutionError> for SubsystemRpcError {
             SystemResolutionError::SubsystemResolutionError(e) => match e {
                 SubsystemResolutionError::ContextExtraction(ce) => ce.into(),
                 SubsystemResolutionError::Authorization => SubsystemRpcError::Authorization,
+                SubsystemResolutionError::InvalidField(field_name, container_type) => {
+                    SubsystemRpcError::InvalidParams(field_name.clone(), container_type)
+                }
                 SubsystemResolutionError::UserDisplayError(message) => {
                     SubsystemRpcError::UserDisplayError(message)
                 }
                 _ => SubsystemRpcError::InternalError,
             },
-            _ => SubsystemRpcError::InternalError,
+            e => SubsystemRpcError::SystemResolutionError(e),
         }
     }
 }

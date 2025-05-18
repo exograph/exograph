@@ -346,7 +346,8 @@ impl McpRouter {
                     SubsystemRpcError::ParseError
                     | SubsystemRpcError::InvalidParams(_, _)
                     | SubsystemRpcError::InvalidRequest
-                    | SubsystemRpcError::UserDisplayError(_) => StatusCode::BAD_REQUEST,
+                    | SubsystemRpcError::UserDisplayError(_)
+                    | SubsystemRpcError::SystemResolutionError(_) => StatusCode::BAD_REQUEST,
                     SubsystemRpcError::MethodNotFound(_) => StatusCode::NOT_FOUND,
                     SubsystemRpcError::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
                 };
@@ -365,7 +366,7 @@ impl McpRouter {
                 (
                     json!({
                         "content": [json!({
-                            "text": e.user_error_message().unwrap_or_default(),
+                            "text": format!("Error: {}", e.user_error_message().unwrap_or_default()),
                             "type": "text",
                         })],
                         "isError": true,
