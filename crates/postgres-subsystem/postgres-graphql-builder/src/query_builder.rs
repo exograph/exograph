@@ -8,6 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use core_model::{
+    access::AccessPredicateExpression,
     mapped_arena::{MappedArena, SerializableSlabIndex},
     types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
 };
@@ -39,6 +40,17 @@ use super::naming::ToPostgresQueryName;
 use postgres_core_builder::resolved_type::{ResolvedCompositeType, ResolvedType, ResolvedTypeEnv};
 
 pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
+    let read_access_is_false = |entity_type: &EntityType| -> bool {
+        matches!(
+            building
+                .core_subsystem
+                .database_access_expressions
+                .lock()
+                .unwrap()[entity_type.access.read],
+            AccessPredicateExpression::BooleanLiteral(false)
+        )
+    };
+
     for (_, typ) in types.iter() {
         if let ResolvedType::Composite(c) = &typ {
             if c.representation == EntityRepresentation::Json {
@@ -46,6 +58,11 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
             }
 
             let entity_type_id = building.get_entity_type_id(c.name.as_str()).unwrap();
+            let entity_type = &building.core_subsystem.entity_types[entity_type_id];
+            if read_access_is_false(entity_type) {
+                continue;
+            }
+
             let collection_query = shallow_collection_query(entity_type_id, c);
             let aggregate_query = shallow_aggregate_query(entity_type_id, c);
             let unique_queries = shallow_unique_queries(entity_type_id, c);
@@ -73,12 +90,27 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
 }
 
 pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
+    let read_access_is_false = |entity_type: &EntityType| -> bool {
+        matches!(
+            building
+                .core_subsystem
+                .database_access_expressions
+                .lock()
+                .unwrap()[entity_type.access.read],
+            AccessPredicateExpression::BooleanLiteral(false)
+        )
+    };
+
     for (_, entity_type) in building
         .core_subsystem
         .entity_types
         .iter()
         .filter(|(_, et)| et.representation != EntityRepresentation::Json)
     {
+        if read_access_is_false(entity_type) {
+            continue;
+        }
+
         expand_pk_query(
             entity_type,
             &building.predicate_types,

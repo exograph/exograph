@@ -64,28 +64,32 @@ impl SubsystemGraphQLResolver for DenoSubsystemResolver {
         let deno_operation = match operation_type {
             OperationType::Query => {
                 let query = self.subsystem.queries.get_by_key(operation_name);
-                query.map(|query| {
-                    create_deno_operation(
-                        &self.subsystem,
-                        &query.method_id,
-                        operation,
-                        request_context,
-                        self,
-                        system_resolver,
-                    )
+                query.and_then(|query| {
+                    query.method_id.map(|method_id| {
+                        create_deno_operation(
+                            &self.subsystem,
+                            method_id,
+                            operation,
+                            request_context,
+                            self,
+                            system_resolver,
+                        )
+                    })
                 })
             }
             OperationType::Mutation => {
                 let mutation = self.subsystem.mutations.get_by_key(operation_name);
-                mutation.map(|mutation| {
-                    create_deno_operation(
-                        &self.subsystem,
-                        &mutation.method_id,
-                        operation,
-                        request_context,
-                        self,
-                        system_resolver,
-                    )
+                mutation.and_then(|mutation| {
+                    mutation.method_id.map(|method_id| {
+                        create_deno_operation(
+                            &self.subsystem,
+                            method_id,
+                            operation,
+                            request_context,
+                            self,
+                            system_resolver,
+                        )
+                    })
                 })
             }
             OperationType::Subscription => Some(Err(DenoExecutionError::Generic(
@@ -146,14 +150,13 @@ impl SubsystemGraphQLResolver for DenoSubsystemResolver {
 
 pub(crate) fn create_deno_operation<'a>(
     system: &'a DenoSubsystem,
-    method_id: &Option<SerializableSlabIndex<ModuleMethod>>,
+    method_id: SerializableSlabIndex<ModuleMethod>,
     field: &'a ValidatedField,
     request_context: &'a RequestContext<'a>,
     subsystem_resolver: &'a DenoSubsystemResolver,
     system_resolver: &'a GraphQLSystemResolver,
 ) -> Result<DenoOperation<'a>, DenoExecutionError> {
-    // TODO: Remove unwrap() by changing the type of method_id
-    let method = &system.methods[method_id.unwrap()];
+    let method = &system.methods[method_id];
 
     Ok(DenoOperation {
         method,

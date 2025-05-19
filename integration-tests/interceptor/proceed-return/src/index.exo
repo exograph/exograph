@@ -9,11 +9,13 @@ module TodoModule {
 
 @deno("test-module.ts")
 module TestModule {
+  @access(true)
   type Info {
     id: Int
     title: String
   }
 
+  @access(true)
   query getInfo(): Info
 }
 

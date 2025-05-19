@@ -50,14 +50,20 @@ pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
         create_system_router_from_file(&exo_ir_file, static_loaders, Arc::new(env)).await?
     };
 
-    let result = check_introspection(&router, model_path).await?;
+    let result = check_introspection(&router, model_path).await;
 
     match result {
-        Ok(()) => Ok(TestResult {
-            log_prefix: log_prefix.to_string(),
-            result: TestResultKind::Success,
-        }),
+        Ok(result) => match result {
+            Ok(()) => Ok(TestResult {
+                log_prefix: log_prefix.to_string(),
+                result: TestResultKind::Success,
+            }),
 
+            Err(e) => Ok(TestResult {
+                log_prefix: log_prefix.to_string(),
+                result: TestResultKind::Fail(e),
+            }),
+        },
         Err(e) => Ok(TestResult {
             log_prefix: log_prefix.to_string(),
             result: TestResultKind::Fail(e),

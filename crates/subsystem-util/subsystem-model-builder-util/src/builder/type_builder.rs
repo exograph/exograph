@@ -128,9 +128,12 @@ fn expand_method_access(
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) -> Result<(), ModelBuildingError> {
-    let existing_method_id = building.methods.get_id(&resolved_method.name).unwrap();
-    let expr = compute_access_method(&resolved_method.access, resolved_env)?;
-    building.methods.get_by_id_mut(existing_method_id).access = expr;
+    let existing_method_id = building.methods.get_id(&resolved_method.name);
+
+    if let Some(existing_method_id) = existing_method_id {
+        let expr = compute_access_method(&resolved_method.access, resolved_env)?;
+        building.methods.get_by_id_mut(existing_method_id).access = expr;
+    }
 
     Ok(())
 }
