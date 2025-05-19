@@ -376,6 +376,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
 mod tests {
     use std::collections::HashSet;
 
+    use core_plugin_shared::error::ModelSerializationError;
     use exo_sql::{
         Database, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, PhysicalTable,
     };
@@ -388,6 +389,7 @@ mod tests {
             @postgres
             module ConcertModule {
                 @table("concerts")
+                @access(true)
                 type Concert {
                     @pk id: Int = autoIncrement()
                     title: String
@@ -396,6 +398,7 @@ mod tests {
                 }
 
                 @table("venues")
+                @access(true)
                 type Venue {
                     @pk id: Int = autoIncrement()
                     name: String
@@ -405,7 +408,7 @@ mod tests {
             }
         "#;
 
-        let system = create_system(src).await;
+        let system = create_system(src).await.unwrap();
         let get_table = |n| get_table_from_arena(n, &system.core_subsystem.database);
 
         let concerts = get_table("concerts");
@@ -442,11 +445,13 @@ mod tests {
         let src = r#"
         @postgres
         module UserModule {
+            @access(true)
             type User {
                 @pk id: Int = autoIncrement()
                 membership: Membership?
             }
 
+            @access(true)
             type Membership {
                 @pk id: Int = autoIncrement()
                 user: User
@@ -454,11 +459,7 @@ mod tests {
         }
         "#;
 
-        let system = create_system(src).await;
-        println!(
-            "Database tables {:?}",
-            system.core_subsystem.database.tables().len()
-        );
+        let system = create_system(src).await.unwrap();
         let get_table = |n| get_table_from_arena(n, &system.core_subsystem.database);
 
         let users = get_table("users");
@@ -488,11 +489,7 @@ mod tests {
         }
         "#;
 
-        let system = create_system(src).await;
-        assert!(system.mutations.is_empty());
-        let mutation_type_names = get_mutation_type_names(&system);
-        assert!(!mutation_type_names.contains("TodoUpdateInput"));
-        assert!(!mutation_type_names.contains("TodoCreationInput"));
+        assert!((create_system(src).await).is_err());
     }
 
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
@@ -509,7 +506,7 @@ mod tests {
         }
         "#;
 
-        let system = create_system(src).await;
+        let system = create_system(src).await.unwrap();
         assert!(system.mutations.is_empty());
         let mutation_type_names = get_mutation_type_names(&system);
         assert!(!mutation_type_names.contains("TodoUpdateInput"));
@@ -530,7 +527,7 @@ mod tests {
         }
         "#;
 
-        let system = create_system(src).await;
+        let system = create_system(src).await.unwrap();
         assert!(system.mutations.get_by_key("createTodo").is_none());
         assert!(system.mutations.get_by_key("createTodos").is_none());
         let mutation_type_names = get_mutation_type_names(&system);
@@ -551,7 +548,7 @@ mod tests {
         }
         "#;
 
-        let system = create_system(src).await;
+        let system = create_system(src).await.unwrap();
         assert!(system.mutations.get_by_key("deleteTodo").is_none());
         assert!(system.mutations.get_by_key("deleteTodos").is_none());
     }
@@ -570,7 +567,7 @@ mod tests {
         }
         "#;
 
-        let system = create_system(src).await;
+        let system = create_system(src).await.unwrap();
         assert!(system.mutations.get_by_key("updateTodo").is_none());
         assert!(system.mutations.get_by_key("updateTodos").is_none());
         let mutation_type_names = get_mutation_type_names(&system);
@@ -593,7 +590,7 @@ mod tests {
         }
         "#;
 
-        let system = create_system(src).await;
+        let system = create_system(src).await.unwrap();
         let mutation_type_names = get_mutation_type_names(&system);
 
         assert!(mutation_type_names.contains("EmployeeReferenceInput"));
@@ -619,6 +616,7 @@ mod tests {
             @postgres
             module LogModule {
                 @table("logs")
+                @access(true)
                 type Log {
                   @dbtype("bigint") @pk id: Int = autoIncrement()
                   @bits16 nonce: Int
@@ -635,7 +633,7 @@ mod tests {
             }
         "#;
 
-        let system = create_system(src).await;
+        let system = create_system(src).await.unwrap();
         let get_table = |n| get_table_from_arena(n, &system.core_subsystem.database);
 
         let logs = get_table("logs");
@@ -745,9 +743,7 @@ mod tests {
         panic!("No such column {name}")
     }
 
-    async fn create_system(src: &str) -> PostgresGraphQLSubsystem {
-        crate::test_utils::create_postgres_system_from_str(src, "test.exo".to_string())
-            .await
-            .unwrap()
+    async fn create_system(src: &str) -> Result<PostgresGraphQLSubsystem, ModelSerializationError> {
+        crate::test_utils::create_postgres_system_from_str(src, "test.exo".to_string()).await
     }
 }

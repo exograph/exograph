@@ -12,10 +12,12 @@ module Interception {
   @around("query *")
   interceptor captureParams(operation: Operation)
 
+  @access(true)
   type OperationParams {
     name: String
     query: String
   }
 
+  @access(true)
   query serve(intArg: Int, stringArg: String): OperationParams?
 }

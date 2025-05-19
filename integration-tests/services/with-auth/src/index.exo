@@ -5,13 +5,16 @@ context AuthContext {
 
 @deno("logger.js")
 module PrivilegedLogger {
+    @access(true)
     type LogEntry {
         level: String
         message: String
     }
 
+    @access(true)
     query getRole(@inject auth_context: AuthContext): String
 
+    @access(true)
     mutation logNormal(entry: LogEntry): Boolean
 
     @access(AuthContext.role == "ROLE_PRIVILEGED")

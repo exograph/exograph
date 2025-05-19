@@ -88,7 +88,13 @@ stages:
       {
         "errors": [
           {
-            "message": "Not authorized"
+            "message": "Field 'divideNoAccessMutation' is not valid for type 'Mutation'",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ]
           }
         ]
       }

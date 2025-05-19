@@ -1,5 +1,6 @@
 @deno("core.ts")
 module Core {
+  @access(true)
   query getInt(): Int  
 }
 

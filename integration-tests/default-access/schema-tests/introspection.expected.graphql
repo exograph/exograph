@@ -1,32 +1,3 @@
-type Concert {
-  id: Int!
-  title: String!
-}
-
-"""An aggregate for the `Concert` type."""
-type ConcertAgg {
-  id: IntAgg
-  title: StringAgg
-}
-
-"""
-Predicate for the `Concert` type parameter. 
-If a field is omitted, no filter is applied for that field.
-To check a field against null, use a `<field name>: null` filter
-"""
-input ConcertFilter {
-  id: IntFilter
-  title: StringFilter
-  and: [ConcertFilter!]
-  or: [ConcertFilter!]
-  not: ConcertFilter
-}
-
-input ConcertOrdering {
-  id: Ordering
-  title: Ordering
-}
-
 type DivisionResultFullAccess {
   quotient: Int!
   remainder: Int!
@@ -37,67 +8,12 @@ type DivisionResultNoAccess {
   remainder: Int!
 }
 
-type IntAgg {
-  min: Int
-  max: Int
-  sum: Int
-  avg: Float
-  count: Int
-}
-
-input IntFilter {
-  eq: Int
-  neq: Int
-  lt: Int
-  lte: Int
-  gt: Int
-  gte: Int
-}
-
-enum Ordering {
-  ASC
-  DESC
-}
-
-type StringAgg {
-  min: String
-  max: String
-  count: Int
-}
-
-input StringFilter {
-  eq: String
-  neq: String
-  lt: String
-  lte: String
-  gt: String
-  gte: String
-  like: String
-  ilike: String
-  startsWith: String
-  endsWith: String
-}
-
 type Query {
-  """Get a single `Concert` given primary key fields"""
-  concert(id: Int!): Concert
-
-  """
-  Get multiple `Concert`s given the provided `where` filter, order by, limit, and offset
-  """
-  concerts(where: ConcertFilter, orderBy: [ConcertOrdering!], limit: Int, offset: Int): [Concert!]!
-
-  """
-  Get the aggregate value of the selected fields over all `Concert`s given the provided `where` filter
-  """
-  concertsAgg(where: ConcertFilter): ConcertAgg!
   divide(a: Int!, b: Int!): DivisionResultFullAccess!
   divideFullAccess(a: Int!, b: Int!): DivisionResultNoAccess!
-  divideNoAccess(a: Int!, b: Int!): DivisionResultFullAccess!
 }
 
 type Mutation {
   divideFullAccessMutation(a: Int!, b: Int!): DivisionResultNoAccess!
   divideMutation(a: Int!, b: Int!): DivisionResultFullAccess!
-  divideNoAccessMutation(a: Int!, b: Int!): DivisionResultFullAccess!
 }

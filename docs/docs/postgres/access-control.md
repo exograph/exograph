@@ -188,7 +188,7 @@ While the following expression will deny access to all users:
 The default access control expression is `false`. This secure-by-default approach forces you to think about access control for each type explicitly.
 :::
 
-When you use `access(false)` for a mutation, it has the effect of removing that API. For more details, please see the [Effect on Mutation APIs](#effect-on-mutation-apis) section.
+When you use `access(false)` for a query or mutation, it has the effect of removing that API. For more details, please see the [Effect on APIs](#effect-on-apis) section.
 
 ### Using context objects
 
@@ -404,9 +404,9 @@ Since an access control expression may specify any of the `query`, `mutation`, `
 
 Another way to look at access control precedence is to know that most specific rule takes precedence over the more general rule. For example, if you specify an access control expression for a particular mutation, Exograph will use that expression. If a higher precedence expression is not defined, the expression for the next lower precedence will take effect.
 
-## Effect on Mutation APIs
+## Effect on APIs
 
-Access expression of the form `@access(false)`, whether explicitly specified or the default, removes the mutation from APIs. For example, with the following access expression, none of the mutations will be available in the API.
+Access expression of the form `@access(false)`, whether explicitly specified or the default, removes the query or mutation from APIs. For example, with the following access expression, none of the queries or mutations will be available in the API.
 
 ```exo
 @postgres
@@ -420,7 +420,7 @@ module ProductDatabase {
 }
 ```
 
-If you want to remove only a particular mutation, you can specify the access expression for that mutation. For example, the following access expression will remove the `updateProduct` mutation from the API (see [Separating queries and mutations access control](#separating-queries-and-mutations-access-control) for more details):
+If you want to remove only a particular query or mutation, you can specify the access expression for that query or mutation. For example, the following access expression will remove the `updateProduct` mutation from the API (see [Separating queries and mutations access control](#separating-queries-and-mutations-access-control) for more details):
 
 ```exo
 @postgres
@@ -440,7 +440,7 @@ module ProductDatabase {
 }
 ```
 
-Such an arrangement is helpful to avoid unnecessary mutations in the API.
+Such an arrangement is helpful to avoid unnecessary queries or mutations in the API.
 
 ## Access Control as Invariants
 

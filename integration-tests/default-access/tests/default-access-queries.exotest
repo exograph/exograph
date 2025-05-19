@@ -9,7 +9,13 @@ stages:
       {
         "errors": [
           {
-            "message": "Not authorized"
+            "message": "Field 'concerts' is not valid for type 'Query'",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ]
           }
         ]
       }
@@ -24,7 +30,13 @@ stages:
       {
         "errors": [
           {
-            "message": "Not authorized"
+            "message": "Field 'concert' is not valid for type 'Query'",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ]
           }
         ]
       }
@@ -56,7 +68,13 @@ stages:
       {
         "errors": [
           {
-            "message": "Not authorized"
+            "message": "Field 'divideNoAccess' is not valid for type 'Query'",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ]
           }
         ]
       }

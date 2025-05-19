@@ -1,0 +1,13 @@
+input LogEntry {
+  level: String!
+  message: String!
+}
+
+type Query {
+  getRole: String!
+}
+
+type Mutation {
+  logNormal(entry: LogEntry!): Boolean!
+  logPrivileged(entry: LogEntry!): Boolean!
+}

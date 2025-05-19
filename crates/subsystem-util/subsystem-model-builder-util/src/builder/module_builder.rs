@@ -8,9 +8,11 @@
 // by the Apache License, Version 2.0.
 
 use core_model::{
+    access::AccessPredicateExpression,
     mapped_arena::{MappedArena, SerializableSlabIndex},
     types::{BaseOperationReturnType, FieldType, Named},
 };
+use core_model_builder::ast::ast_types::AstExpr;
 use core_plugin_shared::interception::InterceptorKind;
 use subsystem_model_util::{
     access::Access,
@@ -36,7 +38,6 @@ pub fn build_shallow(
     modules: &MappedArena<ResolvedModule>,
     building: &mut SystemContextBuilding,
 ) {
-    // create shallow module
     for (_, module) in modules.iter() {
         for method in module.methods.iter() {
             create_shallow_module(module, method, building);
@@ -48,7 +49,18 @@ pub fn build_shallow(
 }
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
+    let access_is_false = |access: &Access| -> bool {
+        matches!(
+            access.value,
+            AccessPredicateExpression::BooleanLiteral(false)
+        )
+    };
+
     for (id, method) in building.methods.iter() {
+        if access_is_false(&method.access) {
+            continue;
+        }
+
         match method.operation_kind {
             ModuleMethodType::Mutation(mutation_id) => {
                 let mutation = &mut building.mutations[mutation_id];
@@ -90,6 +102,13 @@ fn create_shallow_module(
         &resolved_module.script,
         building,
     );
+
+    if matches!(
+        resolved_method.access.value,
+        AstExpr::BooleanLiteral(false, _)
+    ) {
+        return;
+    }
 
     building.methods.add(
         &resolved_method.name,

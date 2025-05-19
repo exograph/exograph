@@ -1,6 +1,9 @@
 @deno("test_ops.ts")
 module TodoDatabase {
+  // Needed to get around GraphQL requirements that there must be at least one query
+  @access(true)
   query fake(): String
+
   @access(true)
   mutation create_customer(email: String): String
 }

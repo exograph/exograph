@@ -9,11 +9,15 @@ module PersonModule {
 
 @deno("logger.js")
 module Logger {
+  @access(true)
   type LogMessage {
     level: String
     message: String
   }
 
+  @access(true)
   export query logger(@inject exograph: Exograph, input: LogMessage): Boolean
+
+  @access(true)
   mutation debug(@inject exograph: Exograph, input: LogMessage): Boolean
 }

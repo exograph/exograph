@@ -40,20 +40,28 @@ fn expand_query_mutation_map(
         building.pk_queries_map.insert(existing_type_id, pk_query);
     }
 
-    let collection_query = building
+    if let Some(collection_query) = building
         .collection_queries
         .get_id(&resolved_type.collection_query())
-        .unwrap();
+    {
+        building
+            .collection_queries_map
+            .insert(existing_type_id, collection_query);
+    }
 
-    let aggregate_query = building
+    if let Some(aggregate_query) = building
         .aggregate_queries
         .get_id(&resolved_type.aggregate_query())
-        .unwrap();
+    {
+        building
+            .aggregate_queries_map
+            .insert(existing_type_id, aggregate_query);
+    }
 
-    building
-        .collection_queries_map
-        .insert(existing_type_id, collection_query);
-    building
-        .aggregate_queries_map
-        .insert(existing_type_id, aggregate_query);
+    // building
+    //     .collection_queries_map
+    //     .insert(existing_type_id, collection_query);
+    // building
+    //     .aggregate_queries_map
+    //     .insert(existing_type_id, aggregate_query);
 }
