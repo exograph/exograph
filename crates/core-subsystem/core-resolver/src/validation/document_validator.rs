@@ -802,12 +802,14 @@ mod tests {
         let test_exo = r#"
             @postgres
             module LogModule {
+                @access(true)
                 type Concert {
                     @pk id: Int = autoIncrement()
                     title: String
                     venue: Venue
                 }
 
+                @access(true)
                 type Venue {
                     @pk id: Int = autoIncrement()
                     name: String

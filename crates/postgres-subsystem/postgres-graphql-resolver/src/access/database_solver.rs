@@ -73,6 +73,7 @@ mod tests {
 
                 @postgres
                 module ArticleModule {
+                    @access(true)
                     type Article {
                         @pk id: Int = autoIncrement()
                         published: Boolean

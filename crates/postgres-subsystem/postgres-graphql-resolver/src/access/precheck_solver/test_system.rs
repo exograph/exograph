@@ -27,18 +27,21 @@ impl TestSystem {
     
                 @postgres
                 module ArticleModule {
+                    @access(true)
                     type Article {
                         @pk id: Int = autoIncrement()
                         title: String
                         publications: Set<Publication>?
                     }
 
+                    @access(true)
                     type Publication {
                         @pk author: User
                         @pk article: Article
                         royalty: Int
                     }
     
+                    @access(true)
                     type User {
                         @pk id: Int = autoIncrement()
                         name: String
@@ -48,6 +51,7 @@ impl TestSystem {
                         todos: Set<Todo>?
                     }
 
+                    @access(true)
                     type Todo {
                         @pk id: Int = autoIncrement()
                         title: String
