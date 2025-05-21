@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
 
     // Read from stdin one line at a time, and write to stdout
     while let Some(line) = reader.next().await.transpose()? {
-        tracing::info!("--> {}", line);
+        tracing::debug!("--> {}", line);
 
         let mut request = endpoint
             .post(args.endpoint.clone())
@@ -60,13 +60,13 @@ async fn main() -> Result<()> {
         if !response_bytes.is_empty() {
             let response_text = String::from_utf8_lossy(&response_bytes);
 
-            tracing::info!("<-- {} {}", status, response_text);
+            tracing::debug!("<-- {} {}", status, response_text);
 
             stdout.write_all(&response_bytes).await?;
             stdout.write_all(b"\n").await?;
             stdout.flush().await?;
         } else {
-            tracing::info!("<-- {}", status);
+            tracing::debug!("<-- {}", status);
         }
     }
 
@@ -110,7 +110,12 @@ impl FromStr for KeyValue {
 
 fn setup_tracing() -> Result<()> {
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .with_env_filter(
+            EnvFilter::builder()
+                .with_default_directive(tracing::Level::WARN.into())
+                .with_env_var("EXO_LOG")
+                .from_env_lossy(),
+        )
         .with_writer(std::io::stderr)
         .with_target(false)
         .with_ansi(false)
