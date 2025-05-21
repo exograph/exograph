@@ -41,8 +41,7 @@ const WWW_AUTHENTICATE_HEADER: &str = "WWW-Authenticate";
 /// The implementation forwards requests to the GraphQL resolver.
 pub struct McpRouter {
     api_path_prefix: String,
-    data_resolver: Arc<GraphQLSystemResolver>,
-    introspection_resolver: Arc<GraphQLSystemResolver>,
+    resolver: Arc<GraphQLSystemResolver>,
     www_authenticate_header: Option<String>,
     tool_mode: McpToolMode,
 }
@@ -54,11 +53,7 @@ enum McpToolMode {
 }
 
 impl McpRouter {
-    pub fn new(
-        env: Arc<dyn Environment>,
-        data_resolver: Arc<GraphQLSystemResolver>,
-        introspection_resolver: Arc<GraphQLSystemResolver>,
-    ) -> Self {
+    pub fn new(env: Arc<dyn Environment>, resolver: Arc<GraphQLSystemResolver>) -> Self {
         let www_authenticate_header = env.get(EXO_WWW_AUTHENTICATE_HEADER);
 
         let tool_mode = if env.get_or_else("EXO_UNSTABLE_MCP_MODE", "combine") == "separate" {
@@ -69,8 +64,7 @@ impl McpRouter {
 
         Self {
             api_path_prefix: get_mcp_http_path(env.as_ref()).clone(),
-            data_resolver,
-            introspection_resolver,
+            resolver,
             www_authenticate_header,
             tool_mode,
         }
@@ -141,7 +135,7 @@ impl McpRouter {
             })
         } else {
             let entities = self
-                .data_resolver
+                .resolver
                 .schema
                 .type_definitions
                 .iter()
@@ -154,7 +148,7 @@ impl McpRouter {
                 .collect::<Vec<_>>()
                 .join(", ");
             let schema_description = self
-                .data_resolver
+                .resolver
                 .schema
                 .declaration_doc_comments
                 .as_deref()
@@ -291,7 +285,7 @@ impl McpRouter {
         let graphql_response = execute_query(
             arguments.query,
             arguments.variables,
-            &self.data_resolver,
+            &self.resolver,
             request_context,
         )
         .await;
@@ -418,13 +412,8 @@ impl McpRouter {
 
         let query = query.as_str().ok_or(SubsystemRpcError::InternalError)?;
 
-        let graphql_response = execute_query(
-            query.to_string(),
-            None,
-            &self.introspection_resolver,
-            request_context,
-        )
-        .await?;
+        let graphql_response =
+            execute_query(query.to_string(), None, &self.resolver, request_context).await?;
 
         let (first_key, first_response) = graphql_response.first().unwrap();
 

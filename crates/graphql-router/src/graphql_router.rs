@@ -39,14 +39,14 @@ use exo_env::Environment;
 use crate::system_loader::SystemLoader;
 
 pub struct GraphQLRouter {
-    system_resolver: Arc<GraphQLSystemResolver>,
+    resolver: Arc<GraphQLSystemResolver>,
     env: Arc<dyn Environment>,
 }
 
 impl GraphQLRouter {
-    pub fn new(system_resolver: GraphQLSystemResolver, env: Arc<dyn Environment>) -> Self {
+    pub fn new(resolver: GraphQLSystemResolver, env: Arc<dyn Environment>) -> Self {
         Self {
-            system_resolver: Arc::new(system_resolver),
+            resolver: Arc::new(resolver),
             env,
         }
     }
@@ -79,8 +79,8 @@ impl GraphQLRouter {
         Ok(Self::new(graphql_resolver, env))
     }
 
-    pub fn system_resolver(&self) -> Arc<GraphQLSystemResolver> {
-        self.system_resolver.clone()
+    pub fn resolver(&self) -> Arc<GraphQLSystemResolver> {
+        self.resolver.clone()
     }
 }
 
@@ -120,7 +120,7 @@ impl<'a> Router<RequestContext<'a>> for GraphQLRouter {
 
         let response = resolve_in_memory(
             request_context,
-            &self.system_resolver,
+            &self.resolver,
             trusted_document_enforcement,
             request_context,
         )

@@ -222,53 +222,26 @@ async fn create_mcp_router(
         )
     };
 
-    let mcp_introspection_router = {
-        let introspection_schema = Arc::new(Schema::new_from_resolvers(
-            &graphql_resolvers,
-            scope.clone(),
-            declaration_doc_comments.clone(),
-        ));
-        GraphQLRouter::from_resolvers(
-            vec![],
-            Some(Arc::new(IntrospectionResolver::new(
-                introspection_schema.clone(),
-            ))),
-            introspection_schema,
-            Arc::new(InterceptionMap::default()),
-            Arc::new(InterceptionMap::default()),
-            TrustedDocuments::all(),
-            env.clone(),
-        )
-        .await?
-    };
+    let introspection_schema = Arc::new(Schema::new_from_resolvers(
+        &graphql_resolvers,
+        scope,
+        declaration_doc_comments,
+    ));
 
-    let graphql_router = {
-        let introspection_schema = Arc::new(Schema::new_from_resolvers(
-            &graphql_resolvers,
-            scope,
-            declaration_doc_comments,
-        ));
+    let introspection_resolver = Arc::new(IntrospectionResolver::new(introspection_schema.clone()));
 
-        let introspection_resolver =
-            Arc::new(IntrospectionResolver::new(introspection_schema.clone()));
-
-        GraphQLRouter::from_resolvers(
-            graphql_resolvers,
-            Some(introspection_resolver),
-            introspection_schema,
-            query_interception_map.clone(),
-            mutation_interception_map.clone(),
-            TrustedDocuments::all(),
-            env.clone(),
-        )
-        .await?
-    };
-
-    Ok(McpRouter::new(
+    let graphql_router = GraphQLRouter::from_resolvers(
+        graphql_resolvers,
+        Some(introspection_resolver),
+        introspection_schema,
+        query_interception_map.clone(),
+        mutation_interception_map.clone(),
+        TrustedDocuments::all(),
         env.clone(),
-        graphql_router.system_resolver(),
-        mcp_introspection_router.system_resolver(),
-    ))
+    )
+    .await?;
+
+    Ok(McpRouter::new(env.clone(), graphql_router.resolver()))
 }
 
 pub async fn create_system_resolvers(
