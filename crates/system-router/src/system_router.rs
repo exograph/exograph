@@ -9,14 +9,11 @@
 
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 
-use common::env_const::{
-    EXO_MCP_MUTATION_MODEL_SCOPE, EXO_MCP_MUTATION_NAME_SCOPE, EXO_MCP_QUERY_MODEL_SCOPE,
-    EXO_MCP_QUERY_NAME_SCOPE, EXO_UNSTABLE_ENABLE_MCP_API, EXO_UNSTABLE_ENABLE_RPC_API,
-};
+use common::env_const::{EXO_UNSTABLE_ENABLE_MCP_API, EXO_UNSTABLE_ENABLE_RPC_API};
 use common::introspection::{introspection_mode, IntrospectionMode};
 use common::router::PlainRequestPayload;
 use core_resolver::introspection::definition::schema::Schema;
-use core_resolver::introspection::definition::scope::{SchemaScope, SchemaScopeFilter};
+use core_resolver::introspection::definition::scope::SchemaScope;
 use core_resolver::plugin::SubsystemRpcResolver;
 use core_resolver::system_rpc_resolver::SystemRpcResolver;
 use core_resolver::{
@@ -155,8 +152,7 @@ pub async fn create_system_router_from_system(
             mutation_interception_map.clone(),
             trusted_documents,
             env.clone(),
-        )
-        .await?
+        )?
     };
 
     let rest_resolver = SystemRestResolver::new(rest_resolvers, env.clone());
@@ -194,54 +190,32 @@ async fn create_mcp_router(
     query_interception_map: Arc<InterceptionMap>,
     mutation_interception_map: Arc<InterceptionMap>,
 ) -> Result<McpRouter, SystemLoadingError> {
-    let scope = {
-        let query_model_scope =
-            SchemaScopeFilter::new_from_env(env.as_ref(), EXO_MCP_QUERY_MODEL_SCOPE, || {
-                SchemaScopeFilter::all()
-            });
-        let query_name_scope =
-            SchemaScopeFilter::new_from_env(env.as_ref(), EXO_MCP_QUERY_NAME_SCOPE, || {
-                SchemaScopeFilter::all()
-            });
+    let env_clone = env.clone();
 
-        let mutation_model_scope =
-            SchemaScopeFilter::new_from_env(env.as_ref(), EXO_MCP_MUTATION_MODEL_SCOPE, || {
-                SchemaScopeFilter::none()
-            });
-        let mutation_name_scope =
-            SchemaScopeFilter::new_from_env(env.as_ref(), EXO_MCP_MUTATION_NAME_SCOPE, || {
-                // Default model mutation scope is `none`. If the developer sets that, then we by default allow all mutation names.
-                SchemaScopeFilter::all()
-            });
+    let create_resolver = move |scope: SchemaScope| {
+        let introspection_schema = Arc::new(Schema::new_from_resolvers(
+            &graphql_resolvers,
+            scope,
+            declaration_doc_comments,
+        ));
 
-        SchemaScope::new(
-            query_model_scope,
-            mutation_model_scope,
-            query_name_scope,
-            mutation_name_scope,
-        )
+        let introspection_resolver =
+            Arc::new(IntrospectionResolver::new(introspection_schema.clone()));
+
+        let graphql_router = GraphQLRouter::from_resolvers(
+            graphql_resolvers.clone(),
+            Some(introspection_resolver.clone()),
+            introspection_schema.clone(),
+            query_interception_map.clone(),
+            mutation_interception_map.clone(),
+            TrustedDocuments::all(),
+            env.clone(),
+        )?;
+
+        Ok(graphql_router.resolver())
     };
 
-    let introspection_schema = Arc::new(Schema::new_from_resolvers(
-        &graphql_resolvers,
-        scope,
-        declaration_doc_comments,
-    ));
-
-    let introspection_resolver = Arc::new(IntrospectionResolver::new(introspection_schema.clone()));
-
-    let graphql_router = GraphQLRouter::from_resolvers(
-        graphql_resolvers,
-        Some(introspection_resolver),
-        introspection_schema,
-        query_interception_map.clone(),
-        mutation_interception_map.clone(),
-        TrustedDocuments::all(),
-        env.clone(),
-    )
-    .await?;
-
-    Ok(McpRouter::new(env.clone(), graphql_router.resolver()))
+    McpRouter::new(env_clone, create_resolver)
 }
 
 pub async fn create_system_resolvers(

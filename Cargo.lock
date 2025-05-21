@@ -5627,6 +5627,7 @@ dependencies = [
  "common",
  "core-plugin-shared",
  "core-resolver",
+ "core-router",
  "exo-env",
  "graphql-router",
  "http 1.1.0",

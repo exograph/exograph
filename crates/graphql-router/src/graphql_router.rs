@@ -56,7 +56,7 @@ impl GraphQLRouter {
             && request_head.get_method() == http::Method::POST
     }
 
-    pub async fn from_resolvers(
+    pub fn from_resolvers(
         graphql_resolvers: Vec<Arc<dyn SubsystemGraphQLResolver + Send + Sync>>,
         introspection_resolver: Option<Arc<dyn SubsystemGraphQLResolver + Send + Sync>>,
         schema: Arc<Schema>,
@@ -73,8 +73,7 @@ impl GraphQLRouter {
             trusted_documents,
             env.clone(),
             schema,
-        )
-        .await?;
+        )?;
 
         Ok(Self::new(graphql_resolver, env))
     }

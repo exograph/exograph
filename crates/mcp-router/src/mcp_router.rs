@@ -8,13 +8,17 @@ use bytes::Bytes;
 
 use common::{
     context::RequestContext,
-    env_const::{get_mcp_http_path, EXO_WWW_AUTHENTICATE_HEADER},
+    env_const::{
+        get_mcp_http_path, EXO_MCP_MUTATION_MODEL_SCOPE, EXO_MCP_MUTATION_NAME_SCOPE,
+        EXO_MCP_QUERY_MODEL_SCOPE, EXO_MCP_QUERY_NAME_SCOPE, EXO_WWW_AUTHENTICATE_HEADER,
+    },
     http::{Headers, RequestHead, ResponseBody, ResponsePayload},
     operation_payload::OperationsPayload,
     router::Router,
 };
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::{
+    introspection::definition::scope::{SchemaScope, SchemaScopeFilter},
     plugin::subsystem_rpc_resolver::{
         JsonRpcId, JsonRpcRequest, SubsystemRpcError, SubsystemRpcResponse,
     },
@@ -22,6 +26,7 @@ use core_resolver::{
     QueryResponse, QueryResponseBody,
 };
 
+use core_router::SystemLoadingError;
 use exo_env::Environment;
 use graphql_router::resolve_in_memory_for_payload;
 use http::{Method, StatusCode};
@@ -53,7 +58,12 @@ enum McpToolMode {
 }
 
 impl McpRouter {
-    pub fn new(env: Arc<dyn Environment>, resolver: Arc<GraphQLSystemResolver>) -> Self {
+    pub fn new(
+        env: Arc<dyn Environment>,
+        create_resolver: impl FnOnce(
+            SchemaScope,
+        ) -> Result<Arc<GraphQLSystemResolver>, SystemLoadingError>,
+    ) -> Result<Self, SystemLoadingError> {
         let www_authenticate_header = env.get(EXO_WWW_AUTHENTICATE_HEADER);
 
         let tool_mode = if env.get_or_else("EXO_UNSTABLE_MCP_MODE", "combine") == "separate" {
@@ -62,12 +72,40 @@ impl McpRouter {
             McpToolMode::CombineIntrospection
         };
 
-        Self {
+        let scope = {
+            let query_model_scope =
+                SchemaScopeFilter::new_from_env(env.as_ref(), EXO_MCP_QUERY_MODEL_SCOPE, || {
+                    SchemaScopeFilter::all()
+                });
+            let query_name_scope =
+                SchemaScopeFilter::new_from_env(env.as_ref(), EXO_MCP_QUERY_NAME_SCOPE, || {
+                    SchemaScopeFilter::all()
+                });
+
+            let mutation_model_scope =
+                SchemaScopeFilter::new_from_env(env.as_ref(), EXO_MCP_MUTATION_MODEL_SCOPE, || {
+                    SchemaScopeFilter::none()
+                });
+            let mutation_name_scope =
+                SchemaScopeFilter::new_from_env(env.as_ref(), EXO_MCP_MUTATION_NAME_SCOPE, || {
+                    // Default model mutation scope is `none`. If the developer sets that, then we by default allow all mutation names.
+                    SchemaScopeFilter::all()
+                });
+
+            SchemaScope::new(
+                query_model_scope,
+                mutation_model_scope,
+                query_name_scope,
+                mutation_name_scope,
+            )
+        };
+
+        Ok(Self {
             api_path_prefix: get_mcp_http_path(env.as_ref()).clone(),
-            resolver,
+            resolver: create_resolver(scope)?,
             www_authenticate_header,
             tool_mode,
-        }
+        })
     }
 
     fn suitable(&self, request_head: &(dyn RequestHead + Sync)) -> bool {
