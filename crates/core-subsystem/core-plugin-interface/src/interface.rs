@@ -9,6 +9,7 @@
 
 use std::path::PathBuf;
 
+use std::sync::Arc;
 #[cfg(not(target_family = "wasm"))]
 use std::{env::current_exe, path::Path};
 
@@ -119,14 +120,14 @@ pub trait GraphQLSubsystemBuilder {
 }
 
 pub struct SubsystemResolver {
-    pub graphql: Option<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
+    pub graphql: Option<Arc<dyn SubsystemGraphQLResolver + Send + Sync>>,
     pub rest: Option<Box<dyn SubsystemRestResolver + Send + Sync>>,
     pub rpc: Option<Box<dyn SubsystemRpcResolver + Send + Sync>>,
 }
 
 impl SubsystemResolver {
     pub fn new(
-        graphql: Option<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
+        graphql: Option<Arc<dyn SubsystemGraphQLResolver + Send + Sync>>,
         rest: Option<Box<dyn SubsystemRestResolver + Send + Sync>>,
         rpc: Option<Box<dyn SubsystemRpcResolver + Send + Sync>>,
     ) -> Self {

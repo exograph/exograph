@@ -22,6 +22,12 @@ pub trait Environment: Send + Sync {
     fn get_or_else(&self, key: &str, default_value: &str) -> String {
         self.get(key).unwrap_or(default_value.to_string())
     }
+
+    fn get_list(&self, key: &str, default_value: Vec<String>) -> Vec<String> {
+        self.get(key)
+            .map(|value| value.split(',').map(|s| s.trim().into()).collect())
+            .unwrap_or(default_value)
+    }
 }
 
 pub struct SystemEnvironment;

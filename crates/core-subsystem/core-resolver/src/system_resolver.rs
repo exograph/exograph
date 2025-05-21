@@ -56,9 +56,9 @@ pub type ExographExecuteQueryFn<'a> = dyn Fn(
 ///
 /// Delegates to subsystem resolvers to resolve individual operations.
 pub struct GraphQLSystemResolver {
-    subsystem_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
-    query_interception_map: InterceptionMap,
-    mutation_interception_map: InterceptionMap,
+    subsystem_resolvers: Vec<Arc<dyn SubsystemGraphQLResolver + Send + Sync>>,
+    query_interception_map: Arc<InterceptionMap>,
+    mutation_interception_map: Arc<InterceptionMap>,
     trusted_documents: TrustedDocuments,
     pub schema: Arc<Schema>,
     normal_query_depth_limit: usize,
@@ -68,9 +68,9 @@ pub struct GraphQLSystemResolver {
 impl GraphQLSystemResolver {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        subsystem_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
-        query_interception_map: InterceptionMap,
-        mutation_interception_map: InterceptionMap,
+        subsystem_resolvers: Vec<Arc<dyn SubsystemGraphQLResolver + Send + Sync>>,
+        query_interception_map: Arc<InterceptionMap>,
+        mutation_interception_map: Arc<InterceptionMap>,
         trusted_documents: TrustedDocuments,
         schema: Arc<Schema>,
         env: Arc<dyn Environment>,

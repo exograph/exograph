@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 
 use core_plugin_interface::interface::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver};
@@ -38,12 +40,12 @@ impl SubsystemLoader for WasmSubsystemLoader {
             Some(graphql) => {
                 let subsystem = WasmSubsystem::deserialize(graphql.0)?;
 
-                Ok::<_, SubsystemLoadingError>(Some(Box::new(WasmSubsystemResolver {
+                Ok::<_, SubsystemLoadingError>(Some(Arc::new(WasmSubsystemResolver {
                     id: self.id(),
                     subsystem,
                     executor,
                 })
-                    as Box<dyn SubsystemGraphQLResolver + Send + Sync>))
+                    as Arc<dyn SubsystemGraphQLResolver + Send + Sync>))
             }
             None => Ok(None),
         }?;

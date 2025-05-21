@@ -57,11 +57,11 @@ impl GraphQLRouter {
     }
 
     pub async fn from_resolvers(
-        graphql_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
-        introspection_resolver: Option<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
+        graphql_resolvers: Vec<Arc<dyn SubsystemGraphQLResolver + Send + Sync>>,
+        introspection_resolver: Option<Arc<dyn SubsystemGraphQLResolver + Send + Sync>>,
         schema: Arc<Schema>,
-        query_interception_map: InterceptionMap,
-        mutation_interception_map: InterceptionMap,
+        query_interception_map: Arc<InterceptionMap>,
+        mutation_interception_map: Arc<InterceptionMap>,
         trusted_documents: TrustedDocuments,
         env: Arc<dyn Environment>,
     ) -> Result<Self, SystemLoadingError> {

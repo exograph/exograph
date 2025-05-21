@@ -9,10 +9,14 @@
 
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 
-use common::env_const::{EXO_UNSTABLE_ENABLE_MCP_API, EXO_UNSTABLE_ENABLE_RPC_API};
+use common::env_const::{
+    EXO_MCP_MUTATION_MODEL_SCOPE, EXO_MCP_MUTATION_NAME_SCOPE, EXO_MCP_QUERY_MODEL_SCOPE,
+    EXO_MCP_QUERY_NAME_SCOPE, EXO_UNSTABLE_ENABLE_MCP_API, EXO_UNSTABLE_ENABLE_RPC_API,
+};
 use common::introspection::{introspection_mode, IntrospectionMode};
 use common::router::PlainRequestPayload;
 use core_resolver::introspection::definition::schema::Schema;
+use core_resolver::introspection::definition::scope::{SchemaScope, SchemaScopeFilter};
 use core_resolver::plugin::SubsystemRpcResolver;
 use core_resolver::system_rpc_resolver::SystemRpcResolver;
 use core_resolver::{
@@ -85,9 +89,12 @@ pub async fn create_system_router_from_system(
         declaration_doc_comments,
     ) = create_system_resolvers(system, static_loaders, env.clone()).await?;
 
+    let query_interception_map = Arc::new(query_interception_map);
+    let mutation_interception_map = Arc::new(mutation_interception_map);
+
     let declaration_doc_comments = Arc::new(declaration_doc_comments);
 
-    let mut graphql_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>> = vec![];
+    let mut graphql_resolvers: Vec<Arc<dyn SubsystemGraphQLResolver + Send + Sync>> = vec![];
     let mut rest_resolvers: Vec<Box<dyn SubsystemRestResolver + Send + Sync>> = vec![];
     let mut rpc_resolvers: Vec<Box<dyn SubsystemRpcResolver + Send + Sync>> = vec![];
 
@@ -107,60 +114,45 @@ pub async fn create_system_router_from_system(
         }
     }
 
-    #[cfg(not(target_family = "wasm"))]
-    let mcp_introspection_router = {
-        let introspection_schema = Arc::new(Schema::new_from_resolvers(
-            &graphql_resolvers,
-            false,
-            declaration_doc_comments.clone(),
-        ));
-        GraphQLRouter::from_resolvers(
-            vec![],
-            Some(Box::new(IntrospectionResolver::new(
-                introspection_schema.clone(),
-            ))),
-            introspection_schema,
-            InterceptionMap::default(),
-            InterceptionMap::default(),
-            TrustedDocuments::all(),
-            env.clone(),
-        )
-        .await?
-    };
-
     let graphql_router = {
         let allow_mutations = env.enabled(EXO_GRAPHQL_ALLOW_MUTATIONS, true);
 
+        let scope = if allow_mutations {
+            SchemaScope::all()
+        } else {
+            SchemaScope::queries_only()
+        };
+
         let introspection_schema = Arc::new(Schema::new_from_resolvers(
             &graphql_resolvers,
-            allow_mutations,
-            declaration_doc_comments,
+            scope,
+            declaration_doc_comments.clone(),
         ));
 
         let (introspection_resolver, graphql_resolvers): (
-            Option<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
+            Option<Arc<dyn SubsystemGraphQLResolver + Send + Sync>>,
             _,
         ) = match introspection_mode(env.as_ref())? {
-            IntrospectionMode::Disabled => (None, graphql_resolvers),
+            IntrospectionMode::Disabled => (None, graphql_resolvers.clone()),
             IntrospectionMode::Enabled => {
                 let introspection_resolver =
-                    Box::new(IntrospectionResolver::new(introspection_schema.clone()));
-                (Some(introspection_resolver), graphql_resolvers)
+                    Arc::new(IntrospectionResolver::new(introspection_schema.clone()));
+                (Some(introspection_resolver), graphql_resolvers.clone())
             }
             IntrospectionMode::Only => {
                 // forgo all other resolvers and only use introspection
                 let introspection_resolver =
-                    Box::new(IntrospectionResolver::new(introspection_schema.clone()));
+                    Arc::new(IntrospectionResolver::new(introspection_schema.clone()));
                 (Some(introspection_resolver), vec![])
             }
         };
 
         GraphQLRouter::from_resolvers(
-            graphql_resolvers,
+            graphql_resolvers.to_vec(),
             introspection_resolver,
             introspection_schema,
-            query_interception_map,
-            mutation_interception_map,
+            query_interception_map.clone(),
+            mutation_interception_map.clone(),
             trusted_documents,
             env.clone(),
         )
@@ -174,11 +166,14 @@ pub async fn create_system_router_from_system(
     let rpc_router = RpcRouter::new(rpc_resolver, env.clone());
 
     #[cfg(not(target_family = "wasm"))]
-    let mcp_router = McpRouter::new(
+    let mcp_router = create_mcp_router(
         env.clone(),
-        graphql_router.system_resolver(),
-        mcp_introspection_router.system_resolver(),
-    );
+        graphql_resolvers,
+        declaration_doc_comments,
+        query_interception_map,
+        mutation_interception_map,
+    )
+    .await?;
 
     #[cfg(not(target_family = "wasm"))]
     {
@@ -189,6 +184,91 @@ pub async fn create_system_router_from_system(
     {
         create_system_router(graphql_router, rest_router, rpc_router, env).await
     }
+}
+
+#[cfg(not(target_family = "wasm"))]
+async fn create_mcp_router(
+    env: Arc<dyn Environment>,
+    graphql_resolvers: Vec<Arc<dyn SubsystemGraphQLResolver + Send + Sync>>,
+    declaration_doc_comments: Arc<Option<String>>,
+    query_interception_map: Arc<InterceptionMap>,
+    mutation_interception_map: Arc<InterceptionMap>,
+) -> Result<McpRouter, SystemLoadingError> {
+    let scope = {
+        let query_model_scope =
+            SchemaScopeFilter::new_from_env(env.as_ref(), EXO_MCP_QUERY_MODEL_SCOPE, || {
+                SchemaScopeFilter::all()
+            });
+        let query_name_scope =
+            SchemaScopeFilter::new_from_env(env.as_ref(), EXO_MCP_QUERY_NAME_SCOPE, || {
+                SchemaScopeFilter::all()
+            });
+
+        let mutation_model_scope =
+            SchemaScopeFilter::new_from_env(env.as_ref(), EXO_MCP_MUTATION_MODEL_SCOPE, || {
+                SchemaScopeFilter::none()
+            });
+        let mutation_name_scope =
+            SchemaScopeFilter::new_from_env(env.as_ref(), EXO_MCP_MUTATION_NAME_SCOPE, || {
+                // Default model mutation scope is `none`. If the developer sets that, then we by default allow all mutation names.
+                SchemaScopeFilter::all()
+            });
+
+        SchemaScope::new(
+            query_model_scope,
+            mutation_model_scope,
+            query_name_scope,
+            mutation_name_scope,
+        )
+    };
+
+    let mcp_introspection_router = {
+        let introspection_schema = Arc::new(Schema::new_from_resolvers(
+            &graphql_resolvers,
+            scope.clone(),
+            declaration_doc_comments.clone(),
+        ));
+        GraphQLRouter::from_resolvers(
+            vec![],
+            Some(Arc::new(IntrospectionResolver::new(
+                introspection_schema.clone(),
+            ))),
+            introspection_schema,
+            Arc::new(InterceptionMap::default()),
+            Arc::new(InterceptionMap::default()),
+            TrustedDocuments::all(),
+            env.clone(),
+        )
+        .await?
+    };
+
+    let graphql_router = {
+        let introspection_schema = Arc::new(Schema::new_from_resolvers(
+            &graphql_resolvers,
+            scope,
+            declaration_doc_comments,
+        ));
+
+        let introspection_resolver =
+            Arc::new(IntrospectionResolver::new(introspection_schema.clone()));
+
+        GraphQLRouter::from_resolvers(
+            graphql_resolvers,
+            Some(introspection_resolver),
+            introspection_schema,
+            query_interception_map.clone(),
+            mutation_interception_map.clone(),
+            TrustedDocuments::all(),
+            env.clone(),
+        )
+        .await?
+    };
+
+    Ok(McpRouter::new(
+        env.clone(),
+        graphql_router.system_resolver(),
+        mcp_introspection_router.system_resolver(),
+    ))
 }
 
 pub async fn create_system_resolvers(

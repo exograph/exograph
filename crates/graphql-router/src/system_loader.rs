@@ -25,10 +25,10 @@ const EXO_MAX_SELECTION_DEPTH: &str = "EXO_MAX_SELECTION_DEPTH";
 
 impl SystemLoader {
     pub async fn create_system_resolver(
-        mut subsystem_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
-        introspection_resolver: Option<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
-        query_interception_map: InterceptionMap,
-        mutation_interception_map: InterceptionMap,
+        mut subsystem_resolvers: Vec<Arc<dyn SubsystemGraphQLResolver + Send + Sync>>,
+        introspection_resolver: Option<Arc<dyn SubsystemGraphQLResolver + Send + Sync>>,
+        query_interception_map: Arc<InterceptionMap>,
+        mutation_interception_map: Arc<InterceptionMap>,
         trusted_documents: TrustedDocuments,
         env: Arc<dyn Environment>,
         schema: Arc<Schema>,

@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 
 use core_plugin_interface::interface::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver};
@@ -40,12 +42,12 @@ impl SubsystemLoader for DenoSubsystemLoader {
             Some(graphql) => {
                 let subsystem = DenoSubsystem::deserialize(graphql.0)?;
                 let executor = DenoExecutorPool::new_from_config(exo_config());
-                Ok::<_, SubsystemLoadingError>(Some(Box::new(DenoSubsystemResolver {
+                Ok::<_, SubsystemLoadingError>(Some(Arc::new(DenoSubsystemResolver {
                     id: self.id(),
                     subsystem,
                     executor,
                 })
-                    as Box<dyn SubsystemGraphQLResolver + Send + Sync>))
+                    as Arc<dyn SubsystemGraphQLResolver + Send + Sync>))
             }
             None => Ok(None),
         }?;
