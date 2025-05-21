@@ -65,6 +65,25 @@ impl PrimitiveType {
             PrimitiveType::Array(pt) => format!("[{}]", pt.name()),
         }
     }
+
+    pub fn is_primitive(name: &str) -> bool {
+        matches!(
+            name,
+            "Int"
+                | "Float"
+                | "Decimal"
+                | "String"
+                | "Boolean"
+                | "LocalDate"
+                | "LocalTime"
+                | "LocalDateTime"
+                | "Instant"
+                | "Json"
+                | "Blob"
+                | "Uuid"
+                | "Vector"
+        )
+    }
 }
 
 impl Display for PrimitiveType {

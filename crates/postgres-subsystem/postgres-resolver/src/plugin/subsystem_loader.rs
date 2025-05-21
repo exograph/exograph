@@ -67,12 +67,12 @@ impl SubsystemLoader for PostgresSubsystemLoader {
             .map(|graphql| {
                 let mut subsystem = PostgresGraphQLSubsystem::deserialize(graphql.0)?;
                 subsystem.core_subsystem = core_subsystem.clone();
-                Ok::<_, SubsystemLoadingError>(Box::new(PostgresSubsystemResolver {
+                Ok::<_, SubsystemLoadingError>(Arc::new(PostgresSubsystemResolver {
                     id: self.id(),
                     subsystem,
                     executor: executor.clone(),
                 })
-                    as Box<dyn SubsystemGraphQLResolver + Send + Sync>)
+                    as Arc<dyn SubsystemGraphQLResolver + Send + Sync>)
             })
             .transpose()?;
 

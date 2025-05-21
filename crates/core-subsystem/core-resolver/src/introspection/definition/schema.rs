@@ -17,11 +17,16 @@ use async_graphql_parser::{
 };
 
 use async_graphql_value::Name;
-use core_model::type_normalization::{
-    default_positioned, default_positioned_name, TypeDefinitionIntrospection,
+use core_model::{
+    primitive_type::PrimitiveType,
+    type_normalization::{
+        default_positioned, default_positioned_name, TypeDefinitionIntrospection,
+    },
 };
 
 use crate::{plugin::SubsystemGraphQLResolver, validation::underlying_type};
+
+use super::scope::{SchemaScope, SchemaScopeFilter};
 
 #[derive(Debug, Clone)]
 pub struct Schema {
@@ -37,8 +42,8 @@ pub const SUBSCRIPTION_ROOT_TYPENAME: &str = "Subscription";
 
 impl Schema {
     pub fn new_from_resolvers(
-        subsystem_resolvers: &[Box<dyn SubsystemGraphQLResolver + Send + Sync>],
-        allow_mutations: bool,
+        subsystem_resolvers: &[Arc<dyn SubsystemGraphQLResolver + Send + Sync>],
+        scope: SchemaScope,
         declaration_doc_comments: Arc<Option<String>>,
     ) -> Schema {
         let type_definitions: Vec<TypeDefinition> = {
@@ -54,11 +59,29 @@ impl Schema {
             typedefs
         };
 
+        let model_matches = |field_defn: &FieldDefinition, filter: &SchemaScopeFilter| {
+            let field_return_type = underlying_type(&field_defn.ty.node);
+            PrimitiveType::is_primitive(field_return_type) || filter.matches(field_return_type)
+        };
+
+        let name_matches = |field_defn: &FieldDefinition, filter: &SchemaScopeFilter| {
+            filter.matches(&field_defn.name.node)
+        };
+
         let queries = {
             let mut queries = subsystem_resolvers
                 .iter()
                 .fold(vec![], |mut acc, resolver| {
-                    acc.extend(resolver.schema_queries());
+                    acc.extend(
+                        resolver
+                            .schema_queries()
+                            .into_iter()
+                            .filter(|q| {
+                                model_matches(q, &scope.query_entities)
+                                    && name_matches(q, &scope.query_names)
+                            })
+                            .collect::<Vec<FieldDefinition>>(),
+                    );
                     acc
                 });
 
@@ -67,19 +90,26 @@ impl Schema {
             queries
         };
 
-        let mutations = if allow_mutations {
+        let mutations = {
             let mut mutations = subsystem_resolvers
                 .iter()
                 .fold(vec![], |mut acc, resolver| {
-                    acc.extend(resolver.schema_mutations());
+                    acc.extend(
+                        resolver
+                            .schema_mutations()
+                            .into_iter()
+                            .filter(|m| {
+                                model_matches(m, &scope.mutation_entities)
+                                    && name_matches(m, &scope.mutation_names)
+                            })
+                            .collect::<Vec<FieldDefinition>>(),
+                    );
                     acc
                 });
 
             // ensure introspection outputs mutations in a stable order
             mutations.sort_by_key(|m| m.name.clone());
             mutations
-        } else {
-            vec![]
         };
 
         Self::new(

@@ -1583,6 +1583,7 @@ dependencies = [
  "tracing",
  "wasm-bindgen-test",
  "wasm-bindgen-test-macro",
+ "wildmatch",
 ]
 
 [[package]]
