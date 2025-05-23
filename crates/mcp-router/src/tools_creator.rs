@@ -32,10 +32,14 @@ pub fn create_tools(
 
     let config_json_str = env.get(EXO_MCP_PROFILES);
 
-    let profiles = SchemaProfiles::from_json(config_json_str.as_deref().unwrap_or_default())
-        .map_err(|e| {
-            SystemLoadingError::Config(format!("Failed to parse {EXO_MCP_PROFILES}: {e}"))
-        })?;
+    let profiles = config_json_str
+        .map(|config_json_str| {
+            SchemaProfiles::from_json(&config_json_str).map_err(|e| {
+                SystemLoadingError::Config(format!("Failed to parse {EXO_MCP_PROFILES}: {e}"))
+            })
+        })
+        .transpose()?
+        .unwrap_or_default();
 
     let tools: Vec<Box<dyn Tool>> = if profiles.is_empty() {
         let resolver = create_resolver(&SchemaProfile::queries_only())?;
