@@ -12,8 +12,8 @@ use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 use common::env_const::{EXO_UNSTABLE_ENABLE_MCP_API, EXO_UNSTABLE_ENABLE_RPC_API};
 use common::introspection::{introspection_mode, IntrospectionMode};
 use common::router::PlainRequestPayload;
+use core_resolver::introspection::definition::profile::SchemaProfile;
 use core_resolver::introspection::definition::schema::Schema;
-use core_resolver::introspection::definition::scope::SchemaScope;
 use core_resolver::plugin::SubsystemRpcResolver;
 use core_resolver::system_rpc_resolver::SystemRpcResolver;
 use core_resolver::{
@@ -114,15 +114,15 @@ pub async fn create_system_router_from_system(
     let graphql_router = {
         let allow_mutations = env.enabled(EXO_GRAPHQL_ALLOW_MUTATIONS, true);
 
-        let scope = if allow_mutations {
-            SchemaScope::all()
+        let profile = if allow_mutations {
+            SchemaProfile::all()
         } else {
-            SchemaScope::queries_only()
+            SchemaProfile::queries_only()
         };
 
         let introspection_schema = Arc::new(Schema::new_from_resolvers(
             &graphql_resolvers,
-            scope,
+            &profile,
             declaration_doc_comments.clone(),
         ));
 
@@ -191,12 +191,13 @@ async fn create_mcp_router(
     mutation_interception_map: Arc<InterceptionMap>,
 ) -> Result<McpRouter, SystemLoadingError> {
     let env_clone = env.clone();
+    let declaration_doc_comments_clone = declaration_doc_comments.clone();
 
-    let create_resolver = move |scope: SchemaScope| {
+    let create_resolver = |profile: &SchemaProfile| {
         let introspection_schema = Arc::new(Schema::new_from_resolvers(
             &graphql_resolvers,
-            scope,
-            declaration_doc_comments,
+            profile,
+            declaration_doc_comments_clone.clone(),
         ));
 
         let introspection_resolver =
