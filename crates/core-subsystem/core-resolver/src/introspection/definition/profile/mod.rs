@@ -7,5 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-pub mod profile;
-pub mod schema;
+mod inclusion_exclusion;
+mod operation_set;
+mod schema_profile;
+mod schema_profiles;
+
+pub use schema_profile::SchemaProfile;
+pub use schema_profiles::SchemaProfiles;

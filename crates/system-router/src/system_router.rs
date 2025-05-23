@@ -9,14 +9,11 @@
 
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 
-use common::env_const::{
-    EXO_MCP_MUTATION_MODEL_SCOPE, EXO_MCP_MUTATION_NAME_SCOPE, EXO_MCP_QUERY_MODEL_SCOPE,
-    EXO_MCP_QUERY_NAME_SCOPE, EXO_UNSTABLE_ENABLE_MCP_API, EXO_UNSTABLE_ENABLE_RPC_API,
-};
+use common::env_const::{EXO_UNSTABLE_ENABLE_MCP_API, EXO_UNSTABLE_ENABLE_RPC_API};
 use common::introspection::{introspection_mode, IntrospectionMode};
 use common::router::PlainRequestPayload;
+use core_resolver::introspection::definition::profile::SchemaProfile;
 use core_resolver::introspection::definition::schema::Schema;
-use core_resolver::introspection::definition::scope::{SchemaScope, SchemaScopeFilter};
 use core_resolver::plugin::SubsystemRpcResolver;
 use core_resolver::system_rpc_resolver::SystemRpcResolver;
 use core_resolver::{
@@ -117,15 +114,15 @@ pub async fn create_system_router_from_system(
     let graphql_router = {
         let allow_mutations = env.enabled(EXO_GRAPHQL_ALLOW_MUTATIONS, true);
 
-        let scope = if allow_mutations {
-            SchemaScope::all()
+        let profile = if allow_mutations {
+            SchemaProfile::all()
         } else {
-            SchemaScope::queries_only()
+            SchemaProfile::queries_only()
         };
 
         let introspection_schema = Arc::new(Schema::new_from_resolvers(
             &graphql_resolvers,
-            scope,
+            &profile,
             declaration_doc_comments.clone(),
         ));
 
@@ -155,8 +152,7 @@ pub async fn create_system_router_from_system(
             mutation_interception_map.clone(),
             trusted_documents,
             env.clone(),
-        )
-        .await?
+        )?
     };
 
     let rest_resolver = SystemRestResolver::new(rest_resolvers, env.clone());
@@ -194,81 +190,33 @@ async fn create_mcp_router(
     query_interception_map: Arc<InterceptionMap>,
     mutation_interception_map: Arc<InterceptionMap>,
 ) -> Result<McpRouter, SystemLoadingError> {
-    let scope = {
-        let query_model_scope =
-            SchemaScopeFilter::new_from_env(env.as_ref(), EXO_MCP_QUERY_MODEL_SCOPE, || {
-                SchemaScopeFilter::all()
-            });
-        let query_name_scope =
-            SchemaScopeFilter::new_from_env(env.as_ref(), EXO_MCP_QUERY_NAME_SCOPE, || {
-                SchemaScopeFilter::all()
-            });
+    let env_clone = env.clone();
+    let declaration_doc_comments_clone = declaration_doc_comments.clone();
 
-        let mutation_model_scope =
-            SchemaScopeFilter::new_from_env(env.as_ref(), EXO_MCP_MUTATION_MODEL_SCOPE, || {
-                SchemaScopeFilter::none()
-            });
-        let mutation_name_scope =
-            SchemaScopeFilter::new_from_env(env.as_ref(), EXO_MCP_MUTATION_NAME_SCOPE, || {
-                // Default model mutation scope is `none`. If the developer sets that, then we by default allow all mutation names.
-                SchemaScopeFilter::all()
-            });
-
-        SchemaScope::new(
-            query_model_scope,
-            mutation_model_scope,
-            query_name_scope,
-            mutation_name_scope,
-        )
-    };
-
-    let mcp_introspection_router = {
+    let create_resolver = |profile: &SchemaProfile| {
         let introspection_schema = Arc::new(Schema::new_from_resolvers(
             &graphql_resolvers,
-            scope.clone(),
-            declaration_doc_comments.clone(),
-        ));
-        GraphQLRouter::from_resolvers(
-            vec![],
-            Some(Arc::new(IntrospectionResolver::new(
-                introspection_schema.clone(),
-            ))),
-            introspection_schema,
-            Arc::new(InterceptionMap::default()),
-            Arc::new(InterceptionMap::default()),
-            TrustedDocuments::all(),
-            env.clone(),
-        )
-        .await?
-    };
-
-    let graphql_router = {
-        let introspection_schema = Arc::new(Schema::new_from_resolvers(
-            &graphql_resolvers,
-            scope,
-            declaration_doc_comments,
+            profile,
+            declaration_doc_comments_clone.clone(),
         ));
 
         let introspection_resolver =
             Arc::new(IntrospectionResolver::new(introspection_schema.clone()));
 
-        GraphQLRouter::from_resolvers(
-            graphql_resolvers,
-            Some(introspection_resolver),
-            introspection_schema,
+        let graphql_router = GraphQLRouter::from_resolvers(
+            graphql_resolvers.clone(),
+            Some(introspection_resolver.clone()),
+            introspection_schema.clone(),
             query_interception_map.clone(),
             mutation_interception_map.clone(),
             TrustedDocuments::all(),
             env.clone(),
-        )
-        .await?
+        )?;
+
+        Ok(graphql_router.resolver())
     };
 
-    Ok(McpRouter::new(
-        env.clone(),
-        graphql_router.system_resolver(),
-        mcp_introspection_router.system_resolver(),
-    ))
+    McpRouter::new(env_clone, create_resolver)
 }
 
 pub async fn create_system_resolvers(

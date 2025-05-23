@@ -17,16 +17,13 @@ use async_graphql_parser::{
 };
 
 use async_graphql_value::Name;
-use core_model::{
-    primitive_type::PrimitiveType,
-    type_normalization::{
-        default_positioned, default_positioned_name, TypeDefinitionIntrospection,
-    },
+use core_model::type_normalization::{
+    default_positioned, default_positioned_name, TypeDefinitionIntrospection,
 };
 
 use crate::{plugin::SubsystemGraphQLResolver, validation::underlying_type};
 
-use super::scope::{SchemaScope, SchemaScopeFilter};
+use super::profile::SchemaProfile;
 
 #[derive(Debug, Clone)]
 pub struct Schema {
@@ -43,7 +40,7 @@ pub const SUBSCRIPTION_ROOT_TYPENAME: &str = "Subscription";
 impl Schema {
     pub fn new_from_resolvers(
         subsystem_resolvers: &[Arc<dyn SubsystemGraphQLResolver + Send + Sync>],
-        scope: SchemaScope,
+        profile: &SchemaProfile,
         declaration_doc_comments: Arc<Option<String>>,
     ) -> Schema {
         let type_definitions: Vec<TypeDefinition> = {
@@ -59,15 +56,6 @@ impl Schema {
             typedefs
         };
 
-        let model_matches = |field_defn: &FieldDefinition, filter: &SchemaScopeFilter| {
-            let field_return_type = underlying_type(&field_defn.ty.node);
-            PrimitiveType::is_primitive(field_return_type) || filter.matches(field_return_type)
-        };
-
-        let name_matches = |field_defn: &FieldDefinition, filter: &SchemaScopeFilter| {
-            filter.matches(&field_defn.name.node)
-        };
-
         let queries = {
             let mut queries = subsystem_resolvers
                 .iter()
@@ -76,9 +64,9 @@ impl Schema {
                         resolver
                             .schema_queries()
                             .into_iter()
-                            .filter(|q| {
-                                model_matches(q, &scope.query_entities)
-                                    && name_matches(q, &scope.query_names)
+                            .filter(|field_defn| {
+                                let field_return_type = underlying_type(&field_defn.ty.node);
+                                profile.query_matches(field_return_type, &field_defn.name.node)
                             })
                             .collect::<Vec<FieldDefinition>>(),
                     );
@@ -98,9 +86,9 @@ impl Schema {
                         resolver
                             .schema_mutations()
                             .into_iter()
-                            .filter(|m| {
-                                model_matches(m, &scope.mutation_entities)
-                                    && name_matches(m, &scope.mutation_names)
+                            .filter(|field_defn| {
+                                let field_return_type = underlying_type(&field_defn.ty.node);
+                                profile.mutation_matches(field_return_type, &field_defn.name.node)
                             })
                             .collect::<Vec<FieldDefinition>>(),
                     );
