@@ -75,7 +75,10 @@ pub(crate) async fn create_system(
         }
     } else {
         ensure_exo_project_dir(&PathBuf::from("."))?;
-        Ok(build_system_with_static_builders(model_file.as_ref(), trusted_documents_dir).await?)
+        Ok(
+            build_system_with_static_builders(model_file.as_ref(), trusted_documents_dir, None)
+                .await?,
+        )
     }
 }
 

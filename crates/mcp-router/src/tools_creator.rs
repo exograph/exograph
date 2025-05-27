@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
-use common::env_const::{EXO_MCP_PROFILES, EXO_WWW_AUTHENTICATE_HEADER};
-use core_resolver::{
-    introspection::definition::profile::{SchemaProfile, SchemaProfiles},
-    system_resolver::GraphQLSystemResolver,
-};
+use common::env_const::EXO_WWW_AUTHENTICATE_HEADER;
+use core_plugin_shared::profile::{SchemaProfile, SchemaProfiles};
+use core_resolver::system_resolver::GraphQLSystemResolver;
 use core_router::SystemLoadingError;
 use exo_env::Environment;
 
@@ -20,6 +18,7 @@ pub enum McpToolMode {
 
 pub fn create_tools(
     env: &dyn Environment,
+    schema_profiles: Option<SchemaProfiles>,
     create_resolver: &impl Fn(&SchemaProfile) -> Result<Arc<GraphQLSystemResolver>, SystemLoadingError>,
 ) -> Result<Vec<Box<dyn Tool>>, SystemLoadingError> {
     let www_authenticate_header = env.get(EXO_WWW_AUTHENTICATE_HEADER);
@@ -30,16 +29,7 @@ pub fn create_tools(
         McpToolMode::CombineIntrospection
     };
 
-    let config_json_str = env.get(EXO_MCP_PROFILES);
-
-    let profiles = config_json_str
-        .map(|config_json_str| {
-            SchemaProfiles::from_json(&config_json_str).map_err(|e| {
-                SystemLoadingError::Config(format!("Failed to parse {EXO_MCP_PROFILES}: {e}"))
-            })
-        })
-        .transpose()?
-        .unwrap_or_default();
+    let profiles = schema_profiles.unwrap_or_default();
 
     let tools: Vec<Box<dyn Tool>> = if profiles.is_empty() {
         let resolver = create_resolver(&SchemaProfile::queries_only())?;

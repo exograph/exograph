@@ -14,6 +14,7 @@ use builder::RealFileSystem;
 use clap::{ArgMatches, Command};
 use core_model_builder::plugin::BuildMode;
 use core_plugin_interface::interface::SubsystemBuilder;
+use core_plugin_shared::profile::SchemaProfiles;
 use core_plugin_shared::serializable_system::SerializableSystem;
 use core_plugin_shared::system_serializer::SystemSerializer;
 
@@ -71,6 +72,7 @@ impl Display for BuildError {
 pub(crate) async fn build_system_with_static_builders(
     model: &Path,
     trusted_documents_dir: Option<&Path>,
+    schema_profiles: Option<SchemaProfiles>,
 ) -> Result<SerializableSystem, ParserError> {
     let static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>> = vec![
         Box::new(postgres_builder::PostgresSubsystemBuilder::default()),
@@ -82,6 +84,7 @@ pub(crate) async fn build_system_with_static_builders(
         model,
         &RealFileSystem,
         trusted_documents_dir,
+        schema_profiles,
         static_builders,
         BuildMode::Build,
     )
@@ -102,9 +105,10 @@ pub(crate) async fn build(print_message: bool, config: &Config) -> Result<(), Bu
     let model: PathBuf = default_model_file();
     let trusted_documents_dir = default_trusted_documents_dir();
 
-    let serialized_system = build_system_with_static_builders(&model, Some(&trusted_documents_dir))
-        .await
-        .map_err(BuildError::ParserError)?;
+    let serialized_system =
+        build_system_with_static_builders(&model, Some(&trusted_documents_dir), config.mcp.clone())
+            .await
+            .map_err(BuildError::ParserError)?;
 
     let exo_ir_file_name = PathBuf::from("target/index.exo_ir");
     create_dir_all("target").map_err(|e| {

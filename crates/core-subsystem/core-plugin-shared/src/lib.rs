@@ -9,6 +9,7 @@
 
 pub mod error;
 pub mod interception;
+pub mod profile;
 pub mod serializable_system;
 pub mod system_serializer;
 pub mod trusted_documents;

@@ -13,8 +13,8 @@ use common::{
     http::{Headers, RequestHead, ResponseBody, ResponsePayload},
     router::Router,
 };
+use core_plugin_shared::profile::{SchemaProfile, SchemaProfiles};
 use core_resolver::{
-    introspection::definition::profile::SchemaProfile,
     plugin::subsystem_rpc_resolver::{
         JsonRpcId, JsonRpcRequest, SubsystemRpcError, SubsystemRpcResponse,
     },
@@ -48,10 +48,11 @@ impl McpRouter {
         create_resolver: impl Fn(
             &SchemaProfile,
         ) -> Result<Arc<GraphQLSystemResolver>, SystemLoadingError>,
+        schema_profiles: Option<SchemaProfiles>,
     ) -> Result<Self, SystemLoadingError> {
         Ok(Self {
             api_path_prefix: get_mcp_http_path(env.as_ref()).clone(),
-            tools: create_tools(env.as_ref(), &create_resolver)?,
+            tools: create_tools(env.as_ref(), schema_profiles, &create_resolver)?,
         })
     }
 

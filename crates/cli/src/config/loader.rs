@@ -1,21 +1,26 @@
 use std::path::Path;
 
 use anyhow::{anyhow, Result};
+use core_plugin_shared::profile::SchemaProfiles;
 use semver::VersionReq;
 
 use crate::config::model::Config;
 
 use serde::Deserialize;
 
-use super::model::{ExographConfig, WatchConfig};
+use super::{
+    mcp::SchemaProfilesSer,
+    model::{ExographConfig, WatchConfig},
+};
 
-#[derive(Deserialize, Debug, PartialEq, Default)]
+#[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigSer {
     pub exograph: Option<ExographSer>,
     pub build: Option<WatchCommandSer>,
     pub dev: Option<WatchCommandSer>,
     pub yolo: Option<WatchCommandSer>,
+    pub mcp: Option<SchemaProfilesSer>,
 }
 
 #[derive(Deserialize, Debug, PartialEq, Default)]
@@ -40,6 +45,7 @@ impl TryFrom<ConfigSer> for Config {
             build: config.build.map(WatchConfig::try_from).transpose()?,
             dev: config.dev.map(WatchConfig::try_from).transpose()?,
             yolo: config.yolo.map(WatchConfig::try_from).transpose()?,
+            mcp: config.mcp.map(SchemaProfiles::try_from).transpose()?,
         })
     }
 }
@@ -118,7 +124,9 @@ pub fn load_config() -> Result<Config> {
 mod tests {
     use std::collections::HashMap;
 
+    use core_plugin_shared::profile::{InclusionExclusion, OperationSet, SchemaProfile};
     use semver::Version;
+    use wildmatch::WildMatch;
 
     use crate::config::model::WatchConfig;
 
@@ -134,6 +142,7 @@ mod tests {
                 build: None,
                 dev: None,
                 yolo: None,
+                mcp: None,
             }
         );
     }
@@ -167,6 +176,7 @@ mod tests {
                         "echo 'yolo2'".to_string()
                     ],
                 }),
+                mcp: None,
             }
         );
     }
@@ -183,7 +193,79 @@ mod tests {
                 build: None,
                 dev: None,
                 yolo: None,
+                mcp: None,
             }
+        );
+    }
+
+    #[test]
+    fn test_load_mcp_config() {
+        let config = load_test_config("mcp").unwrap();
+        assert_eq!(
+            config.mcp,
+            Some(SchemaProfiles {
+                profiles: HashMap::from([
+                    (
+                        "membership_management".to_string(),
+                        SchemaProfile {
+                            queries: OperationSet {
+                                models: InclusionExclusion {
+                                    include: vec![
+                                        WildMatch::new("Membership*"),
+                                        WildMatch::new("User"),
+                                    ],
+                                    exclude: vec![
+                                        WildMatch::new("Venue"),
+                                        WildMatch::new("Concert"),
+                                    ],
+                                },
+                                operations: InclusionExclusion {
+                                    include: vec![
+                                        WildMatch::new("memberships"),
+                                        WildMatch::new("user"),
+                                    ],
+                                    exclude: vec![WildMatch::new("*Agg")],
+                                },
+                            },
+                            mutations: OperationSet {
+                                models: InclusionExclusion {
+                                    include: vec![WildMatch::new("Membership*")],
+                                    exclude: vec![
+                                        WildMatch::new("Venue"),
+                                        WildMatch::new("Concert"),
+                                    ],
+                                },
+                                operations: InclusionExclusion {
+                                    include: vec![
+                                        WildMatch::new("createMembership"),
+                                        WildMatch::new("updateMembership"),
+                                    ],
+                                    exclude: vec![WildMatch::new("deleteMembership")],
+                                },
+                            },
+                        }
+                    ),
+                    (
+                        "concert_management".to_string(),
+                        SchemaProfile {
+                            queries: OperationSet {
+                                models: InclusionExclusion {
+                                    include: vec![
+                                        WildMatch::new("Concert"),
+                                        WildMatch::new("Venue")
+                                    ],
+                                    exclude: vec![WildMatch::new("Membership*")],
+                                },
+                                operations: InclusionExclusion {
+                                    include: vec![WildMatch::new("concerts")],
+                                    exclude: vec![WildMatch::new("*Agg")],
+                                },
+                            },
+                            mutations: OperationSet::none(),
+                        }
+                    ),
+                ]),
+            })
         );
     }
 

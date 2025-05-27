@@ -7,39 +7,13 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use serde::{self, Deserialize};
+use serde::{Deserialize, Serialize};
 use wildmatch::WildMatch;
 
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(super) struct InclusionExclusionSerialized {
-    #[serde(default)]
-    include: Vec<String>,
-    #[serde(default)]
-    exclude: Vec<String>,
-}
-
-impl From<InclusionExclusionSerialized> for InclusionExclusion {
-    fn from(serialized: InclusionExclusionSerialized) -> Self {
-        InclusionExclusion {
-            include: serialized
-                .include
-                .into_iter()
-                .map(|s| WildMatch::new(&s))
-                .collect(),
-            exclude: serialized
-                .exclude
-                .into_iter()
-                .map(|s| WildMatch::new(&s))
-                .collect(),
-        }
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct InclusionExclusion {
-    pub(super) include: Vec<WildMatch>,
-    pub(super) exclude: Vec<WildMatch>,
+    pub include: Vec<WildMatch>,
+    pub exclude: Vec<WildMatch>,
 }
 
 impl InclusionExclusion {

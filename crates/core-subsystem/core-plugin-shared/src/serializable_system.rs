@@ -9,7 +9,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::trusted_documents::TrustedDocuments;
+use crate::{profile::SchemaProfiles, trusted_documents::TrustedDocuments};
 
 use super::{
     error::ModelSerializationError, interception::InterceptionMap,
@@ -26,6 +26,7 @@ pub struct SerializableSystem {
     pub mutation_interception_map: InterceptionMap,
     pub trusted_documents: TrustedDocuments,
     pub declaration_doc_comments: Option<String>,
+    pub schema_profiles: Option<SchemaProfiles>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -209,6 +210,7 @@ mod test {
                 core: super::SerializableCoreBytes(vec![]),
             }],
             declaration_doc_comments: None,
+            schema_profiles: None,
         }
     }
 

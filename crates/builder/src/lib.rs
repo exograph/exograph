@@ -22,7 +22,8 @@ use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Diagnostic, Emitter, Level};
 use core_plugin_interface::interface::{LibraryLoadingError, SubsystemBuilder};
 use core_plugin_shared::{
-    serializable_system::SerializableSystem, trusted_documents::TrustedDocuments,
+    profile::SchemaProfiles, serializable_system::SerializableSystem,
+    trusted_documents::TrustedDocuments,
 };
 use error::ParserError;
 
@@ -72,6 +73,7 @@ pub async fn build_system(
     model_file: impl AsRef<Path>,
     file_system: &impl FileSystem,
     trusted_documents_dir: Option<impl AsRef<Path>>,
+    schema_profiles: Option<SchemaProfiles>,
     static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
     build_mode: BuildMode,
 ) -> Result<SerializableSystem, ParserError> {
@@ -87,6 +89,7 @@ pub async fn build_system(
     match build_from_ast_system(
         parser::parse_file(&model_file, file_system, &mut codemap),
         trusted_documents,
+        schema_profiles,
         static_builders,
         build_mode,
     )
@@ -131,6 +134,7 @@ pub async fn build_system_from_str_with_reporting(
     match build_from_ast_system(
         parser::parse_str(model_str, &mut codemap, &file_name),
         TrustedDocuments::all(),
+        None,
         static_builders,
         build_mode,
     )
@@ -192,6 +196,7 @@ pub fn load_subsystem_builders(
 pub async fn build_from_ast_system(
     ast_system: Result<AstSystem<Untyped>, ParserError>,
     trusted_documents: TrustedDocuments,
+    schema_profiles: Option<SchemaProfiles>,
     static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
     build_mode: BuildMode,
 ) -> Result<SerializableSystem, ParserError> {
@@ -206,6 +211,7 @@ pub async fn build_from_ast_system(
         &subsystem_builders,
         typechecked_system,
         trusted_documents,
+        schema_profiles,
         build_mode,
     )
     .await?)

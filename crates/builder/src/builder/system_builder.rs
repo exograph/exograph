@@ -13,6 +13,7 @@ use core_model_builder::plugin::BuildMode;
 use core_model_builder::typechecker::typ::TypecheckedSystem;
 use core_plugin_interface::interface::SubsystemBuild;
 use core_plugin_interface::interface::SubsystemBuilder;
+use core_plugin_shared::profile::SchemaProfiles;
 use core_plugin_shared::serializable_system::SerializableCoreBytes;
 use core_plugin_shared::serializable_system::SerializableSubsystem;
 use core_plugin_shared::serializable_system::SerializableSystem;
@@ -39,6 +40,7 @@ pub async fn build(
     subsystem_builders: &[Box<dyn SubsystemBuilder + Send + Sync>],
     typechecked_system: TypecheckedSystem,
     trusted_documents: TrustedDocuments,
+    schema_profiles: Option<SchemaProfiles>,
     build_mode: BuildMode,
 ) -> Result<SerializableSystem, ModelBuildingError> {
     let base_system = core_model_builder::builder::system_builder::build(&typechecked_system)?;
@@ -119,5 +121,6 @@ pub async fn build(
         mutation_interception_map,
         trusted_documents,
         declaration_doc_comments: typechecked_system.declaration_doc_comments,
+        schema_profiles,
     })
 }

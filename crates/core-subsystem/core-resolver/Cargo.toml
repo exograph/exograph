@@ -20,7 +20,6 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["rt", "macros"] }
 http = { workspace = true }
 tracing.workspace = true
-wildmatch.workspace = true
 
 exo-sql = { path = "../../../libs/exo-sql" }
 exo-env = { path = "../../../libs/exo-env" }

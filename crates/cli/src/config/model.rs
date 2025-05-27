@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use core_plugin_shared::profile::SchemaProfiles;
 use semver::{Version, VersionReq};
 
 #[derive(Debug, PartialEq, Default)]
@@ -7,6 +8,7 @@ pub struct Config {
     pub build: Option<WatchConfig>,
     pub dev: Option<WatchConfig>,
     pub yolo: Option<WatchConfig>,
+    pub mcp: Option<SchemaProfiles>,
 }
 
 #[derive(Debug, PartialEq, Default)]

@@ -1,0 +1,17 @@
+[[mcp.profiles]]
+name = "membership_management"
+queries.models.include = ["Membership*", "User"]
+queries.models.exclude = ["Venue", "Concert"]
+queries.operations.include = ["memberships", "user"]
+queries.operations.exclude = ["*Agg"]
+mutations.models.include = ["Membership*"]
+mutations.models.exclude = ["Venue", "Concert"]
+mutations.operations.include = ["createMembership", "updateMembership"]
+mutations.operations.exclude = ["deleteMembership"]
+
+[[mcp.profiles]]
+name = "concert_management"
+queries.models.include = ["Concert", "Venue"]
+queries.models.exclude = ["Membership*"]
+queries.operations.include = ["concerts"]
+queries.operations.exclude = ["*Agg"]

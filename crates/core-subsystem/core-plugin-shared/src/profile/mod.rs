@@ -12,5 +12,7 @@ mod operation_set;
 mod schema_profile;
 mod schema_profiles;
 
+pub use inclusion_exclusion::InclusionExclusion;
+pub use operation_set::OperationSet;
 pub use schema_profile::SchemaProfile;
 pub use schema_profiles::SchemaProfiles;

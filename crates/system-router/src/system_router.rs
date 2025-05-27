@@ -12,7 +12,7 @@ use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 use common::env_const::{EXO_UNSTABLE_ENABLE_MCP_API, EXO_UNSTABLE_ENABLE_RPC_API};
 use common::introspection::{introspection_mode, IntrospectionMode};
 use common::router::PlainRequestPayload;
-use core_resolver::introspection::definition::profile::SchemaProfile;
+use core_plugin_shared::profile::{SchemaProfile, SchemaProfiles};
 use core_resolver::introspection::definition::schema::Schema;
 use core_resolver::plugin::SubsystemRpcResolver;
 use core_resolver::system_rpc_resolver::SystemRpcResolver;
@@ -84,6 +84,7 @@ pub async fn create_system_router_from_system(
         mutation_interception_map,
         trusted_documents,
         declaration_doc_comments,
+        schema_profiles,
     ) = create_system_resolvers(system, static_loaders, env.clone()).await?;
 
     let query_interception_map = Arc::new(query_interception_map);
@@ -168,6 +169,7 @@ pub async fn create_system_router_from_system(
         declaration_doc_comments,
         query_interception_map,
         mutation_interception_map,
+        schema_profiles,
     )
     .await?;
 
@@ -189,6 +191,7 @@ async fn create_mcp_router(
     declaration_doc_comments: Arc<Option<String>>,
     query_interception_map: Arc<InterceptionMap>,
     mutation_interception_map: Arc<InterceptionMap>,
+    schema_profiles: Option<SchemaProfiles>,
 ) -> Result<McpRouter, SystemLoadingError> {
     let env_clone = env.clone();
     let declaration_doc_comments_clone = declaration_doc_comments.clone();
@@ -216,7 +219,7 @@ async fn create_mcp_router(
         Ok(graphql_router.resolver())
     };
 
-    McpRouter::new(env_clone, create_resolver)
+    McpRouter::new(env_clone, create_resolver, schema_profiles)
 }
 
 pub async fn create_system_resolvers(
@@ -230,6 +233,7 @@ pub async fn create_system_resolvers(
         InterceptionMap,
         TrustedDocuments,
         Option<String>,
+        Option<SchemaProfiles>,
     ),
     SystemLoadingError,
 > {
@@ -277,6 +281,7 @@ pub async fn create_system_resolvers(
         mutation_interception_map,
         trusted_documents,
         declaration_doc_comments,
+        schema_profiles,
     } = system;
 
     for subsystem in subsystems {
@@ -296,6 +301,7 @@ pub async fn create_system_resolvers(
         mutation_interception_map,
         trusted_documents,
         declaration_doc_comments,
+        schema_profiles,
     ))
 }
 
