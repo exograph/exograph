@@ -228,6 +228,7 @@ impl<'a> Router<RequestContext<'a>> for McpRouter {
 
         let mut id = None;
         let mut headers = Headers::new();
+        headers.insert("content-type".into(), "application/json".into());
 
         let response = {
             match request {
