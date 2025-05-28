@@ -23,7 +23,7 @@ use core_model::type_normalization::{
 
 use crate::{plugin::SubsystemGraphQLResolver, validation::underlying_type};
 
-use super::profile::SchemaProfile;
+use core_plugin_shared::profile::SchemaProfile;
 
 #[derive(Debug, Clone)]
 pub struct Schema {
@@ -66,7 +66,11 @@ impl Schema {
                             .into_iter()
                             .filter(|field_defn| {
                                 let field_return_type = underlying_type(&field_defn.ty.node);
-                                profile.query_matches(field_return_type, &field_defn.name.node)
+                                profile.query_matches(
+                                    field_return_type,
+                                    &field_defn.name.node,
+                                    core_model::primitive_type::PrimitiveType::is_primitive,
+                                )
                             })
                             .collect::<Vec<FieldDefinition>>(),
                     );
@@ -88,7 +92,11 @@ impl Schema {
                             .into_iter()
                             .filter(|field_defn| {
                                 let field_return_type = underlying_type(&field_defn.ty.node);
-                                profile.mutation_matches(field_return_type, &field_defn.name.node)
+                                profile.mutation_matches(
+                                    field_return_type,
+                                    &field_defn.name.node,
+                                    core_model::primitive_type::PrimitiveType::is_primitive,
+                                )
                             })
                             .collect::<Vec<FieldDefinition>>(),
                     );

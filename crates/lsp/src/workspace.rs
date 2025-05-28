@@ -81,6 +81,7 @@ impl Workspace {
         let build_result = AssertUnwindSafe(build_from_ast_system(
             parser::parse_file(&index_file, self, &mut codemap),
             TrustedDocuments::all(),
+            None,
             static_builders,
             BuildMode::CheckOnly, // In the LSP mode, we do not want to cause any side effects such as generating TypeScript code
         ))

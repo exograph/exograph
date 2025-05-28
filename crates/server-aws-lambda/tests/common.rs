@@ -71,6 +71,7 @@ pub async fn test_query(test_request: TestRequest<'_>, expected: TestResponse<'_
         model_path,
         &builder::RealFileSystem,
         None::<&Path>,
+        None,
         vec![],
         BuildMode::Build,
     )

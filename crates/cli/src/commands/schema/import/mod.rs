@@ -177,9 +177,10 @@ mod tests {
 
             let expected_model_file = test_path.join("index.expected.exo");
 
-            let serialized_system = build_system_with_static_builders(&expected_model_file, None)
-                .await
-                .unwrap();
+            let serialized_system =
+                build_system_with_static_builders(&expected_model_file, None, None)
+                    .await
+                    .unwrap();
 
             let postgres_subsystem = serialized_system
                 .subsystems
