@@ -15,7 +15,7 @@ use clap::{Arg, ArgMatches, Command};
 use colored::Colorize;
 use common::env_const::_EXO_ENFORCE_TRUSTED_DOCUMENTS;
 
-use super::build::BuildError;
+use super::{build::BuildError, update::report_update_needed};
 use crate::config::Config;
 
 #[async_trait]
@@ -23,6 +23,11 @@ pub trait CommandDefinition {
     fn command(&self) -> Command;
 
     async fn execute(&self, matches: &ArgMatches, _config: &Config) -> Result<()>;
+
+    // Offer to opt-out of update notifications (for example, if the command is `exo update`)
+    async fn is_update_report_needed(&self) -> bool {
+        true
+    }
 }
 
 pub struct SubcommandDefinition {
@@ -69,7 +74,12 @@ impl CommandDefinition for SubcommandDefinition {
             .find(|command_definition| command_definition.command().get_name() == subcommand.0);
 
         match command_definition {
-            Some(command_definition) => command_definition.execute(subcommand.1, config).await,
+            Some(command_definition) => {
+                if command_definition.is_update_report_needed().await {
+                    report_update_needed().await?;
+                }
+                command_definition.execute(subcommand.1, config).await
+            }
             None => Err(anyhow!("Unknown subcommand: {}", subcommand.0)),
         }
     }
