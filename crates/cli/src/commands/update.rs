@@ -60,6 +60,17 @@ impl CommandDefinition for UpdateCommandDefinition {
 }
 
 pub(crate) async fn report_update_needed() -> anyhow::Result<()> {
+    let skip_update_check = std::env::var("EXO_SKIP_UPDATE_CHECK")
+        .ok()
+        .unwrap_or("false".to_string())
+        .to_lowercase()
+        .as_str()
+        == "true";
+
+    if skip_update_check {
+        return Ok(());
+    }
+
     let current_version = env!("CARGO_PKG_VERSION");
     let latest_version = get_latest_version(false).await?;
 
@@ -126,6 +137,16 @@ async fn get_latest_version(fail_on_network_error: bool) -> anyhow::Result<Optio
             }
         }
     };
+
+    let status = response.status();
+
+    if !status.is_success() {
+        if fail_on_network_error {
+            anyhow::bail!("Failed to get latest version due to a network error (status: {status})");
+        } else {
+            return Ok(None);
+        }
+    }
 
     let json = response.json::<serde_json::Value>().await?;
 
