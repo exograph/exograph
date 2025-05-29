@@ -18,5 +18,6 @@ pub(crate) mod new;
 pub(crate) mod playground;
 pub(crate) mod schema;
 pub(crate) mod test;
+pub(crate) mod update;
 pub(super) mod util;
 pub(crate) mod yolo;

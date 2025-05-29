@@ -29,6 +29,7 @@ use commands::{
     playground::PlaygroundCommandDefinition,
     schema,
     test::TestCommandDefinition,
+    update::UpdateCommandDefinition,
     yolo::YoloCommandDefinition,
 };
 
@@ -75,6 +76,7 @@ async fn main() -> Result<()> {
             Box::new(schema::command_definition()),
             Box::new(graphql::command_definition()),
             Box::new(PlaygroundCommandDefinition {}),
+            Box::new(UpdateCommandDefinition {}),
             Box::new(TestCommandDefinition {}),
         ],
     );

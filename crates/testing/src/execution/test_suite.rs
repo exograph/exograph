@@ -133,6 +133,7 @@ where
 {
     let mut command = Command::new(program);
     command.args(args);
+    command.env("EXO_SKIP_UPDATE_CHECK", "true");
     if let Some(current_dir) = current_dir {
         command.current_dir(current_dir);
     }
