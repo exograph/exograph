@@ -35,6 +35,7 @@ toml = { version = "0.8.20", features = ["parse"] }
 semver = "1.0.26"
 pluralizer.workspace = true
 wildmatch.workspace = true
+tracing.workspace = true
 
 exo-sql = { path = "../../libs/exo-sql", features = ["pool"] }
 builder = { path = "../builder" }

@@ -24,7 +24,34 @@ impl CommandDefinition for UpdateCommandDefinition {
     }
 
     async fn execute(&self, _args: &ArgMatches, _config: &Config) -> anyhow::Result<()> {
-        update_exograph_if_needed().await
+        let current_version = env!("CARGO_PKG_VERSION");
+        let latest_version = get_latest_version(true).await?;
+
+        if let Some(latest_version) = latest_version {
+            if current_version == latest_version {
+                println!(
+                    "You are already on the latest version: {}",
+                    latest_version.green().bold()
+                );
+                return Ok(());
+            }
+
+            println!(
+                "Updating to latest version: {}",
+                latest_version.green().bold()
+            );
+
+            update_exograph().await?;
+
+            println!(
+                "Successfully updated to version: {}",
+                latest_version.green().bold()
+            );
+        } else {
+            println!("{}", "Unable to check for updates".yellow());
+        }
+
+        Ok(())
     }
 
     async fn is_update_report_needed(&self) -> bool {
@@ -32,44 +59,19 @@ impl CommandDefinition for UpdateCommandDefinition {
     }
 }
 
-async fn update_exograph_if_needed() -> anyhow::Result<()> {
-    let current_version = env!("CARGO_PKG_VERSION");
-    let latest_version = get_latest_version().await?;
-
-    if current_version == latest_version {
-        println!(
-            "You are already on the latest version: {}",
-            latest_version.green().bold()
-        );
-        return Ok(());
-    }
-
-    println!(
-        "Updating to latest version: {}",
-        latest_version.green().bold()
-    );
-
-    update_exograph().await?;
-
-    println!(
-        "Successfully updated to version: {}",
-        latest_version.green().bold()
-    );
-
-    Ok(())
-}
-
 pub(crate) async fn report_update_needed() -> anyhow::Result<()> {
     let current_version = env!("CARGO_PKG_VERSION");
-    let latest_version = get_latest_version().await?;
+    let latest_version = get_latest_version(false).await?;
 
-    if current_version != latest_version {
-        println!(
-            "{}{}{}",
-            "A new version (".yellow(),
-            latest_version.green().bold(),
-            ") of Exograph is available. Run `exo update` to update.".yellow()
-        );
+    if let Some(latest_version) = latest_version {
+        if current_version != latest_version {
+            println!(
+                "{}{}{}",
+                "A new version (".yellow(),
+                latest_version.green().bold(),
+                ") of Exograph is available. Run `exo update` to install the new version.".yellow()
+            );
+        }
     }
 
     Ok(())
@@ -99,16 +101,35 @@ async fn update_exograph() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn get_latest_version() -> anyhow::Result<String> {
+/// Get the latest version of Exograph from GitHub.
+///
+/// If `fail_on_network_error` is true, this function will return an error if the request fails.
+/// If `fail_on_network_error` is false, this function will return `None` if the request fails.
+///
+/// The error/None behavior allows normal operation of commands such as `exo build` when working
+/// offline.
+async fn get_latest_version(fail_on_network_error: bool) -> anyhow::Result<Option<String>> {
     let response = reqwest::Client::new()
         .get("https://api.github.com/repos/exograph/exograph/releases/latest")
         .header("User-Agent", "cli")
         .send()
-        .await?
-        .json::<serde_json::Value>()
-        .await?;
+        .await;
 
-    let version = response
+    let response = match response {
+        Ok(response) => response,
+        Err(e) => {
+            if fail_on_network_error {
+                tracing::error!("Failed to make a network call: {e}");
+                anyhow::bail!("Failed to get latest version due to a network error");
+            } else {
+                return Ok(None);
+            }
+        }
+    };
+
+    let json = response.json::<serde_json::Value>().await?;
+
+    let version = json
         .get("tag_name")
         .ok_or(anyhow::anyhow!("No version found"))?
         .as_str()
@@ -116,5 +137,5 @@ async fn get_latest_version() -> anyhow::Result<String> {
         .strip_prefix("v")
         .ok_or(anyhow::anyhow!("Invalid version format"))?;
 
-    Ok(version.to_string())
+    Ok(Some(version.to_string()))
 }
