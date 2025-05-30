@@ -519,6 +519,140 @@ impl ColumnSpec {
 
         self
     }
+
+    /// Compute column attributes from all tables in the given schema
+    pub async fn query_column_attributes(
+        client: &DatabaseClient,
+        schema_name: &str,
+        enums: &Vec<EnumSpec>,
+        issues: &mut Vec<Issue>,
+    ) -> Result<HashMap<SchemaObjectName, HashMap<String, ColumnAttribute>>, DatabaseError> {
+        let mut map = HashMap::new();
+
+        for row in client.query(COLUMNS_TYPE_QUERY, &[&schema_name]).await? {
+            let table_name: String = row.get("table_name");
+            let column_name: String = row.get("column_name");
+            let not_null: bool = row.get("attnotnull");
+
+            let table_name = SchemaObjectName::new_with_schema_name(table_name, schema_name);
+
+            let db_type = {
+                let mut sql_type: String = row.get("format_type");
+
+                let dims = {
+                    // depending on the version of postgres, the type of `attndims` is either `i16`
+                    // or `i32` (postgres type is `int2`` or `int4``), so try both
+                    let dims: Result<i32, _> = row.try_get("attndims");
+
+                    match dims {
+                        Ok(dims) => dims,
+                        Err(_) => {
+                            let dims: i16 = row.get("attndims");
+                            dims as i32
+                        }
+                    }
+                };
+
+                // When querying array types, the number of dimensions is not correctly shown
+                // e.g. a column declared as `INT[][][]` will be shown as `INT[]`
+                // So we manually query how many dimensions the column has and append `[]` to
+                // the type
+                sql_type += &"[]".repeat(if dims == 0 { 0 } else { (dims - 1) as usize });
+                match ColumnTypeSpec::from_string(&sql_type, enums) {
+                    Ok(t) => Some(t),
+                    Err(e) => {
+                        issues.push(Issue::Warning(format!(
+                            "skipped column `{}.{column_name}` ({e})",
+                            table_name.fully_qualified_name()
+                        )));
+                        None
+                    }
+                }
+            };
+
+            let table_attributes = map.entry(table_name).or_insert_with(HashMap::new);
+
+            table_attributes.insert(
+                column_name,
+                ColumnAttribute {
+                    db_type,
+                    not_null,
+                    default_value: None,
+                },
+            );
+        }
+
+        for row in client.query(COLUMNS_DEFAULT_QUERY, &[&schema_name]).await? {
+            let table_name: String = row.get("table_name");
+            let column_name: String = row.get("column_name");
+            let is_autoincrement = row.get("is_autoincrement");
+
+            let table_name = SchemaObjectName::new_with_schema_name(table_name, schema_name);
+
+            // If this column is autoIncrement, then default value will be populated
+            // with an invocation of nextval(). Thus, we need to clear it to normalize the column
+            let default_value = if is_autoincrement {
+                let is_identity = row.get("is_identity");
+                let sequence_schema: String = row.get("sequence_schema");
+                let sequence_name: String = row.get("sequence_name");
+
+                let autoincrement = if is_identity {
+                    let generation_str: Option<String> = row.get("identity_generation");
+                    let generation = match generation_str.as_deref() {
+                        Some("ALWAYS") => IdentityGeneration::Always,
+                        Some("DEFAULT") => IdentityGeneration::Default,
+                        _ => {
+                            return Err(DatabaseError::Validation(format!(
+                                "unknown identity generation {generation_str:?}"
+                            )));
+                        }
+                    };
+                    ColumnAutoincrement::Identity { generation }
+                } else {
+                    let serial_sequence_name = SchemaObjectName::new(
+                        format!("{}_{}_seq", table_name.name, column_name),
+                        table_name.schema.as_deref(),
+                    );
+                    let from_db_sequence_name =
+                        SchemaObjectName::new_with_schema_name(sequence_name, sequence_schema);
+
+                    if serial_sequence_name == from_db_sequence_name {
+                        ColumnAutoincrement::Serial
+                    } else {
+                        ColumnAutoincrement::Sequence {
+                            name: from_db_sequence_name,
+                        }
+                    }
+                };
+
+                Ok(Some(ColumnDefault::Autoincrement(autoincrement)))
+            } else {
+                let default_value: Option<String> = row.get("column_default");
+                default_value
+                    .map(|default_value| {
+                        ColumnDefault::from_sql(
+                            default_value,
+                            map.get(&table_name)
+                                .and_then(|table_attributes| {
+                                    table_attributes
+                                        .get(&column_name)
+                                        .map(|info| info.db_type.clone())
+                                })
+                                .flatten(),
+                        )
+                    })
+                    .transpose()
+            }?;
+
+            let table_attributes = map.entry(table_name).or_insert_with(HashMap::new);
+
+            table_attributes.entry(column_name).and_modify(|info| {
+                info.default_value = default_value;
+            });
+        }
+
+        Ok(map)
+    }
 }
 
 #[derive(Debug)]

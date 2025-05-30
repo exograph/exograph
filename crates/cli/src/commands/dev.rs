@@ -15,7 +15,7 @@ use common::env_const::{
     EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
 };
 use exo_sql::schema::migration::{Migration, VerificationErrors};
-use exo_sql::DatabaseClientManager;
+use exo_sql::DatabaseClient;
 use futures::FutureExt;
 use std::path::PathBuf;
 
@@ -165,7 +165,7 @@ impl CommandDefinition for DevCommandDefinition {
 }
 
 async fn apply_migration(
-    db_client: &mut DatabaseClientManager,
+    db_client: &mut DatabaseClient,
     migrations: &Migration,
     ignore_migration_errors: bool,
 ) -> Result<bool> {

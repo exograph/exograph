@@ -407,8 +407,8 @@ impl DatabaseSpec {
 
     pub fn with_table_renamed<'a>(
         &mut self,
-        old_name: &'a PhysicalTableName,
-        new_name: &'a PhysicalTableName,
+        old_name: &'a SchemaObjectName,
+        new_name: &'a SchemaObjectName,
     ) -> Vec<SchemaOp<'a>> {
         let mut ops = vec![];
 
@@ -421,10 +421,9 @@ impl DatabaseSpec {
                 }));
             }
 
-            table
-                .columns
-                .iter_mut()
-                .for_each(|column| column.with_table_renamed(old_name, new_name));
+            table.columns.iter_mut().for_each(|column| {
+                *column = column.clone().with_table_renamed(old_name, new_name);
+            });
         });
 
         ops

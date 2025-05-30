@@ -15,8 +15,8 @@ use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::migration::{
     migrate_interactively, Migration, MigrationError, MigrationInteraction, TableAction,
 };
+use exo_sql::DatabaseClient;
 use exo_sql::SchemaObjectName;
-use exo_sql::{database_error::DatabaseError, DatabaseClientManager};
 
 use crate::commands::command::{
     database_value, migration_scope_arg, migration_scope_value, yes_arg, yes_value,
@@ -80,10 +80,11 @@ impl CommandDefinition for MigrateCommandDefinition {
             ));
         }
 
+        let database = util::extract_postgres_database(&model, None, use_ir).await?;
+
         let db_client = open_database(database_url.as_deref()).await?;
         let mut db_client = db_client.get_client().await?;
 
-        let database = util::extract_postgres_database(&model, None, use_ir).await?;
         let migrations =
             Migration::from_db_and_model(&db_client, &database, &compute_migration_scope(scope))
                 .await?;
@@ -101,20 +102,13 @@ impl CommandDefinition for MigrateCommandDefinition {
     }
 }
 
-pub async fn open_database(database: Option<&str>) -> Result<DatabaseClientManager, DatabaseError> {
-    if let Some(database) = database {
-        Ok(DatabaseClientManager::from_url(database, true, None).await?)
-    } else {
-        Ok(util::database_manager_from_env().await?)
-    }
-}
-
 pub async fn migrate_interactively_from_db_and_model(
     model: &PathBuf,
     use_ir: bool,
-    db_client: &DatabaseClientManager,
+    db_client: &mut DatabaseClient,
 ) -> Result<Migration> {
     let database = util::extract_postgres_database(&model, None, use_ir).await?;
+
     let new_db_spec = DatabaseSpec::from_database(&database);
 
     let old_db_spec =
@@ -196,7 +190,7 @@ impl MigrationInteraction for UserMigrationInteraction {
 
 struct TableDisplay<'a>(&'a SchemaObjectName);
 
-impl<'a> std::fmt::Display for TableDisplay<'a> {
+impl std::fmt::Display for TableDisplay<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0.fully_qualified_name_with_sep("."))
     }

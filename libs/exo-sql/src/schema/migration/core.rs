@@ -17,7 +17,7 @@ use crate::{
         op::SchemaOp,
         spec::{diff, MigrationScope, MigrationScopeMatches},
     },
-    Database, DatabaseClientManager,
+    Database, DatabaseClient,
 };
 use serde::Serialize;
 
@@ -32,10 +32,13 @@ pub struct MigrationStatement {
     pub is_destructive: bool,
 }
 
+#[derive(Debug)]
 pub enum VerificationErrors {
     PostgresError(DatabaseError),
     ModelNotCompatible(Vec<String>),
 }
+
+impl std::error::Error for VerificationErrors {}
 
 impl From<DatabaseError> for VerificationErrors {
     fn from(e: DatabaseError) -> Self {
@@ -125,7 +128,7 @@ impl Migration {
     }
 
     pub async fn extract_schema_from_db(
-        client: &DatabaseClientManager,
+        client: &DatabaseClient,
         database_spec: &DatabaseSpec,
         scope: &MigrationScope,
     ) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
@@ -140,7 +143,7 @@ impl Migration {
     }
 
     pub async fn from_db_and_model(
-        client: &DatabaseClientManager,
+        client: &DatabaseClient,
         database: &Database,
         scope: &MigrationScope,
     ) -> Result<Self, DatabaseError> {
@@ -162,7 +165,7 @@ impl Migration {
     }
 
     pub async fn verify(
-        client: &DatabaseClientManager,
+        client: &DatabaseClient,
         database: &Database,
         scope: &MigrationScope,
     ) -> Result<(), VerificationErrors> {
@@ -194,10 +197,9 @@ impl Migration {
 
     pub async fn apply(
         &self,
-        database: &DatabaseClientManager,
+        client: &mut DatabaseClient,
         allow_destructive_changes: bool,
     ) -> Result<(), MigrationError> {
-        let mut client = database.get_client().await?;
         let transaction = client.transaction().await?;
         for MigrationStatement {
             statement,
@@ -245,31 +247,27 @@ impl MigrationStatement {
 }
 
 async fn extract_db_schema(
-    database: &DatabaseClientManager,
+    client: &DatabaseClient,
     scope: &MigrationScopeMatches,
 ) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
-    let client = database.get_client().await?;
-
-    DatabaseSpec::from_live_database(&client, scope).await
+    DatabaseSpec::from_live_database(client, scope).await
 }
 
-pub async fn wipe_database(database: &DatabaseClientManager) -> Result<(), DatabaseError> {
-    let client = database.get_client().await?;
-
+pub async fn wipe_database(client: &mut DatabaseClient) -> Result<(), DatabaseError> {
     // wiping is equivalent to migrating to an empty database and deals with non-public schemas correctly
     let current_database_spec =
-        &DatabaseSpec::from_live_database(&client, &MigrationScopeMatches::all_schemas())
+        &DatabaseSpec::from_live_database(client, &MigrationScopeMatches::all_schemas())
             .await
             .map_err(|e| DatabaseError::BoxedError(Box::new(e)))?
             .value;
 
     let migrations = Migration::from_schemas(
         current_database_spec,
-        &DatabaseSpec::new(vec![], vec![]),
+        &DatabaseSpec::new(vec![], vec![], vec![]),
         &MigrationScope::all_schemas(),
     );
     migrations
-        .apply(database, true)
+        .apply(client, true)
         .await
         .map_err(|e| DatabaseError::BoxedError(e.into()))?;
 

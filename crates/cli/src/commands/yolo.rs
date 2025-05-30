@@ -160,13 +160,13 @@ async fn setup_database(
     let db_client = util::open_database(None).await?;
     let mut db_client = db_client.get_client().await?;
 
-    // generate migrations for current database
-    let database = util::extract_postgres_database(model, None, false).await?;
+    let database = util::extract_postgres_database(&model, None, false).await?;
+
     let migrations =
         Migration::from_db_and_model(&db_client, &database, &MigrationScope::FromNewSpec).await?;
 
-    // execute migration
-    println!("Applying migrations...");
+    println!("{}", "Applying migration...".blue().bold());
+
     let migration_result = migrations.apply(&mut db_client, true).await;
 
     const CONTINUE: &str = "Continue with old schema";
@@ -186,7 +186,7 @@ async fn setup_database(
                 println!("Continuing with old incompatible schema...");
             }
             REBUILD => {
-                exo_sql::schema::migration::wipe_database(&db_client).await?;
+                exo_sql::schema::migration::wipe_database(&mut db_client).await?;
                 setup_database(model, jwt_secret, db, None).await?;
             }
             PAUSE => {

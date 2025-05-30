@@ -141,8 +141,10 @@ mod tests {
     use std::io::BufWriter;
 
     use common::test_support::{assert_file_content, read_relative_file};
-    use exo_sql::{testing::test_support::with_init_script, Database};
-    use postgres_core_model::{migration::Migration, subsystem::PostgresCoreSubsystem};
+    use exo_sql::{
+        schema::migration::Migration, testing::test_support::with_init_script, Database,
+    };
+    use postgres_core_model::subsystem::PostgresCoreSubsystem;
 
     use crate::commands::build::build_system_with_static_builders;
 

@@ -10,7 +10,7 @@ use exo_sql::{
         },
         spec::MigrationScope,
     },
-    PhysicalTableName,
+    SchemaObjectName,
 };
 use sqlparser::dialect::PostgreSqlDialect;
 use sqlparser::parser::Parser;
@@ -18,8 +18,10 @@ use sqlparser::parser::Parser;
 use colored::Colorize;
 use wildmatch::WildMatch;
 
-use core_plugin_interface::{
+use core_model_builder::plugin::BuildMode;
+use core_plugin_shared::{
     error::ModelSerializationError, serializable_system::SerializableSystem,
+    system_serializer::SystemSerializer,
 };
 
 #[cfg_attr(not(target_family = "wasm"), tokio::test)]
@@ -213,8 +215,11 @@ fn assert_creation_and_self_migration<P: AsRef<Path>>(
     folder: P,
     kind: TestKind,
 ) -> Result<(), String> {
-    let creation =
-        Migration::from_schemas(&DatabaseSpec::new(vec![], vec![]), system, migration_scope);
+    let creation = Migration::from_schemas(
+        &DatabaseSpec::new(vec![], vec![], vec![]),
+        system,
+        migration_scope,
+    );
     assert_sql_eq(creation, expected, folder.as_ref(), kind.kind_str())?;
 
     let self_migration = Migration::from_schemas(system, system, migration_scope);
@@ -505,6 +510,7 @@ async fn create_postgres_system_from_str(
         vec![Box::new(
             postgres_builder::PostgresSubsystemBuilder::default(),
         )],
+        BuildMode::Build,
     )
     .await
     .unwrap();
@@ -520,7 +526,6 @@ fn deserialize_postgres_subsystem(
         .into_iter()
         .find(|subsystem| subsystem.id == "postgres");
 
-    use core_plugin_interface::system_serializer::SystemSerializer;
     match postgres_subsystem {
         Some(subsystem) => {
             let postgres_core_subsystem = PostgresCoreSubsystem::deserialize(subsystem.core.0)?;
@@ -547,16 +552,16 @@ fn load_interaction(file_name: &PathBuf) -> Result<PredefinedMigrationInteractio
 
     let mut table_actions = vec![];
 
-    fn string_to_table_name(name: &str) -> PhysicalTableName {
+    fn string_to_table_name(name: &str) -> SchemaObjectName {
         let parts = name.split('.').collect::<Vec<_>>();
 
         if parts.len() == 1 {
-            PhysicalTableName {
+            SchemaObjectName {
                 schema: None,
                 name: parts[0].to_string(),
             }
         } else if parts.len() == 2 {
-            PhysicalTableName {
+            SchemaObjectName {
                 schema: Some(parts[0].to_string()),
                 name: parts[1].to_string(),
             }
