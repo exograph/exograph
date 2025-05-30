@@ -28,7 +28,7 @@ impl TableAction {
     }
 }
 pub trait MigrationInteraction: Send + Sync {
-    // Print a message to the user, for example to explain that we are starting the migration.
+    // Print a message to the user, for example to explain that we are starting a migration.
     fn handle_start(&self);
 
     fn handle_table_delete(

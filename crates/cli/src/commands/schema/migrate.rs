@@ -15,8 +15,9 @@ use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::migration::{
     migrate_interactively, Migration, MigrationError, MigrationInteraction, TableAction,
 };
-use exo_sql::DatabaseClient;
+use exo_sql::schema::spec::MigrationScope;
 use exo_sql::SchemaObjectName;
+use exo_sql::{Database, DatabaseClient};
 
 use crate::commands::command::{
     database_value, migration_scope_arg, migration_scope_value, yes_arg, yes_value,
@@ -59,6 +60,13 @@ impl CommandDefinition for MigrateCommandDefinition {
                 .required(false)
                 .num_args(0),
         )
+        .arg(
+            Arg::new("non-interactive")
+                .help("Do not interactively migrate the database")
+                .long("non-interactive")
+                .required(false)
+                .num_args(0),
+        )
         .arg(use_ir_arg())
         .arg(yes_arg())
     }
@@ -71,6 +79,7 @@ impl CommandDefinition for MigrateCommandDefinition {
         let apply_to_database: bool = matches.get_flag("apply-to-database");
         let allow_destructive_changes: bool = matches.get_flag("allow-destructive-changes");
         let use_ir: bool = matches.get_flag("use-ir");
+        let non_interactive: bool = matches.get_flag("non-interactive");
         let scope: Option<String> = migration_scope_value(matches);
         let yes: bool = yes_value(matches);
 
@@ -85,40 +94,40 @@ impl CommandDefinition for MigrateCommandDefinition {
         let db_client = open_database(database_url.as_deref()).await?;
         let mut db_client = db_client.get_client().await?;
 
-        let migrations =
-            Migration::from_db_and_model(&db_client, &database, &compute_migration_scope(scope))
-                .await?;
+        let scope = compute_migration_scope(scope);
+
+        let migrations = if non_interactive {
+            Migration::from_db_and_model(&db_client, &database, &scope).await?
+        } else {
+            migrate_interactively_from_db_and_model(&db_client, &database, &scope).await?
+        };
 
         if apply_to_database {
             migrations
                 .apply(&mut db_client, allow_destructive_changes)
                 .await?;
-            Ok(())
         } else {
             let mut buffer: Box<dyn io::Write> = open_file_for_output(output.as_deref(), yes)?;
             migrations.write(&mut buffer, allow_destructive_changes)?;
-            Ok(())
         }
+
+        Ok(())
     }
 }
 
 pub async fn migrate_interactively_from_db_and_model(
-    model: &PathBuf,
-    use_ir: bool,
-    db_client: &mut DatabaseClient,
+    db_client: &DatabaseClient,
+    database: &Database,
+    scope: &MigrationScope,
 ) -> Result<Migration> {
-    let database = util::extract_postgres_database(&model, None, use_ir).await?;
+    let new_db_spec = DatabaseSpec::from_database(database);
 
-    let new_db_spec = DatabaseSpec::from_database(&database);
-
-    let old_db_spec =
-        Migration::extract_schema_from_db(db_client, &new_db_spec, &compute_migration_scope(None))
-            .await?;
+    let old_db_spec = Migration::extract_schema_from_db(db_client, &new_db_spec, scope).await?;
 
     Ok(migrate_interactively(
         old_db_spec.value,
         new_db_spec,
-        &compute_migration_scope(None),
+        scope,
         &UserMigrationInteraction,
     )
     .await?)
