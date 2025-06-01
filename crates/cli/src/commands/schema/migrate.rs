@@ -186,10 +186,10 @@ impl MigrationInteraction for UserMigrationInteraction {
                     inquire::Select::new("What should the new name be?", create_table_displays)
                         .prompt()
                         .map_err(|e| MigrationError::Generic(e.to_string()))?;
-                Ok(TableAction::Rename(
-                    deleted_table.clone(),
-                    new_name.0.clone(),
-                ))
+                Ok(TableAction::Rename {
+                    old_table: deleted_table.clone(),
+                    new_table: new_name.0.clone(),
+                })
             }
             DELETE_HANDLE => Ok(TableAction::Delete(deleted_table.clone())),
             _ => unreachable!(),

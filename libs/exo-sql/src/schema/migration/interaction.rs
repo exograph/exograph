@@ -1,5 +1,3 @@
-use std::sync::Mutex;
-
 use crate::{
     schema::{
         database_spec::DatabaseSpec,
@@ -14,7 +12,10 @@ use super::core::{Migration, MigrationError};
 #[derive(Debug)]
 pub enum TableAction {
     Defer(SchemaObjectName),
-    Rename(SchemaObjectName, SchemaObjectName),
+    Rename {
+        old_table: SchemaObjectName,
+        new_table: SchemaObjectName,
+    },
     Delete(SchemaObjectName),
 }
 
@@ -22,7 +23,7 @@ impl TableAction {
     pub fn target_table(&self) -> &SchemaObjectName {
         match self {
             TableAction::Defer(table) => table,
-            TableAction::Rename(old_table, _) => old_table,
+            TableAction::Rename { old_table, .. } => old_table,
             TableAction::Delete(table) => table,
         }
     }
@@ -57,7 +58,7 @@ async fn get_table_actions(
             })
             .filter(|table| {
                 table_actions.iter().all(|action| {
-                    if let TableAction::Rename(_, new_table) = action {
+                    if let TableAction::Rename { new_table, .. } = action {
                         new_table != &table.name
                     } else {
                         true
@@ -114,7 +115,11 @@ fn apply_table_actions(
     let mut all_ops: Vec<SchemaOp> = vec![];
 
     for table_action in table_actions.iter() {
-        if let TableAction::Rename(old_table, new_table) = table_action {
+        if let TableAction::Rename {
+            old_table,
+            new_table,
+        } = table_action
+        {
             let rename_ops = old_db_spec.with_table_renamed(old_table, new_table);
             all_ops.extend(rename_ops);
         }
@@ -143,19 +148,9 @@ fn apply_table_actions(
 }
 
 #[derive(Debug)]
-pub struct PredefinedMigrationInteraction {
-    actions: Mutex<Vec<TableAction>>,
-}
+pub struct AlwaysDeferMigrationInteraction;
 
-impl PredefinedMigrationInteraction {
-    pub fn new(actions: Vec<TableAction>) -> Self {
-        Self {
-            actions: Mutex::new(actions),
-        }
-    }
-}
-
-impl MigrationInteraction for PredefinedMigrationInteraction {
+impl MigrationInteraction for AlwaysDeferMigrationInteraction {
     fn handle_start(&self) {}
 
     fn handle_table_delete(
@@ -163,20 +158,6 @@ impl MigrationInteraction for PredefinedMigrationInteraction {
         deleted_table: &SchemaObjectName,
         _create_tables: Vec<&SchemaObjectName>,
     ) -> Result<TableAction, MigrationError> {
-        // Find the table action for the deleted table and remove it from the list. This ensures that we don't handle the same table twice.
-        let mut actions = self.actions.lock().unwrap();
-        let action_index = actions
-            .iter()
-            .enumerate()
-            .find_map(|(index, action)| {
-                if action.target_table() == deleted_table {
-                    Some(index)
-                } else {
-                    None
-                }
-            })
-            .unwrap();
-        let table_action = actions.remove(action_index);
-        Ok(table_action)
+        Ok(TableAction::Defer(deleted_table.clone()))
     }
 }

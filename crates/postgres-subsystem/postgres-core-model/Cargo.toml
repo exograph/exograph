@@ -22,11 +22,10 @@ exo-sql = { path = "../../../libs/exo-sql", features = [
   "bigdecimal",
   "test-support",
   "testing",
+  "interactive-migration",
 ] }
 sqlparser = "0.55.0"
 colored.workspace = true
-wildmatch.workspace = true
-toml.workspace = true
 
 common = { path = "../../common", features = ["test-support"] }
 builder = { path = "../../builder" }

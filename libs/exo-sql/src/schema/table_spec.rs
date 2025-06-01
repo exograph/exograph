@@ -30,7 +30,7 @@ const MATERIALIZED_VIEW_COLUMNS_QUERY: &str = r#"
     FROM pg_attribute attribute JOIN pg_class t on attribute.attrelid = t.oid JOIN pg_namespace schema on t.relnamespace = schema.oid 
   WHERE attribute.attnum > 0 AND NOT attribute.attisdropped AND t.relname = $1 AND schema.nspname = $2"#;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TableSpec {
     pub name: SchemaObjectName,
     pub columns: Vec<ColumnSpec>,

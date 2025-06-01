@@ -19,6 +19,7 @@ testing = ["which", "tempfile"]
 pool = ["deadpool-postgres"]
 bigdecimal = ["pg_bigdecimal"]
 test-support = ["ctor", "postgres-url", "tls"]
+interactive-migration = ["toml"]
 
 [dependencies]
 bytes.workspace = true
@@ -50,6 +51,7 @@ tracing.workspace = true
 typed-generational-arena.workspace = true
 url.workspace = true
 wildmatch.workspace = true
+toml = { workspace = true, optional = true }
 
 which = { workspace = true, optional = true }
 rand.workspace = true

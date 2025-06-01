@@ -43,7 +43,7 @@ const MATERIALIZED_VIEWS_QUERY: &str =
 const SEQUENCE_NAMES_QUERY: &str =
     "SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = $1 ORDER BY sequence_name";
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DatabaseSpec {
     pub tables: Vec<TableSpec>,
     pub enums: Vec<EnumSpec>,

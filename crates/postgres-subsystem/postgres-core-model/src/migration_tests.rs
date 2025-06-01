@@ -6,63 +6,45 @@ use exo_sql::{
         database_spec::DatabaseSpec,
         migration::{
             migrate_interactively, Migration, MigrationStatement, PredefinedMigrationInteraction,
-            TableAction,
         },
-        spec::MigrationScope,
+        spec::{MigrationScope, MigrationScopeMatches},
     },
-    SchemaObjectName,
+    testing::test_support,
 };
 use sqlparser::dialect::PostgreSqlDialect;
 use sqlparser::parser::Parser;
 
 use colored::Colorize;
-use wildmatch::WildMatch;
 
 use core_model_builder::plugin::BuildMode;
 use core_plugin_shared::{
     error::ModelSerializationError, serializable_system::SerializableSystem,
     system_serializer::SystemSerializer,
 };
-
 #[cfg_attr(not(target_family = "wasm"), tokio::test)]
 #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
 async fn all_tests() {
-    let filter = std::env::var("_EXO_DEV_MIGRATION_TEST_FILTER").unwrap_or("*".to_string());
-    let wildcard = WildMatch::new(&filter);
-
-    let test_configs_dir = base_path();
-    let test_configs = std::fs::read_dir(test_configs_dir)
-        .unwrap()
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.file_type().unwrap().is_dir())
-        .filter(|entry| wildcard.matches(entry.file_name().to_str().unwrap()));
-
-    let mut failed = false;
-
-    for test_config in test_configs {
-        let test_config_name = test_config.file_name();
-        let test_config_name = test_config_name.to_str().unwrap();
-        if let Err(e) = single_test(test_config_name).await {
-            println!("{}: {}", test_config_name, "failed".red());
-            println!("{}", e);
-            failed = true;
-        }
-    }
-
-    if failed {
-        panic!("{}", "Some tests failed".red());
-    }
+    common::test_support::run_tests(
+        env!("CARGO_MANIFEST_DIR"),
+        "_EXO_DEV_MIGRATION_TEST_FILTER",
+        "src/migration-test-data",
+        |test_config_name, test_path| async move { single_test(test_config_name, test_path).await },
+    )
+    .await
+    .unwrap();
 }
 
-async fn single_test<P: AsRef<Path>>(folder: P) -> Result<(), String> {
-    let folder = folder.as_ref();
-    println!("Testing {}", folder.display());
-    let old_exo = read_relative_file(folder, PathBuf::from("old/src/index.exo"))
+async fn single_test(folder: String, test_path: PathBuf) -> Result<(), String> {
+    println!("Testing {}", folder);
+    let old_exo = read_relative_file(&test_path, "old/src/index.exo")
         .map_err(|e| format!("Failed to read old exo: {}", e))?;
-    let new_exo = read_relative_file(folder, PathBuf::from("new/src/index.exo"))
+    let new_exo = read_relative_file(&test_path, "new/src/index.exo")
         .map_err(|e| format!("Failed to read new exo: {}", e))?;
 
-    let scope_dirs = std::fs::read_dir(relative_path(folder, PathBuf::from("")))
+    let old_system = compute_spec(&old_exo).await;
+    let new_system = compute_spec(&new_exo).await;
+
+    let scope_dirs = std::fs::read_dir(&test_path)
         .unwrap()
         .filter_map(|entry| entry.ok())
         .filter(|entry| entry.file_type().unwrap().is_dir())
@@ -81,70 +63,70 @@ async fn single_test<P: AsRef<Path>>(folder: P) -> Result<(), String> {
             Err(format!("Unknown scope: {}", scope_dir_name))
         }?;
 
-        let scope_folder = format!("{}/{}", folder.display(), scope_dir_name);
+        let scope_folder = test_path.join(scope_dir_name);
 
         println!("\tscope {}:", scope_spec_name);
 
-        if let Err(e) = assert_for_scope(&old_exo, &new_exo, &scope_folder, &scope).await {
-            println!("{}: {}", scope_folder, e);
+        if let Err(e) = assert_for_scope(&old_system, &new_system, &scope_folder, &scope).await {
+            println!("{}: {}", scope_folder.display(), e);
             failed = true;
         }
     }
 
     if failed {
-        Err(format!("{}: Some tests failed", folder.display()))
+        Err(format!("{}: Some tests failed", folder))
     } else {
         Ok(())
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum TestKind {
-    OldCreation,
-    NewCreation,
-    IdempotentSelfMigration,
-    Up,
-    Down,
+    Creation(SystemKind),
+    Migration(SystemKind, SystemKind),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum SystemKind {
+    Old,
+    New,
 }
 
 impl TestKind {
     fn kind_str(&self) -> &str {
         match self {
-            TestKind::OldCreation => "old",
-            TestKind::NewCreation => "new",
-            TestKind::IdempotentSelfMigration => "idempotent",
-            TestKind::Up => "up",
-            TestKind::Down => "down",
+            TestKind::Creation(SystemKind::Old) => "old",
+            TestKind::Creation(SystemKind::New) => "new",
+            TestKind::Migration(SystemKind::Old, SystemKind::New) => "up",
+            TestKind::Migration(SystemKind::New, SystemKind::Old) => "down",
+            TestKind::Migration(SystemKind::Old, SystemKind::Old) => "idempotent-old",
+            TestKind::Migration(SystemKind::New, SystemKind::New) => "idempotent-new",
         }
     }
 }
 
-async fn assert_for_scope<P: AsRef<Path>>(
-    old_exo: &str,
-    new_exo: &str,
-    folder: P,
+async fn assert_for_scope(
+    old_system: &DatabaseSpec,
+    new_system: &DatabaseSpec,
+    folder: &PathBuf,
     scope: &MigrationScope,
 ) -> Result<(), String> {
-    let folder = folder.as_ref();
-
-    let old_expected_sql = read_relative_file(folder, PathBuf::from("old.sql")).unwrap_or_default();
-    let new_expected_sql = read_relative_file(folder, PathBuf::from("new.sql")).unwrap_or_default();
-    let up_expected_sql = read_relative_file(folder, PathBuf::from("up.sql")).unwrap_or_default();
-    let down_expected_sql =
-        read_relative_file(folder, PathBuf::from("down.sql")).unwrap_or_default();
-
-    let old_system = compute_spec(old_exo).await;
-    let new_system = compute_spec(new_exo).await;
+    let old_expected_sql = read_relative_file(folder, "old.sql").unwrap_or_default();
+    let new_expected_sql = read_relative_file(folder, "new.sql").unwrap_or_default();
+    let up_expected_sql = read_relative_file(folder, "up.sql").unwrap_or_default();
+    let down_expected_sql = read_relative_file(folder, "down.sql").unwrap_or_default();
 
     let mut failed = false;
 
     if let Err(e) = assert_creation_and_self_migration(
-        &old_system,
+        old_system,
         &old_expected_sql,
         scope,
         folder,
-        TestKind::OldCreation,
-    ) {
+        SystemKind::Old,
+    )
+    .await
+    {
         println!("Old creation failed: {}", e);
         failed = true;
     } else {
@@ -152,12 +134,14 @@ async fn assert_for_scope<P: AsRef<Path>>(
     }
 
     if let Err(e) = assert_creation_and_self_migration(
-        &new_system,
+        new_system,
         &new_expected_sql,
         scope,
         folder,
-        TestKind::NewCreation,
-    ) {
+        SystemKind::New,
+    )
+    .await
+    {
         println!("New creation failed: {}", e);
         failed = true;
     } else {
@@ -165,13 +149,15 @@ async fn assert_for_scope<P: AsRef<Path>>(
     }
 
     if let Err(e) = assert_migration(
-        &old_system,
-        &new_system,
+        old_system,
+        new_system,
         &up_expected_sql,
         scope,
         folder,
-        TestKind::Up,
-    ) {
+        TestKind::Migration(SystemKind::Old, SystemKind::New),
+    )
+    .await
+    {
         println!("Up failed: {}", e);
         failed = true;
     } else {
@@ -179,20 +165,22 @@ async fn assert_for_scope<P: AsRef<Path>>(
     }
 
     if let Err(e) = assert_migration(
-        &new_system,
-        &old_system,
+        new_system,
+        old_system,
         &down_expected_sql,
         scope,
         folder,
-        TestKind::Down,
-    ) {
+        TestKind::Migration(SystemKind::New, SystemKind::Old),
+    )
+    .await
+    {
         println!("Down failed: {}", e);
         failed = true;
     } else {
         println!("\t\tdown: {}", "pass".green());
     }
 
-    if let Err(e) = assert_interactive_migrations(old_exo, new_exo, scope, folder).await {
+    if let Err(e) = assert_interactive_migrations(old_system, new_system, scope, folder).await {
         println!("Interactive migration failed: {}", e);
         failed = true;
     }
@@ -207,51 +195,111 @@ async fn assert_for_scope<P: AsRef<Path>>(
         Ok(())
     }
 }
-
-fn assert_creation_and_self_migration<P: AsRef<Path>>(
-    system: &DatabaseSpec,
+async fn assert_creation_and_self_migration(
+    model_spec: &DatabaseSpec,
     expected: &str,
     migration_scope: &MigrationScope,
-    folder: P,
-    kind: TestKind,
+    folder: &Path,
+    kind: SystemKind,
 ) -> Result<(), String> {
     let creation = Migration::from_schemas(
         &DatabaseSpec::new(vec![], vec![], vec![]),
-        system,
+        model_spec,
         migration_scope,
     );
-    assert_sql_eq(creation, expected, folder.as_ref(), kind.kind_str())?;
+    assert_sql_eq(&creation, expected, folder, TestKind::Creation(kind))?;
 
-    let self_migration = Migration::from_schemas(system, system, migration_scope);
-    assert_sql_eq(
-        self_migration,
-        "",
-        folder.as_ref(),
-        TestKind::IdempotentSelfMigration.kind_str(),
-    )?;
+    let live_migrated_spec = assert_migration_with_live_db(
+        &DatabaseSpec::new(vec![], vec![], vec![]),
+        model_spec,
+        migration_scope,
+        &creation,
+    )
+    .await?;
+
+    for spec in [model_spec, &live_migrated_spec] {
+        let self_migration = Migration::from_schemas(spec, spec, migration_scope);
+        assert_sql_eq(&self_migration, "", folder, TestKind::Migration(kind, kind))?;
+    }
 
     Ok(())
 }
 
-fn assert_migration<P: AsRef<Path>>(
+async fn assert_migration(
     old_system: &DatabaseSpec,
     new_system: &DatabaseSpec,
     expected: &str,
     migration_scope: &MigrationScope,
-    folder: P,
+    folder: &Path,
     kind: TestKind,
 ) -> Result<(), String> {
     let migration = Migration::from_schemas(old_system, new_system, migration_scope);
-    assert_sql_eq(migration, expected, folder.as_ref(), kind.kind_str())
+
+    assert_sql_eq(&migration, expected, folder, kind)?;
+    assert_migration_with_live_db(old_system, new_system, migration_scope, &migration).await?;
+
+    Ok(())
+}
+
+async fn assert_migration_with_live_db(
+    old_system: &DatabaseSpec,
+    new_system: &DatabaseSpec,
+    migration_scope: &MigrationScope,
+    migration: &Migration,
+) -> Result<DatabaseSpec, String> {
+    test_support::with_client(move |mut client| async move {
+        let creation = Migration::from_schemas(
+            &DatabaseSpec::new(vec![], vec![], vec![]),
+            old_system,
+            migration_scope,
+        );
+
+        // If the creation is empty, we had been working with a non-managed schema and can skip the migration
+        // TODO: Make this a more robust check
+        if creation.statements.is_empty() {
+            return Ok(DatabaseSpec::new(vec![], vec![], vec![]));
+        }
+
+        creation
+            .apply(&mut client, true)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        migration
+            .apply(&mut client, true)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let scope_matches = match migration_scope {
+            MigrationScope::Specified(scope) => scope,
+            MigrationScope::FromNewSpec => {
+                &MigrationScopeMatches::from_specs_schemas(&[new_system])
+            }
+        };
+
+        let live_db_spec = DatabaseSpec::from_live_database(&client, scope_matches)
+            .await
+            .map_err(|e| format!("Failed to extract live db spec: {}", e))?;
+
+        if live_db_spec.issues.is_empty() {
+            Ok(live_db_spec.value)
+        } else {
+            Err(format!(
+                "Live db spec has issues: {:?}",
+                live_db_spec.issues
+            ))
+        }
+    })
+    .await
 }
 
 async fn assert_interactive_migrations<P: AsRef<Path>>(
-    old_exo: &str,
-    new_exo: &str,
+    old_system: &DatabaseSpec,
+    new_system: &DatabaseSpec,
     migration_scope: &MigrationScope,
     folder: P,
 ) -> Result<(), String> {
-    let interactive_dir = relative_path(folder, PathBuf::from("interactive"));
+    let interactive_dir = folder.as_ref().join("interactive");
 
     if !std::path::Path::new(&interactive_dir).exists() {
         return Ok(());
@@ -259,17 +307,26 @@ async fn assert_interactive_migrations<P: AsRef<Path>>(
 
     println!("\t\tinteractive:");
 
-    for kind in [TestKind::Up, TestKind::Down] {
-        assert_interactive_migration(old_exo, new_exo, kind, migration_scope, &interactive_dir)
-            .await?
+    for kind in [
+        TestKind::Migration(SystemKind::Old, SystemKind::New),
+        TestKind::Migration(SystemKind::New, SystemKind::Old),
+    ] {
+        assert_interactive_migration(
+            old_system,
+            new_system,
+            kind,
+            migration_scope,
+            &interactive_dir,
+        )
+        .await?
     }
 
     Ok(())
 }
 
 async fn assert_interactive_migration(
-    old_exo: &str,
-    new_exo: &str,
+    old_system: &DatabaseSpec,
+    new_system: &DatabaseSpec,
     kind: TestKind,
     scope: &MigrationScope,
     folder: &Path,
@@ -294,18 +351,15 @@ async fn assert_interactive_migration(
 
         let interaction_file_name = subfolder.clone().join(interaction_file_name);
 
-        let interaction = load_interaction(&interaction_file_name)
+        let interaction = PredefinedMigrationInteraction::from_file(&interaction_file_name)
             .map_err(|e| format!("Failed to load interaction: {}", e))?;
-
-        let old_system = compute_spec(old_exo).await;
-        let new_system = compute_spec(new_exo).await;
 
         print!("\t\t\t\t{}:", interaction_name);
 
-        let migration = if kind == TestKind::Up {
-            migrate_interactively(old_system, new_system, scope, &interaction).await
+        let migration = if kind.kind_str() == "up" {
+            migrate_interactively(old_system.clone(), new_system.clone(), scope, &interaction).await
         } else {
-            migrate_interactively(new_system, old_system, scope, &interaction).await
+            migrate_interactively(new_system.clone(), old_system.clone(), scope, &interaction).await
         }
         .map_err(|e| format!("Failed to migrate: {} {}", interaction_name, e))?;
 
@@ -313,13 +367,10 @@ async fn assert_interactive_migration(
 
         let expected_migration = std::fs::read_to_string(&expected_file_path).unwrap_or_default();
 
-        assert_sql_eq(
-            migration,
-            &expected_migration,
-            subfolder.clone(),
-            &interaction_name,
-        )
-        .map_err(|e| format!("Failed to assert SQL: {}", e))?;
+        assert_sql_eq(&migration, &expected_migration, &subfolder, kind)
+            .map_err(|e| format!("Failed to assert SQL: {}", e))?;
+
+        assert_migration_with_live_db(old_system, new_system, scope, &migration).await?;
 
         println!("{}", "pass".green());
     }
@@ -327,12 +378,19 @@ async fn assert_interactive_migration(
     Ok(())
 }
 
-fn assert_sql_eq<P: AsRef<Path>>(
-    actual: Migration,
+fn assert_sql_eq(
+    actual: &Migration,
     expected: &str,
-    folder: P,
-    migration_file_prefix: &str,
+    folder: &Path,
+    kind: TestKind,
 ) -> Result<(), String> {
+    let remove_previous_file = || {
+        let previous_file_path = dump_migration_path(folder, kind).unwrap();
+        if previous_file_path.exists() {
+            std::fs::remove_file(previous_file_path).unwrap();
+        }
+    };
+
     {
         // Check if strings match. This lets us avoid parsing the SQL (which in some cases doesn't work with syntax such as pgvector indexes)
         // TODO: Contribute to sqlparser to support pgvector and other cases where parsing fails
@@ -346,6 +404,7 @@ fn assert_sql_eq<P: AsRef<Path>>(
                 .zip(expected.lines())
                 .all(|(a, e)| a.trim() == e.trim())
         {
+            remove_previous_file();
             return Ok(());
         }
     }
@@ -404,12 +463,14 @@ fn assert_sql_eq<P: AsRef<Path>>(
         (expected_sql_destructive, expected_sql_destructive_indices)
     };
 
-    let message = format!("{} {}", folder.as_ref().display(), migration_file_prefix);
+    let message = format!("{} {}", folder.display(), kind.kind_str());
 
     if let Err(e) = assert_sql_str_eq(&actual_sql, &expected_sql, &message) {
-        dump_migration(&actual, folder, migration_file_prefix)
+        dump_migration(actual, folder, kind)
             .map_err(|e| format!("Failed to dump migration: {}", e))?;
         return Err(e);
+    } else {
+        remove_previous_file();
     }
 
     if actual_destructive_indices != expected_destructive_indices {
@@ -422,18 +483,23 @@ fn assert_sql_eq<P: AsRef<Path>>(
     Ok(())
 }
 
-fn dump_migration<P: AsRef<Path>>(
+fn dump_migration(
     migration: &Migration,
-    folder: P,
-    migration_file_prefix: &str,
+    folder: &Path,
+    kind: TestKind,
 ) -> Result<(), std::io::Error> {
-    let file_name = relative_path(
-        folder,
-        PathBuf::from(&format!("{migration_file_prefix}.actual.sql")),
-    );
-    let mut file = std::fs::File::create(file_name)?;
+    let path = dump_migration_path(folder, kind)?;
+    let mut file = std::fs::File::create(path)?;
+
     migration.write(&mut file, false)?;
     Ok(())
+}
+
+fn dump_migration_path(folder: &Path, kind: TestKind) -> Result<PathBuf, std::io::Error> {
+    let kind_str = kind.kind_str();
+
+    let path = folder.join(format!("{}.actual.sql", kind_str));
+    Ok(path)
 }
 
 fn assert_sql_str_eq(actual: &str, expected: &str, message: &str) -> Result<(), String> {
@@ -481,10 +547,6 @@ fn assert_sql_str_eq(actual: &str, expected: &str, message: &str) -> Result<(), 
     }
 
     Ok(())
-}
-
-fn base_path() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("src/migration-test-data")
 }
 
 fn relative_path<P1: AsRef<Path>, P2: AsRef<Path>>(folder: P1, path: P2) -> PathBuf {
@@ -541,75 +603,4 @@ async fn compute_spec(model: &str) -> DatabaseSpec {
         .unwrap();
 
     DatabaseSpec::from_database(&postgres_core_subsystem.database)
-}
-
-fn load_interaction(file_name: &PathBuf) -> Result<PredefinedMigrationInteraction, String> {
-    let interaction = std::fs::read_to_string(file_name)
-        .map_err(|e| format!("Failed to read interaction file: {}", e))?;
-
-    let interaction = toml::from_str::<InteractionSer>(&interaction)
-        .map_err(|e| format!("Failed to parse interaction file: {}", e))?;
-
-    let mut table_actions = vec![];
-
-    fn string_to_table_name(name: &str) -> SchemaObjectName {
-        let parts = name.split('.').collect::<Vec<_>>();
-
-        if parts.len() == 1 {
-            SchemaObjectName {
-                schema: None,
-                name: parts[0].to_string(),
-            }
-        } else if parts.len() == 2 {
-            SchemaObjectName {
-                schema: Some(parts[0].to_string()),
-                name: parts[1].to_string(),
-            }
-        } else {
-            panic!("Invalid table name: {}", name)
-        }
-    }
-
-    if let Some(rename_tables) = interaction.rename_tables {
-        for rename_table in rename_tables {
-            table_actions.push(TableAction::Rename(
-                string_to_table_name(&rename_table.old_table),
-                string_to_table_name(&rename_table.new_table),
-            ));
-        }
-    }
-
-    if let Some(delete_tables) = interaction.delete_tables {
-        for delete_table in delete_tables {
-            table_actions.push(TableAction::Delete(string_to_table_name(&delete_table)));
-        }
-    }
-
-    if let Some(defer_tables) = interaction.defer_tables {
-        for defer_table in defer_tables {
-            table_actions.push(TableAction::Defer(string_to_table_name(&defer_table)));
-        }
-    }
-
-    Ok(PredefinedMigrationInteraction::new(table_actions))
-}
-
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct InteractionSer {
-    #[serde(rename = "rename-table")]
-    rename_tables: Option<Vec<RenameTable>>,
-    #[serde(rename = "delete-table")]
-    delete_tables: Option<Vec<String>>,
-    #[serde(rename = "defer-table")]
-    defer_tables: Option<Vec<String>>,
-}
-
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct RenameTable {
-    #[serde(rename = "old-table")]
-    old_table: String,
-    #[serde(rename = "new-table")]
-    new_table: String,
 }

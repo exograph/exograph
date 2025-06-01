@@ -3770,6 +3770,7 @@ dependencies = [
  "tokio",
  "tokio-postgres",
  "tokio-postgres-rustls",
+ "toml 0.8.20",
  "tracing",
  "typed-generational-arena",
  "url",
@@ -6876,9 +6877,7 @@ dependencies = [
  "serde",
  "sqlparser",
  "tokio",
- "toml 0.8.20",
  "wasm-bindgen-test",
- "wildmatch",
 ]
 
 [[package]]
