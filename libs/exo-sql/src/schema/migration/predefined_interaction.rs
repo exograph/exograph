@@ -4,7 +4,10 @@ use std::sync::Mutex;
 
 use crate::SchemaObjectName;
 
-use super::{core::MigrationError, interaction::TableAction, MigrationInteraction};
+use super::{
+    interaction::{InteractionError, TableAction},
+    MigrationInteraction,
+};
 
 #[derive(Debug)]
 pub struct PredefinedMigrationInteraction {
@@ -97,8 +100,8 @@ impl MigrationInteraction for PredefinedMigrationInteraction {
     fn handle_table_delete(
         &self,
         deleted_table: &SchemaObjectName,
-        _create_tables: Vec<&SchemaObjectName>,
-    ) -> Result<TableAction, MigrationError> {
+        _create_tables: &[&SchemaObjectName],
+    ) -> Result<TableAction, InteractionError> {
         // Find the table action for the deleted table and remove it from the list. This ensures that we don't handle the same table twice.
         let mut actions = self.actions.lock().unwrap();
         let action_index = actions
@@ -111,12 +114,7 @@ impl MigrationInteraction for PredefinedMigrationInteraction {
                     None
                 }
             })
-            .ok_or_else(|| {
-                MigrationError::Generic(format!(
-                    "Table action for table {} not found",
-                    deleted_table.fully_qualified_name()
-                ))
-            })?;
+            .ok_or_else(|| InteractionError::TableActionNotFound(deleted_table.clone()))?;
         let table_action = actions.remove(action_index);
         Ok(table_action)
     }

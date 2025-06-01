@@ -13,7 +13,8 @@ use anyhow::anyhow;
 use colored::Colorize;
 use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::migration::{
-    migrate_interactively, Migration, MigrationError, MigrationInteraction, TableAction,
+    migrate_interactively, InteractionError, Migration, MigrationError, MigrationInteraction,
+    PredefinedMigrationInteraction, TableAction,
 };
 use exo_sql::schema::spec::MigrationScope;
 use exo_sql::SchemaObjectName;
@@ -67,6 +68,12 @@ impl CommandDefinition for MigrateCommandDefinition {
                 .required(false)
                 .num_args(0),
         )
+        .arg(
+            Arg::new("interactions")
+                .help("Path to a file containing interactions for the migration")
+                .long("interactions")
+                .required(false)
+        )
         .arg(use_ir_arg())
         .arg(yes_arg())
     }
@@ -80,6 +87,7 @@ impl CommandDefinition for MigrateCommandDefinition {
         let allow_destructive_changes: bool = matches.get_flag("allow-destructive-changes");
         let use_ir: bool = matches.get_flag("use-ir");
         let non_interactive: bool = matches.get_flag("non-interactive");
+        let interaction_file: Option<String> = get(matches, "interactions");
         let scope: Option<String> = migration_scope_value(matches);
         let yes: bool = yes_value(matches);
 
@@ -99,7 +107,8 @@ impl CommandDefinition for MigrateCommandDefinition {
         let migrations = if non_interactive {
             Migration::from_db_and_model(&db_client, &database, &scope).await?
         } else {
-            migrate_interactively_from_db_and_model(&db_client, &database, &scope).await?
+            migrate_interactively_from_db_and_model(&db_client, &database, &scope, interaction_file)
+                .await?
         };
 
         if apply_to_database {
@@ -119,6 +128,7 @@ pub async fn migrate_interactively_from_db_and_model(
     db_client: &DatabaseClient,
     database: &Database,
     scope: &MigrationScope,
+    interaction_file: Option<String>,
 ) -> Result<Migration> {
     let new_db_spec = DatabaseSpec::from_database(database);
 
@@ -128,7 +138,7 @@ pub async fn migrate_interactively_from_db_and_model(
         old_db_spec.value,
         new_db_spec,
         scope,
-        &UserMigrationInteraction,
+        &UserMigrationInteraction::from_file(interaction_file.map(PathBuf::from))?,
     )
     .await?)
 }
@@ -137,23 +147,51 @@ const MANUAL_HANDLE: &str = "Let me handle this manually";
 const RENAME_HANDLE: &str = "Rename it";
 const DELETE_HANDLE: &str = "Delete it";
 
-struct UserMigrationInteraction;
+struct UserMigrationInteraction {
+    predefined_interaction: Option<PredefinedMigrationInteraction>,
+}
+
+impl UserMigrationInteraction {
+    fn from_file(interaction_file: Option<PathBuf>) -> Result<Self, MigrationError> {
+        let predefined_interaction = interaction_file
+            .map(|file| PredefinedMigrationInteraction::from_file(&file))
+            .transpose()
+            .map_err(|e| MigrationError::Generic(e.to_string()))?;
+        Ok(Self {
+            predefined_interaction,
+        })
+    }
+}
 
 impl MigrationInteraction for UserMigrationInteraction {
     fn handle_start(&self) {
-        println!("The database has a few tables that the new schema doesn't need. Please choose how to handle them.");
+        if self.predefined_interaction.is_some() {
+            println!(
+                "The database has a few tables that the new schema doesn't need. Trying to handle them as according to the specified interactions."
+            );
+        } else {
+            println!("The database has a few tables that the new schema doesn't need. Please choose how to handle them.");
+        }
     }
 
     fn handle_table_delete(
         &self,
         deleted_table: &SchemaObjectName,
-        create_tables: Vec<&SchemaObjectName>,
-    ) -> Result<TableAction, MigrationError> {
+        create_tables: &[&SchemaObjectName],
+    ) -> Result<TableAction, InteractionError> {
         let options = if create_tables.is_empty() {
             vec![MANUAL_HANDLE, DELETE_HANDLE]
         } else {
             vec![MANUAL_HANDLE, RENAME_HANDLE, DELETE_HANDLE]
         };
+
+        if let Some(predefined_interaction) = &self.predefined_interaction {
+            if let Ok(action) =
+                predefined_interaction.handle_table_delete(deleted_table, create_tables)
+            {
+                return Ok(action);
+            }
+        }
 
         println!(
             "\nThe database has the {} table that doesn't exist in the new schema.",
@@ -161,7 +199,7 @@ impl MigrationInteraction for UserMigrationInteraction {
         );
         let ans = inquire::Select::new("How would you like to handle this table?", options)
             .prompt()
-            .map_err(|e| MigrationError::Generic(e.to_string()))?;
+            .map_err(|e| InteractionError::Generic(e.to_string()))?;
 
         match ans {
             MANUAL_HANDLE => Ok(TableAction::Defer(deleted_table.clone())),
@@ -185,7 +223,7 @@ impl MigrationInteraction for UserMigrationInteraction {
                 let new_name =
                     inquire::Select::new("What should the new name be?", create_table_displays)
                         .prompt()
-                        .map_err(|e| MigrationError::Generic(e.to_string()))?;
+                        .map_err(|e| InteractionError::Generic(e.to_string()))?;
                 Ok(TableAction::Rename {
                     old_table: deleted_table.clone(),
                     new_table: new_name.0.clone(),

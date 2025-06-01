@@ -7,7 +7,7 @@ use crate::{
     SchemaObjectName,
 };
 
-use super::core::{Migration, MigrationError};
+use super::core::Migration;
 
 #[derive(Debug)]
 pub enum TableAction {
@@ -28,6 +28,16 @@ impl TableAction {
         }
     }
 }
+
+#[derive(thiserror::Error, Debug)]
+pub enum InteractionError {
+    #[error("Table action for table {0:?} not found")]
+    TableActionNotFound(SchemaObjectName),
+
+    #[error("Generic error: {0}")]
+    Generic(String),
+}
+
 pub trait MigrationInteraction: Send + Sync {
     // Print a message to the user, for example to explain that we are starting a migration.
     fn handle_start(&self);
@@ -35,8 +45,8 @@ pub trait MigrationInteraction: Send + Sync {
     fn handle_table_delete(
         &self,
         deleted_table: &SchemaObjectName,
-        create_tables: Vec<&SchemaObjectName>,
-    ) -> Result<TableAction, MigrationError>;
+        create_tables: &[&SchemaObjectName],
+    ) -> Result<TableAction, InteractionError>;
 }
 
 async fn get_table_actions(
@@ -44,7 +54,7 @@ async fn get_table_actions(
     new_db_spec: &DatabaseSpec,
     scope: &MigrationScope,
     interactions: &dyn MigrationInteraction,
-) -> Result<Vec<TableAction>, MigrationError> {
+) -> Result<Vec<TableAction>, InteractionError> {
     let mut table_actions: Vec<TableAction> = vec![];
 
     loop {
@@ -87,7 +97,10 @@ async fn get_table_actions(
 
             let table_action = interactions.handle_table_delete(
                 &delete_tables[0].name,
-                create_tables.iter().map(|table| &table.name).collect(),
+                &create_tables
+                    .iter()
+                    .map(|table| &table.name)
+                    .collect::<Vec<_>>(),
             )?;
 
             table_actions.push(table_action);
@@ -100,7 +113,7 @@ pub async fn migrate_interactively(
     new_db_spec: DatabaseSpec,
     scope: &MigrationScope,
     interactions: &dyn MigrationInteraction,
-) -> Result<Migration, MigrationError> {
+) -> Result<Migration, InteractionError> {
     let table_actions = get_table_actions(&old_db_spec, &new_db_spec, scope, interactions).await?;
 
     apply_table_actions(&mut old_db_spec, new_db_spec, table_actions, scope)
@@ -111,7 +124,7 @@ fn apply_table_actions(
     new_db_spec: DatabaseSpec,
     table_actions: Vec<TableAction>,
     scope: &MigrationScope,
-) -> Result<Migration, MigrationError> {
+) -> Result<Migration, InteractionError> {
     let mut all_ops: Vec<SchemaOp> = vec![];
 
     for table_action in table_actions.iter() {
@@ -156,8 +169,8 @@ impl MigrationInteraction for AlwaysDeferMigrationInteraction {
     fn handle_table_delete(
         &self,
         deleted_table: &SchemaObjectName,
-        _create_tables: Vec<&SchemaObjectName>,
-    ) -> Result<TableAction, MigrationError> {
+        _create_tables: &[&SchemaObjectName],
+    ) -> Result<TableAction, InteractionError> {
         Ok(TableAction::Defer(deleted_table.clone()))
     }
 }
