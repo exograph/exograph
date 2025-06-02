@@ -419,6 +419,24 @@ impl DatabaseSpec {
                     old_name: old_name.clone(),
                     new_name: new_name.clone(),
                 }));
+
+                // Rename sequences used by serial columns
+                table.columns.iter().for_each(|column| {
+                    if let Some(ColumnDefault::Autoincrement(ColumnAutoincrement::Serial)) =
+                        &column.default_value
+                    {
+                        let old_sequence_name =
+                            ColumnAutoincrement::serial_sequence_name(old_name, &column.name);
+
+                        let new_sequence_name =
+                            ColumnAutoincrement::serial_sequence_name(new_name, &column.name);
+
+                        ops.push(SchemaOp::RenameSequence {
+                            old_name: old_sequence_name,
+                            new_name: new_sequence_name,
+                        });
+                    }
+                });
             }
 
             table.columns.iter_mut().for_each(|column| {

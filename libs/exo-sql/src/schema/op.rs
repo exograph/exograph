@@ -61,6 +61,10 @@ pub enum SchemaOp<'a> {
     DeleteSequence {
         sequence: SchemaObjectName,
     },
+    RenameSequence {
+        old_name: SchemaObjectName,
+        new_name: SchemaObjectName,
+    },
 
     CreateTable {
         table: &'a TableSpec,
@@ -186,6 +190,13 @@ impl SchemaOp<'_> {
             },
             SchemaOp::DeleteSequence { sequence } => SchemaStatement {
                 statement: format!("DROP SEQUENCE IF EXISTS \"{}\";", sequence.name),
+                ..Default::default()
+            },
+            SchemaOp::RenameSequence { old_name, new_name } => SchemaStatement {
+                statement: format!(
+                    "ALTER SEQUENCE \"{}\" RENAME TO \"{}\";",
+                    old_name.name, new_name.name
+                ),
                 ..Default::default()
             },
 
@@ -417,6 +428,7 @@ impl SchemaOp<'_> {
             SchemaOp::CreateSchema { .. }
             | SchemaOp::RenameSchema { .. }
             | SchemaOp::CreateSequence { .. }
+            | SchemaOp::RenameSequence { .. }
             | SchemaOp::CreateTable { .. }
             | SchemaOp::RenameTable { .. }
             | SchemaOp::CreateEnum { .. }
@@ -449,6 +461,7 @@ impl SchemaOp<'_> {
 
             SchemaOp::CreateSequence { sequence } => Some(format!("The sequence `{}` exists in the model, but does not exist in the database.", sequence.name)),
             SchemaOp::DeleteSequence { .. } => None, // An extra sequence in the database is not a problem
+            SchemaOp::RenameSequence { .. } => None,
 
             SchemaOp::CreateTable { table } => Some(format!("The table `{}` exists in the model, but does not exist in the database.", table.sql_name())),
             SchemaOp::DeleteTable { .. } => None, // An extra table in the database is not a problem

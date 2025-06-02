@@ -609,10 +609,8 @@ impl ColumnSpec {
                     };
                     ColumnAutoincrement::Identity { generation }
                 } else {
-                    let serial_sequence_name = SchemaObjectName::new(
-                        format!("{}_{}_seq", table_name.name, column_name),
-                        table_name.schema.as_deref(),
-                    );
+                    let serial_sequence_name =
+                        ColumnAutoincrement::serial_sequence_name(&table_name, &column_name);
                     let from_db_sequence_name =
                         SchemaObjectName::new_with_schema_name(sequence_name, sequence_schema);
 
@@ -667,6 +665,18 @@ pub enum ColumnAutoincrement {
     Serial, // Maps to `SERIAL` in postgres (sequence is `{schema}.{table}_{column}_id_seq`)
     Sequence { name: SchemaObjectName },
     Identity { generation: IdentityGeneration },
+}
+
+impl ColumnAutoincrement {
+    pub fn serial_sequence_name(
+        table_name: &SchemaObjectName,
+        column_name: &str,
+    ) -> SchemaObjectName {
+        SchemaObjectName {
+            name: format!("{}_{}_seq", table_name.name, column_name),
+            schema: table_name.schema.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
