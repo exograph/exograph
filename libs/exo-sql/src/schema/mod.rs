@@ -13,6 +13,7 @@ pub mod enum_spec;
 pub mod function_spec;
 pub mod index_spec;
 pub mod issue;
+pub mod migration;
 pub mod op;
 pub mod spec;
 pub mod table_spec;

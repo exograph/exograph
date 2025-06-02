@@ -118,7 +118,6 @@ pub struct TriggerSpec {
     pub timing: TriggerTiming,
     pub orientation: TriggerOrientation,
     pub event: TriggerEvent,
-    pub table: SchemaObjectName,
 }
 
 impl TriggerSpec {
@@ -128,7 +127,6 @@ impl TriggerSpec {
         timing: TriggerTiming,
         orientation: TriggerOrientation,
         event: TriggerEvent,
-        table: SchemaObjectName,
     ) -> Self {
         Self {
             name,
@@ -136,7 +134,6 @@ impl TriggerSpec {
             timing,
             orientation,
             event,
-            table,
         }
     }
 
@@ -154,8 +151,6 @@ impl TriggerSpec {
                 let timing_string: String = row.get("action_timing"); // BEFORE, AFTER, INSTEAD OF
                 let orientation_string: String = row.get("action_orientation"); // ROW, STATEMENT
                 let event_string: String = row.get("event_manipulation"); // INSERT, UPDATE, DELETE, TRUNCATE
-                let table_schema: String = row.get("event_object_schema");
-                let table_name: String = row.get("event_object_table");
 
                 Ok(TriggerSpec::new(
                     name,
@@ -163,7 +158,6 @@ impl TriggerSpec {
                     timing_string.parse()?,
                     orientation_string.parse()?,
                     event_string.parse()?,
-                    SchemaObjectName::new(table_name, Some(&table_schema)),
                 ))
             })
             .collect::<Result<Vec<_>, DatabaseError>>()?;
@@ -174,15 +168,25 @@ impl TriggerSpec {
         })
     }
 
-    pub fn diff<'a>(&'a self, new: &'a Self) -> Vec<SchemaOp<'a>> {
+    pub fn diff<'a>(
+        &'a self,
+        new: &'a Self,
+        table_name: &'a SchemaObjectName,
+    ) -> Vec<SchemaOp<'a>> {
         if (self.function != new.function)
             || (self.timing != new.timing)
             || (self.orientation != new.orientation)
             || (self.event != new.event)
         {
             vec![
-                SchemaOp::DeleteTrigger { trigger: self },
-                SchemaOp::CreateTrigger { trigger: new },
+                SchemaOp::DeleteTrigger {
+                    trigger: self,
+                    table_name,
+                },
+                SchemaOp::CreateTrigger {
+                    trigger: new,
+                    table_name,
+                },
             ]
         } else {
             vec![]
@@ -194,14 +198,14 @@ impl TriggerSpec {
     //     BEFORE UPDATE
     //     ON todos
     //     FOR EACH ROW EXECUTE FUNCTION exograph_update_todo();
-    pub fn creation_sql(&self) -> String {
+    pub fn creation_sql(&self, table_name: &SchemaObjectName) -> String {
         format!(
             "CREATE TRIGGER {trigger_name} {timing} {event} ON {table_name} FOR EACH {orientation} EXECUTE FUNCTION {function}();",
             trigger_name = self.name,
             timing = self.timing.as_str(),
             event = self.event.as_str(),
             orientation = self.orientation.as_str(),
-            table_name = self.table.name,
+            table_name = table_name.fully_qualified_name(),
             function = self.function
         )
     }

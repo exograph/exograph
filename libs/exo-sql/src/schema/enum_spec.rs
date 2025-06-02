@@ -18,7 +18,7 @@ use super::statement::SchemaStatement;
 const ENUM_VARIANTS_QUERY: &str = "SELECT e.enumlabel AS enum_value FROM pg_type t JOIN pg_enum e ON t.oid = e.enumtypid JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
   WHERE n.nspname = $1 AND t.typname = $2 ORDER BY e.enumsortorder;";
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EnumSpec {
     pub name: SchemaObjectName,
     pub variants: Vec<String>,

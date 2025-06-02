@@ -14,9 +14,9 @@ use colored::Colorize;
 use common::env_const::{
     EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
 };
+use exo_sql::schema::migration::{Migration, VerificationErrors};
 use exo_sql::DatabaseClient;
 use futures::FutureExt;
-use postgres_core_model::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
 
 use super::command::{

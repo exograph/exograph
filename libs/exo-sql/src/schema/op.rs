@@ -23,6 +23,24 @@ use super::{
     trigger_spec::TriggerSpec,
 };
 
+#[derive(Debug, Clone)]
+pub struct RenameTableOp {
+    pub old_name: SchemaObjectName,
+    pub new_name: SchemaObjectName,
+}
+
+impl RenameTableOp {
+    pub fn to_sql(&self) -> SchemaStatement {
+        SchemaStatement {
+            statement: format!(
+                "ALTER TABLE {} RENAME TO {};",
+                self.old_name.sql_name(),
+                self.new_name.sql_name()
+            ),
+            ..Default::default()
+        }
+    }
+}
 /// An execution unit of SQL, representing an operation that can create or destroy resources.
 #[derive(Debug)]
 pub enum SchemaOp<'a> {
@@ -32,12 +50,20 @@ pub enum SchemaOp<'a> {
     DeleteSchema {
         schema: String,
     },
+    RenameSchema {
+        old_name: String,
+        new_name: String,
+    },
 
     CreateSequence {
         sequence: SchemaObjectName,
     },
     DeleteSequence {
         sequence: SchemaObjectName,
+    },
+    RenameSequence {
+        old_name: SchemaObjectName,
+        new_name: SchemaObjectName,
     },
 
     CreateTable {
@@ -46,6 +72,7 @@ pub enum SchemaOp<'a> {
     DeleteTable {
         table: &'a TableSpec,
     },
+    RenameTable(RenameTableOp),
 
     CreateEnum {
         enum_: &'a EnumSpec,
@@ -61,6 +88,11 @@ pub enum SchemaOp<'a> {
     DeleteColumn {
         table: &'a TableSpec,
         column: &'a ColumnSpec,
+    },
+    RenameColumn {
+        table: &'a TableSpec,
+        name: String,
+        new_name: String,
     },
     CreateIndex {
         table: &'a TableSpec,
@@ -128,9 +160,11 @@ pub enum SchemaOp<'a> {
 
     CreateTrigger {
         trigger: &'a TriggerSpec,
+        table_name: &'a SchemaObjectName,
     },
     DeleteTrigger {
         trigger: &'a TriggerSpec,
+        table_name: &'a SchemaObjectName,
     },
 }
 
@@ -145,6 +179,10 @@ impl SchemaOp<'_> {
                 statement: format!("DROP SCHEMA IF EXISTS \"{schema}\" CASCADE;"),
                 ..Default::default()
             },
+            SchemaOp::RenameSchema { old_name, new_name } => SchemaStatement {
+                statement: format!("ALTER SCHEMA \"{old_name}\" RENAME TO \"{new_name}\";"),
+                ..Default::default()
+            },
 
             SchemaOp::CreateSequence { sequence } => SchemaStatement {
                 statement: format!("CREATE SEQUENCE IF NOT EXISTS \"{}\";", sequence.name),
@@ -154,9 +192,17 @@ impl SchemaOp<'_> {
                 statement: format!("DROP SEQUENCE IF EXISTS \"{}\";", sequence.name),
                 ..Default::default()
             },
+            SchemaOp::RenameSequence { old_name, new_name } => SchemaStatement {
+                statement: format!(
+                    "ALTER SEQUENCE \"{}\" RENAME TO \"{}\";",
+                    old_name.name, new_name.name
+                ),
+                ..Default::default()
+            },
 
             SchemaOp::CreateTable { table } => table.creation_sql(),
             SchemaOp::DeleteTable { table } => table.deletion_sql(),
+            SchemaOp::RenameTable(op) => op.to_sql(),
 
             SchemaOp::CreateEnum { enum_ } => enum_.creation_sql(),
             SchemaOp::DeleteEnum { enum_ } => enum_.deletion_sql(),
@@ -179,6 +225,19 @@ impl SchemaOp<'_> {
                     "ALTER TABLE {} DROP COLUMN \"{}\";",
                     table.sql_name(),
                     column.name
+                ),
+                ..Default::default()
+            },
+            SchemaOp::RenameColumn {
+                table,
+                name,
+                new_name,
+            } => SchemaStatement {
+                statement: format!(
+                    "ALTER TABLE {} RENAME COLUMN \"{}\" TO \"{}\";",
+                    table.sql_name(),
+                    name,
+                    new_name
                 ),
                 ..Default::default()
             },
@@ -326,27 +385,71 @@ impl SchemaOp<'_> {
                 statement: function.creation_sql(false),
                 ..Default::default()
             },
-            SchemaOp::CreateOrReplaceFunction { function } => SchemaStatement {
-                statement: function.creation_sql(true),
-                ..Default::default()
-            },
             SchemaOp::DeleteFunction { name } => SchemaStatement {
                 statement: format!("DROP FUNCTION {name};"),
                 ..Default::default()
             },
-
-            SchemaOp::CreateTrigger { trigger } => SchemaStatement {
-                statement: trigger.creation_sql(),
+            SchemaOp::CreateOrReplaceFunction { function } => SchemaStatement {
+                statement: function.creation_sql(true),
                 ..Default::default()
             },
-            SchemaOp::DeleteTrigger { trigger } => SchemaStatement {
+
+            SchemaOp::CreateTrigger {
+                trigger,
+                table_name,
+            } => SchemaStatement {
+                statement: trigger.creation_sql(table_name),
+                ..Default::default()
+            },
+            SchemaOp::DeleteTrigger {
+                trigger,
+                table_name,
+            } => SchemaStatement {
                 statement: format!(
                     "DROP TRIGGER {name} on {table};",
                     name = trigger.name,
-                    table = trigger.table.sql_name()
+                    table = table_name.sql_name()
                 ),
                 ..Default::default()
             },
+        }
+    }
+
+    pub fn is_destructive(&self) -> bool {
+        match self {
+            SchemaOp::DeleteSchema { .. }
+            | SchemaOp::DeleteTable { .. }
+            | SchemaOp::DeleteColumn { .. }
+            | SchemaOp::RemoveExtension { .. }
+            | SchemaOp::DeleteEnum { .. }
+            | SchemaOp::DeleteSequence { .. } => true,
+
+            // Explicitly matching the other cases here to ensure that we have thought about each case
+            SchemaOp::CreateSchema { .. }
+            | SchemaOp::RenameSchema { .. }
+            | SchemaOp::CreateSequence { .. }
+            | SchemaOp::RenameSequence { .. }
+            | SchemaOp::CreateTable { .. }
+            | SchemaOp::RenameTable { .. }
+            | SchemaOp::CreateEnum { .. }
+            | SchemaOp::CreateColumn { .. }
+            | SchemaOp::RenameColumn { .. }
+            | SchemaOp::CreateIndex { .. }
+            | SchemaOp::DeleteIndex { .. } // Creating and deleting index is not considered destructive (they affect performance but not data loss)
+            | SchemaOp::CreateExtension { .. }
+            | SchemaOp::CreateUniqueConstraint { .. }
+            | SchemaOp::RemoveUniqueConstraint { .. }
+            | SchemaOp::CreateForeignKeyReference { .. }
+            | SchemaOp::DeleteForeignKeyReference { .. }
+            | SchemaOp::SetColumnDefaultValue { .. }
+            | SchemaOp::UnsetColumnDefaultValue { .. }
+            | SchemaOp::SetNotNull { .. }
+            | SchemaOp::UnsetNotNull { .. }
+            | SchemaOp::CreateFunction { .. }
+            | SchemaOp::DeleteFunction { .. }
+            | SchemaOp::CreateOrReplaceFunction { .. }
+            | SchemaOp::CreateTrigger { .. }
+            | SchemaOp::DeleteTrigger { .. } => false,
         }
     }
 
@@ -354,12 +457,15 @@ impl SchemaOp<'_> {
         match self {
             SchemaOp::CreateSchema { schema } => Some(format!("The schema `{schema}` exists in the model, but does not exist in the database.")),
             SchemaOp::DeleteSchema { .. } => None, // An extra schema in the database is not a problem
+            SchemaOp::RenameSchema { .. } => None,
 
             SchemaOp::CreateSequence { sequence } => Some(format!("The sequence `{}` exists in the model, but does not exist in the database.", sequence.name)),
             SchemaOp::DeleteSequence { .. } => None, // An extra sequence in the database is not a problem
+            SchemaOp::RenameSequence { .. } => None,
 
             SchemaOp::CreateTable { table } => Some(format!("The table `{}` exists in the model, but does not exist in the database.", table.sql_name())),
             SchemaOp::DeleteTable { .. } => None, // An extra table in the database is not a problem
+            SchemaOp::RenameTable { .. } => None,
 
             SchemaOp::CreateEnum { enum_ } => Some(format!("The enum `{}` exists in the model, but does not exist in the database.", enum_.sql_name())),
             SchemaOp::DeleteEnum { .. } => None, // An extra enum in the database is not a problem
@@ -375,6 +481,7 @@ impl SchemaOp<'_> {
                     column.name, table.sql_name()))
                 }
             }
+            SchemaOp::RenameColumn { .. } => None,
             SchemaOp::CreateIndex { table, index } => Some(format!("The index `{}` in the table `{}` exists in the model, but does not exist in the database table.", index.name, table.sql_name())),
             SchemaOp::DeleteIndex { .. } => None, // An extra index in the database is not a problem
 
@@ -402,10 +509,12 @@ impl SchemaOp<'_> {
                 Some(format!("The model requires that the column `{}` in table `{}` is not nullable. All records in the database must have a non-null value for this column before migration.", column.name, table.sql_name()))
             },
             SchemaOp::UnsetNotNull { table, column } => Some(format!("The model requires that the column `{}` in table `{}` is nullable.", column.name, table.sql_name())),
-            SchemaOp::CreateTrigger { trigger } => {
-                Some(format!("The model requires a trigger named `{}`", trigger.name))
+            SchemaOp::CreateTrigger { trigger, table_name } => {
+                Some(format!("The model requires a trigger named `{}` on table `{}`", trigger.name, table_name.sql_name()))
             },
-            SchemaOp::DeleteTrigger { trigger } => Some(format!("The trigger `{name}` exists in the database, but does not exist in the model.", name = trigger.name)),
+            SchemaOp::DeleteTrigger { trigger, table_name } => {
+                Some(format!("The trigger `{name}` on table `{table}` exists in the database, but does not exist in the model.", name = trigger.name, table = table_name.sql_name()))
+            },
             SchemaOp::CreateFunction { function } => {
                 Some(format!("The model requires a function named `{}`", function.name))
             },

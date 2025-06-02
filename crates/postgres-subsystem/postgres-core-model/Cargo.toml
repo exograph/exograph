@@ -7,7 +7,6 @@ publish = false
 [dependencies]
 serde.workspace = true
 bincode.workspace = true
-anyhow.workspace = true
 
 exo-sql = { path = "../../../libs/exo-sql" }
 core-model = { path = "../../core-subsystem/core-model" }
@@ -23,6 +22,7 @@ exo-sql = { path = "../../../libs/exo-sql", features = [
   "bigdecimal",
   "test-support",
   "testing",
+  "interactive-migration",
 ] }
 sqlparser = "0.55.0"
 colored.workspace = true

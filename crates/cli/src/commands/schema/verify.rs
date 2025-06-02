@@ -10,7 +10,7 @@
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use clap::Command;
-use postgres_core_model::migration::{Migration, VerificationErrors};
+use exo_sql::schema::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
 
 use crate::commands::command::{

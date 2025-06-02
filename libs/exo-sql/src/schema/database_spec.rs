@@ -22,6 +22,7 @@ use super::{
     function_spec::FunctionSpec,
     index_spec::IndexSpec,
     issue::WithIssues,
+    op::{RenameTableOp, SchemaOp},
     spec::MigrationScopeMatches,
     table_spec::TableSpec,
     trigger_spec::{TriggerEvent, TriggerOrientation, TriggerSpec, TriggerTiming},
@@ -42,7 +43,7 @@ const MATERIALIZED_VIEWS_QUERY: &str =
 const SEQUENCE_NAMES_QUERY: &str =
     "SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = $1 ORDER BY sequence_name";
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DatabaseSpec {
     pub tables: Vec<TableSpec>,
     pub enums: Vec<EnumSpec>,
@@ -392,7 +393,6 @@ impl DatabaseSpec {
                     timing: TriggerTiming::Before,
                     orientation: TriggerOrientation::Row,
                     event: TriggerEvent::Update,
-                    table: table.name.clone(),
                 },
                 FunctionSpec {
                     name: function_name,
@@ -403,6 +403,48 @@ impl DatabaseSpec {
         } else {
             None
         }
+    }
+
+    pub fn with_table_renamed<'a>(
+        &mut self,
+        old_name: &'a SchemaObjectName,
+        new_name: &'a SchemaObjectName,
+    ) -> Vec<SchemaOp<'a>> {
+        let mut ops = vec![];
+
+        self.tables.iter_mut().for_each(|table| {
+            if &table.name == old_name {
+                table.name = new_name.clone();
+                ops.push(SchemaOp::RenameTable(RenameTableOp {
+                    old_name: old_name.clone(),
+                    new_name: new_name.clone(),
+                }));
+
+                // Rename sequences used by serial columns
+                table.columns.iter().for_each(|column| {
+                    if let Some(ColumnDefault::Autoincrement(ColumnAutoincrement::Serial)) =
+                        &column.default_value
+                    {
+                        let old_sequence_name =
+                            ColumnAutoincrement::serial_sequence_name(old_name, &column.name);
+
+                        let new_sequence_name =
+                            ColumnAutoincrement::serial_sequence_name(new_name, &column.name);
+
+                        ops.push(SchemaOp::RenameSequence {
+                            old_name: old_sequence_name,
+                            new_name: new_sequence_name,
+                        });
+                    }
+                });
+            }
+
+            table.columns.iter_mut().for_each(|column| {
+                *column = column.clone().with_table_renamed(old_name, new_name);
+            });
+        });
+
+        ops
     }
 }
 
@@ -649,7 +691,6 @@ mod tests {
         assert_eq!(actual.timing, expected.timing);
         assert_eq!(actual.orientation, expected.orientation);
         assert_eq!(actual.event, expected.event);
-        assert_eq!(actual.table, expected.table);
     }
 
     fn assert_function_spec_eq(actual: &FunctionSpec, expected: &FunctionSpec) {

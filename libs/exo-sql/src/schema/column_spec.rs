@@ -503,6 +503,23 @@ impl ColumnSpec {
         }
     }
 
+    pub fn with_table_renamed(
+        mut self,
+        old_name: &SchemaObjectName,
+        new_name: &SchemaObjectName,
+    ) -> Self {
+        if let ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
+            foreign_table_name, ..
+        }) = &mut self.typ
+        {
+            if foreign_table_name == old_name {
+                *foreign_table_name = new_name.clone();
+            }
+        }
+
+        self
+    }
+
     /// Compute column attributes from all tables in the given schema
     pub async fn query_column_attributes(
         client: &DatabaseClient,
@@ -592,10 +609,8 @@ impl ColumnSpec {
                     };
                     ColumnAutoincrement::Identity { generation }
                 } else {
-                    let serial_sequence_name = SchemaObjectName::new(
-                        format!("{}_{}_seq", table_name.name, column_name),
-                        table_name.schema.as_deref(),
-                    );
+                    let serial_sequence_name =
+                        ColumnAutoincrement::serial_sequence_name(&table_name, &column_name);
                     let from_db_sequence_name =
                         SchemaObjectName::new_with_schema_name(sequence_name, sequence_schema);
 
@@ -650,6 +665,18 @@ pub enum ColumnAutoincrement {
     Serial, // Maps to `SERIAL` in postgres (sequence is `{schema}.{table}_{column}_id_seq`)
     Sequence { name: SchemaObjectName },
     Identity { generation: IdentityGeneration },
+}
+
+impl ColumnAutoincrement {
+    pub fn serial_sequence_name(
+        table_name: &SchemaObjectName,
+        column_name: &str,
+    ) -> SchemaObjectName {
+        SchemaObjectName {
+            name: format!("{}_{}_seq", table_name.name, column_name),
+            schema: table_name.schema.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
