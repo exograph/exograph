@@ -21,7 +21,13 @@ impl AstExpr<Typed> {
             AstExpr::RelationalOp(relation) => relation.typ().clone(),
             AstExpr::StringLiteral(_, _) => Type::Primitive(PrimitiveType::String),
             AstExpr::BooleanLiteral(_, _) => Type::Primitive(PrimitiveType::Boolean),
-            AstExpr::NumberLiteral(_, _) => Type::Primitive(PrimitiveType::Int),
+            AstExpr::NumberLiteral(value, _) => {
+                if value.parse::<i64>().is_ok() {
+                    Type::Primitive(PrimitiveType::Int)
+                } else {
+                    Type::Primitive(PrimitiveType::Float)
+                }
+            }
             AstExpr::StringList(_, _) => {
                 Type::Array(Box::new(Type::Primitive(PrimitiveType::String)))
             }
@@ -36,9 +42,16 @@ impl AstExpr<Typed> {
         }
     }
 
-    pub fn as_number(&self) -> i64 {
+    pub fn as_int(&self) -> i64 {
         match &self {
-            AstExpr::NumberLiteral(n, _) => *n,
+            AstExpr::NumberLiteral(n, _) => n.parse::<i64>().unwrap(),
+            _ => panic!(),
+        }
+    }
+
+    pub fn as_float(&self) -> f64 {
+        match &self {
+            AstExpr::NumberLiteral(n, _) => n.parse::<f64>().unwrap(),
             _ => panic!(),
         }
     }

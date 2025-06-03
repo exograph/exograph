@@ -213,7 +213,7 @@ fn compute_primitive_db_expr(
             CommonAccessPrimitiveExpression::BooleanLiteral(*value),
         )),
         AstExpr::NumberLiteral(value, _) => Ok(DatabaseAccessPrimitiveExpression::Common(
-            CommonAccessPrimitiveExpression::NumberLiteral(*value),
+            CommonAccessPrimitiveExpression::NumberLiteral(value.clone()),
         )),
         AstExpr::NullLiteral(_) => Ok(DatabaseAccessPrimitiveExpression::Common(
             CommonAccessPrimitiveExpression::NullLiteral,

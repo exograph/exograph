@@ -134,7 +134,7 @@ pub enum CommonAccessPrimitiveExpression {
     ContextSelection(ContextSelection), // for example, AuthContext.role
     StringLiteral(String),              // for example, "ADMIN"
     BooleanLiteral(bool),               // for example, true
-    NumberLiteral(i64),                 // for example, integer (-13, 0, 300, etc.)
+    NumberLiteral(String),              // for example, integer (-13, 0, 300, 10.5, etc.)
     NullLiteral,
 }
 

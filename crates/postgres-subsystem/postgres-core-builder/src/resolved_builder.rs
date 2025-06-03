@@ -496,8 +496,8 @@ fn build_type_hint(
         } else {
             let range_hint = field.annotations.get("range").map(|params| {
                 (
-                    params.as_map().get("min").unwrap().as_number(),
-                    params.as_map().get("max").unwrap().as_number(),
+                    params.as_map().get("min").unwrap().as_int(),
+                    params.as_map().get("max").unwrap().as_int(),
                 )
             });
 
@@ -630,12 +630,12 @@ fn build_type_hint(
             let precision_hint = field
                 .annotations
                 .get("precision")
-                .map(|p| p.as_single().as_number() as usize);
+                .map(|p| p.as_single().as_int() as usize);
 
             let scale_hint = field
                 .annotations
                 .get("scale")
-                .map(|p| p.as_single().as_number() as usize);
+                .map(|p| p.as_single().as_int() as usize);
 
             if scale_hint.is_some() && precision_hint.is_none() {
                 errors.push(Diagnostic {
@@ -661,7 +661,7 @@ fn build_type_hint(
         let max_length_annotation = field
             .annotations
             .get("maxLength")
-            .map(|p| p.as_single().as_number() as usize);
+            .map(|p| p.as_single().as_int() as usize);
 
         // None if there is no maxLength annotation
         max_length_annotation.map(|max_length| ResolvedTypeHint::String { max_length })
@@ -687,7 +687,7 @@ fn build_type_hint(
                 .annotations
                 .get("precision")
                 .map(|p| ResolvedTypeHint::DateTime {
-                    precision: p.as_single().as_number() as usize,
+                    precision: p.as_single().as_int() as usize,
                 })
         }
     };
@@ -696,7 +696,7 @@ fn build_type_hint(
         let size = field
             .annotations
             .get("size")
-            .map(|p| p.as_single().as_number() as usize);
+            .map(|p| p.as_single().as_int() as usize);
 
         let distance_function = field.annotations.get("distanceFunction").and_then(|p| {
             match VectorDistanceFunction::from_model_string(p.as_single().as_string().as_str()) {

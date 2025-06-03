@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use core_model::mapped_arena::MappedArena;
+use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
 use core_model_builder::{
     ast::ast_types::{AstExpr, AstModel, FieldSelectionElement},
     typechecker::{annotation::AnnotationSpec, Typed},
@@ -18,7 +18,7 @@ use core_model_builder::{
 
 use crate::ast::ast_types::{AstModelKind, FieldSelection, Untyped};
 
-use super::{Scope, Type, TypecheckFrom};
+use super::{relational_op::identical_match, Scope, Type, TypecheckFrom};
 
 pub trait TypecheckFunctionCallFrom<T>
 where
@@ -212,7 +212,9 @@ impl TypecheckFunctionCallFrom<FieldSelectionElement<Untyped>> for FieldSelectio
                     if params.len() == 1 {
                         let param_type = params[0].typ();
                         if let Some(elem_type) = elem_type {
-                            if elem_type != &param_type {
+                            if identical_match(elem_type, &param_type) {
+                                *typ = Type::Primitive(PrimitiveType::Boolean);
+                            } else {
                                 *typ = Type::Error;
                                 errors.push(Diagnostic {
                                     level: Level::Error,

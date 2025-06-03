@@ -298,7 +298,7 @@ fn compute_primitive_precheck_expr(
             CommonAccessPrimitiveExpression::BooleanLiteral(*value),
         )),
         AstExpr::NumberLiteral(value, _) => Ok(PrecheckAccessPrimitiveExpression::Common(
-            CommonAccessPrimitiveExpression::NumberLiteral(*value),
+            CommonAccessPrimitiveExpression::NumberLiteral(value.clone()),
         )),
         AstExpr::NullLiteral(_) => Ok(PrecheckAccessPrimitiveExpression::Common(
             CommonAccessPrimitiveExpression::NullLiteral,

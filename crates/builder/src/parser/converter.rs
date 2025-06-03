@@ -624,8 +624,8 @@ fn convert_literal(node: Node, source: &[u8], source_span: Span) -> AstExpr<Unty
                 .child_by_field_name("value")
                 .unwrap()
                 .utf8_text(source)
-                .map(|s| s.parse::<i64>().unwrap())
-                .unwrap(),
+                .unwrap()
+                .to_string(),
             span_from_node(
                 source_span,
                 first_child.child_by_field_name("value").unwrap(),

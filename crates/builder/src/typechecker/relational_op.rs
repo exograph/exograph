@@ -96,26 +96,6 @@ impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
             in_updated || out_updated
         };
 
-        fn identical_match_with_null(left: &Type, right: &Type) -> bool {
-            // Allow optional types to be compared to null
-            match (left, right) {
-                (Type::Optional(_), Type::Null)
-                | (Type::Null, Type::Optional(_))
-                | (Type::Null, Type::Null) => true,
-                _ => identical_match(left, right),
-            }
-        }
-
-        fn identical_match(left: &Type, right: &Type) -> bool {
-            // Allow optional types to be compared to non-optional types
-            match (left, right) {
-                (Type::Optional(left), Type::Optional(right)) => left == right,
-                (Type::Optional(left), right) => left.as_ref() == right,
-                (left, Type::Optional(right)) => left == right.as_ref(),
-                _ => left == right,
-            }
-        }
-
         fn in_relation_match(left: &Type, right: &Type) -> bool {
             match right {
                 Type::Array(inner) => *left == **inner,
@@ -139,5 +119,38 @@ impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
                 typecheck_operands(left, right, o_typ, in_relation_match)
             }
         }
+    }
+}
+
+fn identical_match_with_null(left: &Type, right: &Type) -> bool {
+    // Allow optional types to be compared to null
+    match (left, right) {
+        (Type::Optional(_), Type::Null)
+        | (Type::Null, Type::Optional(_))
+        | (Type::Null, Type::Null) => true,
+        _ => identical_match(left, right),
+    }
+}
+
+pub fn identical_match(left: &Type, right: &Type) -> bool {
+    fn matches(left: &Type, right: &Type) -> bool {
+        match (left, right) {
+            (Type::Primitive(left_typ), Type::Primitive(right_typ)) => {
+                match (left_typ, right_typ) {
+                    (PrimitiveType::Float, PrimitiveType::Int)
+                    | (PrimitiveType::Int, PrimitiveType::Float) => true,
+                    _ => left_typ == right_typ,
+                }
+            }
+            _ => left == right,
+        }
+    }
+
+    // Allow optional types to be compared to non-optional types
+    match (left, right) {
+        (Type::Optional(left), Type::Optional(right)) => matches(left, right),
+        (Type::Optional(left), right) => matches(left, right),
+        (left, Type::Optional(right)) => matches(left, right),
+        _ => matches(left, right),
     }
 }

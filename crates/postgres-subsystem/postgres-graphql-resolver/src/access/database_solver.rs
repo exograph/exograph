@@ -1013,7 +1013,7 @@ mod tests {
                 &|| DatabaseAccessPrimitiveExpression::Column(owner_id_column_path.clone(), None);
             let literal_expr_fn = &|| {
                 DatabaseAccessPrimitiveExpression::Common(
-                    CommonAccessPrimitiveExpression::NumberLiteral(1),
+                    CommonAccessPrimitiveExpression::NumberLiteral("1".to_string()),
                 )
             };
             let non_context_expr_fns: Vec<&dyn Fn() -> DatabaseAccessPrimitiveExpression> =

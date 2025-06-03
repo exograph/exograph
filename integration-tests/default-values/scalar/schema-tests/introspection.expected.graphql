@@ -12,6 +12,7 @@ type Event {
   timestamp: Instant!
   category: String!
   priority: Int!
+  price: Float!
   message: String!
   is_system: Boolean!
   clientId: String!
@@ -24,6 +25,7 @@ type EventAgg {
   timestamp: InstantAgg
   category: StringAgg
   priority: IntAgg
+  price: FloatAgg
   message: StringAgg
   is_system: BooleanAgg
   clientId: StringAgg
@@ -34,6 +36,7 @@ input EventCreationInput {
   timestamp: Instant
   category: String
   priority: Int
+  price: Float
   message: String!
   is_system: Boolean
   clientId: String
@@ -50,6 +53,7 @@ input EventFilter {
   timestamp: InstantFilter
   category: StringFilter
   priority: IntFilter
+  price: FloatFilter
   message: StringFilter
   is_system: BooleanFilter
   clientId: StringFilter
@@ -64,6 +68,7 @@ input EventOrdering {
   timestamp: Ordering
   category: Ordering
   priority: Ordering
+  price: Ordering
   message: Ordering
   is_system: Ordering
   clientId: Ordering
@@ -75,10 +80,28 @@ input EventUpdateInput {
   timestamp: Instant
   category: String
   priority: Int
+  price: Float
   message: String
   is_system: Boolean
   clientId: String
   orgId: String
+}
+
+type FloatAgg {
+  min: Float
+  max: Float
+  sum: Float
+  avg: Float
+  count: Int
+}
+
+input FloatFilter {
+  eq: Float
+  neq: Float
+  lt: Float
+  lte: Float
+  gt: Float
+  gte: Float
 }
 
 scalar Instant
@@ -111,6 +134,50 @@ input IntFilter {
   lte: Int
   gt: Int
   gte: Int
+}
+
+type Item {
+  id: Int!
+  name: String!
+  purchasePrice: Float!
+}
+
+"""An aggregate for the `Item` type."""
+type ItemAgg {
+  id: IntAgg
+  name: StringAgg
+  purchasePrice: FloatAgg
+}
+
+input ItemCreationInput {
+  name: String!
+  purchasePrice: Float
+}
+
+"""
+Predicate for the `Item` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input ItemFilter {
+  id: IntFilter
+  name: StringFilter
+  purchasePrice: FloatFilter
+  and: [ItemFilter!]
+  or: [ItemFilter!]
+  not: ItemFilter
+}
+
+input ItemOrdering {
+  id: Ordering
+  name: Ordering
+  purchasePrice: Ordering
+}
+
+input ItemUpdateInput {
+  id: Int
+  name: String
+  purchasePrice: Float
 }
 
 enum Ordering {
@@ -150,6 +217,19 @@ type Query {
   Get the aggregate value of the selected fields over all `Event`s given the provided `where` filter
   """
   eventsAgg(where: EventFilter): EventAgg!
+
+  """Get a single `Item` given primary key fields"""
+  item(id: Int!): Item
+
+  """
+  Get multiple `Item`s given the provided `where` filter, order by, limit, and offset
+  """
+  items(where: ItemFilter, orderBy: [ItemOrdering!], limit: Int, offset: Int): [Item!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Item`s given the provided `where` filter
+  """
+  itemsAgg(where: ItemFilter): ItemAgg!
 }
 
 type Mutation {
@@ -163,11 +243,27 @@ type Mutation {
   """
   createEvents(data: [EventCreationInput!]!): [Event!]!
 
+  """
+  Create a new Item. Check the `ItemCreationInput` type for the expected shape of the data.
+  """
+  createItem(data: ItemCreationInput!): Item!
+
+  """
+  Create multiple Items. Check the `ItemCreationInput` type for the expected shape of the data.
+  """
+  createItems(data: [ItemCreationInput!]!): [Item!]!
+
   """Delete the Event with the provided primary key."""
   deleteEvent(id: Int!): Event
 
   """Delete multiple Events matching the provided `where` filter."""
   deleteEvents(where: EventFilter): [Event!]!
+
+  """Delete the Item with the provided primary key."""
+  deleteItem(id: Int!): Item
+
+  """Delete multiple Items matching the provided `where` filter."""
+  deleteItems(where: ItemFilter): [Item!]!
 
   """
   Update the Event with the provided primary key with the provided data. Any fields not provided will remain unchanged.
@@ -178,4 +274,14 @@ type Mutation {
   Update multiple Events matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
   """
   updateEvents(where: EventFilter, data: EventUpdateInput!): [Event!]!
+
+  """
+  Update the Item with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateItem(id: Int!, data: ItemUpdateInput!): Item
+
+  """
+  Update multiple Items matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateItems(where: ItemFilter, data: ItemUpdateInput!): [Item!]!
 }

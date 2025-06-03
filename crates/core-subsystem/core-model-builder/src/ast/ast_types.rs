@@ -19,7 +19,7 @@ use core_model::{
     context_type::{ContextFieldType, ContextSelection, ContextSelectionElement, ContextType},
     function_defn::FunctionDefinition,
     mapped_arena::MappedArena,
-    primitive_type::PrimitiveValue,
+    primitive_type::{NumberLiteral, PrimitiveValue},
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -331,7 +331,7 @@ pub enum AstExpr<T: NodeTypedness> {
         Span,
     ),
     NumberLiteral(
-        i64,
+        String, // the string representation of the number (later, based on the target type, we will parse it to the appropriate type)
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
@@ -451,7 +451,17 @@ impl FieldSelection<Typed> {
                                 AstExpr::BooleanLiteral(value, _) => {
                                     PrimitiveValue::Boolean(*value)
                                 }
-                                AstExpr::NumberLiteral(value, _) => PrimitiveValue::Int(*value),
+                                AstExpr::NumberLiteral(value, _) => {
+                                    if value.parse::<i64>().is_ok() {
+                                        PrimitiveValue::Number(NumberLiteral::Int(
+                                            value.parse::<i64>().unwrap(),
+                                        ))
+                                    } else {
+                                        PrimitiveValue::Number(NumberLiteral::Float(
+                                            value.parse::<f64>().unwrap(),
+                                        ))
+                                    }
+                                }
                                 _ => panic!("Unsupported parameter type"),
                             })
                             .collect();

@@ -239,7 +239,7 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
                     Some(value)
                 }
                 AstExpr::BooleanLiteral(boolean, _) => Some(ColumnDefault::Boolean(*boolean)),
-                AstExpr::NumberLiteral(val, _) => Some(ColumnDefault::Number(*val)),
+                AstExpr::NumberLiteral(val, _) => Some(ColumnDefault::Number(val.clone())),
                 AstExpr::FieldSelection(selection) => match selection {
                     FieldSelection::Single(element, _) => match element {
                         FieldSelectionElement::Identifier(value, _, _) => {
