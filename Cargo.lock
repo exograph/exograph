@@ -2028,7 +2028,7 @@ dependencies = [
  "data-encoding",
  "deno_ast",
  "deno_cache_dir",
- "deno_config",
+ "deno_config 0.37.1",
  "deno_core",
  "deno_graph",
  "deno_lockfile",
@@ -2055,7 +2055,7 @@ dependencies = [
  "hyper-util",
  "import_map",
  "indexmap 2.9.0",
- "jsonc-parser",
+ "jsonc-parser 0.23.0",
  "junction",
  "lazy-regex",
  "libc",
@@ -2136,7 +2136,7 @@ dependencies = [
  "deno",
  "deno-graphql-model",
  "deno_ast",
- "deno_config",
+ "deno_config 0.39.2",
  "deno_core",
  "deno_graph",
  "deno_npm",
@@ -2324,7 +2324,31 @@ dependencies = [
  "ignore",
  "import_map",
  "indexmap 2.9.0",
- "jsonc-parser",
+ "jsonc-parser 0.23.0",
+ "log",
+ "percent-encoding",
+ "phf",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.64",
+ "url",
+]
+
+[[package]]
+name = "deno_config"
+version = "0.39.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38fb809500238be2b10eee42944a47b3ac38974e1edbb47f73afcfca7df143bf"
+dependencies = [
+ "anyhow",
+ "deno_package_json",
+ "deno_path_util",
+ "deno_semver",
+ "glob",
+ "ignore",
+ "import_map",
+ "indexmap 2.9.0",
+ "jsonc-parser 0.26.2",
  "log",
  "percent-encoding",
  "phf",
@@ -5141,6 +5165,15 @@ name = "jsonc-parser"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7725c320caac8c21d8228c1d055af27a995d371f78cc763073d3e068323641b5"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
+name = "jsonc-parser"
+version = "0.26.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b558af6b49fd918e970471374e7a798b2c9bbcda624a210ffa3901ee5614bc8e"
 dependencies = [
  "serde_json",
 ]
