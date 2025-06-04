@@ -9,6 +9,7 @@
 
 use actix_web::{middleware, web, App, HttpServer};
 
+use common::env_const::get_mcp_http_path;
 use server_actix::configure_router;
 use thiserror::Error;
 use tracing_actix_web::TracingLogger;
@@ -20,7 +21,7 @@ use std::{io::ErrorKind, sync::Arc};
 use common::{
     env_const::{
         get_deployment_mode, get_graphql_http_path, get_playground_http_path, DeploymentMode,
-        EXO_SERVER_PORT,
+        EXO_ENABLE_MCP_API, EXO_SERVER_PORT,
     },
     introspection::{introspection_mode, IntrospectionMode},
 };
@@ -113,11 +114,15 @@ async fn main() -> Result<(), ServerError> {
                     pretty_addr,
                     start_time.elapsed().unwrap().as_micros() as f64 / 1000.0
                 );
-                println!("- Endpoint hosted at:");
+                println!("- GraphQL endpoint hosted at:");
                 println!(
                     "\thttp://{pretty_addr}{}",
                     get_graphql_http_path(env.as_ref())
                 );
+                if env.as_ref().enabled(EXO_ENABLE_MCP_API, false) {
+                    println!("- MCP endpoint hosted at:");
+                    println!("\thttp://{pretty_addr}{}", get_mcp_http_path(env.as_ref()));
+                }
             };
 
             let print_playground_info = || {
