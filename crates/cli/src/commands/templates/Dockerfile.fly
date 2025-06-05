@@ -6,17 +6,7 @@ COPY ./src ./src
 
 RUN exo build
 
-USER root
-
-# Migrate database. Remove the next line if you want to handle migration separately.
-RUN --mount=type=secret,id=DATABASE_URL \
-  EXO_POSTGRES_URL="$(cat /run/secrets/DATABASE_URL)" exo schema migrate --apply-to-database
-
-# Check that migration brought up the schema to match the model.
-RUN --mount=type=secret,id=DATABASE_URL \
-  EXO_POSTGRES_URL="$(cat /run/secrets/DATABASE_URL)" exo schema verify
-
-FROM ghcr.io/exograph/server:latest
+FROM ghcr.io/exograph/cli-server:latest
 
 WORKDIR /app
 

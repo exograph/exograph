@@ -126,10 +126,7 @@ impl CommandDefinition for FlyCommandDefinition {
 
         println!("\n\tDeploy the app: ");
 
-        println!(
-            "\t{}",
-            r#"fly console --dockerfile Dockerfile.fly.builder -C "/srv/deploy.sh" --env=FLY_API_TOKEN=$(fly auth token)"#.blue(),
-        );
+        println!("\t{}", r#"fly deploy"#.blue(),);
 
         Ok(())
     }
@@ -137,31 +134,15 @@ impl CommandDefinition for FlyCommandDefinition {
 
 static FLY_TOML: &str = include_str!("../templates/fly.toml");
 static DOCKERFILE: &str = include_str!("../templates/Dockerfile.fly");
-static DOCKERFILE_BUILDER: &str = include_str!("../templates/Dockerfile.fly.builder");
 
 fn create_dockerfile(fly_dir: &Path, use_fly_db: bool) -> Result<()> {
-    {
-        let pg_key_val = format!("EXO_POSTGRES_URL={}", EXO_POSTGRES_URL);
-        let substitute =
-            use_fly_db.then(|| HashMap::from([("<<<EXTRA_ENV>>>", pg_key_val.as_str())]));
+    let pg_key_val = format!("EXO_POSTGRES_URL={}", EXO_POSTGRES_URL);
+    let substitute = use_fly_db.then(|| HashMap::from([("<<<EXTRA_ENV>>>", pg_key_val.as_str())]));
 
-        let created = write_template_file(fly_dir.join("Dockerfile.fly"), DOCKERFILE, substitute)?;
+    let created = write_template_file(fly_dir.join("Dockerfile.fly"), DOCKERFILE, substitute)?;
 
-        if created {
-            println!(
-                "{}",
-                "Created Dockerfile.fly. You can edit this file to customize the deployment such as installing additional dependencies."
-                    .green()
-            );
-        }
-    }
-
-    {
-        write_template_file(
-            fly_dir.join("Dockerfile.fly.builder"),
-            DOCKERFILE_BUILDER,
-            None,
-        )?;
+    if created {
+        println!("{}", "Created Dockerfile.fly. You can edit this file to customize the deployment such as installing additional dependencies.".green());
     }
 
     Ok(())

@@ -2,10 +2,12 @@ app = "<<<APP_NAME>>>"
 
 kill_signal = "SIGINT"
 kill_timeout = 5
-processes = []
 
 [build]
 dockerfile = "Dockerfile.fly"
+
+[deploy]
+release_command = "exo schema migrate --use-ir --apply-to-database"
 
 [env]
 <<<ENV_VARS>>>
