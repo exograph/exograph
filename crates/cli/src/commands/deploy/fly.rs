@@ -85,23 +85,23 @@ impl CommandDefinition for FlyCommandDefinition {
 
         println!(
             "\t{} {}",
-            "flyctl auth login".blue(),
+            "fly auth login".blue(),
             "(If you haven't already done so)".purple()
         );
 
-        println!("\t{}", format!("flyctl apps create {app_name}").blue());
+        println!("\t{}", format!("fly apps create {app_name}").blue());
         println!(
             "\n\tSet up JWT by running {} of the following: ",
             "either".bold()
         );
         println!(
             "\t{}{}",
-            format!("flyctl secrets set --app {app_name} EXO_JWT_SECRET=",).blue(),
+            format!("fly secrets set --app {app_name} EXO_JWT_SECRET=",).blue(),
             "<your-jwt-secret>".yellow()
         );
         println!(
             "\t{}{}",
-            format!("flyctl secrets set --app {app_name} EXO_OIDC_URL=",).blue(),
+            format!("fly secrets set --app {app_name} EXO_OIDC_URL=",).blue(),
             "<your-oidc-url>".yellow()
         );
         println!("\n\tSet up the database: ");
@@ -109,16 +109,16 @@ impl CommandDefinition for FlyCommandDefinition {
         if use_fly_db {
             println!(
                 "\t{}",
-                format!("flyctl postgres create --name {app_name}-db").blue()
+                format!("fly postgres create --name {app_name}-db").blue()
             );
             println!(
                 "\t{}",
-                format!("flyctl postgres attach --app {app_name} {app_name}-db").blue()
+                format!("fly postgres attach --app {app_name} {app_name}-db").blue()
             );
         } else {
             println!(
                 "\t{}{}{}",
-                format!("flyctl secrets set --app {app_name} DATABASE_URL=\"").blue(),
+                format!("fly secrets set --app {app_name} DATABASE_URL=\"").blue(),
                 "<your-postgres-url>".yellow(),
                 "\"".blue()
             );
@@ -128,7 +128,7 @@ impl CommandDefinition for FlyCommandDefinition {
 
         println!(
             "\t{}",
-            r#"flyctl console --dockerfile Dockerfile.fly.builder -C "/srv/deploy.sh" --env=FLY_API_TOKEN=$(flyctl auth token)"#.blue(),
+            r#"fly console --dockerfile Dockerfile.fly.builder -C "/srv/deploy.sh" --env=FLY_API_TOKEN=$(fly auth token)"#.blue(),
         );
 
         Ok(())

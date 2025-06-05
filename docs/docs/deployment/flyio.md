@@ -16,7 +16,7 @@ We will use two Postgres providers:
 
 ## Installing the prerequisites
 
-You need to install [Flyctl](https://fly.io/docs/getting-started/installing-flyctl/).
+You need to install the [fly cli](https://fly.io/docs/getting-started/installing-fly/).
 
 ## Creating a new application
 
@@ -39,10 +39,7 @@ It offers several options to customize the deployment, and you can learn more by
 exo deploy fly --help
 Deploy to Fly.io
 
-Usage: exo deploy fly [OPTIONS] --app <app-name> [model]
-
-Arguments:
-  [model]  The path to the Exograph model file. [default: index.exo]
+Usage: exo deploy fly [OPTIONS] --app <app-name> 
 
 Options:
   -a, --app <app-name>       The name of the Fly.io application to deploy to
@@ -171,7 +168,7 @@ Finally, we follow the suggested command to deploy the app:
 
 ```shell-session
 # shell-command-next-line
-flyctl console --dockerfile Dockerfile.fly.builder -C "/srv/deploy.sh" --env=FLY_API_TOKEN=$(flyctl auth token)
+fly console --dockerfile Dockerfile.fly.builder -C "/srv/deploy.sh" --env=FLY_API_TOKEN='$(fly tokens create deploy)'
 ```
 
 This command creates an ephemeral container, which deploys the Docker image to Fly.io. See [Fly.io documentation](https://fly.io/docs/reference/build-secrets/#automate-the-inclusion-of-build-secrets-using-an-ephemeral-machine) for more details.
