@@ -35,5 +35,5 @@ We will look at each of the commands in the following sections.
 - [exo dev](dev.md)
 - [exo build](build.md)
 - [exo deploy](deploy.md)
-- [exo schema](schema.md)
+- [exo schema](schema/overview.md)
 - [exo test](test.md)

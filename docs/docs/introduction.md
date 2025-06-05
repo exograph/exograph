@@ -23,7 +23,7 @@ Once you install Exograph, you can get a simple GraphQL [server ready](getting-s
 
 Exograph's declarative language expresses your backend's domain model and the API precisely and concisely. This TypeScript and GraphQL IDL-inspired language will make you feel at home.
 
-Once you define your model, Exograph will take care of the rest. For example, with Postgres modules, Exograph will infer [queries](postgres/operations/queries.md) and [mutations](postgres/operations/mutations.md). As your model evolves, Exograph offers commands to [check the consistency](cli-reference/development/schema.md#verifying-the-existing-schema) of your database schema with your model and to [migrate](cli-reference/development/schema.md#migrating-the-schema) your database to the latest version of your model.
+Once you define your model, Exograph will take care of the rest. For example, with Postgres modules, Exograph will infer [queries](postgres/operations/queries.md) and [mutations](postgres/operations/mutations.md). As your model evolves, Exograph offers commands to [check the consistency](cli-reference/development/schema/verify.md) of your database schema with your model and to [migrate](cli-reference/development/schema/migrate.md) your database to the latest version of your model.
 
 Exograph's language is Git-friendly. In our experience, UI-based approaches to defining models don't scale, and it is especially tough to manage when multiple developers update the model. Since Exograph's language is just text, it is easy to integrate with Git and other version control systems. It also makes it easy to collaborate with other developers, where the standard Git workflow works just as expected.
 
