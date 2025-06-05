@@ -6,6 +6,7 @@ kill_timeout = 5
 [build]
 dockerfile = "Dockerfile.fly"
 
+# Run migrations on deploy. Remove the next two lines if you want to handle migration separately.
 [deploy]
 release_command = "exo schema migrate --use-ir --apply-to-database"
 
