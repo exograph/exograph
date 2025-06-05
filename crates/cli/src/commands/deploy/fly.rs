@@ -41,7 +41,7 @@ impl CommandDefinition for FlyCommandDefinition {
             )
             .arg(
                 Arg::new("env")
-                    .help("Environment variables to pass to the application (e.g. -e KEY=VALUE). May be specified multiple times.")
+                    .help("Environment variables to pass to the application e.g. -e KEY=VALUE (may be specified multiple times)")
                     .action(ArgAction::Append) // To allow multiple --env flags ("-e k1=v1 -e k2=v2")
                     .short('e')
                     .long("env")
@@ -85,23 +85,23 @@ impl CommandDefinition for FlyCommandDefinition {
 
         println!(
             "\t{} {}",
-            "flyctl auth login".blue(),
+            "fly auth login".blue(),
             "(If you haven't already done so)".purple()
         );
 
-        println!("\t{}", format!("flyctl apps create {app_name}").blue());
+        println!("\t{}", format!("fly apps create {app_name}").blue());
         println!(
             "\n\tSet up JWT by running {} of the following: ",
             "either".bold()
         );
         println!(
             "\t{}{}",
-            format!("flyctl secrets set --app {app_name} EXO_JWT_SECRET=",).blue(),
+            format!("fly secrets set --app {app_name} EXO_JWT_SECRET=",).blue(),
             "<your-jwt-secret>".yellow()
         );
         println!(
             "\t{}{}",
-            format!("flyctl secrets set --app {app_name} EXO_OIDC_URL=",).blue(),
+            format!("fly secrets set --app {app_name} EXO_OIDC_URL=",).blue(),
             "<your-oidc-url>".yellow()
         );
         println!("\n\tSet up the database: ");
@@ -109,16 +109,16 @@ impl CommandDefinition for FlyCommandDefinition {
         if use_fly_db {
             println!(
                 "\t{}",
-                format!("flyctl postgres create --name {app_name}-db").blue()
+                format!("fly postgres create --name {app_name}-db").blue()
             );
             println!(
                 "\t{}",
-                format!("flyctl postgres attach --app {app_name} {app_name}-db").blue()
+                format!("fly postgres attach --app {app_name} {app_name}-db").blue()
             );
         } else {
             println!(
                 "\t{}{}{}",
-                format!("flyctl secrets set --app {app_name} DATABASE_URL=\"").blue(),
+                format!("fly secrets set --app {app_name} DATABASE_URL=\"").blue(),
                 "<your-postgres-url>".yellow(),
                 "\"".blue()
             );
@@ -126,10 +126,7 @@ impl CommandDefinition for FlyCommandDefinition {
 
         println!("\n\tDeploy the app: ");
 
-        println!(
-            "\t{}",
-            r#"flyctl console --dockerfile Dockerfile.fly.builder -C "/srv/deploy.sh" --env=FLY_API_TOKEN=$(flyctl auth token)"#.blue(),
-        );
+        println!("\t{}", r#"fly deploy"#.blue(),);
 
         Ok(())
     }
@@ -137,31 +134,15 @@ impl CommandDefinition for FlyCommandDefinition {
 
 static FLY_TOML: &str = include_str!("../templates/fly.toml");
 static DOCKERFILE: &str = include_str!("../templates/Dockerfile.fly");
-static DOCKERFILE_BUILDER: &str = include_str!("../templates/Dockerfile.fly.builder");
 
 fn create_dockerfile(fly_dir: &Path, use_fly_db: bool) -> Result<()> {
-    {
-        let pg_key_val = format!("EXO_POSTGRES_URL={}", EXO_POSTGRES_URL);
-        let substitute =
-            use_fly_db.then(|| HashMap::from([("<<<EXTRA_ENV>>>", pg_key_val.as_str())]));
+    let pg_key_val = format!("EXO_POSTGRES_URL={}", EXO_POSTGRES_URL);
+    let substitute = use_fly_db.then(|| HashMap::from([("<<<EXTRA_ENV>>>", pg_key_val.as_str())]));
 
-        let created = write_template_file(fly_dir.join("Dockerfile.fly"), DOCKERFILE, substitute)?;
+    let created = write_template_file(fly_dir.join("Dockerfile.fly"), DOCKERFILE, substitute)?;
 
-        if created {
-            println!(
-                "{}",
-                "Created Dockerfile.fly. You can edit this file to customize the deployment such as installing additional dependencies."
-                    .green()
-            );
-        }
-    }
-
-    {
-        write_template_file(
-            fly_dir.join("Dockerfile.fly.builder"),
-            DOCKERFILE_BUILDER,
-            None,
-        )?;
+    if created {
+        println!("{}", "Created Dockerfile.fly. You can edit this file to customize the deployment such as installing additional dependencies.".green());
     }
 
     Ok(())

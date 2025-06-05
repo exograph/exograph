@@ -21,7 +21,7 @@ pub(super) fn app_name_from_args(matches: &ArgMatches) -> String {
 
 pub(super) fn app_name_arg() -> Arg {
     Arg::new("app-name")
-        .help("The name of the application. Defaults to the current directory name.")
+        .help("The name of the application (defaults to the current directory name)")
         .short('a')
         .long("app")
         .required(false)

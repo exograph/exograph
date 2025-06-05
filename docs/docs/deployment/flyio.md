@@ -16,7 +16,7 @@ We will use two Postgres providers:
 
 ## Installing the prerequisites
 
-You need to install [Flyctl](https://fly.io/docs/getting-started/installing-flyctl/).
+You need to install the [fly cli](https://fly.io/docs/getting-started/installing-fly/).
 
 ## Creating a new application
 
@@ -29,7 +29,7 @@ import CreatingApp from './\_creating_app.md';
 Exograph has a dedicated command to work with Fly.io. It will:
 
 - Configure a `fly.toml` file
-- Create two Docker files: `Dockerfile.fly` and `Dockerfile.fly.builder` (the latter is used to simplify secrets management)
+- Create two Docker files: `Dockerfile.fly`
 - Provide deployment instructions
 
 It offers several options to customize the deployment, and you can learn more by running `exo deploy fly --help`.
@@ -39,14 +39,11 @@ It offers several options to customize the deployment, and you can learn more by
 exo deploy fly --help
 Deploy to Fly.io
 
-Usage: exo deploy fly [OPTIONS] --app <app-name> [model]
-
-Arguments:
-  [model]  The path to the Exograph model file. [default: index.exo]
+Usage: exo deploy fly [OPTIONS]
 
 Options:
-  -a, --app <app-name>       The name of the Fly.io application to deploy to
-  -e, --env <env>            Environment variables to pass to the application (e.g. -e KEY=VALUE). May be specified multiple times.
+  -a, --app <app-name>       The name of the application (defaults to the current directory name)
+  -e, --env <env>            Environment variables to pass to the application e.g. -e KEY=VALUE (may be specified multiple times)
       --env-file <env-file>  Path to a file containing environment variables to pass to the application
       --use-fly-db           Use database provided by Fly.io
   -h, --help                 Print help
@@ -63,7 +60,7 @@ We want to use the Postgres database provisioned on Fly.io, hence we pass the `-
 
 ```shell-session
 # shell-command-next-line
-exo deploy fly --app todo --use-fly-db
+exo deploy fly --use-fly-db
 ```
 
   </TabItem>
@@ -71,7 +68,7 @@ exo deploy fly --app todo --use-fly-db
 
 ```shell-session
 # shell-command-next-line
-exo deploy fly --app todo
+exo deploy fly
 ```
 
   </TabItem>
@@ -83,7 +80,7 @@ If you intend to consume the API through a web application, you would need to se
 
 The command creates a `fly.toml` file in the current directory. You can edit it to customize the deployment. For example, you can change the number of instances, the regions, etc. See the [Fly.io documentation](https://fly.io/docs/reference/configuration/) for more details.
 
-Similarly, it creates a `Dockerfile.fly` in the current directory. You can edit it to customize the Docker image. For example, you can add more dependencies, set up the timezone, etc. See the [Docker documentation](https://docs.docker.com/engine/reference/builder/) for more details. It also creates `Dirverfile.fly.builder` to simplify secrets management (see [Fly secret management](https://fly.io/docs/reference/build-secrets/#automate-the-inclusion-of-build-secrets-using-an-ephemeral-machine) for more information). You are unlikely to edit it.
+Similarly, it creates a `Dockerfile.fly` in the current directory. You can edit it to customize the Docker image. For example, you can add more dependencies, set up the timezone, etc. See the [Docker documentation](https://docs.docker.com/engine/reference/builder/) for more details.
 
 It also gives a step-by-step guide to deploying the application. We will follow those instructions.
 
@@ -171,10 +168,8 @@ Finally, we follow the suggested command to deploy the app:
 
 ```shell-session
 # shell-command-next-line
-flyctl console --dockerfile Dockerfile.fly.builder -C "/srv/deploy.sh" --env=FLY_API_TOKEN=$(flyctl auth token)
+fly deploy
 ```
-
-This command creates an ephemeral container, which deploys the Docker image to Fly.io. See [Fly.io documentation](https://fly.io/docs/reference/build-secrets/#automate-the-inclusion-of-build-secrets-using-an-ephemeral-machine) for more details.
 
 At the end of the deployment, you will see a message like this:
 
