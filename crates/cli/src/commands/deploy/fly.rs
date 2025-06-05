@@ -41,7 +41,7 @@ impl CommandDefinition for FlyCommandDefinition {
             )
             .arg(
                 Arg::new("env")
-                    .help("Environment variables to pass to the application (e.g. -e KEY=VALUE). May be specified multiple times.")
+                    .help("Environment variables to pass to the application e.g. -e KEY=VALUE (may be specified multiple times)")
                     .action(ArgAction::Append) // To allow multiple --env flags ("-e k1=v1 -e k2=v2")
                     .short('e')
                     .long("env")
