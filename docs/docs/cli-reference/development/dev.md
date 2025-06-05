@@ -17,7 +17,7 @@ You invoke the dev mode using the `dev` command. Like the `yolo` command, you in
 exo dev
 ```
 
-If your project uses a Postgres module, you must create a database with the appropriate schema. Please see the [exo schema](schema.md#creating-a-new-schema) command for more information. You will also need to export the `EXO_POSTGRES_URL` environment variable to that database (there are a few other options. Please see the [configuration](/postgres/configuration.md) page for more details).
+If your project uses a Postgres module, you must create a database with the appropriate schema. Please see the [exo schema](schema/create.md) command for more information. You will also need to export the `EXO_POSTGRES_URL` environment variable to that database (there are a few other options. Please see the [configuration](/postgres/configuration.md) page for more details).
 
 By default, it will start the server on port 9876. You can change this by passing the `--port` (or the shorter `-p`) option.
 

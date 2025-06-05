@@ -44,7 +44,7 @@ module BlogModule {
 
 Here, we have defined a `Blog` type along with access control rules for queries and mutations associated with the type.
 
-Access control expressions for queries act as a gate and filter for existing data. The expressions carry additional semantics for mutations; we will examine them in the [Effect on Mutation APIs](#effect-on-mutation-apis) section.
+Access control expressions for queries act as a gate and filter for existing data. The expressions with literal `false`carry additional semantics for queries and mutations; we will examine them in the [Effect on APIs](#effect-on-apis) section.
 
 Consider the above definition along with the following query and mutation:
 
