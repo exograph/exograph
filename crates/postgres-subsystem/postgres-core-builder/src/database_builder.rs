@@ -16,6 +16,7 @@ use crate::resolved_type::{
 };
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+use core_model::primitive_type::PrimitiveBaseType;
 use core_model::{primitive_type::PrimitiveType, types::FieldType};
 use core_model_builder::ast::ast_types::{FieldSelection, FieldSelectionElement};
 use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError};
@@ -478,161 +479,158 @@ fn determine_column_type<'a>(
     pt: &'a PrimitiveType,
     field: &'a ResolvedField,
 ) -> PhysicalColumnType {
-    if let PrimitiveType::Array(underlying_pt) = pt {
-        return PhysicalColumnType::Array {
+    match pt {
+        PrimitiveType::Array(underlying_pt) => PhysicalColumnType::Array {
             typ: Box::new(determine_column_type(underlying_pt, field)),
-        };
-    }
-
-    if let Some(hint) = &field.type_hint {
-        match hint {
-            ResolvedTypeHint::Explicit { dbtype } => {
-                PhysicalColumnType::from_string(dbtype).unwrap()
-            }
-
-            ResolvedTypeHint::Int { bits, range } => {
-                assert!(matches!(pt, PrimitiveType::Int));
-
-                // determine the proper sized type to use
-                if let Some(bits) = bits {
-                    PhysicalColumnType::Int {
-                        bits: match bits {
-                            16 => IntBits::_16,
-                            32 => IntBits::_32,
-                            64 => IntBits::_64,
-                            _ => panic!("Invalid bits"),
-                        },
+        },
+        PrimitiveType::Plain(base_pt_type) => {
+            if let Some(hint) = &field.type_hint {
+                match hint {
+                    ResolvedTypeHint::Explicit { dbtype } => {
+                        PhysicalColumnType::from_string(dbtype).unwrap()
                     }
-                } else if let Some(range) = range {
-                    let is_superset = |bound_min: i64, bound_max: i64| {
-                        let range_min = range.0;
-                        let range_max = range.1;
-                        assert!(range_min <= range_max);
-                        assert!(bound_min <= bound_max);
 
-                        // is this bound a superset of the provided range?
-                        (bound_min <= range_min && bound_min <= range_max)
-                            && (bound_max >= range_max && bound_max >= range_min)
-                    };
+                    ResolvedTypeHint::Int { bits, range } => {
+                        assert!(matches!(base_pt_type, PrimitiveBaseType::Int));
 
-                    // determine which SQL type is appropriate for this range
-                    {
-                        if is_superset(i16::MIN.into(), i16::MAX.into()) {
-                            PhysicalColumnType::Int { bits: IntBits::_16 }
-                        } else if is_superset(i32::MIN.into(), i32::MAX.into()) {
-                            PhysicalColumnType::Int { bits: IntBits::_32 }
-                        } else if is_superset(i64::MIN, i64::MAX) {
-                            PhysicalColumnType::Int { bits: IntBits::_64 }
+                        // determine the proper sized type to use
+                        if let Some(bits) = bits {
+                            PhysicalColumnType::Int {
+                                bits: match bits {
+                                    16 => IntBits::_16,
+                                    32 => IntBits::_32,
+                                    64 => IntBits::_64,
+                                    _ => panic!("Invalid bits"),
+                                },
+                            }
+                        } else if let Some(range) = range {
+                            let is_superset = |bound_min: i64, bound_max: i64| {
+                                let range_min = range.0;
+                                let range_max = range.1;
+                                assert!(range_min <= range_max);
+                                assert!(bound_min <= bound_max);
+
+                                // is this bound a superset of the provided range?
+                                (bound_min <= range_min && bound_min <= range_max)
+                                    && (bound_max >= range_max && bound_max >= range_min)
+                            };
+
+                            // determine which SQL type is appropriate for this range
+                            {
+                                if is_superset(i16::MIN.into(), i16::MAX.into()) {
+                                    PhysicalColumnType::Int { bits: IntBits::_16 }
+                                } else if is_superset(i32::MIN.into(), i32::MAX.into()) {
+                                    PhysicalColumnType::Int { bits: IntBits::_32 }
+                                } else if is_superset(i64::MIN, i64::MAX) {
+                                    PhysicalColumnType::Int { bits: IntBits::_64 }
+                                } else {
+                                    // TODO: numeric type
+                                    panic!("Requested range is too big")
+                                }
+                            }
                         } else {
-                            // TODO: numeric type
-                            panic!("Requested range is too big")
+                            // no hints provided, go with default
+                            PhysicalColumnType::Int { bits: IntBits::_32 }
                         }
                     }
-                } else {
-                    // no hints provided, go with default
-                    PhysicalColumnType::Int { bits: IntBits::_32 }
-                }
-            }
 
-            ResolvedTypeHint::Float { bits, .. } => {
-                assert!(matches!(pt, PrimitiveType::Float));
+                    ResolvedTypeHint::Float { bits, .. } => {
+                        assert!(matches!(base_pt_type, PrimitiveBaseType::Float));
 
-                if let Some(bits) = *bits {
-                    if (1..=24).contains(&bits) {
-                        PhysicalColumnType::Float {
-                            bits: FloatBits::_24,
+                        if let Some(bits) = *bits {
+                            if (1..=24).contains(&bits) {
+                                PhysicalColumnType::Float {
+                                    bits: FloatBits::_24,
+                                }
+                            } else if bits > 24 && bits <= 53 {
+                                PhysicalColumnType::Float {
+                                    bits: FloatBits::_53,
+                                }
+                            } else {
+                                panic!("Invalid bits")
+                            }
+                        } else {
+                            PhysicalColumnType::Float {
+                                bits: FloatBits::_53,
+                            }
                         }
-                    } else if bits > 24 && bits <= 53 {
-                        PhysicalColumnType::Float {
-                            bits: FloatBits::_53,
+                    }
+
+                    ResolvedTypeHint::Decimal { precision, scale } => {
+                        assert!(matches!(base_pt_type, PrimitiveBaseType::Decimal));
+
+                        // cannot have scale and no precision specified
+                        if precision.is_none() {
+                            assert!(scale.is_none())
                         }
-                    } else {
-                        panic!("Invalid bits")
+
+                        PhysicalColumnType::Numeric {
+                            precision: *precision,
+                            scale: *scale,
+                        }
                     }
-                } else {
-                    PhysicalColumnType::Float {
-                        bits: FloatBits::_53,
+
+                    ResolvedTypeHint::String { max_length } => {
+                        assert!(matches!(base_pt_type, PrimitiveBaseType::String));
+
+                        // length hint provided, use it
+                        PhysicalColumnType::String {
+                            max_length: Some(*max_length),
+                        }
+                    }
+
+                    ResolvedTypeHint::DateTime { precision } => match base_pt_type {
+                        PrimitiveBaseType::LocalTime => PhysicalColumnType::Time {
+                            precision: Some(*precision),
+                        },
+                        PrimitiveBaseType::LocalDateTime => PhysicalColumnType::Timestamp {
+                            precision: Some(*precision),
+                            timezone: false,
+                        },
+                        PrimitiveBaseType::Instant => PhysicalColumnType::Timestamp {
+                            precision: Some(*precision),
+                            timezone: true,
+                        },
+                        _ => panic!(),
+                    },
+
+                    ResolvedTypeHint::Vector { size, .. } => {
+                        assert!(matches!(base_pt_type, PrimitiveBaseType::Vector));
+
+                        PhysicalColumnType::Vector {
+                            size: (*size).unwrap_or(DEFAULT_VECTOR_SIZE),
+                        }
                     }
                 }
-            }
-
-            ResolvedTypeHint::Decimal { precision, scale } => {
-                assert!(matches!(pt, PrimitiveType::Decimal));
-
-                // cannot have scale and no precision specified
-                if precision.is_none() {
-                    assert!(scale.is_none())
+            } else {
+                match base_pt_type {
+                    PrimitiveBaseType::Int => PhysicalColumnType::Int { bits: IntBits::_32 },
+                    PrimitiveBaseType::Float => PhysicalColumnType::Float {
+                        bits: FloatBits::_24,
+                    },
+                    PrimitiveBaseType::Decimal => PhysicalColumnType::Numeric {
+                        precision: None,
+                        scale: None,
+                    },
+                    PrimitiveBaseType::String => PhysicalColumnType::String { max_length: None },
+                    PrimitiveBaseType::Boolean => PhysicalColumnType::Boolean,
+                    PrimitiveBaseType::LocalTime => PhysicalColumnType::Time { precision: None },
+                    PrimitiveBaseType::LocalDateTime => PhysicalColumnType::Timestamp {
+                        precision: None,
+                        timezone: false,
+                    },
+                    PrimitiveBaseType::Instant => PhysicalColumnType::Timestamp {
+                        precision: None,
+                        timezone: true,
+                    },
+                    PrimitiveBaseType::LocalDate => PhysicalColumnType::Date,
+                    PrimitiveBaseType::Json => PhysicalColumnType::Json,
+                    PrimitiveBaseType::Blob => PhysicalColumnType::Blob,
+                    PrimitiveBaseType::Uuid => PhysicalColumnType::Uuid,
+                    PrimitiveBaseType::Vector => PhysicalColumnType::Vector {
+                        size: DEFAULT_VECTOR_SIZE,
+                    },
                 }
-
-                PhysicalColumnType::Numeric {
-                    precision: *precision,
-                    scale: *scale,
-                }
-            }
-
-            ResolvedTypeHint::String { max_length } => {
-                assert!(matches!(pt, PrimitiveType::String));
-
-                // length hint provided, use it
-                PhysicalColumnType::String {
-                    max_length: Some(*max_length),
-                }
-            }
-
-            ResolvedTypeHint::DateTime { precision } => match pt {
-                PrimitiveType::LocalTime => PhysicalColumnType::Time {
-                    precision: Some(*precision),
-                },
-                PrimitiveType::LocalDateTime => PhysicalColumnType::Timestamp {
-                    precision: Some(*precision),
-                    timezone: false,
-                },
-                PrimitiveType::Instant => PhysicalColumnType::Timestamp {
-                    precision: Some(*precision),
-                    timezone: true,
-                },
-                _ => panic!(),
-            },
-
-            ResolvedTypeHint::Vector { size, .. } => {
-                assert!(matches!(pt, PrimitiveType::Vector));
-
-                PhysicalColumnType::Vector {
-                    size: (*size).unwrap_or(DEFAULT_VECTOR_SIZE),
-                }
-            }
-        }
-    } else {
-        match pt {
-            // choose a default SQL type
-            PrimitiveType::Int => PhysicalColumnType::Int { bits: IntBits::_32 },
-            PrimitiveType::Float => PhysicalColumnType::Float {
-                bits: FloatBits::_24,
-            },
-            PrimitiveType::Decimal => PhysicalColumnType::Numeric {
-                precision: None,
-                scale: None,
-            },
-            PrimitiveType::String => PhysicalColumnType::String { max_length: None },
-            PrimitiveType::Boolean => PhysicalColumnType::Boolean,
-            PrimitiveType::LocalTime => PhysicalColumnType::Time { precision: None },
-            PrimitiveType::LocalDateTime => PhysicalColumnType::Timestamp {
-                precision: None,
-                timezone: false,
-            },
-            PrimitiveType::LocalDate => PhysicalColumnType::Date,
-            PrimitiveType::Instant => PhysicalColumnType::Timestamp {
-                precision: None,
-                timezone: true,
-            },
-            PrimitiveType::Json => PhysicalColumnType::Json,
-            PrimitiveType::Blob => PhysicalColumnType::Blob,
-            PrimitiveType::Uuid => PhysicalColumnType::Uuid,
-            PrimitiveType::Vector => PhysicalColumnType::Vector {
-                size: DEFAULT_VECTOR_SIZE,
-            },
-            PrimitiveType::Array(_) => {
-                panic!()
             }
         }
     }

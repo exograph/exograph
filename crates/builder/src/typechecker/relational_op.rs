@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use core_model::mapped_arena::MappedArena;
+use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveBaseType};
 use core_model_builder::typechecker::{annotation::AnnotationSpec, Typed};
 
 use crate::ast::ast_types::{AstExpr, RelationalOp, Untyped};
@@ -59,7 +59,7 @@ impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
                     && right_typ.is_complete()
                     && type_match(&left_typ, &right_typ)
                 {
-                    *o_typ = Type::Primitive(PrimitiveType::Boolean);
+                    *o_typ = Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Boolean));
                     true
                 } else {
                     *o_typ = Type::Error;
@@ -137,8 +137,14 @@ pub fn identical_match(left: &Type, right: &Type) -> bool {
         match (left, right) {
             (Type::Primitive(left_typ), Type::Primitive(right_typ)) => {
                 match (left_typ, right_typ) {
-                    (PrimitiveType::Float, PrimitiveType::Int)
-                    | (PrimitiveType::Int, PrimitiveType::Float) => true,
+                    (
+                        PrimitiveType::Plain(PrimitiveBaseType::Float),
+                        PrimitiveType::Plain(PrimitiveBaseType::Int),
+                    )
+                    | (
+                        PrimitiveType::Plain(PrimitiveBaseType::Int),
+                        PrimitiveType::Plain(PrimitiveBaseType::Float),
+                    ) => true,
                     _ => left_typ == right_typ,
                 }
             }

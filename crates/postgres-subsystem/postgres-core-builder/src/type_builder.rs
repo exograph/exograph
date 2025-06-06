@@ -18,6 +18,7 @@ use crate::resolved_type::{
 use common::value::val::ValNumber;
 use common::value::Val;
 use core_model::access::AccessPredicateExpression;
+use core_model::primitive_type::PrimitiveBaseType;
 use core_model::types::{Named, TypeValidationProvider};
 use postgres_core_model::access::{CreationAccessExpression, PrecheckAccessPrimitiveExpression};
 use postgres_core_model::types::{
@@ -102,7 +103,7 @@ fn create_shallow_type(
                     kind: PostgresPrimitiveTypeKind::Builtin,
                 },
             );
-            if matches!(pt, PrimitiveType::Vector) {
+            if matches!(pt, PrimitiveType::Plain(PrimitiveBaseType::Vector)) {
                 let vector_distance_type = VectorDistanceType::new("VectorDistance".to_string());
                 building
                     .vector_distance_types

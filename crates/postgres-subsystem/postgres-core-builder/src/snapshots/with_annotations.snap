@@ -4,31 +4,44 @@ expression: resolved
 ---
 values:
   - - ~
-    - Primitive: Boolean
+    - Primitive:
+        Plain: Boolean
   - - ~
-    - Primitive: Int
+    - Primitive:
+        Plain: Int
   - - ~
-    - Primitive: Float
+    - Primitive:
+        Plain: Float
   - - ~
-    - Primitive: Decimal
+    - Primitive:
+        Plain: Decimal
   - - ~
-    - Primitive: String
+    - Primitive:
+        Plain: String
   - - ~
-    - Primitive: LocalTime
+    - Primitive:
+        Plain: LocalTime
   - - ~
-    - Primitive: LocalDateTime
+    - Primitive:
+        Plain: LocalDateTime
   - - ~
-    - Primitive: LocalDate
+    - Primitive:
+        Plain: LocalDate
   - - ~
-    - Primitive: Instant
+    - Primitive:
+        Plain: Instant
   - - ~
-    - Primitive: Json
+    - Primitive:
+        Plain: Json
   - - ~
-    - Primitive: Blob
+    - Primitive:
+        Plain: Blob
   - - ~
-    - Primitive: Uuid
+    - Primitive:
+        Plain: Uuid
   - - ~
-    - Primitive: Vector
+    - Primitive:
+        Plain: Vector
   - - ~
     - Composite:
         name: Concert

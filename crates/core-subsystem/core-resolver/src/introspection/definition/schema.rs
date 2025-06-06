@@ -69,7 +69,7 @@ impl Schema {
                                 profile.query_matches(
                                     field_return_type,
                                     &field_defn.name.node,
-                                    core_model::primitive_type::PrimitiveType::is_primitive,
+                                    core_model::primitive_type::PrimitiveBaseType::is_primitive,
                                 )
                             })
                             .collect::<Vec<FieldDefinition>>(),
@@ -95,7 +95,7 @@ impl Schema {
                                 profile.mutation_matches(
                                     field_return_type,
                                     &field_defn.name.node,
-                                    core_model::primitive_type::PrimitiveType::is_primitive,
+                                    core_model::primitive_type::PrimitiveBaseType::is_primitive,
                                 )
                             })
                             .collect::<Vec<FieldDefinition>>(),

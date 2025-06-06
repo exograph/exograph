@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use core_model::mapped_arena::MappedArena;
+use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveBaseType};
 use core_model_builder::typechecker::{annotation::AnnotationSpec, Typed};
 
 use crate::ast::ast_types::{AstExpr, LogicalOp, Untyped};
@@ -50,8 +50,9 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                 let in_updated = v.pass(type_env, annotation_env, scope, errors);
                 let out_updated = if o_typ.is_incomplete() {
                     match v.typ().deref(type_env) {
-                        Type::Primitive(PrimitiveType::Boolean) => {
-                            *o_typ = Type::Primitive(PrimitiveType::Boolean);
+                        Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Boolean)) => {
+                            *o_typ =
+                                Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Boolean));
                             true
                         }
 
@@ -85,17 +86,19 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                     let left_typ = left.typ().deref(type_env);
                     let right_typ = right.typ().deref(type_env);
 
-                    if left_typ == Type::Primitive(PrimitiveType::Boolean)
-                        && right_typ == Type::Primitive(PrimitiveType::Boolean)
+                    if left_typ == Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Boolean))
+                        && right_typ
+                            == Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Boolean))
                     {
-                        *o_typ = Type::Primitive(PrimitiveType::Boolean);
+                        *o_typ = Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Boolean));
                         true
                     } else {
                         *o_typ = Type::Error;
 
                         if left_typ.is_complete() || right_typ.is_complete() {
                             let mut spans = vec![];
-                            if left_typ != Type::Primitive(PrimitiveType::Boolean)
+                            if left_typ
+                                != Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Boolean))
                                 && left_typ.is_complete()
                             {
                                 spans.push(SpanLabel {
@@ -105,7 +108,8 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                                 })
                             }
 
-                            if right_typ != Type::Primitive(PrimitiveType::Boolean)
+                            if right_typ
+                                != Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Boolean))
                                 && right_typ.is_complete()
                             {
                                 spans.push(SpanLabel {
