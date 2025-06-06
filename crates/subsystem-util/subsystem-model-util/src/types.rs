@@ -36,6 +36,7 @@ pub struct ModuleType {
 #[allow(clippy::large_enum_variant)]
 pub enum ModuleTypeKind {
     Primitive,
+    Injected,
     Composite(ModuleCompositeType),
 }
 
@@ -70,7 +71,7 @@ impl Named for ModuleFieldType {
 impl TypeDefinitionProvider<SerializableSlab<ModuleType>> for ModuleType {
     fn type_definition(&self, module_types: &SerializableSlab<ModuleType>) -> TypeDefinition {
         match &self.kind {
-            ModuleTypeKind::Primitive => TypeDefinition {
+            ModuleTypeKind::Primitive | ModuleTypeKind::Injected => TypeDefinition {
                 extend: false,
                 description: None,
                 name: default_positioned_name(&self.name),

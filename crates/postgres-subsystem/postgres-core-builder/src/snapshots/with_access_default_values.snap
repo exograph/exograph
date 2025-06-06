@@ -30,13 +30,6 @@ values:
   - - ~
     - Primitive: Vector
   - - ~
-    - Primitive: Exograph
-  - - ~
-    - Primitive: ExographPriv
-  - - ~
-    - Primitive:
-        Interception: Operation
-  - - ~
     - Composite:
         name: Concert
         plural_name: Concerts
@@ -176,19 +169,6 @@ values:
         doc_comments: ~
   - ~
   - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
 map:
   Blob:
     index: 10
@@ -197,16 +177,10 @@ map:
     index: 0
     generation: ~
   Concert:
-    index: 16
+    index: 13
     generation: ~
   Decimal:
     index: 3
-    generation: ~
-  Exograph:
-    index: 13
-    generation: ~
-  ExographPriv:
-    index: 14
     generation: ~
   Float:
     index: 2
@@ -228,9 +202,6 @@ map:
     generation: ~
   LocalTime:
     index: 5
-    generation: ~
-  Operation:
-    index: 15
     generation: ~
   String:
     index: 4

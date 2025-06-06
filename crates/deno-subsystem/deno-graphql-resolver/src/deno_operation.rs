@@ -62,7 +62,7 @@ impl DenoOperation<'_> {
                 let return_type = return_type.typ(&subsystem.module_types);
 
                 let type_level_access = match &return_type.kind {
-                    ModuleTypeKind::Primitive => true,
+                    ModuleTypeKind::Primitive | ModuleTypeKind::Injected => true,
                     ModuleTypeKind::Composite(ModuleCompositeType { access, .. }) => subsystem
                         .solve(self.request_context, None, &access.value)
                         .await?

@@ -12,6 +12,7 @@ use std::collections::HashSet;
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 
+use core_model::primitive_type::InjectedType;
 use core_model::types::{FieldType, Named};
 use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
 use core_model_builder::ast::ast_types::AstFieldType;
@@ -37,6 +38,7 @@ use super::access_builder::ResolvedAccess;
 #[allow(clippy::large_enum_variant)]
 pub enum ResolvedType {
     Primitive(PrimitiveType),
+    Injected(InjectedType),
     Composite(ResolvedCompositeType),
 }
 
@@ -44,6 +46,7 @@ impl ResolvedType {
     pub fn name(&self) -> String {
         match self {
             ResolvedType::Primitive(pt) => pt.name(),
+            ResolvedType::Injected(it) => it.name(),
             ResolvedType::Composite(ResolvedCompositeType { name, .. }) => name.to_owned(),
         }
     }
@@ -491,6 +494,10 @@ fn resolve_module_types(
         if let Type::Primitive(pt) = typ {
             // Adopt the primitive types as a ModuleType
             resolved_module_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
+        }
+        if let Type::Injected(it) = typ {
+            // Adopt the injected types as a ModuleType
+            resolved_module_types.add(&it.name(), ResolvedType::Injected(it.clone()));
         }
     }
 
