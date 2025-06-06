@@ -631,10 +631,7 @@ fn determine_column_type<'a>(
             PrimitiveType::Vector => PhysicalColumnType::Vector {
                 size: DEFAULT_VECTOR_SIZE,
             },
-            PrimitiveType::Array(_)
-            | PrimitiveType::Exograph
-            | PrimitiveType::ExographPriv
-            | PrimitiveType::Interception(_) => {
+            PrimitiveType::Array(_) => {
                 panic!()
             }
         }

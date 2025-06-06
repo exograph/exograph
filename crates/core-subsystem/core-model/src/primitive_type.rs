@@ -31,16 +31,6 @@ pub enum PrimitiveType {
     // TODO: This should not be a primitive type, but a type with modifier or some variation of it
     /// An array version of a primitive type.
     Array(Box<PrimitiveType>),
-
-    // TODO: These should not be a primitive types... perhaps another enum `InjectedType`?
-    /// Available as an injected dependency to Deno queries and mutations so that the implementation
-    /// can execute queries and mutations.
-    Exograph,
-    /// Similar to Exograph, but also allows queries and mutations with a privilege of another
-    /// context.
-    ExographPriv,
-    /// Available to interceptors so that they can get the operation that is being intercepted.
-    Interception(String),
 }
 
 impl PrimitiveType {
@@ -59,9 +49,6 @@ impl PrimitiveType {
             PrimitiveType::Blob => "Blob".to_owned(),
             PrimitiveType::Uuid => "Uuid".to_owned(),
             PrimitiveType::Vector => "Vector".to_owned(),
-            PrimitiveType::Exograph => "Exograph".to_owned(),
-            PrimitiveType::ExographPriv => "ExographPriv".to_owned(),
-            PrimitiveType::Interception(name) => name.to_owned(),
             PrimitiveType::Array(pt) => format!("[{}]", pt.name()),
         }
     }
@@ -118,4 +105,27 @@ pub enum PrimitiveValue {
 pub enum NumberLiteral {
     Int(i64),
     Float(f64),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+
+pub enum InjectedType {
+    /// Available as an injected dependency to Deno queries and mutations so that the implementation
+    /// can execute queries and mutations.
+    Exograph,
+    /// Similar to Exograph, but also allows queries and mutations with a privilege of another
+    /// context.
+    ExographPriv,
+    /// Available to interceptors so that they can get the operation that is being intercepted.
+    Operation(String),
+}
+
+impl InjectedType {
+    pub fn name(&self) -> String {
+        match &self {
+            InjectedType::Exograph => "Exograph".to_owned(),
+            InjectedType::ExographPriv => "ExographPriv".to_owned(),
+            InjectedType::Operation(name) => name.to_owned(),
+        }
+    }
 }

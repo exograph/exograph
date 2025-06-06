@@ -30,13 +30,6 @@ values:
   - - ~
     - Primitive: Vector
   - - ~
-    - Primitive: Exograph
-  - - ~
-    - Primitive: ExographPriv
-  - - ~
-    - Primitive:
-        Interception: Operation
-  - - ~
     - Composite:
         name: AuthSchemaTable
         plural_name: AuthSchemaTables
@@ -177,25 +170,12 @@ values:
           delete: ~
         doc_comments: ~
   - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
 map:
   AuthSchemaTable:
-    index: 16
+    index: 13
     generation: ~
   AuthSchemaTableWithCustomName:
-    index: 17
+    index: 14
     generation: ~
   Blob:
     index: 10
@@ -205,12 +185,6 @@ map:
     generation: ~
   Decimal:
     index: 3
-    generation: ~
-  Exograph:
-    index: 13
-    generation: ~
-  ExographPriv:
-    index: 14
     generation: ~
   Float:
     index: 2
@@ -232,9 +206,6 @@ map:
     generation: ~
   LocalTime:
     index: 5
-    generation: ~
-  Operation:
-    index: 15
     generation: ~
   String:
     index: 4

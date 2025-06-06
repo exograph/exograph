@@ -11,7 +11,10 @@ use std::{collections::HashMap, vec};
 
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
+use core_model::{
+    mapped_arena::MappedArena,
+    primitive_type::{InjectedType, PrimitiveType},
+};
 use core_model_builder::{
     ast::ast_types::{AstEnum, AstModel, AstModelKind, AstModule, AstSystem, Untyped},
     typechecker::{
@@ -82,12 +85,12 @@ fn populate_type_env(env: &mut MappedArena<Type>) {
     env.add("Uuid", Type::Primitive(PrimitiveType::Uuid));
     env.add("Vector", Type::Primitive(PrimitiveType::Vector));
 
-    env.add("Exograph", Type::Primitive(PrimitiveType::Exograph));
-    env.add("ExographPriv", Type::Primitive(PrimitiveType::ExographPriv));
+    env.add("Exograph", Type::Injected(InjectedType::Exograph));
+    env.add("ExographPriv", Type::Injected(InjectedType::ExographPriv));
 
     env.add(
         "Operation",
-        Type::Primitive(PrimitiveType::Interception("Operation".to_string())),
+        Type::Injected(InjectedType::Operation("Operation".to_string())),
     );
 }
 

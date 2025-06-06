@@ -31,12 +31,12 @@ types:
     - - ~
       - Primitive: Vector
     - - ~
-      - Primitive: Exograph
+      - Injected: Exograph
     - - ~
-      - Primitive: ExographPriv
+      - Injected: ExographPriv
     - - ~
-      - Primitive:
-          Interception: Operation
+      - Injected:
+          Operation: Operation
     - - ~
       - Composite:
           name: AuthContext

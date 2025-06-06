@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use core_model::primitive_type::PrimitiveType;
+use core_model::primitive_type::{InjectedType, PrimitiveType};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, ops::Deref};
 
@@ -24,6 +24,7 @@ pub enum Type {
     Set(Box<Type>),
     Array(Box<Type>),
     Reference(SerializableSlabIndex<Type>),
+    Injected(InjectedType),
     Null,
     Defer,
     Error,
@@ -100,6 +101,7 @@ impl Type {
             Type::Optional(underlying) | Type::Set(underlying) | Type::Array(underlying) => {
                 underlying.get_underlying_typename(types)
             }
+            Type::Injected(it) => Some(it.name()),
             _ => None,
         }
     }
