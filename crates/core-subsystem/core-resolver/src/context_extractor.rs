@@ -15,7 +15,7 @@ use core_model::{
         ContextContainer, ContextField, ContextFieldType, ContextSelection,
         ContextSelectionElement, ContextType,
     },
-    primitive_type::{NumberLiteral, PrimitiveType, PrimitiveValue},
+    primitive_type::{NumberLiteral, PrimitiveBaseType, PrimitiveType, PrimitiveValue},
     types::FieldType,
 };
 use futures::StreamExt;
@@ -226,32 +226,33 @@ fn coerce_primitive(value: Val, typ: &PrimitiveType) -> Result<Val, ContextExtra
         // `SomeContext.role` isn't supplied. In this case, the `SomeContext.role == "admin"` will
         // evaluate to `false`, and the `||` operator will return the value of `<something>`.
         (value, _) if value == Val::Null => Ok(value),
-        (value @ Val::String(_), PrimitiveType::String) => Ok(value),
-        (value @ Val::Number(_), PrimitiveType::Int) => Ok(value),
-        (value @ Val::Number(_), PrimitiveType::Float) => Ok(value),
-        (value @ Val::Bool(_), PrimitiveType::Boolean) => Ok(value),
-        (value @ Val::String(_), PrimitiveType::Uuid) => Ok(value),
+        (value @ Val::String(_), PrimitiveType::Plain(PrimitiveBaseType::String)) => Ok(value),
+        (value @ Val::Number(_), PrimitiveType::Plain(PrimitiveBaseType::Int)) => Ok(value),
+        (value @ Val::Number(_), PrimitiveType::Plain(PrimitiveBaseType::Float)) => Ok(value),
+        (value @ Val::Bool(_), PrimitiveType::Plain(PrimitiveBaseType::Boolean)) => Ok(value),
+        (value @ Val::String(_), PrimitiveType::Plain(PrimitiveBaseType::Uuid)) => Ok(value),
         (Val::String(str), pt) => match pt {
-            PrimitiveType::Int => str
+            PrimitiveType::Plain(PrimitiveBaseType::Int) => str
                 .parse::<i64>()
                 .map(|i| Val::Number(ValNumber::I64(i)))
                 .map_err(|_| ContextExtractionError::TypeMismatch {
                     expected: typ.name(),
                     actual: str,
                 }),
-            PrimitiveType::Float => str
+            PrimitiveType::Plain(PrimitiveBaseType::Float) => str
                 .parse::<f64>()
                 .map(|f| Val::Number(ValNumber::F64(f)))
                 .map_err(|_| ContextExtractionError::TypeMismatch {
                     expected: typ.name(),
                     actual: str,
                 }),
-            PrimitiveType::Boolean => str.parse::<bool>().map(Val::Bool).map_err(|_| {
-                ContextExtractionError::TypeMismatch {
+            PrimitiveType::Plain(PrimitiveBaseType::Boolean) => str
+                .parse::<bool>()
+                .map(Val::Bool)
+                .map_err(|_| ContextExtractionError::TypeMismatch {
                     expected: typ.name(),
                     actual: str,
-                }
-            }),
+                }),
             _ => Err(ContextExtractionError::TypeMismatch {
                 expected: typ.name(),
                 actual: str,

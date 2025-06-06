@@ -15,6 +15,12 @@ use crate::type_normalization::{BaseType, Type};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PrimitiveType {
+    Plain(PrimitiveBaseType),
+    Array(Box<PrimitiveType>),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum PrimitiveBaseType {
     Int,
     Float,
     Decimal,
@@ -28,28 +34,33 @@ pub enum PrimitiveType {
     Blob,
     Uuid,
     Vector,
-    // TODO: This should not be a primitive type, but a type with modifier or some variation of it
-    /// An array version of a primitive type.
-    Array(Box<PrimitiveType>),
 }
 
 impl PrimitiveType {
     pub fn name(&self) -> String {
         match &self {
-            PrimitiveType::Int => "Int".to_owned(),
-            PrimitiveType::Float => "Float".to_owned(),
-            PrimitiveType::Decimal => "Decimal".to_owned(),
-            PrimitiveType::String => "String".to_owned(),
-            PrimitiveType::Boolean => "Boolean".to_owned(),
-            PrimitiveType::LocalDate => "LocalDate".to_owned(),
-            PrimitiveType::LocalTime => "LocalTime".to_owned(),
-            PrimitiveType::LocalDateTime => "LocalDateTime".to_owned(),
-            PrimitiveType::Instant => "Instant".to_owned(),
-            PrimitiveType::Json => "Json".to_owned(),
-            PrimitiveType::Blob => "Blob".to_owned(),
-            PrimitiveType::Uuid => "Uuid".to_owned(),
-            PrimitiveType::Vector => "Vector".to_owned(),
+            PrimitiveType::Plain(pt) => pt.name(),
             PrimitiveType::Array(pt) => format!("[{}]", pt.name()),
+        }
+    }
+}
+
+impl PrimitiveBaseType {
+    pub fn name(&self) -> String {
+        match &self {
+            PrimitiveBaseType::Int => "Int".to_owned(),
+            PrimitiveBaseType::Float => "Float".to_owned(),
+            PrimitiveBaseType::Decimal => "Decimal".to_owned(),
+            PrimitiveBaseType::String => "String".to_owned(),
+            PrimitiveBaseType::Boolean => "Boolean".to_owned(),
+            PrimitiveBaseType::LocalDate => "LocalDate".to_owned(),
+            PrimitiveBaseType::LocalTime => "LocalTime".to_owned(),
+            PrimitiveBaseType::LocalDateTime => "LocalDateTime".to_owned(),
+            PrimitiveBaseType::Instant => "Instant".to_owned(),
+            PrimitiveBaseType::Json => "Json".to_owned(),
+            PrimitiveBaseType::Blob => "Blob".to_owned(),
+            PrimitiveBaseType::Uuid => "Uuid".to_owned(),
+            PrimitiveBaseType::Vector => "Vector".to_owned(),
         }
     }
 
