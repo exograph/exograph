@@ -230,7 +230,7 @@ pub(crate) fn mutation_access_value(matches: &ArgMatches) -> bool {
     get(matches, "mutation-access").unwrap_or(false)
 }
 
-pub(crate) fn setup_trusted_documents_enforcement(matches: &ArgMatches) {
+pub(crate) fn trusted_documents_enforcement_env(matches: &ArgMatches) -> Option<(String, String)> {
     let enforce_trusted_documents: bool = get::<String>(matches, "enforce-trusted-documents")
         .map(|value| value != "false")
         .unwrap_or(false);
@@ -242,6 +242,11 @@ pub(crate) fn setup_trusted_documents_enforcement(matches: &ArgMatches) {
                 .red()
                 .bold()
         );
-        std::env::set_var(_EXO_ENFORCE_TRUSTED_DOCUMENTS, "false");
+        Some((
+            _EXO_ENFORCE_TRUSTED_DOCUMENTS.to_string(),
+            "false".to_string(),
+        ))
+    } else {
+        None
     }
 }

@@ -11,6 +11,7 @@ use std::collections::HashMap;
 
 pub trait Environment: Send + Sync {
     fn get(&self, key: &str) -> Option<String>;
+    fn vars(&self) -> Vec<(String, String)>;
 
     fn enabled(&self, key: &str, default_value: bool) -> bool {
         match self.get(key) {
@@ -36,8 +37,13 @@ impl Environment for SystemEnvironment {
     fn get(&self, key: &str) -> Option<String> {
         std::env::var(key).ok()
     }
+
+    fn vars(&self) -> Vec<(String, String)> {
+        std::env::vars().collect()
+    }
 }
 
+#[derive(Default, Clone)]
 pub struct MapEnvironment {
     values: HashMap<String, String>,
 }
@@ -45,6 +51,13 @@ pub struct MapEnvironment {
 impl Environment for MapEnvironment {
     fn get(&self, key: &str) -> Option<String> {
         self.values.get(key).cloned()
+    }
+
+    fn vars(&self) -> Vec<(String, String)> {
+        self.values
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
     }
 }
 
@@ -62,6 +75,24 @@ impl<const N: usize> From<[(&str, &str); N]> for MapEnvironment {
                     .into_iter()
                     .map(|(k, v)| (k.to_string(), v.to_string())),
             ),
+        }
+    }
+}
+
+impl MapEnvironment {
+    pub fn new() -> Self {
+        Self {
+            values: HashMap::new(),
+        }
+    }
+
+    pub fn set(&mut self, key: &str, value: &str) {
+        self.values.insert(key.to_string(), value.to_string());
+    }
+
+    pub fn extend_from_env(&mut self, env: &dyn Environment) {
+        for (key, value) in env.vars() {
+            self.values.entry(key).or_insert(value);
         }
     }
 }

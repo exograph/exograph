@@ -15,6 +15,7 @@ use colored::Colorize;
 use common::env_const::{
     EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
 };
+use exo_env::{MapEnvironment, SystemEnvironment};
 use exo_sql::schema::migration::Migration;
 use std::{
     path::{Path, PathBuf},
@@ -30,7 +31,7 @@ use common::env_const::{EXO_JWT_SECRET, EXO_POSTGRES_URL};
 
 use super::command::{
     default_model_file, enforce_trusted_documents_arg, ensure_exo_project_dir, get, port_arg,
-    seed_arg, setup_trusted_documents_enforcement, CommandDefinition,
+    seed_arg, trusted_documents_enforcement_env, CommandDefinition,
 };
 use common::env_const::EXO_OIDC_URL;
 use exo_sql::{
@@ -39,6 +40,7 @@ use exo_sql::{
 };
 use futures::FutureExt;
 
+#[derive(Clone)]
 enum JWTSecret {
     EnvSecret(String),
     EnvOidc(String),
@@ -64,11 +66,11 @@ impl CommandDefinition for YoloCommandDefinition {
 
         let port: Option<u32> = get(matches, "port");
 
-        setup_trusted_documents_enforcement(matches);
+        let env = trusted_documents_enforcement_env(matches);
 
         let seed_path: Option<PathBuf> = get(matches, "seed");
 
-        run(&root_path, port, seed_path, config).await
+        run(&root_path, port, seed_path, config, env).await
     }
 }
 
@@ -77,6 +79,7 @@ async fn run(
     port: Option<u32>,
     seed: Option<PathBuf>,
     config: &Config,
+    env: Option<(String, String)>,
 ) -> Result<()> {
     // make sure we do not exit on SIGINT
     // we spawn processes/containers that need to be cleaned up through drop(),
@@ -102,8 +105,35 @@ async fn run(
         (None, None) => Ok(JWTSecret::Generated(super::util::generate_random_string())),
     }?;
 
-    let prestart_callback =
-        || setup_database(&model, &jwt_secret, db.as_ref(), seed.clone()).boxed();
+    // Create environment variables for the child server process
+    let mut env_vars = MapEnvironment::new();
+    env_vars.extend_from_env(&SystemEnvironment);
+    env_vars.set(EXO_POSTGRES_URL, &db.url());
+    env_vars.set(EXO_INTROSPECTION, "true");
+    env_vars.set(EXO_INTROSPECTION_LIVE_UPDATE, "true");
+    env_vars.set(_EXO_DEPLOYMENT_MODE, "yolo");
+
+    match &jwt_secret {
+        JWTSecret::EnvSecret(s) => env_vars.set(EXO_JWT_SECRET, s),
+        JWTSecret::Generated(s) => env_vars.set(EXO_JWT_SECRET, s),
+        JWTSecret::EnvOidc(s) => env_vars.set(EXO_OIDC_URL, s),
+    };
+    env_vars.set(EXO_CORS_DOMAINS, "*");
+
+    if let Some((ref key, ref value)) = env {
+        env_vars.set(key, value);
+    }
+
+    let prestart_callback = || {
+        setup_database(
+            &model,
+            &jwt_secret,
+            db.as_ref(),
+            seed.clone(),
+            env_vars.clone(),
+        )
+        .boxed()
+    };
 
     watcher::start_watcher(
         root_path,
@@ -121,20 +151,8 @@ async fn setup_database(
     jwt_secret: &JWTSecret,
     db: &(dyn EphemeralDatabase + Send + Sync),
     seed: Option<PathBuf>,
-) -> Result<()> {
-    // set envs for server
-    std::env::set_var(EXO_POSTGRES_URL, db.url());
-    std::env::set_var(EXO_INTROSPECTION, "true");
-    std::env::set_var(EXO_INTROSPECTION_LIVE_UPDATE, "true");
-    std::env::set_var(_EXO_DEPLOYMENT_MODE, "yolo");
-
-    match jwt_secret {
-        JWTSecret::EnvSecret(s) => std::env::set_var(EXO_JWT_SECRET, s),
-        JWTSecret::Generated(s) => std::env::set_var(EXO_JWT_SECRET, s),
-        JWTSecret::EnvOidc(s) => std::env::set_var(EXO_OIDC_URL, s),
-    };
-    std::env::set_var(EXO_CORS_DOMAINS, "*");
-
+    env_vars: MapEnvironment,
+) -> Result<MapEnvironment> {
     println!(
         "{}",
         "Starting with a temporary database (will be wiped out when the server exits)...".purple()
@@ -157,7 +175,7 @@ async fn setup_database(
         }
     };
 
-    let db_client = util::open_database(None).await?;
+    let db_client = util::open_database(Some(&db.url())).await?;
     let mut db_client = db_client.get_client().await?;
 
     let database = util::extract_postgres_database(&model, None, false).await?;
@@ -178,7 +196,7 @@ async fn setup_database(
         println!("Error while applying migration: {e}");
         let options = vec![CONTINUE, REBUILD, PAUSE, EXIT];
         let ans = inquire::Select::new("Choose an option:", options).prompt()?;
-        let db_client = util::open_database(None).await?;
+        let db_client = util::open_database(Some(&db.url())).await?;
         let mut db_client = db_client.get_client().await?;
 
         match ans {
@@ -187,7 +205,7 @@ async fn setup_database(
             }
             REBUILD => {
                 exo_sql::schema::migration::wipe_database(&mut db_client).await?;
-                setup_database(model, jwt_secret, db, None).await?;
+                setup_database(model, jwt_secret, db, None, env_vars.clone()).await?;
             }
             PAUSE => {
                 println!("Pausing for manual repair");
@@ -210,5 +228,5 @@ async fn setup_database(
         db_client.batch_execute(&seed).await?;
     }
 
-    Ok(())
+    Ok(env_vars)
 }

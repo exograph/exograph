@@ -13,6 +13,7 @@ use anyhow::{anyhow, Context, Result};
 use builder::error::ParserError;
 use colored::Colorize;
 use common::env_const::EXO_SERVER_PORT;
+use exo_env::{Environment, MapEnvironment};
 use futures::{future::BoxFuture, FutureExt};
 use notify_debouncer_mini::notify::RecursiveMode;
 use tokio::process::Child;
@@ -36,7 +37,7 @@ pub async fn start_watcher<'a, F>(
     prestart_callback: F,
 ) -> Result<()>
 where
-    F: Fn() -> BoxFuture<'a, Result<()>>,
+    F: Fn() -> BoxFuture<'a, Result<MapEnvironment>>,
 {
     // start watcher
     println!(
@@ -122,7 +123,7 @@ pub(crate) async fn build_and_start_server<'a, F>(
     prestart_callback: &F,
 ) -> Result<Option<Child>>
 where
-    F: Fn() -> BoxFuture<'a, Result<()>>,
+    F: Fn() -> BoxFuture<'a, Result<MapEnvironment>>,
 {
     // Attempts to builds a exo_ir from the model and spawn a exo-server from it
     // - if the attempt succeeds, we will return a handle to the process in an Ok(Some(...))
@@ -139,9 +140,13 @@ where
 
     match build_result {
         Ok(()) => {
-            if let Err(e) = prestart_callback().await {
-                println!("{} {}", "Error:".red().bold(), e.to_string().red().bold());
-            }
+            let env_vars = match prestart_callback().await {
+                Ok(env_vars) => Some(env_vars),
+                Err(e) => {
+                    println!("{} {}", "Error:".red().bold(), e.to_string().red().bold());
+                    None
+                }
+            };
 
             println!("{}", "Starting server...".blue().bold());
 
@@ -151,6 +156,13 @@ where
 
             if let Some(port) = server_port {
                 command.env(EXO_SERVER_PORT, port.to_string());
+            }
+
+            // Apply environment variables from MapEnvironment if provided
+            if let Some(env_vars) = env_vars {
+                for (key, value) in env_vars.vars() {
+                    command.env(key, value);
+                }
             }
 
             if let Some(watch_stage) = watch_stage {
