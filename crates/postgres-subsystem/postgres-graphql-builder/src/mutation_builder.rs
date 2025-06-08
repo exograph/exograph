@@ -26,12 +26,12 @@ use postgres_core_model::{
     access::DatabaseAccessPrimitiveExpression,
     relation::PostgresRelation,
     types::{
-        base_type, EntityRepresentation, EntityType, PostgresField, PostgresFieldType,
-        PostgresType, TypeIndex,
+        EntityRepresentation, EntityType, PostgresField, PostgresFieldType, PostgresType,
+        TypeIndex, base_type,
     },
 };
 
-use crate::utils::{to_mutation_type, MutationTypeKind};
+use crate::utils::{MutationTypeKind, to_mutation_type};
 use postgres_core_builder::access::parent_predicate;
 
 use postgres_core_builder::resolved_type::{

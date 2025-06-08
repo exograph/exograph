@@ -10,6 +10,7 @@
 use tracing::instrument;
 
 use crate::{
+    Database,
     asql::select::AbstractSelect,
     sql::{
         select::Select,
@@ -17,7 +18,6 @@ use crate::{
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
     transform::{pg::selection_level::SelectionLevel, transformer::SelectTransformer},
-    Database,
 };
 
 use super::{
@@ -154,6 +154,7 @@ impl Postgres {
 #[cfg(test)]
 mod tests {
     use crate::{
+        AbstractOrderBy, Limit, Offset, Ordering, RelationId,
         asql::{
             column_path::{ColumnPath, PhysicalColumnPath},
             order_by::AbstractOrderByExpr,
@@ -162,9 +163,8 @@ mod tests {
                 AliasedSelectionElement, Selection, SelectionCardinality, SelectionElement,
             },
         },
-        sql::{predicate::Predicate, SQLParamContainer},
+        sql::{SQLParamContainer, predicate::Predicate},
         transform::{pg::Postgres, test_util::TestSetup, transformer::SelectTransformer},
-        AbstractOrderBy, Limit, Offset, Ordering, RelationId,
     };
 
     use super::AbstractSelect;

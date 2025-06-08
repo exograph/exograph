@@ -1,16 +1,16 @@
 use maybe_owned::MaybeOwned;
 
 use crate::{
+    AbstractUpdate, Column, Database, PhysicalColumn,
     sql::{
         cte::{CteExpression, WithQuery},
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
     transform::{
-        pg::{precheck::add_precheck_queries, selection_level::SelectionLevel, Postgres},
+        pg::{Postgres, precheck::add_precheck_queries, selection_level::SelectionLevel},
         transformer::{PredicateTransformer, SelectTransformer},
     },
-    AbstractUpdate, Column, Database, PhysicalColumn,
 };
 
 use super::update_strategy::UpdateStrategy;

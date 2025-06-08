@@ -19,7 +19,7 @@ use core_plugin_shared::{
 use core_resolver::plugin::SubsystemGraphQLResolver;
 
 use deno_graphql_model::subsystem::DenoSubsystem;
-use deno_graphql_resolver::{exo_config, DenoSubsystemResolver};
+use deno_graphql_resolver::{DenoSubsystemResolver, exo_config};
 use exo_deno::DenoExecutorPool;
 use exo_env::Environment;
 

@@ -15,7 +15,7 @@ use std::{
 };
 
 use super::{
-    db::{generate_random_string, launch_process, EphemeralDatabase, EphemeralDatabaseServer},
+    db::{EphemeralDatabase, EphemeralDatabaseServer, generate_random_string, launch_process},
     error::EphemeralDatabaseSetupError,
 };
 
@@ -39,8 +39,8 @@ impl DockerPostgresDatabaseServer {
         Ok(true)
     }
 
-    pub fn start(
-    ) -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
+    pub fn start()
+    -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
         // acquire an empty port
         let port = {
             let listener = std::net::TcpListener::bind("127.0.0.1:0").map_err(|e| {

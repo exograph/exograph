@@ -8,11 +8,11 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
+    AbstractPredicate, AbstractSelect, AliasedSelectionElement, Column, ColumnPath, Database,
+    NumericComparator, Selection, SelectionElement, VectorDistanceFunction,
     asql::column_path::{ColumnPathLink, RelationLink},
     sql::predicate::ConcretePredicate,
     transform::{pg::selection_level::SelectionLevel, transformer::PredicateTransformer},
-    AbstractPredicate, AbstractSelect, AliasedSelectionElement, Column, ColumnPath, Database,
-    NumericComparator, Selection, SelectionElement, VectorDistanceFunction,
 };
 
 use super::Postgres;
@@ -440,9 +440,9 @@ fn attempt_subselect_predicate(
 #[cfg(test)]
 mod tests {
     use crate::{
-        sql::{predicate::CaseSensitivity, ExpressionBuilder, SQLParamContainer},
-        transform::{pg::Postgres, test_util::TestSetup},
         AbstractPredicate, ColumnPath, PhysicalColumnPath,
+        sql::{ExpressionBuilder, SQLParamContainer, predicate::CaseSensitivity},
+        transform::{pg::Postgres, test_util::TestSetup},
     };
 
     use multiplatform_test::multiplatform_test;

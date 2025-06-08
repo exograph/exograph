@@ -10,19 +10,19 @@
 use crate::subsystem::PostgresGraphQLSubsystem;
 
 use async_graphql_parser::{
+    Pos, Positioned,
     types::{
         EnumType, EnumValueDefinition, InputObjectType, InputValueDefinition, TypeDefinition,
         TypeKind,
     },
-    Pos, Positioned,
 };
 use async_graphql_value::Name;
 use core_model::{
     mapped_arena::SerializableSlabIndex,
     primitive_type::vector_introspection_type,
     type_normalization::{
-        default_positioned, default_positioned_name, BaseType, InputValueProvider, Parameter, Type,
-        TypeDefinitionProvider,
+        BaseType, InputValueProvider, Parameter, Type, TypeDefinitionProvider, default_positioned,
+        default_positioned_name,
     },
     types::{FieldType, Named, TypeValidation},
 };

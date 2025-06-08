@@ -11,7 +11,7 @@ use std::{collections::HashMap, path::PathBuf};
 
 mod operations_metadata;
 
-pub use operations_metadata::{build_operations_metadata, resolve_testvariable, OperationMetadata};
+pub use operations_metadata::{OperationMetadata, build_operations_metadata, resolve_testvariable};
 
 /// Tests for a particular model
 pub struct TestSuite {

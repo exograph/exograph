@@ -10,19 +10,19 @@
 use std::collections::{HashMap, HashSet};
 
 use async_graphql_parser::{
+    Pos, Positioned,
     types::{
         Field, FieldDefinition, FragmentDefinition, FragmentSpread, Selection, SelectionSet, Type,
         TypeDefinition,
     },
-    Pos, Positioned,
 };
-use async_graphql_value::{indexmap::IndexMap, ConstValue, Name};
+use async_graphql_value::{ConstValue, Name, indexmap::IndexMap};
 
 use crate::validation::field::ValidatedField;
 use core_model::type_normalization::TypeDefinitionIntrospection;
 
 use crate::{
-    introspection::definition::schema::{Schema, QUERY_ROOT_TYPENAME},
+    introspection::definition::schema::{QUERY_ROOT_TYPENAME, Schema},
     validation::validation_error::ValidationError,
 };
 

@@ -13,7 +13,7 @@ use core_model::{
     types::{FieldType, Named, TypeValidation, TypeValidationProvider},
 };
 use core_model_builder::{
-    ast::ast_types::{default_span, AstExpr},
+    ast::ast_types::{AstExpr, default_span},
     typechecker::Typed,
 };
 

@@ -9,7 +9,7 @@
 
 //! Support for selecting columns in a table, including json aggregates
 
-use crate::{sql::function::Function, ColumnId, RelationId};
+use crate::{ColumnId, RelationId, sql::function::Function};
 
 use super::select::AbstractSelect;
 

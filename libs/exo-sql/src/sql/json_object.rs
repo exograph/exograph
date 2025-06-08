@@ -10,8 +10,8 @@
 use crate::{Column, Database};
 
 use super::{
-    physical_column::{PhysicalColumn, PhysicalColumnType},
     ExpressionBuilder, SQLBuilder,
+    physical_column::{PhysicalColumn, PhysicalColumnType},
 };
 
 /// A JSON object corresponding to the Postgres' `json_build_object` function.

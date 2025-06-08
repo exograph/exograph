@@ -14,11 +14,11 @@ use std::{
     fmt::{Debug, Display},
     sync::Arc,
 };
-use tokio_postgres::types::{to_sql_checked, ToSql, Type};
+use tokio_postgres::types::{ToSql, Type, to_sql_checked};
 
 use crate::{SQLBytes, SQLParam, SchemaObjectName};
 
-use super::{physical_column::to_pg_array_type, sql_param::SQLParamWithType, SQLValue};
+use super::{SQLValue, physical_column::to_pg_array_type, sql_param::SQLParamWithType};
 
 #[derive(Clone)]
 pub struct SQLParamContainer(SQLParamWithType);

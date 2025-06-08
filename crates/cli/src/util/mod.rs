@@ -7,10 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::{
     fs::File,
-    io::{self, stdin, stdout, Read, Write},
+    io::{self, Read, Write, stdin, stdout},
     path::Path,
 };
 

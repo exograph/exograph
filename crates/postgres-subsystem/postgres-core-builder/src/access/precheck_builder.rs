@@ -30,7 +30,7 @@ use exo_sql::{Database, PhysicalColumnPath};
 use postgres_core_model::{
     access::{AccessPrimitiveExpressionPath, FieldPath, PrecheckAccessPrimitiveExpression},
     relation::PostgresRelation,
-    types::{base_type, EntityType, PostgresFieldType, PostgresPrimitiveType, PostgresType},
+    types::{EntityType, PostgresFieldType, PostgresPrimitiveType, PostgresType, base_type},
 };
 
 use serde::Serialize;
@@ -546,11 +546,11 @@ mod tests {
     };
 
     use crate::{
+        SystemContextBuilding,
         test_util::{
             create_base_model_system, create_postgres_core_subsystem,
             create_typechecked_system_from_src,
         },
-        SystemContextBuilding,
     };
 
     use super::*;

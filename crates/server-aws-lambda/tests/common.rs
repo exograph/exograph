@@ -13,7 +13,7 @@ use std::{collections::HashMap, path::Path, sync::Arc};
 
 use core_model_builder::plugin::BuildMode;
 use exo_env::MapEnvironment;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use server_aws_lambda::resolve;
 use server_common::create_static_loaders;
 use system_router::create_system_router_from_system;

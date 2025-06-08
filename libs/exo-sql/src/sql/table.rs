@@ -10,7 +10,7 @@
 use crate::{Database, TableId};
 
 use super::{
-    join::LeftJoin, schema_object::SchemaObjectName, select::Select, ExpressionBuilder, SQLBuilder,
+    ExpressionBuilder, SQLBuilder, join::LeftJoin, schema_object::SchemaObjectName, select::Select,
 };
 
 /// A table-like concept that can be used in in place of `SELECT FROM <table-query> ...`.

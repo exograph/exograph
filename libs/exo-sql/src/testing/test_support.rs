@@ -1,16 +1,16 @@
 #![cfg(all(any(feature = "test-support", test), not(target_family = "wasm")))]
 
 use std::future::Future;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::LazyLock;
 use std::sync::Mutex;
 use std::sync::PoisonError;
+use std::sync::atomic::{AtomicBool, Ordering};
 
+use crate::DatabaseClientManager;
 use crate::sql::connect::database_client::DatabaseClient;
 use crate::testing::db::{
-    generate_random_string, EphemeralDatabaseLauncher, EphemeralDatabaseServer,
+    EphemeralDatabaseLauncher, EphemeralDatabaseServer, generate_random_string,
 };
-use crate::DatabaseClientManager;
 
 /// This is used to ensure that we don't call cleanup if the database server is not initialized.
 ///

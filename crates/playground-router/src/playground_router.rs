@@ -17,7 +17,7 @@ use common::http::{Headers, RequestHead, RequestPayload, ResponsePayload};
 use common::router::Router;
 use common::{
     env_const::get_playground_http_path,
-    http::{strip_leading, strip_leading_slash, ResponseBody},
+    http::{ResponseBody, strip_leading, strip_leading_slash},
     introspection::allow_introspection,
 };
 use exo_env::Environment;

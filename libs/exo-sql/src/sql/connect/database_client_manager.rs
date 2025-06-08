@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{database_error::DatabaseError, Connect};
+use crate::{Connect, database_error::DatabaseError};
 
 use super::{creation::DatabaseCreation, database_client::DatabaseClient};
 

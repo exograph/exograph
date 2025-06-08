@@ -29,9 +29,9 @@
 use tracing::instrument;
 
 use crate::{
+    AbstractUpdate, Database,
     sql::transaction::TransactionScript,
     transform::{pg::Postgres, transformer::UpdateTransformer},
-    AbstractUpdate, Database,
 };
 
 use super::update_strategy_chain::UpdateStrategyChain;

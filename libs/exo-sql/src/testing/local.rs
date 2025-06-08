@@ -19,7 +19,7 @@ use std::process::Stdio;
 use tempfile::TempDir;
 
 use super::{
-    db::{launch_process, EphemeralDatabase, EphemeralDatabaseServer},
+    db::{EphemeralDatabase, EphemeralDatabaseServer, launch_process},
     error::EphemeralDatabaseSetupError,
 };
 
@@ -57,8 +57,8 @@ impl LocalPostgresDatabaseServer {
         Ok(true)
     }
 
-    pub fn start(
-    ) -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
+    pub fn start()
+    -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
         let data_dir = tempfile::tempdir().map_err(|e| {
             EphemeralDatabaseSetupError::Generic(format!(
                 "Failed to create temporary directory: {e}",

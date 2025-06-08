@@ -7,10 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
-use builder::error::ParserError;
 use builder::RealFileSystem;
+use builder::error::ParserError;
 use clap::{ArgMatches, Command};
 use core_model_builder::plugin::BuildMode;
 use core_plugin_interface::interface::SubsystemBuilder;
@@ -31,9 +31,9 @@ use crate::config::Config;
 use crate::config::WatchStage;
 use crate::util::watcher::execute_scripts;
 
+use super::command::CommandDefinition;
 use super::command::default_trusted_documents_dir;
 use super::command::ensure_exo_project_dir;
-use super::command::CommandDefinition;
 
 pub struct BuildCommandDefinition {}
 

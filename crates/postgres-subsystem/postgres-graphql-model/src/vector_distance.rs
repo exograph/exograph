@@ -5,7 +5,7 @@ use async_graphql_parser::types::{
 };
 use async_graphql_value::Name;
 use core_model::type_normalization::{
-    default_positioned, default_positioned_name, FieldDefinitionProvider, TypeDefinitionProvider,
+    FieldDefinitionProvider, TypeDefinitionProvider, default_positioned, default_positioned_name,
 };
 
 use crate::subsystem::PostgresGraphQLSubsystem;

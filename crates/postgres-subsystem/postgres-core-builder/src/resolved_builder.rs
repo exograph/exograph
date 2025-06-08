@@ -18,7 +18,7 @@ use postgres_core_model::types::EntityRepresentation;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    access_builder::{build_access, ResolvedAccess},
+    access_builder::{ResolvedAccess, build_access},
     naming::{ToPlural, ToTableName},
 };
 use crate::resolved_type::{
@@ -31,14 +31,14 @@ use core_model::{
 };
 use core_model_builder::{
     ast::ast_types::{
-        default_span, AstAnnotation, AstAnnotationParams, AstExpr, AstField, AstFieldDefault,
-        AstFieldDefaultKind, AstFieldType, AstModel, AstModelKind,
+        AstAnnotation, AstAnnotationParams, AstExpr, AstField, AstFieldDefault,
+        AstFieldDefaultKind, AstFieldType, AstModel, AstModelKind, default_span,
     },
-    builder::resolved_builder::{compute_fragment_fields, AnnotationMapHelper},
+    builder::resolved_builder::{AnnotationMapHelper, compute_fragment_fields},
     error::ModelBuildingError,
     typechecker::{
-        typ::{Module, Type, TypecheckedSystem},
         Typed,
+        typ::{Module, Type, TypecheckedSystem},
     },
 };
 use exo_sql::{SchemaObjectName, VectorDistanceFunction};
@@ -1118,17 +1118,17 @@ fn compute_column_info(
 
                             // We don't support direct many-to-many relationships
                             Err(Diagnostic {
-                                    level: Level::Error,
-                                    message: format!(
-                                        "Many-to-many relationships without a linking type are not supported. Consider adding a type such as '{suggested_linking_type_name}' to connect '{referring_type_name}' and '{referred_type_name}",
-                                    ),
-                                    code: Some("C000".to_string()),
-                                    spans: vec![SpanLabel {
-                                        span: field.span,
-                                        style: SpanStyle::Primary,
-                                        label: None,
-                                    }],
-                                })
+                                level: Level::Error,
+                                message: format!(
+                                    "Many-to-many relationships without a linking type are not supported. Consider adding a type such as '{suggested_linking_type_name}' to connect '{referring_type_name}' and '{referred_type_name}",
+                                ),
+                                code: Some("C000".to_string()),
+                                spans: vec![SpanLabel {
+                                    span: field.span,
+                                    style: SpanStyle::Primary,
+                                    label: None,
+                                }],
+                            })
                         } else if user_supplied_column_name.is_some() {
                             return Err(Diagnostic {
                                 level: Level::Error,
@@ -1257,41 +1257,38 @@ fn get_matching_field<'a>(
 
     match &matching_fields[..] {
         [matching_field] => Ok(matching_field),
-        [] => {
-            Err(Diagnostic {
-                level: Level::Error,
-                message: format!(
-                    "Could not find the matching field of the '{}' type '{}'. Ensure that there is only one field of that type or the '@relation' annotation specifies the matching field name.",
-                    enclosing_type.name, field.name
-                ),
-                code: Some("C000".to_string()),
-                spans: vec![SpanLabel {
-                    span: field.span,
-                    style: SpanStyle::Primary,
-                    label: None,
-                }
-            ],
-        })},
-        _ => {
-            Err(
-                Diagnostic {
-                    level: Level::Error,
-                    message: format!(
-                        "Found multiple matching fields ({}) of the '{}' type when determining the matching column for '{}'. Consider using the `@relation` annotation to resolve this ambiguity.",
-                        matching_fields
-                            .into_iter()
-                            .map(|f| format!("'{}'", f.name))
-                            .collect::<Vec<_>>()
-                            .join(", "), enclosing_type.name, field.name),
-                    code: Some("C000".to_string()),
-                    spans: vec![SpanLabel {
-                        span: field.span,
-                        style: SpanStyle::Primary,
-                        label: None,
-                    }],
-                }
-            )
-        }
+        [] => Err(Diagnostic {
+            level: Level::Error,
+            message: format!(
+                "Could not find the matching field of the '{}' type '{}'. Ensure that there is only one field of that type or the '@relation' annotation specifies the matching field name.",
+                enclosing_type.name, field.name
+            ),
+            code: Some("C000".to_string()),
+            spans: vec![SpanLabel {
+                span: field.span,
+                style: SpanStyle::Primary,
+                label: None,
+            }],
+        }),
+        _ => Err(Diagnostic {
+            level: Level::Error,
+            message: format!(
+                "Found multiple matching fields ({}) of the '{}' type when determining the matching column for '{}'. Consider using the `@relation` annotation to resolve this ambiguity.",
+                matching_fields
+                    .into_iter()
+                    .map(|f| format!("'{}'", f.name))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                enclosing_type.name,
+                field.name
+            ),
+            code: Some("C000".to_string()),
+            spans: vec![SpanLabel {
+                span: field.span,
+                style: SpanStyle::Primary,
+                label: None,
+            }],
+        }),
     }
 }
 

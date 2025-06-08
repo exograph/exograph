@@ -8,7 +8,7 @@ use postgres_core_model::{
 };
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
-use crate::access::test_util::{context_selection, TestRouter};
+use crate::access::test_util::{TestRouter, context_selection};
 
 #[allow(dead_code)]
 pub(super) struct TestSystem {

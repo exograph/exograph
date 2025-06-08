@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use std::{
-    fs::{create_dir_all, File},
+    fs::{File, create_dir_all},
     path::PathBuf,
 };
 
@@ -45,7 +45,9 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
 
     async fn execute(&self, matches: &clap::ArgMatches, config: &Config) -> Result<()> {
         let download_file_name = "exograph-aws-lambda-linux-2023-x86_64.zip";
-        let download_url = format!("https://github.com/exograph/exograph/releases/download/v{CURRENT_VERSION}/{download_file_name}");
+        let download_url = format!(
+            "https://github.com/exograph/exograph/releases/download/v{CURRENT_VERSION}/{download_file_name}"
+        );
 
         let downloaded_file_path =
             download_if_needed(&download_url, "Exograph AWS Distribution").await?;

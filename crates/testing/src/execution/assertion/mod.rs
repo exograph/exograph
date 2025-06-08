@@ -9,11 +9,11 @@
 
 use std::collections::{HashMap, HashSet};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use exo_deno::{
-    deno_core::{url::Url, ModuleType},
-    deno_executor_pool::{DenoScriptDefn, ResolvedModule},
     Arg, DenoModule, DenoModuleSharedState, UserCode,
+    deno_core::{ModuleType, url::Url},
+    deno_executor_pool::{DenoScriptDefn, ResolvedModule},
 };
 
 const ASSERT_JS: &str = include_str!("./assert.js");
@@ -271,9 +271,10 @@ mod tests {
         .await
         .unwrap_err();
 
-        assert!(err
-            .to_string()
-            .starts_with("assertion failed at 'data.c': expected biz, got qux"));
+        assert!(
+            err.to_string()
+                .starts_with("assertion failed at 'data.c': expected biz, got qux")
+        );
     }
 
     #[tokio::test]
@@ -300,9 +301,10 @@ mod tests {
         .await
         .unwrap_err();
 
-        assert!(err
-            .to_string()
-            .starts_with("assertion failed at 'data.c': assert function failed actual"));
+        assert!(
+            err.to_string()
+                .starts_with("assertion failed at 'data.c': assert function failed actual")
+        );
     }
 
     #[tokio::test]

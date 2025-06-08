@@ -7,8 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql::database_error::DatabaseError;
 use exo_sql::AbstractOperation;
+use exo_sql::database_error::DatabaseError;
 
 use common::context::RequestContext;
 use core_resolver::{QueryResponse, QueryResponseBody};

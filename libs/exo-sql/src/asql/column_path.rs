@@ -12,8 +12,8 @@ use std::{cmp::Ordering, marker::PhantomData};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    sql::{predicate::ParamEquality, relation::RelationColumnPair, SQLParamContainer},
     AbstractPredicate, ColumnId, Database, TableId,
+    sql::{SQLParamContainer, predicate::ParamEquality, relation::RelationColumnPair},
 };
 
 /// A link in `ColumnPath` to a column starting at a root table and ending at a leaf column. This

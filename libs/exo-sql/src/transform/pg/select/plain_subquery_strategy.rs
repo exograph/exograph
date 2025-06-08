@@ -7,11 +7,11 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{sql::select::Select, Database};
+use crate::{Database, sql::select::Select};
 
 use super::{
     selection_context::SelectionContext,
-    selection_strategy::{compute_inner_select, join_info, nest_subselect, SelectionStrategy},
+    selection_strategy::{SelectionStrategy, compute_inner_select, join_info, nest_subselect},
 };
 
 /// Strategy that uses a single subquery

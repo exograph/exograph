@@ -29,7 +29,7 @@ use core_model_builder::{
 use exo_sql::{ColumnPathLink, Database, PhysicalColumnPath};
 use postgres_core_model::access::DatabaseAccessPrimitiveExpression;
 use postgres_core_model::types::{
-    base_type, EntityType, PostgresFieldType, PostgresPrimitiveType, PostgresType,
+    EntityType, PostgresFieldType, PostgresPrimitiveType, PostgresType, base_type,
 };
 
 use crate::resolved_type::ResolvedTypeEnv;

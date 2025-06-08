@@ -23,9 +23,9 @@ use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError};
 
 use exo_sql::schema::column_spec::{ColumnAutoincrement, ColumnDefault};
 use exo_sql::{
-    schema::index_spec::IndexKind, ColumnId, FloatBits, IntBits, ManyToOne, PhysicalColumn,
+    ColumnId, DEFAULT_VECTOR_SIZE, FloatBits, IntBits, ManyToOne, PhysicalColumn,
     PhysicalColumnType, PhysicalIndex, PhysicalTable, TableId, VectorDistanceFunction,
-    DEFAULT_VECTOR_SIZE,
+    schema::index_spec::IndexKind,
 };
 use exo_sql::{Database, PhysicalEnum, RelationColumnPair};
 

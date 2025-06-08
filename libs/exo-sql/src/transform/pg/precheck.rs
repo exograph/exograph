@@ -1,8 +1,8 @@
 use crate::{
-    database_error::DatabaseError,
-    sql::transaction::{TransactionScript, TransactionStep},
     AbstractPredicate, AbstractSelect, AliasedSelectionElement, ColumnPath, Database, Selection,
     SelectionElement, TableId,
+    database_error::DatabaseError,
+    sql::transaction::{TransactionScript, TransactionStep},
 };
 
 use crate::transform::transformer::SelectTransformer;
@@ -71,7 +71,7 @@ fn compute_precheck_query(
         [] => {
             return Err(DatabaseError::Precheck(
                 "Access predicates with no lead table ids are not supported".to_string(),
-            ))
+            ));
         }
     };
 

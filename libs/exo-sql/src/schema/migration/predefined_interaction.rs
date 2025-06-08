@@ -5,8 +5,8 @@ use std::sync::Mutex;
 use crate::SchemaObjectName;
 
 use super::{
-    interaction::{InteractionError, TableAction},
     MigrationInteraction,
+    interaction::{InteractionError, TableAction},
 };
 
 #[derive(Debug)]

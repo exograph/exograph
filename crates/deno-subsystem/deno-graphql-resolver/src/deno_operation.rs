@@ -12,12 +12,12 @@ use indexmap::IndexMap;
 use common::context::RequestContext;
 use common::value::Val;
 use core_resolver::{
+    QueryResponse, QueryResponseBody,
     access_solver::{AccessSolver, AccessSolverError},
     context_extractor::ContextExtractor,
     exograph_execute_query,
     system_resolver::{ExographExecuteQueryFn, GraphQLSystemResolver},
     validation::field::ValidatedField,
-    QueryResponse, QueryResponseBody,
 };
 
 use deno_graphql_model::{
@@ -26,12 +26,12 @@ use deno_graphql_model::{
     types::{ModuleCompositeType, ModuleOperationReturnType, ModuleTypeKind},
 };
 
-use exo_deno::{deno_executor_pool::DenoScriptDefn, Arg};
+use exo_deno::{Arg, deno_executor_pool::DenoScriptDefn};
 use futures::StreamExt;
 
 use crate::{
-    deno_execution_error::DenoExecutionError, exo_execution::ExoCallbackProcessor,
-    module_access_predicate::ModuleAccessPredicate, DenoSubsystemResolver,
+    DenoSubsystemResolver, deno_execution_error::DenoExecutionError,
+    exo_execution::ExoCallbackProcessor, module_access_predicate::ModuleAccessPredicate,
 };
 
 use std::collections::HashMap;

@@ -9,7 +9,7 @@
 
 use std::{cmp::min, fs::create_dir_all, io::Write, path::PathBuf};
 
-use anyhow::{anyhow, Ok, Result};
+use anyhow::{Ok, Result, anyhow};
 use futures::StreamExt;
 use home::home_dir;
 use indicatif::{ProgressBar, ProgressStyle};

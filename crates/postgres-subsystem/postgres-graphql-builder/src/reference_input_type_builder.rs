@@ -18,7 +18,7 @@ use postgres_core_model::{
     types::{EntityRepresentation, EntityType, PostgresField},
 };
 
-use crate::utils::{to_mutation_type, MutationTypeKind};
+use crate::utils::{MutationTypeKind, to_mutation_type};
 
 use super::{builder::Builder, naming::ToPostgresTypeNames, system_builder::SystemContextBuilding};
 use postgres_core_builder::resolved_type::{ResolvedCompositeType, ResolvedType};

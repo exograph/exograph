@@ -11,7 +11,7 @@ use crate::subsystem::PostgresGraphQLSubsystem;
 use async_graphql_parser::types::{TypeDefinition, TypeKind};
 use core_model::{
     mapped_arena::SerializableSlabIndex,
-    type_normalization::{default_positioned_name, Parameter, Type, TypeDefinitionProvider},
+    type_normalization::{Parameter, Type, TypeDefinitionProvider, default_positioned_name},
     types::{FieldType, Named, TypeValidation},
 };
 use serde::{Deserialize, Serialize};

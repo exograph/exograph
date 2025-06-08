@@ -13,11 +13,11 @@ use async_graphql_parser::types::{FieldDefinition, OperationType, TypeDefinition
 use common::context::RequestContext;
 use core_plugin_shared::interception::InterceptorIndex;
 use core_resolver::{
+    InterceptedOperation, QueryResponse, QueryResponseBody,
     introspection::definition::schema::Schema,
     plugin::{SubsystemGraphQLResolver, SubsystemResolutionError},
     system_resolver::GraphQLSystemResolver,
     validation::field::ValidatedField,
-    InterceptedOperation, QueryResponse, QueryResponseBody,
 };
 
 use crate::{field_resolver::FieldResolver, root_element::IntrospectionRootElement};

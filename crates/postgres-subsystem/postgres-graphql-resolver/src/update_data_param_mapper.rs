@@ -23,7 +23,7 @@ use exo_sql::{
 use futures::StreamExt;
 use postgres_core_model::{
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation},
-    types::{base_type, EntityType, PostgresType, TypeIndex},
+    types::{EntityType, PostgresType, TypeIndex, base_type},
 };
 use postgres_graphql_model::{
     mutation::DataParameter, subsystem::PostgresGraphQLSubsystem, types::MutationType,

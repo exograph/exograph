@@ -8,9 +8,9 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
+    Database, ManyToOneId, OneToManyId, SchemaObjectName, TableId,
     database_error::DatabaseError,
     schema::column_spec::{ColumnAutoincrement, ColumnDefault},
-    Database, ManyToOneId, OneToManyId, SchemaObjectName, TableId,
 };
 
 use super::{ExpressionBuilder, SQLBuilder};

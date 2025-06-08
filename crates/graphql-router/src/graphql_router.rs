@@ -18,9 +18,9 @@ use common::router::Router;
 use core_plugin_shared::interception::InterceptionMap;
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_plugin_shared::trusted_documents::TrustedDocuments;
+use core_resolver::QueryResponse;
 use core_resolver::introspection::definition::schema::Schema;
 use core_resolver::plugin::SubsystemGraphQLResolver;
-use core_resolver::QueryResponse;
 use core_router::SystemLoadingError;
 use http::StatusCode;
 
@@ -30,9 +30,9 @@ use async_stream::try_stream;
 use bytes::Bytes;
 use common::context::RequestContext;
 use common::operation_payload::OperationsPayload;
+use core_resolver::QueryResponseBody;
 use core_resolver::system_resolver::GraphQLSystemResolver;
 use core_resolver::system_resolver::{RequestError, SystemResolutionError};
-use core_resolver::QueryResponseBody;
 
 use exo_env::Environment;
 

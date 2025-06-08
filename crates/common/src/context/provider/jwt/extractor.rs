@@ -5,9 +5,9 @@ use serde_json::Value;
 use tokio::sync::OnceCell;
 use tracing::warn;
 
+use crate::context::RequestContext;
 use crate::context::context_extractor::ContextExtractor;
 use crate::context::error::ContextExtractionError;
-use crate::context::RequestContext;
 use crate::http::RequestHead;
 
 use super::JwtAuthenticator;

@@ -10,18 +10,18 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::{Arg, Command};
+use exo_sql::DatabaseClient;
 use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::issue::WithIssues;
 use exo_sql::schema::spec::{MigrationScope, MigrationScopeMatches};
-use exo_sql::DatabaseClient;
 
 use std::io::Write;
 use std::path::PathBuf;
 
 use crate::commands::command::{
-    database_arg, database_value, get, migration_scope_arg, migration_scope_value,
-    mutation_access_arg, mutation_access_value, output_arg, query_access_arg, query_access_value,
-    yes_arg, yes_value, CommandDefinition,
+    CommandDefinition, database_arg, database_value, get, migration_scope_arg,
+    migration_scope_value, mutation_access_arg, mutation_access_value, output_arg,
+    query_access_arg, query_access_value, yes_arg, yes_value,
 };
 use crate::commands::util::compute_migration_scope;
 use crate::config::Config;
@@ -142,7 +142,7 @@ mod tests {
 
     use common::test_support::{assert_file_content, read_relative_file};
     use exo_sql::{
-        schema::migration::Migration, testing::test_support::with_init_script, Database,
+        Database, schema::migration::Migration, testing::test_support::with_init_script,
     };
     use postgres_core_model::subsystem::PostgresCoreSubsystem;
 

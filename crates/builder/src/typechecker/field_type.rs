@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::mapped_arena::MappedArena;
-use core_model_builder::typechecker::{annotation::AnnotationSpec, Typed};
+use core_model_builder::typechecker::{Typed, annotation::AnnotationSpec};
 
 use crate::ast::ast_types::{AstFieldType, Untyped};
 

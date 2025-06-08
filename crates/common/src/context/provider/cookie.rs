@@ -15,7 +15,7 @@ use serde_json::Value;
 use tokio::sync::OnceCell;
 
 use crate::context::{
-    context_extractor::ContextExtractor, error::ContextExtractionError, RequestContext,
+    RequestContext, context_extractor::ContextExtractor, error::ContextExtractionError,
 };
 use crate::http::RequestHead;
 

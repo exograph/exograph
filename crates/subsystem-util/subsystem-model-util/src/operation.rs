@@ -11,7 +11,7 @@ use std::fmt::Debug;
 
 use async_graphql_parser::types::FieldDefinition;
 use core_model::type_normalization::{
-    default_positioned, default_positioned_name, InputValueProvider, Parameter, Type,
+    InputValueProvider, Parameter, Type, default_positioned, default_positioned_name,
 };
 use core_model::{
     mapped_arena::SerializableSlabIndex, type_normalization::FieldDefinitionProvider,

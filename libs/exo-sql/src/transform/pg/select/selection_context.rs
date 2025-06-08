@@ -8,8 +8,8 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    transform::pg::{selection_level::SelectionLevel, Postgres},
     AbstractSelect, ColumnPath, Database, PhysicalColumnPath,
+    transform::pg::{Postgres, selection_level::SelectionLevel},
 };
 
 /// A context for the selection transformation to avoid repeating the same work

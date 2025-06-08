@@ -22,7 +22,7 @@ use futures::StreamExt;
 
 use common::{
     context::{ContextExtractionError, RequestContext},
-    value::{val::ValNumber, Val},
+    value::{Val, val::ValNumber},
 };
 
 /// Extract context objects from the request context.

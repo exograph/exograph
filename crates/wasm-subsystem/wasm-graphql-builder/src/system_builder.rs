@@ -12,7 +12,7 @@ use core_model_builder::{
     ast::ast_types::{AstExpr, AstModule},
     builder::{resolved_builder::AnnotationMapHelper, system_builder::BaseModelSystem},
     error::ModelBuildingError,
-    typechecker::{typ::TypecheckedSystem, Typed},
+    typechecker::{Typed, typ::TypecheckedSystem},
 };
 use std::path::Path;
 use subsystem_model_builder_util::ScriptProcessor;

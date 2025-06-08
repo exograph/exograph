@@ -129,7 +129,7 @@ async fn map_field<'content>(
             _ => {
                 return Err(PostgresExecutionError::Generic(
                     "Invalid nested aggregation of a composite type".into(),
-                ))
+                ));
             }
         }
     };

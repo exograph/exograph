@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 use crate::Database;
 
-use super::{schema_object::SchemaObjectName, sql_param::SQLParamWithType, ExpressionBuilder};
+use super::{ExpressionBuilder, schema_object::SchemaObjectName, sql_param::SQLParamWithType};
 
 pub struct SQLBuilder {
     /// The SQL being built with placeholders for each parameter

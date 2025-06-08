@@ -8,13 +8,13 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
+    AbstractOrderBy, ColumnPath, Database,
     asql::order_by::AbstractOrderByExpr,
     sql::order::{OrderBy, OrderByElement, OrderByElementExpr, VectorDistanceOperand},
     transform::transformer::OrderByTransformer,
-    AbstractOrderBy, ColumnPath, Database,
 };
 
-use super::{selection_level::SelectionLevel, Postgres};
+use super::{Postgres, selection_level::SelectionLevel};
 
 impl OrderByTransformer for Postgres {
     /// Transforms an abstract order-by clause into a concrete one

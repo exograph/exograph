@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use anyhow::Result;
 
-use tokio::io::{stdin, stdout, AsyncWriteExt};
+use tokio::io::{AsyncWriteExt, stdin, stdout};
 use tokio_util::codec::{FramedRead, LinesCodec};
 
 use tracing_subscriber::EnvFilter;

@@ -1,7 +1,7 @@
 use exo_env::Environment;
 use exo_sql::{DatabaseClientManager, DatabaseExecutor};
 use thiserror::Error;
-use tokio_postgres::{types::FromSqlOwned, Row};
+use tokio_postgres::{Row, types::FromSqlOwned};
 
 use crate::postgres_execution_error::PostgresExecutionError;
 

@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use futures::{lock::Mutex, StreamExt};
+use futures::{StreamExt, lock::Mutex};
 
 use common::context::RequestContext;
 use exo_env::Environment;
 
 use crate::plugin::{
-    subsystem_rpc_resolver::{SubsystemRpcError, SubsystemRpcResponse},
     SubsystemRpcResolver,
+    subsystem_rpc_resolver::{SubsystemRpcError, SubsystemRpcResponse},
 };
 
 pub struct SystemRpcResolver {

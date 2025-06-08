@@ -8,9 +8,9 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
+    AbstractInsert, ColumnId, Database,
     sql::transaction::{TransactionScript, TransactionStepId},
     transform::pg::Postgres,
-    AbstractInsert, ColumnId, Database,
 };
 
 /// A strategy for generating a SQL query from an abstract insert.

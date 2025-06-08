@@ -8,12 +8,12 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
+    AliasedSelectionElement, Column, Database, Selection, SelectionCardinality, SelectionElement,
     sql::{
         json_agg::JsonAgg,
         json_object::{JsonObject, JsonObjectElement},
     },
-    transform::pg::{selection_level::SelectionLevel, Postgres},
-    AliasedSelectionElement, Column, Database, Selection, SelectionCardinality, SelectionElement,
+    transform::pg::{Postgres, selection_level::SelectionLevel},
 };
 
 pub enum SelectionSQL {

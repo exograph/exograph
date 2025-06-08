@@ -10,8 +10,8 @@
 use std::sync::Arc;
 
 use async_graphql_parser::{
-    types::{ExecutableDocument, OperationType},
     Pos,
+    types::{ExecutableDocument, OperationType},
 };
 #[cfg(not(target_family = "wasm"))]
 use common::env_const::{get_enforce_trusted_documents, is_production};
@@ -21,7 +21,7 @@ use core_plugin_shared::{
         TrustedDocumentEnforcement, TrustedDocumentResolutionError, TrustedDocuments,
     },
 };
-use futures::{future::BoxFuture, StreamExt};
+use futures::{StreamExt, future::BoxFuture};
 use serde_json::{Map, Value};
 use thiserror::Error;
 use tokio::runtime::Handle;
@@ -33,13 +33,13 @@ use common::context::RequestContext;
 use common::operation_payload::OperationsPayload;
 
 use crate::{
+    FieldResolver, InterceptedOperation, QueryResponse,
     introspection::definition::schema::Schema,
-    plugin::{subsystem_graphql_resolver::SubsystemGraphQLResolver, SubsystemResolutionError},
+    plugin::{SubsystemResolutionError, subsystem_graphql_resolver::SubsystemGraphQLResolver},
     validation::{
         document_validator::DocumentValidator, field::ValidatedField,
         operation::ValidatedOperation, validation_error::ValidationError,
     },
-    FieldResolver, InterceptedOperation, QueryResponse,
 };
 
 pub type ExographExecuteQueryFn<'a> = dyn Fn(
@@ -413,9 +413,7 @@ pub enum SystemResolutionError {
     #[error("Around interceptor returned no response")]
     AroundInterceptorReturnedNoResponse,
 
-    #[error(
-        "Attempt to resolve empty interceptor (proceed called from before/after interceptor?)"
-    )]
+    #[error("Attempt to resolve empty interceptor (proceed called from before/after interceptor?)")]
     NoInterceptionTree,
 
     #[error("{0}")]

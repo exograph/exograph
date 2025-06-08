@@ -15,8 +15,8 @@ use crate::resolved_type::{
     ResolvedCompositeType, ResolvedField, ResolvedFieldDefault, ResolvedFieldType,
     ResolvedFieldTypeHelper, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
 };
-use common::value::val::ValNumber;
 use common::value::Val;
+use common::value::val::ValNumber;
 use core_model::access::AccessPredicateExpression;
 use core_model::primitive_type::PrimitiveBaseType;
 use core_model::types::{Named, TypeValidationProvider};
@@ -34,7 +34,7 @@ use core_model::{
 };
 use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError, typechecker::Typed};
 
-use exo_sql::{ColumnId, VectorDistanceFunction, DEFAULT_VECTOR_SIZE};
+use exo_sql::{ColumnId, DEFAULT_VECTOR_SIZE, VectorDistanceFunction};
 
 use postgres_core_model::{
     access::{Access, DatabaseAccessPrimitiveExpression, UpdateAccessExpression},
@@ -859,15 +859,16 @@ fn create_relation(
                             (FieldType::Plain(_), Some(Cardinality::One)) => {
                                 Err(ModelBuildingError::Generic(format!(
                                     "When establishing a one-to-one relation, one side of the relation must be optional. Check the fields of the `{}` and `{}` types.",
-                                    self_type.name, field.typ.name()
+                                    self_type.name,
+                                    field.typ.name()
                                 )))
                             }
-                            _ => {
-                                Err(ModelBuildingError::Generic(format!(
-                                    "Unexpected relation type for field `{}` of the `{}` type. The matching field is `{}`",
-                                    field.name, field.typ.name(), foreign_field_type.name
-                                )))
-                            }
+                            _ => Err(ModelBuildingError::Generic(format!(
+                                "Unexpected relation type for field `{}` of the `{}` type. The matching field is `{}`",
+                                field.name,
+                                field.typ.name(),
+                                foreign_field_type.name
+                            ))),
                         }
                     }
                 }

@@ -22,8 +22,8 @@ use common::value::Val;
 
 use core_model::access::AccessRelationalOp;
 use core_resolver::access_solver::{
-    eq_values, neq_values, reduce_common_primitive_expression, AccessInput, AccessPredicate,
-    AccessSolution, AccessSolver, AccessSolverError,
+    AccessInput, AccessPredicate, AccessSolution, AccessSolver, AccessSolverError, eq_values,
+    neq_values, reduce_common_primitive_expression,
 };
 use exo_sql::{AbstractPredicate, ColumnPath, PhysicalColumnPath, SQLParamContainer};
 use postgres_core_model::{
@@ -114,7 +114,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
             _ => {
                 return Ok(AccessSolution::Unsolvable(AbstractPredicateWrapper(
                     AbstractPredicate::True,
-                )))
+                )));
             } // If either side is None, we can't produce a predicate
         };
 

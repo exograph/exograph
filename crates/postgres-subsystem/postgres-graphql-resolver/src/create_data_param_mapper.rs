@@ -22,7 +22,7 @@ use exo_sql::{
 use futures::future::{join_all, try_join_all};
 use postgres_core_model::relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation};
 use postgres_core_model::types::{
-    base_type, PostgresField, PostgresFieldDefaultValue, PostgresType,
+    PostgresField, PostgresFieldDefaultValue, PostgresType, base_type,
 };
 use postgres_graphql_model::{
     mutation::DataParameter, subsystem::PostgresGraphQLSubsystem, types::MutationType,

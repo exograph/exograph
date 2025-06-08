@@ -16,7 +16,7 @@ use crate::{
         AstAnnotation, AstAnnotationParams, AstExpr, AstField, AstModel, AstModelKind,
     },
     error::ModelBuildingError,
-    typechecker::{typ::TypecheckedSystem, AnnotationMap, Type, Typed},
+    typechecker::{AnnotationMap, Type, Typed, typ::TypecheckedSystem},
 };
 
 pub trait AnnotationMapHelper {

@@ -13,13 +13,13 @@ use async_trait::async_trait;
 use clap::{ArgMatches, Command};
 use colored::Colorize;
 use common::env_const::{
-    EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
+    _EXO_DEPLOYMENT_MODE, EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
 };
 use exo_env::{MapEnvironment, SystemEnvironment};
 use exo_sql::schema::migration::Migration;
 use std::{
     path::PathBuf,
-    sync::{atomic::Ordering, Arc},
+    sync::{Arc, atomic::Ordering},
 };
 
 use crate::{
@@ -30,8 +30,8 @@ use crate::{
 use common::env_const::{EXO_JWT_SECRET, EXO_POSTGRES_URL};
 
 use super::command::{
-    default_model_file, enforce_trusted_documents_arg, ensure_exo_project_dir, get, port_arg,
-    seed_arg, setup_trusted_documents_enforcement, CommandDefinition,
+    CommandDefinition, default_model_file, enforce_trusted_documents_arg, ensure_exo_project_dir,
+    get, port_arg, seed_arg, setup_trusted_documents_enforcement,
 };
 use common::env_const::EXO_OIDC_URL;
 use exo_sql::{

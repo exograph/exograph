@@ -52,25 +52,27 @@ pub struct ManyToOne {
 
 impl ManyToOne {
     pub fn new(column_pairs: Vec<RelationColumnPair>, foreign_table_alias: Option<String>) -> Self {
-        let (self_table_id, linked_table_id) =
-            match &column_pairs[..] {
-                [first, ..] => {
-                    assert!(
-                    column_pairs
-                        .iter()
-                        .all(|RelationColumnPair { self_column_id, foreign_column_id }| {
+        let (self_table_id, linked_table_id) = match &column_pairs[..] {
+            [first, ..] => {
+                assert!(
+                    column_pairs.iter().all(
+                        |RelationColumnPair {
+                             self_column_id,
+                             foreign_column_id,
+                         }| {
                             self_column_id.table_id == first.self_column_id.table_id
                                 && foreign_column_id.table_id == first.foreign_column_id.table_id
-                        }),
+                        }
+                    ),
                     "All self and foreign columns in the column pairs must refer to the same table"
                 );
-                    (
-                        first.self_column_id.table_id,
-                        first.foreign_column_id.table_id,
-                    )
-                }
-                _ => panic!("Expected at least one column pair"),
-            };
+                (
+                    first.self_column_id.table_id,
+                    first.foreign_column_id.table_id,
+                )
+            }
+            _ => panic!("Expected at least one column pair"),
+        };
 
         Self {
             column_pairs,

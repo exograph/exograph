@@ -10,14 +10,14 @@
 use std::fmt::Display;
 
 use crate::{
+    Database, DatabaseClient,
     database_error::DatabaseError,
     schema::{
         database_spec::DatabaseSpec,
         issue::WithIssues,
         op::SchemaOp,
-        spec::{diff, MigrationScope, MigrationScopeMatches},
+        spec::{MigrationScope, MigrationScopeMatches, diff},
     },
-    Database, DatabaseClient,
 };
 use serde::Serialize;
 

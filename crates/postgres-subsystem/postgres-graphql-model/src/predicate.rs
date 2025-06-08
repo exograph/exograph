@@ -14,7 +14,7 @@ use async_graphql_parser::types::{
 use core_model::{
     primitive_type::vector_introspection_type,
     type_normalization::{
-        default_positioned, default_positioned_name, InputValueProvider, TypeDefinitionProvider,
+        InputValueProvider, TypeDefinitionProvider, default_positioned, default_positioned_name,
     },
 };
 

@@ -10,6 +10,7 @@
 use tracing::instrument;
 
 use crate::{
+    AbstractOrderBy, AbstractPredicate, ColumnId, Database,
     asql::{
         abstract_operation::AbstractOperation, delete::AbstractDelete, insert::AbstractInsert,
         select::AbstractSelect, update::AbstractUpdate,
@@ -20,10 +21,9 @@ use crate::{
         select::Select,
         transaction::{TransactionScript, TransactionStepId},
     },
-    AbstractOrderBy, AbstractPredicate, ColumnId, Database,
 };
 
-use super::pg::{selection_level::SelectionLevel, Postgres};
+use super::pg::{Postgres, selection_level::SelectionLevel};
 
 /// Transform an abstract operation into a transaction script
 pub trait OperationTransformer {

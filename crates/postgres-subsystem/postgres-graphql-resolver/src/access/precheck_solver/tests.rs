@@ -27,7 +27,7 @@ use serde_json::json;
 use crate::access::test_util::test_request_context;
 use postgres_core_resolver::access::database_solver::literal_column;
 
-use super::test_system::{context_selection_expr, router, TestSystem};
+use super::test_system::{TestSystem, context_selection_expr, router};
 
 #[cfg_attr(not(target_family = "wasm"), tokio::test)]
 #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]

@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use actix_web::{dev::ConnectionInfo, http::header::HeaderMap, HttpRequest};
+use actix_web::{HttpRequest, dev::ConnectionInfo, http::header::HeaderMap};
 use common::http::RequestHead;
 
 use crate::to_reqwest_method;

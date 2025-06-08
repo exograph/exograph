@@ -10,8 +10,8 @@
 use std::collections::HashSet;
 
 use crate::{
-    schema::{constraint::sorted_comma_list, index_spec::IndexSpec},
     SchemaObjectName,
+    schema::{constraint::sorted_comma_list, index_spec::IndexSpec},
 };
 
 use super::{
@@ -455,73 +455,153 @@ impl SchemaOp<'_> {
 
     pub fn error_string(&self) -> Option<String> {
         match self {
-            SchemaOp::CreateSchema { schema } => Some(format!("The schema `{schema}` exists in the model, but does not exist in the database.")),
+            SchemaOp::CreateSchema { schema } => Some(format!(
+                "The schema `{schema}` exists in the model, but does not exist in the database."
+            )),
             SchemaOp::DeleteSchema { .. } => None, // An extra schema in the database is not a problem
             SchemaOp::RenameSchema { .. } => None,
 
-            SchemaOp::CreateSequence { sequence } => Some(format!("The sequence `{}` exists in the model, but does not exist in the database.", sequence.name)),
+            SchemaOp::CreateSequence { sequence } => Some(format!(
+                "The sequence `{}` exists in the model, but does not exist in the database.",
+                sequence.name
+            )),
             SchemaOp::DeleteSequence { .. } => None, // An extra sequence in the database is not a problem
             SchemaOp::RenameSequence { .. } => None,
 
-            SchemaOp::CreateTable { table } => Some(format!("The table `{}` exists in the model, but does not exist in the database.", table.sql_name())),
+            SchemaOp::CreateTable { table } => Some(format!(
+                "The table `{}` exists in the model, but does not exist in the database.",
+                table.sql_name()
+            )),
             SchemaOp::DeleteTable { .. } => None, // An extra table in the database is not a problem
             SchemaOp::RenameTable { .. } => None,
 
-            SchemaOp::CreateEnum { enum_ } => Some(format!("The enum `{}` exists in the model, but does not exist in the database.", enum_.sql_name())),
+            SchemaOp::CreateEnum { enum_ } => Some(format!(
+                "The enum `{}` exists in the model, but does not exist in the database.",
+                enum_.sql_name()
+            )),
             SchemaOp::DeleteEnum { .. } => None, // An extra enum in the database is not a problem
 
-            SchemaOp::CreateColumn { table, column } => Some(format!("The column `{}` in the table `{}` exists in the model, but does not exist in the database table.", column.name, table.sql_name())),
+            SchemaOp::CreateColumn { table, column } => Some(format!(
+                "The column `{}` in the table `{}` exists in the model, but does not exist in the database table.",
+                column.name,
+                table.sql_name()
+            )),
             SchemaOp::DeleteColumn { table, column } => {
                 if column.is_nullable {
                     // Extra nullable columns are not a problem
                     None
                 } else {
                     // Such column will cause failure when inserting new records
-                    Some(format!("The non-nullable column `{}` in the table `{}` exists in the database table, but does not exist in the model.", 
-                    column.name, table.sql_name()))
+                    Some(format!(
+                        "The non-nullable column `{}` in the table `{}` exists in the database table, but does not exist in the model.",
+                        column.name,
+                        table.sql_name()
+                    ))
                 }
             }
             SchemaOp::RenameColumn { .. } => None,
-            SchemaOp::CreateIndex { table, index } => Some(format!("The index `{}` in the table `{}` exists in the model, but does not exist in the database table.", index.name, table.sql_name())),
+            SchemaOp::CreateIndex { table, index } => Some(format!(
+                "The index `{}` in the table `{}` exists in the model, but does not exist in the database table.",
+                index.name,
+                table.sql_name()
+            )),
             SchemaOp::DeleteIndex { .. } => None, // An extra index in the database is not a problem
 
-            SchemaOp::SetColumnDefaultValue { table, column, default_value } => Some(format!("The default value for column `{}` in table `{}` does not match `{}`", column.name, table.sql_name(), default_value)),
-            SchemaOp::UnsetColumnDefaultValue { table, column } => Some(format!("The column `{}` in table `{}` is not set in the model.", column.name, table.sql_name())),
+            SchemaOp::SetColumnDefaultValue {
+                table,
+                column,
+                default_value,
+            } => Some(format!(
+                "The default value for column `{}` in table `{}` does not match `{}`",
+                column.name,
+                table.sql_name(),
+                default_value
+            )),
+            SchemaOp::UnsetColumnDefaultValue { table, column } => Some(format!(
+                "The column `{}` in table `{}` is not set in the model.",
+                column.name,
+                table.sql_name()
+            )),
 
-            SchemaOp::CreateExtension { extension } => Some(format!("The model requires the extension `{extension}`.")),
+            SchemaOp::CreateExtension { extension } => {
+                Some(format!("The model requires the extension `{extension}`."))
+            }
             SchemaOp::RemoveExtension { .. } => None,
 
-            SchemaOp::CreateUniqueConstraint { table, columns, constraint_name } => {
-                Some(format!("The model requires a unique constraint named `{}` for the following columns in table `{}`: {}", constraint_name, table.sql_name(), sorted_comma_list(columns, false)))
-            },
+            SchemaOp::CreateUniqueConstraint {
+                table,
+                columns,
+                constraint_name,
+            } => Some(format!(
+                "The model requires a unique constraint named `{}` for the following columns in table `{}`: {}",
+                constraint_name,
+                table.sql_name(),
+                sorted_comma_list(columns, false)
+            )),
             SchemaOp::RemoveUniqueConstraint { table, constraint } => {
                 // Extra uniqueness constraint may make inserts fail even if model allows it
-                Some(format!("Extra unique constaint `{}` in table `{}` found that is not require by the model.", constraint, table.sql_name()))
+                Some(format!(
+                    "Extra unique constaint `{}` in table `{}` found that is not require by the model.",
+                    constraint,
+                    table.sql_name()
+                ))
             }
-            SchemaOp::CreateForeignKeyReference { table, reference_columns, .. } => {
-                Some(format!("The model requires a foreign key constraint in table `{}` for the following columns: {}", table.sql_name(), reference_columns.iter().map(|(c, _)| c.name.as_str()).collect::<Vec<_>>().join(", ")))
-            }
-            SchemaOp::DeleteForeignKeyReference { table, name } => {
-                Some(format!("Extra foreign key constraint `{}` in table `{}` found that is not require by the model.", name, table.sql_name()))
-            }
+            SchemaOp::CreateForeignKeyReference {
+                table,
+                reference_columns,
+                ..
+            } => Some(format!(
+                "The model requires a foreign key constraint in table `{}` for the following columns: {}",
+                table.sql_name(),
+                reference_columns
+                    .iter()
+                    .map(|(c, _)| c.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )),
+            SchemaOp::DeleteForeignKeyReference { table, name } => Some(format!(
+                "Extra foreign key constraint `{}` in table `{}` found that is not require by the model.",
+                name,
+                table.sql_name()
+            )),
 
-            SchemaOp::SetNotNull { table, column } => {
-                Some(format!("The model requires that the column `{}` in table `{}` is not nullable. All records in the database must have a non-null value for this column before migration.", column.name, table.sql_name()))
-            },
-            SchemaOp::UnsetNotNull { table, column } => Some(format!("The model requires that the column `{}` in table `{}` is nullable.", column.name, table.sql_name())),
-            SchemaOp::CreateTrigger { trigger, table_name } => {
-                Some(format!("The model requires a trigger named `{}` on table `{}`", trigger.name, table_name.sql_name()))
-            },
-            SchemaOp::DeleteTrigger { trigger, table_name } => {
-                Some(format!("The trigger `{name}` on table `{table}` exists in the database, but does not exist in the model.", name = trigger.name, table = table_name.sql_name()))
-            },
-            SchemaOp::CreateFunction { function } => {
-                Some(format!("The model requires a function named `{}`", function.name))
-            },
-            SchemaOp::DeleteFunction { name } => Some(format!("The function `{name}` exists in the database, but does not exist in the model.")),
-            SchemaOp::CreateOrReplaceFunction { function } => {
-                Some(format!("The model requires a function named `{}` with body `{}`", function.name, function.body))
-            },
+            SchemaOp::SetNotNull { table, column } => Some(format!(
+                "The model requires that the column `{}` in table `{}` is not nullable. All records in the database must have a non-null value for this column before migration.",
+                column.name,
+                table.sql_name()
+            )),
+            SchemaOp::UnsetNotNull { table, column } => Some(format!(
+                "The model requires that the column `{}` in table `{}` is nullable.",
+                column.name,
+                table.sql_name()
+            )),
+            SchemaOp::CreateTrigger {
+                trigger,
+                table_name,
+            } => Some(format!(
+                "The model requires a trigger named `{}` on table `{}`",
+                trigger.name,
+                table_name.sql_name()
+            )),
+            SchemaOp::DeleteTrigger {
+                trigger,
+                table_name,
+            } => Some(format!(
+                "The trigger `{name}` on table `{table}` exists in the database, but does not exist in the model.",
+                name = trigger.name,
+                table = table_name.sql_name()
+            )),
+            SchemaOp::CreateFunction { function } => Some(format!(
+                "The model requires a function named `{}`",
+                function.name
+            )),
+            SchemaOp::DeleteFunction { name } => Some(format!(
+                "The function `{name}` exists in the database, but does not exist in the model."
+            )),
+            SchemaOp::CreateOrReplaceFunction { function } => Some(format!(
+                "The model requires a function named `{}` with body `{}`",
+                function.name, function.body
+            )),
         }
     }
 }

@@ -16,12 +16,12 @@ use core_model::{
 };
 use core_model_builder::{
     ast::ast_types::{AstExpr, AstModel, FieldSelectionElement},
-    typechecker::{annotation::AnnotationSpec, Typed},
+    typechecker::{Typed, annotation::AnnotationSpec},
 };
 
 use crate::ast::ast_types::{AstModelKind, FieldSelection, Untyped};
 
-use super::{relational_op::identical_match, Scope, Type, TypecheckFrom};
+use super::{Scope, Type, TypecheckFrom, relational_op::identical_match};
 
 pub trait TypecheckFunctionCallFrom<T>
 where

@@ -21,7 +21,7 @@ use core_model::{
     mapped_arena::MappedArena,
     primitive_type::{NumberLiteral, PrimitiveValue},
 };
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use crate::{error::ModelBuildingError, typechecker::Typed};
 

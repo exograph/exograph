@@ -62,6 +62,7 @@ pub use asql::{
 };
 
 pub use sql::{
+    SQLBytes, SQLParam, SQLParamContainer,
     array_util::{self, ArrayEntry},
     column::Column,
     connect::creation::Connect,
@@ -77,8 +78,7 @@ pub use sql::{
     predicate::{CaseSensitivity, NumericComparator, ParamEquality, Predicate},
     relation::{ManyToOne, ManyToOneId, OneToMany, OneToManyId, RelationColumnPair, RelationId},
     schema_object::SchemaObjectName,
-    vector::{VectorDistanceFunction, DEFAULT_VECTOR_SIZE},
-    SQLBytes, SQLParam, SQLParamContainer,
+    vector::{DEFAULT_VECTOR_SIZE, VectorDistanceFunction},
 };
 
 #[cfg(feature = "bigdecimal")]

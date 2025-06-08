@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{database_error::DatabaseError, Database};
+use crate::{Database, database_error::DatabaseError};
 
 use super::{ExpressionBuilder, SQLBuilder};
 

@@ -9,7 +9,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use clap::{builder::PossibleValue, Arg, Command, ValueEnum};
+use clap::{Arg, Command, ValueEnum, builder::PossibleValue};
 
 use std::{
     fs::{self, File},
@@ -18,7 +18,7 @@ use std::{
 };
 
 use crate::commands::{
-    command::{default_model_file, get, output_arg, CommandDefinition},
+    command::{CommandDefinition, default_model_file, get, output_arg},
     schema::util::create_system,
     util::use_ir_arg,
 };

@@ -8,10 +8,10 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
+    Database,
     asql::delete::AbstractDelete,
     sql::transaction::TransactionScript,
     transform::{pg::Postgres, transformer::DeleteTransformer},
-    Database,
 };
 
 use super::delete_strategy_chain::DeleteStrategyChain;

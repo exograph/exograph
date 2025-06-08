@@ -12,16 +12,16 @@ use std::collections::HashMap;
 use codemap_diagnostic::{Diagnostic, Level};
 use core_model::mapped_arena::MappedArena;
 use core_model_builder::typechecker::{
+    Typed,
     annotation::{AnnotationSpec, AnnotationTarget},
     annotation_map::AnnotationMap,
-    Typed,
 };
 
 use crate::ast::ast_types::{
     AstArgument, AstFieldType, AstInterceptor, AstMethod, AstModule, Untyped,
 };
 
-use super::{annotation_map::AnnotationMapImpl, Scope, Type, TypecheckFrom};
+use super::{Scope, Type, TypecheckFrom, annotation_map::AnnotationMapImpl};
 
 fn typed<U, T: TypecheckFrom<U>>(untyped: &[U]) -> Vec<T> {
     untyped.iter().map(|u| T::shallow(u)).collect()

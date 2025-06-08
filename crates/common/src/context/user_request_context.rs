@@ -21,7 +21,7 @@ use super::provider::{
     ip::IpExtractor, query::QueryExtractor,
 };
 use super::{
-    context_extractor::BoxedContextExtractor, error::ContextExtractionError, RequestContext,
+    RequestContext, context_extractor::BoxedContextExtractor, error::ContextExtractionError,
 };
 
 /// Represent a request context extracted for a particular request

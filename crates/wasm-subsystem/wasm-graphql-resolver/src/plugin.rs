@@ -15,10 +15,10 @@ use common::context::RequestContext;
 use core_model::mapped_arena::SerializableSlabIndex;
 use core_plugin_shared::interception::InterceptorIndex;
 use core_resolver::{
+    InterceptedOperation, QueryResponse,
     plugin::{SubsystemGraphQLResolver, SubsystemResolutionError},
     system_resolver::GraphQLSystemResolver,
     validation::field::ValidatedField,
-    InterceptedOperation, QueryResponse,
 };
 use exo_wasm::WasmExecutorPool;
 use wasm_graphql_model::{module::ModuleMethod, subsystem::WasmSubsystem};

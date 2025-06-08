@@ -14,8 +14,8 @@ use async_graphql_parser::types::{
 use core_model::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
     type_normalization::{
-        default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
-        Parameter, Type, TypeDefinitionProvider,
+        FieldDefinitionProvider, InputValueProvider, Parameter, Type, TypeDefinitionProvider,
+        default_positioned, default_positioned_name,
     },
     types::{FieldType, Named, OperationReturnType, TypeValidation},
 };

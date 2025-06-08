@@ -15,7 +15,7 @@ use crate::sql::connect::database_client::DatabaseClient;
 use crate::{PhysicalTable, SchemaObjectName};
 
 use super::column_spec::{ColumnAttribute, ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec};
-use super::constraint::{sorted_comma_list, Constraints};
+use super::constraint::{Constraints, sorted_comma_list};
 use super::enum_spec::EnumSpec;
 use super::index_spec::IndexSpec;
 use super::issue::WithIssues;

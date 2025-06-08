@@ -8,16 +8,16 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
+    AbstractOrderBy, AbstractPredicate, Column, Database, Limit, Offset, PhysicalColumnPath,
+    RelationId, Selection, TableId,
     sql::{
         predicate::ConcretePredicate, schema_object::SchemaObjectName, select::Select, table::Table,
     },
     transform::{
         join_util,
-        pg::{selection_level::SelectionLevel, Postgres},
+        pg::{Postgres, selection_level::SelectionLevel},
         transformer::{OrderByTransformer, PredicateTransformer},
     },
-    AbstractOrderBy, AbstractPredicate, Column, Database, Limit, Offset, PhysicalColumnPath,
-    RelationId, Selection, TableId,
 };
 
 use super::selection_context::SelectionContext;

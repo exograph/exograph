@@ -9,7 +9,7 @@
 
 use crate::{Database, VectorDistanceFunction};
 
-use super::{column::Column, vector::VectorDistance, ExpressionBuilder, SQLBuilder};
+use super::{ExpressionBuilder, SQLBuilder, column::Column, vector::VectorDistance};
 
 /// Case sensitivity for string predicates.
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
@@ -118,11 +118,7 @@ where
     C: PartialEq + ParamEquality,
 {
     fn from(b: bool) -> Predicate<C> {
-        if b {
-            Predicate::True
-        } else {
-            Predicate::False
-        }
+        if b { Predicate::True } else { Predicate::False }
     }
 }
 
@@ -321,8 +317,8 @@ mod tests {
 
     use crate::schema::table_spec::TableSpec;
     use crate::schema::test_helper::{int_column, json_column, pk_column, string_column};
-    use crate::{schema::database_spec::DatabaseSpec, sql::SQLParamContainer};
     use crate::{ColumnId, SchemaObjectName};
+    use crate::{schema::database_spec::DatabaseSpec, sql::SQLParamContainer};
     use multiplatform_test::multiplatform_test;
 
     use super::*;

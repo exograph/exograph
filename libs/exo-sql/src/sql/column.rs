@@ -12,8 +12,8 @@ use maybe_owned::MaybeOwned;
 use crate::{ColumnId, Database, ParamEquality, Predicate, SchemaObjectName};
 
 use super::{
-    function::Function, json_agg::JsonAgg, json_object::JsonObject, select::Select,
-    transaction::TransactionStepId, ExpressionBuilder, SQLBuilder, SQLParamContainer,
+    ExpressionBuilder, SQLBuilder, SQLParamContainer, function::Function, json_agg::JsonAgg,
+    json_object::JsonObject, select::Select, transaction::TransactionStepId,
 };
 
 /// A column-like concept covering any usage where a database table column could be used. For

@@ -5,7 +5,7 @@ use exo_sql::DatabaseClientManager;
 use std::str::FromStr;
 use wasm_bindgen::JsValue;
 
-use worker::{postgres_tls::PassthroughTls, SecureTransport, Socket};
+use worker::{SecureTransport, Socket, postgres_tls::PassthroughTls};
 
 use tokio_postgres::Config;
 

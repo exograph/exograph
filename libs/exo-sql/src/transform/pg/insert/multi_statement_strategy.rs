@@ -10,6 +10,8 @@
 use maybe_owned::MaybeOwned;
 
 use crate::{
+    AbstractInsert, Column, ColumnId, ColumnValuePair, Database, InsertionRow, NestedInsertion,
+    Predicate, SQLParamContainer, TableId,
     sql::{
         column::{ArrayParamWrapper, ProxyColumn},
         insert::TemplateInsert,
@@ -21,11 +23,9 @@ use crate::{
         },
     },
     transform::{
-        pg::{precheck::add_precheck_queries, Postgres},
+        pg::{Postgres, precheck::add_precheck_queries},
         transformer::SelectTransformer,
     },
-    AbstractInsert, Column, ColumnId, ColumnValuePair, Database, InsertionRow, NestedInsertion,
-    Predicate, SQLParamContainer, TableId,
 };
 
 use super::insertion_strategy::InsertionStrategy;

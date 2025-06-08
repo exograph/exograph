@@ -15,6 +15,6 @@
 mod graphql_router;
 mod system_loader;
 
-pub use graphql_router::resolve_in_memory_for_payload;
 pub use graphql_router::GraphQLRouter;
+pub use graphql_router::resolve_in_memory_for_payload;
 pub use introspection_resolver::IntrospectionResolver;

@@ -10,8 +10,8 @@
 use crate::Database;
 
 use super::{
-    schema_object::SchemaObjectName, select::Select, sql_operation::SQLOperation,
-    ExpressionBuilder, SQLBuilder,
+    ExpressionBuilder, SQLBuilder, schema_object::SchemaObjectName, select::Select,
+    sql_operation::SQLOperation,
 };
 
 /// A query with common table expressions of the form `WITH <expressions> <select>`.

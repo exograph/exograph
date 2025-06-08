@@ -7,15 +7,15 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use deno_core::error::AnyError;
-use deno_core::futures::FutureExt;
-use deno_core::resolve_import;
-use deno_core::url::Url;
 use deno_core::ModuleLoader;
 use deno_core::ModuleSource;
 use deno_core::ModuleSpecifier;
 use deno_core::RequestedModuleType;
 use deno_core::ResolutionKind;
+use deno_core::error::AnyError;
+use deno_core::futures::FutureExt;
+use deno_core::resolve_import;
+use deno_core::url::Url;
 use deno_runtime::deno_node::NodeResolver;
 use node_resolver::NodeModuleKind;
 

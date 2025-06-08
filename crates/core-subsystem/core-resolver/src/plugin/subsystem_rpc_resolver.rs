@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::{system_resolver::SystemResolutionError, QueryResponse};
+use crate::{QueryResponse, system_resolver::SystemResolutionError};
 
 use async_trait::async_trait;
 use common::context::{ContextExtractionError, RequestContext};

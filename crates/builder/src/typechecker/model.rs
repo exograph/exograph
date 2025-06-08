@@ -14,15 +14,15 @@ use core_model::mapped_arena::MappedArena;
 use core_model_builder::{
     ast::ast_types::{AstEnum, AstEnumField, AstFragmentReference},
     typechecker::{
+        Typed,
         annotation::{AnnotationSpec, AnnotationTarget},
         annotation_map::AnnotationMap,
-        Typed,
     },
 };
 
 use crate::ast::ast_types::{AstField, AstFieldDefault, AstModel, AstModelKind, Untyped};
 
-use super::{annotation_map::AnnotationMapImpl, Scope, Type, TypecheckFrom};
+use super::{Scope, Type, TypecheckFrom, annotation_map::AnnotationMapImpl};
 
 impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
     fn shallow(untyped: &AstModel<Untyped>) -> AstModel<Typed> {

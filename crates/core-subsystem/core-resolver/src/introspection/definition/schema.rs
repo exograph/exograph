@@ -10,15 +10,15 @@
 use std::{collections::HashSet, sync::Arc};
 
 use async_graphql_parser::{
+    Positioned,
     types::{
         BaseType, FieldDefinition, InputValueDefinition, ObjectType, Type, TypeDefinition, TypeKind,
     },
-    Positioned,
 };
 
 use async_graphql_value::Name;
 use core_model::type_normalization::{
-    default_positioned, default_positioned_name, TypeDefinitionIntrospection,
+    TypeDefinitionIntrospection, default_positioned, default_positioned_name,
 };
 
 use crate::{plugin::SubsystemGraphQLResolver, validation::underlying_type};

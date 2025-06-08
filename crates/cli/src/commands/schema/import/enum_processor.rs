@@ -1,7 +1,7 @@
 use anyhow::Result;
 use exo_sql::schema::{database_spec::DatabaseSpec, enum_spec::EnumSpec};
 
-use super::{processor::INDENT, ImportContext, ModelProcessor};
+use super::{ImportContext, ModelProcessor, processor::INDENT};
 
 use heck::ToUpperCamelCase;
 

@@ -40,10 +40,10 @@ use http::Uri;
 use thiserror::Error;
 
 use opentelemetry_otlp::{SpanExporter, WithTonicConfig};
-use opentelemetry_sdk::{runtime, trace::TracerProvider, Resource};
+use opentelemetry_sdk::{Resource, runtime, trace::TracerProvider};
 use std::str::FromStr;
 use tonic::transport::{ClientTlsConfig, Endpoint};
-use tracing_subscriber::{filter::LevelFilter, prelude::*, EnvFilter};
+use tracing_subscriber::{EnvFilter, filter::LevelFilter, prelude::*};
 
 const EXO_LOG: &str = "EXO_LOG";
 

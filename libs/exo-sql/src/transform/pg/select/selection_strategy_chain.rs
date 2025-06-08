@@ -9,7 +9,7 @@
 
 use tracing::debug;
 
-use crate::{sql::select::Select, Database};
+use crate::{Database, sql::select::Select};
 
 use super::{
     plain_join_strategy::PlainJoinStrategy, plain_subquery_strategy::PlainSubqueryStrategy,

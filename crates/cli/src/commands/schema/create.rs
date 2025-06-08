@@ -19,7 +19,7 @@ use crate::commands::command::{migration_scope_arg, migration_scope_value, yes_a
 use crate::config::Config;
 use crate::{
     commands::{
-        command::{default_model_file, get, output_arg, CommandDefinition},
+        command::{CommandDefinition, default_model_file, get, output_arg},
         util::{compute_migration_scope, use_ir_arg},
     },
     util::open_file_for_output,

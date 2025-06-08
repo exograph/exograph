@@ -10,7 +10,7 @@
 use tracing::debug;
 
 use crate::{
-    sql::transaction::TransactionScript, transform::pg::Postgres, AbstractDelete, Database,
+    AbstractDelete, Database, sql::transaction::TransactionScript, transform::pg::Postgres,
 };
 
 use super::{cte_strategy::CteStrategy, delete_strategy::DeleteStrategy};

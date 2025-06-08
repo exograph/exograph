@@ -13,7 +13,7 @@ use serde_json::Value;
 
 use async_trait::async_trait;
 
-use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
+use crate::context::{ContextExtractionError, RequestContext, context_extractor::ContextExtractor};
 use crate::env_const::get_graphql_http_path;
 use crate::http::{RequestHead, RequestPayload};
 use crate::operation_payload::OperationsPayload;
