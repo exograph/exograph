@@ -14,10 +14,11 @@ use colored::Colorize;
 use common::env_const::{
     EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
 };
+use exo_env::{MapEnvironment, SystemEnvironment};
 use exo_sql::schema::migration::{Migration, VerificationErrors};
 use exo_sql::DatabaseClient;
 use futures::FutureExt;
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use super::command::{
     enforce_trusted_documents_arg, get, migration_scope_arg, port_arg, CommandDefinition,
@@ -61,10 +62,8 @@ impl CommandDefinition for DevCommandDefinition {
         let root_path = PathBuf::from(".");
         ensure_exo_project_dir(&root_path)?;
 
-        let model: PathBuf = default_model_file();
+        let model_file: PathBuf = default_model_file();
         let port: Option<u32> = get(matches, "port");
-
-        setup_trusted_documents_enforcement(matches);
 
         let ignore_migration_errors: bool =
             get(matches, "ignore-migration-errors").unwrap_or(false);
@@ -73,94 +72,104 @@ impl CommandDefinition for DevCommandDefinition {
             "{}",
             "Starting server in development mode...".purple().bold()
         );
-        // In the serve mode, which is meant for development, always enable introspection and use relaxed CORS
-        std::env::set_var(EXO_INTROSPECTION, "true");
-        std::env::set_var(EXO_INTROSPECTION_LIVE_UPDATE, "true");
-        std::env::set_var(_EXO_DEPLOYMENT_MODE, "dev");
 
-        std::env::set_var(EXO_CORS_DOMAINS, "*");
+        let migration_scope_str = migration_scope_value(matches);
 
-        let migration_scope = compute_migration_scope(migration_scope_value(matches));
+        // Create environment variables for the child server process
+        let mut env_vars = MapEnvironment::new_with_fallback(Arc::new(SystemEnvironment));
+        setup_trusted_documents_enforcement(matches, &mut env_vars);
+        env_vars.set(EXO_INTROSPECTION, "true");
+        env_vars.set(EXO_INTROSPECTION_LIVE_UPDATE, "true");
+        env_vars.set(_EXO_DEPLOYMENT_MODE, "dev");
+        env_vars.set(EXO_CORS_DOMAINS, "*");
 
         const MIGRATE: &str = "Attempt migration";
         const CONTINUE: &str = "Continue with old schema";
         const PAUSE: &str = "Pause for manual repair";
         const EXIT: &str = "Exit";
 
-        watcher::start_watcher(&root_path, port, config, Some(&WatchStage::Dev), || async {
-            println!("{}", "\nVerifying new model...".blue().bold());
-            let db_client = util::open_database(None).await?;
+        watcher::start_watcher(&root_path, port, config, Some(&WatchStage::Dev), move || {
+            let model_file = model_file.clone();
+            let migration_scope_str = migration_scope_str.clone();
+            let env_vars = env_vars.clone();
+            async move {
+                let migration_scope = compute_migration_scope(migration_scope_str);
+                println!("{}", "\nVerifying new model...".blue().bold());
 
-            loop {
-                // Pass true as use_ir to use the IR model, since we just built the model in the watcher
-                let database = util::extract_postgres_database(&model, None, true).await?;
-                let mut db_client = db_client.get_client().await?;
-                let verification_result = Migration::verify(&db_client, &database, &migration_scope).await;
+                let db_client = util::open_database(None).await?;
 
-                match verification_result {
-                    Err(e @ VerificationErrors::ModelNotCompatible(_)) => {
-                        let migrations = Migration::from_db_and_model(&db_client, &database, &migration_scope).await?;
+                loop {
+                    // Pass true as use_ir to use the IR model, since we just built the model in the watcher
+                    let database = util::extract_postgres_database(&model_file, None, true).await?;
+                    let mut db_client = db_client.get_client().await?;
+                    let verification_result = Migration::verify(&db_client, &database, &migration_scope).await;
 
-                        // If migrations are safe to apply, let's go ahead with those
-                        if !migrations.has_destructive_changes() {
-                            if apply_migration(&mut db_client, &migrations, ignore_migration_errors).await? {
-                                break Ok(());
-                            } else {
-                                // Migration failed, perhaps due to adding a non-nullable column and table already had rows
-                                continue;
-                            }
-                        }
+                    match verification_result {
+                        Err(e @ VerificationErrors::ModelNotCompatible(_)) => {
+                            let migrations = Migration::from_db_and_model(&db_client, &database, &migration_scope).await?;
 
-                        println!("{}", "The schema of the current database is not compatible with the current model for the following reasons:".red().bold());
-                        println!("{}", e.to_string().red().bold());
-
-                        let options = vec![MIGRATE, CONTINUE, PAUSE, EXIT];
-                        let ans = inquire::Select::new("Choose an option:", options).prompt()?;
-
-                        match ans {
-                            MIGRATE => {
-                                println!("{}", "Attempting migration...".blue().bold());
-
-                                // We will reach here only if the migration has some destructive changes (we auto-apply safe migrations; see above)
-                                let allow_destructive_changes =
-                                    inquire::Confirm::new("This migration contains destructive changes. Do you still want to proceed?")
-                                    .with_default(false)
-                                    .prompt()?;
-
-                                if !allow_destructive_changes {
-                                    println!("{}", "Aborting migration...".red().bold());
-                                    continue;
-                                }
-
+                            // If migrations are safe to apply, let's go ahead with those
+                            if !migrations.has_destructive_changes() {
                                 if apply_migration(&mut db_client, &migrations, ignore_migration_errors).await? {
-                                    break Ok(());
+                                    break Ok(env_vars);
                                 } else {
+                                    // Migration failed, perhaps due to adding a non-nullable column and table already had rows
                                     continue;
                                 }
                             }
-                            CONTINUE => {
-                                println!("{}", "Continuing...".green().bold());
-                                break Ok(());
-                            }
-                            PAUSE => {
-                                wait_for_enter(&"Paused. Press enter to re-verify.".blue().bold())?;
-                            }
-                            EXIT => {
-                                println!("Exiting...");
-                                let _ = crate::SIGINT.0.send(());
-                                break Ok(());
 
+                            println!("{}", "The schema of the current database is not compatible with the current model for the following reasons:".red().bold());
+                            println!("{}", e.to_string().red().bold());
+
+                            let options = vec![MIGRATE, CONTINUE, PAUSE, EXIT];
+                            let ans = inquire::Select::new("Choose an option:", options).prompt()?;
+
+                            match ans {
+                                MIGRATE => {
+                                    println!("{}", "Attempting migration...".blue().bold());
+
+                                    // We will reach here only if the migration has some destructive changes (we auto-apply safe migrations; see above)
+                                    let allow_destructive_changes =
+                                        inquire::Confirm::new("This migration contains destructive changes. Do you still want to proceed?")
+                                        .with_default(false)
+                                        .prompt()?;
+
+                                    if !allow_destructive_changes {
+                                        println!("{}", "Aborting migration...".red().bold());
+                                        continue;
+                                    }
+
+                                    if apply_migration(&mut db_client, &migrations, ignore_migration_errors).await? {
+                                        break Ok(env_vars);
+                                    } else {
+                                        continue;
+                                    }
+                                }
+                                CONTINUE => {
+                                    println!("{}", "Continuing...".green().bold());
+                                    break Ok(env_vars);
+                                }
+                                PAUSE => {
+                                    wait_for_enter(&"Paused. Press enter to re-verify.".blue().bold())?;
+                                }
+                                EXIT => {
+                                    println!("Exiting...");
+                                    let _ = crate::SIGINT.0.send(());
+                                    break Ok(env_vars);
+
+                                }
+                                _ => unreachable!(),
                             }
-                            _ => unreachable!(),
                         }
-                    }
-                    _ => {
-                        break verification_result
-                            .map_err(|e| anyhow!("Verification failed: {}", e))
+                        _ => {
+                            break verification_result
+                                .map_err(|e| anyhow!("Verification failed: {}", e))
+                                .map(|_| env_vars)
+                        }
                     }
                 }
-            }
-        }.boxed()).await
+            }.boxed()
+        }).await
     }
 }
 

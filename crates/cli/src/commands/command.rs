@@ -14,6 +14,7 @@ use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 use colored::Colorize;
 use common::env_const::_EXO_ENFORCE_TRUSTED_DOCUMENTS;
+use exo_env::MapEnvironment;
 
 use super::{build::BuildError, update::report_update_needed};
 use crate::config::Config;
@@ -230,7 +231,10 @@ pub(crate) fn mutation_access_value(matches: &ArgMatches) -> bool {
     get(matches, "mutation-access").unwrap_or(false)
 }
 
-pub(crate) fn setup_trusted_documents_enforcement(matches: &ArgMatches) {
+pub(crate) fn setup_trusted_documents_enforcement(
+    matches: &ArgMatches,
+    env_vars: &mut MapEnvironment,
+) {
     let enforce_trusted_documents: bool = get::<String>(matches, "enforce-trusted-documents")
         .map(|value| value != "false")
         .unwrap_or(false);
@@ -242,6 +246,6 @@ pub(crate) fn setup_trusted_documents_enforcement(matches: &ArgMatches) {
                 .red()
                 .bold()
         );
-        std::env::set_var(_EXO_ENFORCE_TRUSTED_DOCUMENTS, "false");
+        env_vars.set(_EXO_ENFORCE_TRUSTED_DOCUMENTS, "false");
     }
 }

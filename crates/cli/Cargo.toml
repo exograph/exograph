@@ -42,6 +42,7 @@ exo-sql = { path = "../../libs/exo-sql", features = [
   "pool",
   "interactive-migration",
 ] }
+exo-env = { path = "../../libs/exo-env" }
 builder = { path = "../builder" }
 testing = { path = "../testing" }
 common = { path = "../common" }

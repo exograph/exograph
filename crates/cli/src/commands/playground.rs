@@ -1,6 +1,6 @@
 use colored::Colorize;
 use futures::FutureExt;
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use anyhow::anyhow;
 use async_trait::async_trait;
@@ -11,6 +11,7 @@ use common::env_const::{
     EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_POSTGRES_URL,
     _EXO_DEPLOYMENT_MODE, _EXO_UPSTREAM_ENDPOINT_URL,
 };
+use exo_env::{MapEnvironment, SystemEnvironment};
 
 use crate::{commands::command::get_required, config::Config, util::watcher};
 
@@ -47,21 +48,22 @@ impl CommandDefinition for PlaygroundCommandDefinition {
 
         ensure_exo_project_dir(&PathBuf::from("."))?;
 
-        std::env::set_var(EXO_INTROSPECTION, "only");
+        // Create environment variables for the child server process
+        let mut env_vars = MapEnvironment::new_with_fallback(Arc::new(SystemEnvironment));
+        env_vars.set(EXO_INTROSPECTION, "only");
         // We don't need a database connection in playground mode, but the Postgres resolver
         // currently requires a valid URL to be set (when we fix
         // https://github.com/exograph/exograph/issues/532), we won't need to instantiate the
         // Postgres resolver at all.
-        std::env::set_var(EXO_POSTGRES_URL, "postgres://__placeholder");
-        std::env::set_var(EXO_CHECK_CONNECTION_ON_STARTUP, "false");
-
-        std::env::set_var(EXO_CORS_DOMAINS, "*");
-
-        std::env::set_var(_EXO_DEPLOYMENT_MODE, "playground");
-        std::env::set_var(_EXO_UPSTREAM_ENDPOINT_URL, &endpoint_url);
+        env_vars.set(EXO_POSTGRES_URL, "postgres://__placeholder");
+        env_vars.set(EXO_CHECK_CONNECTION_ON_STARTUP, "false");
+        env_vars.set(EXO_CORS_DOMAINS, "*");
+        env_vars.set(_EXO_DEPLOYMENT_MODE, "playground");
+        env_vars.set(_EXO_UPSTREAM_ENDPOINT_URL, &endpoint_url);
 
         let mut server = watcher::build_and_start_server(port, &Config::default(), None, &|| {
-            async { Ok(()) }.boxed()
+            let env_vars = env_vars.clone();
+            async move { Ok(env_vars) }.boxed()
         })
         .await?;
 
