@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 #[cfg(not(target_family = "wasm"))]
-use std::ffi::{c_char, CStr};
+use std::ffi::{CStr, c_char};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -84,7 +84,7 @@ macro_rules! __export_build_info {
         use core::ffi::c_char;
         use std::ffi::CString;
 
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         pub extern "C" fn __exograph_interface_version() -> *const c_char {
             let version = core_plugin_interface::build_info::interface_version();
             CString::new(version).unwrap().into_raw()

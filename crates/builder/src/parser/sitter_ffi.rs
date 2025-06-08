@@ -9,7 +9,7 @@
 
 use tree_sitter_c2rust::Language;
 
-extern "C" {
+unsafe extern "C" {
     fn tree_sitter_grammar() -> Language;
 }
 
