@@ -8,8 +8,8 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    system_resolver::GraphQLSystemResolver, validation::field::ValidatedField,
-    InterceptedOperation, QueryResponse,
+    InterceptedOperation, QueryResponse, system_resolver::GraphQLSystemResolver,
+    validation::field::ValidatedField,
 };
 use async_graphql_parser::types::{FieldDefinition, OperationType, TypeDefinition};
 use async_trait::async_trait;

@@ -9,13 +9,13 @@
 
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use exo_deno::{
-    deno_core::{url::Url, ModuleType},
-    deno_executor_pool::{DenoScriptDefn, ResolvedModule},
     Arg, DenoModule, DenoModuleSharedState, UserCode,
+    deno_core::{ModuleType, url::Url},
+    deno_executor_pool::{DenoScriptDefn, ResolvedModule},
 };
-use include_dir::{include_dir, Dir};
+use include_dir::{Dir, include_dir};
 use serde_json::Value;
 
 const INTROSPECTION_ASSERT_JS: &str = include_str!("introspection.js");

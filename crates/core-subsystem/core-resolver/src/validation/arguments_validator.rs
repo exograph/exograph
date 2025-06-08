@@ -10,10 +10,10 @@
 use std::collections::HashMap;
 
 use async_graphql_parser::{
-    types::{BaseType, ConstDirective, Field, InputValueDefinition, TypeKind},
     Pos, Positioned,
+    types::{BaseType, ConstDirective, Field, InputValueDefinition, TypeKind},
 };
-use async_graphql_value::{indexmap::IndexMap, ConstValue, Name, Number, Value};
+use async_graphql_value::{ConstValue, Name, Number, Value, indexmap::IndexMap};
 use bytes::Bytes;
 
 use crate::{

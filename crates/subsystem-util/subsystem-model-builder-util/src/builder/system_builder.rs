@@ -14,7 +14,7 @@ use core_model_builder::{
     ast::ast_types::{AstExpr, AstModule},
     builder::system_builder::BaseModelSystem,
     error::ModelBuildingError,
-    typechecker::{typ::TypecheckedSystem, Typed},
+    typechecker::{Typed, typ::TypecheckedSystem},
 };
 use subsystem_model_util::{
     interceptor::Interceptor,

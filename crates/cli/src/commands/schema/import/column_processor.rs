@@ -23,7 +23,7 @@ impl ModelProcessor<TableSpec> for ColumnSpec {
         let is_column_type_name_reference =
             matches!(column_type_name, ColumnTypeName::ReferenceType(_));
 
-        if let ColumnTypeSpec::ColumnReference(ref reference) = &self.typ {
+        if let ColumnTypeSpec::ColumnReference(reference) = &self.typ {
             // The column was referring to a table, but that table is not in the context
             if !is_column_type_name_reference {
                 writeln!(
@@ -40,7 +40,7 @@ impl ModelProcessor<TableSpec> for ColumnSpec {
             write!(writer, "@pk ")?;
         }
 
-        if let ColumnTypeSpec::ColumnReference(ref reference) = &self.typ {
+        if let ColumnTypeSpec::ColumnReference(reference) = &self.typ {
             if parent.name == reference.foreign_table_name {
                 let cardinality_annotation =
                     if self.unique_constraints.is_empty() || self.is_nullable {

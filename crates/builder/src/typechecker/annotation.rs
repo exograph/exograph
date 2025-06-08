@@ -12,7 +12,7 @@ use std::collections::{HashMap, HashSet};
 use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams, Untyped};
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::mapped_arena::MappedArena;
-use core_model_builder::typechecker::{annotation::AnnotationSpec, Typed};
+use core_model_builder::typechecker::{Typed, annotation::AnnotationSpec};
 
 use super::{Scope, Type, TypecheckFrom};
 use crate::util;

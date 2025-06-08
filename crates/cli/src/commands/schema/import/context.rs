@@ -1,11 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
 use exo_sql::{
+    SchemaObjectName,
     schema::{
         column_spec::{ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec},
         database_spec::DatabaseSpec,
     },
-    SchemaObjectName,
 };
 
 use heck::{ToLowerCamelCase, ToSnakeCase, ToUpperCamelCase};
@@ -81,7 +81,7 @@ impl<'a> ImportContext<'a> {
 
         let (field_name, column_name_from_field_name, field_name_from_column_name) =
             match &column.typ {
-                ColumnTypeSpec::ColumnReference(ref reference) if is_column_type_name_reference => {
+                ColumnTypeSpec::ColumnReference(reference) if is_column_type_name_reference => {
                     let field_name = reference_field_name(&column.name, reference); // For example, `sales_region_id` -> `salesRegion`
                     let column_name_from_field_name = format!(
                         "{}_{}",

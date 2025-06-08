@@ -11,11 +11,11 @@ use async_trait::async_trait;
 use core_plugin_shared::interception::InterceptionTree;
 use serde_json::Value;
 
+use crate::QueryResponse;
 use crate::interception::InterceptedOperation;
 use crate::system_resolver::{GraphQLSystemResolver, SystemResolutionError};
 use crate::validation::field::ValidatedField;
 use crate::validation::operation::ValidatedOperation;
-use crate::QueryResponse;
 use crate::{FieldResolver, QueryResponseBody};
 
 use common::context::RequestContext;

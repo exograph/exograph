@@ -10,6 +10,7 @@
 use crate::Database;
 
 use super::{
+    ExpressionBuilder, SQLBuilder,
     cte::WithQuery,
     delete::Delete,
     delete::TemplateDelete,
@@ -17,7 +18,6 @@ use super::{
     select::Select,
     transaction::{TransactionContext, TransactionStepId},
     update::{TemplateUpdate, Update},
-    ExpressionBuilder, SQLBuilder,
 };
 
 /// Top-level SQL operation, which may be executed by the database.

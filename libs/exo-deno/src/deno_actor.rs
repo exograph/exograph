@@ -14,13 +14,14 @@ use std::fmt::Debug;
 use std::{
     panic,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
 };
 use tokio::sync::{
+    Mutex,
     mpsc::{Receiver, Sender},
-    oneshot, Mutex,
+    oneshot,
 };
 use tracing::instrument;
 

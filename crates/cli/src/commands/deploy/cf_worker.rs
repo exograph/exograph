@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    fs::{create_dir_all, File},
+    fs::{File, create_dir_all},
     path::{Path, PathBuf},
 };
 
@@ -106,7 +106,9 @@ fn create_dev_vars() -> Result<bool> {
 
 async fn extract_distribution(cf_worker_dir: &PathBuf) -> Result<()> {
     let download_file_name = "exograph-cf-worker-wasm.zip";
-    let download_url = format!("https://github.com/exograph/exograph/releases/download/v{CURRENT_VERSION}/{download_file_name}");
+    let download_url = format!(
+        "https://github.com/exograph/exograph/releases/download/v{CURRENT_VERSION}/{download_file_name}"
+    );
 
     let distribution_zip_path =
         download_if_needed(&download_url, "Exograph Cloudflare Worker Distribution").await?;

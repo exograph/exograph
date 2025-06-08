@@ -8,14 +8,14 @@ use clap::{Arg, ArgMatches, Command};
 
 use anyhow::Result;
 use common::env_const::{
-    EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_POSTGRES_URL,
-    _EXO_DEPLOYMENT_MODE, _EXO_UPSTREAM_ENDPOINT_URL,
+    _EXO_DEPLOYMENT_MODE, _EXO_UPSTREAM_ENDPOINT_URL, EXO_CHECK_CONNECTION_ON_STARTUP,
+    EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_POSTGRES_URL,
 };
 use exo_env::{MapEnvironment, SystemEnvironment};
 
 use crate::{commands::command::get_required, config::Config, util::watcher};
 
-use super::command::{ensure_exo_project_dir, get, port_arg, CommandDefinition};
+use super::command::{CommandDefinition, ensure_exo_project_dir, get, port_arg};
 
 /// Run local exograph server in playground-only mode
 ///

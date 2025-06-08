@@ -37,11 +37,8 @@ impl CallbackProcessor<()> for () {
     async fn process_callback(&self, _req: ()) {}
 }
 
-impl<
-        C: Sync + Send + Debug + 'static,
-        M: Sync + Send + 'static,
-        R: Debug + Sync + Send + 'static,
-    > DenoExecutor<C, M, R>
+impl<C: Sync + Send + Debug + 'static, M: Sync + Send + 'static, R: Debug + Sync + Send + 'static>
+    DenoExecutor<C, M, R>
 {
     pub(super) async fn execute(
         &self,

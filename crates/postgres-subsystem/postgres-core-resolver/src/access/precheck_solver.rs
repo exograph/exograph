@@ -18,9 +18,9 @@ use core_model::access::{
     AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp, FunctionCall,
 };
 use core_resolver::access_solver::{
-    eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
-    reduce_common_primitive_expression, AccessInput, AccessInputPath, AccessInputPathElement,
-    AccessSolution, AccessSolver, AccessSolverError,
+    AccessInput, AccessInputPath, AccessInputPathElement, AccessSolution, AccessSolver,
+    AccessSolverError, eq_values, gt_values, gte_values, in_values, lt_values, lte_values,
+    neq_values, reduce_common_primitive_expression,
 };
 use exo_sql::{
     AbstractPredicate, ColumnPath, ColumnPathLink, Database, PhysicalColumnPath, PhysicalColumnType,
@@ -65,7 +65,7 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
             _ => {
                 return Ok(AccessSolution::Unsolvable(AbstractPredicateWrapper(
                     AbstractPredicate::True,
-                )))
+                )));
             } // If either side is None, we can't produce a predicate
         };
 

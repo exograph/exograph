@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use core_plugin_shared::profile::SchemaProfiles;
 use semver::{Version, VersionReq};
 

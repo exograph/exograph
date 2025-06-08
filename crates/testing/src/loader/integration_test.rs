@@ -14,13 +14,13 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use async_graphql_parser::parse_query;
 use serde::Deserialize;
 
 use crate::model::{
-    build_operations_metadata, ApiOperation, ApiOperationInvariant, DatabaseOperation,
-    InitOperation, IntegrationTest, OperationMetadata,
+    ApiOperation, ApiOperationInvariant, DatabaseOperation, InitOperation, IntegrationTest,
+    OperationMetadata, build_operations_metadata,
 };
 
 // serde file formats

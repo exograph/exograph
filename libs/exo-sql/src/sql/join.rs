@@ -9,7 +9,7 @@
 
 use crate::Database;
 
-use super::{predicate::ConcretePredicate, table::Table, ExpressionBuilder, SQLBuilder};
+use super::{ExpressionBuilder, SQLBuilder, predicate::ConcretePredicate, table::Table};
 
 /// Represents a join between two tables. Currently, supports only left join.
 #[derive(Debug, PartialEq)]
@@ -50,11 +50,11 @@ impl ExpressionBuilder for LeftJoin {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::schema::test_helper::{int_column, pk_column, pk_reference_column};
     use crate::SchemaObjectName;
+    use crate::schema::test_helper::{int_column, pk_column, pk_reference_column};
     use crate::{
-        schema::{database_spec::DatabaseSpec, table_spec::TableSpec},
         Column,
+        schema::{database_spec::DatabaseSpec, table_spec::TableSpec},
     };
 
     use multiplatform_test::multiplatform_test;

@@ -15,7 +15,7 @@ use core_plugin_interface::interface::SubsystemLoader;
 
 use core_router::SystemLoadingError;
 use exo_env::SystemEnvironment;
-use system_router::{create_system_router_from_file, SystemRouter};
+use system_router::{SystemRouter, create_system_router_from_file};
 
 /// Initialize the server by:
 /// - Initializing tracing

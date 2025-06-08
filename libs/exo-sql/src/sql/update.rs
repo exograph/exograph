@@ -12,11 +12,11 @@ use maybe_owned::MaybeOwned;
 use crate::{Database, OneToMany, PhysicalTable};
 
 use super::{
+    ExpressionBuilder, SQLBuilder, SQLParamContainer,
     column::Column,
     physical_column::PhysicalColumn,
     predicate::ConcretePredicate,
     transaction::{TransactionContext, TransactionStepId},
-    ExpressionBuilder, SQLBuilder, SQLParamContainer,
 };
 
 /// An update operation.

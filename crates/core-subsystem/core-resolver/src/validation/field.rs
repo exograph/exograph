@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use async_graphql_value::{indexmap::IndexMap, Name};
+use async_graphql_value::{Name, indexmap::IndexMap};
 use serde::Serialize;
 
 use common::value::Val;

@@ -1,10 +1,10 @@
 use anyhow::Result;
 use exo_sql::{
-    schema::{database_spec::DatabaseSpec, table_spec::TableSpec},
     SchemaObjectName,
+    schema::{database_spec::DatabaseSpec, table_spec::TableSpec},
 };
 
-use super::{processor::INDENT, ImportContext, ModelProcessor};
+use super::{ImportContext, ModelProcessor, processor::INDENT};
 
 use heck::ToLowerCamelCase;
 

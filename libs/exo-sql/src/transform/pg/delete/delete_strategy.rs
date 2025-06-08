@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    sql::transaction::TransactionScript, transform::pg::Postgres, AbstractDelete, Database,
+    AbstractDelete, Database, sql::transaction::TransactionScript, transform::pg::Postgres,
 };
 
 /// A strategy for generating a SQL query from an abstract delete.

@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
-    type_normalization::{default_positioned, default_positioned_name, BaseType, Type},
+    type_normalization::{BaseType, Type, default_positioned, default_positioned_name},
 };
 
 /// A type that can be used as a type for fields and return types

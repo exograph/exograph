@@ -15,11 +15,11 @@ use common::{
 };
 use core_plugin_shared::profile::{SchemaProfile, SchemaProfiles};
 use core_resolver::{
+    QueryResponse, QueryResponseBody,
     plugin::subsystem_rpc_resolver::{
         JsonRpcId, JsonRpcRequest, SubsystemRpcError, SubsystemRpcResponse,
     },
     system_resolver::GraphQLSystemResolver,
-    QueryResponse, QueryResponseBody,
 };
 
 use core_router::SystemLoadingError;

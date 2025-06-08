@@ -21,8 +21,8 @@ use core_model::types::{DirectivesProvider, TypeValidation};
 use core_model::{
     mapped_arena::SerializableSlabIndex,
     type_normalization::{
-        default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
-        Parameter, TypeDefinitionProvider,
+        FieldDefinitionProvider, InputValueProvider, Parameter, TypeDefinitionProvider,
+        default_positioned, default_positioned_name,
     },
     types::{FieldType, Named},
 };

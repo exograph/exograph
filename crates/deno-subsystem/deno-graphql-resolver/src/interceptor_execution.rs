@@ -9,15 +9,15 @@
 
 use common::context::RequestContext;
 use core_resolver::{
-    system_resolver::ExographExecuteQueryFn, validation::field::ValidatedField,
-    InterceptedOperation,
+    InterceptedOperation, system_resolver::ExographExecuteQueryFn,
+    validation::field::ValidatedField,
 };
 use deno_graphql_model::interceptor::Interceptor;
-use exo_deno::{deno_executor_pool::DenoScriptDefn, Arg};
+use exo_deno::{Arg, deno_executor_pool::DenoScriptDefn};
 use indexmap::IndexMap;
 use serde_json::Value;
 
-use crate::{deno_operation::construct_arg_sequence, DenoSubsystemResolver};
+use crate::{DenoSubsystemResolver, deno_operation::construct_arg_sequence};
 
 use super::{
     deno_execution_error::DenoExecutionError,

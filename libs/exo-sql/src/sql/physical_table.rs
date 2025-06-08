@@ -9,12 +9,12 @@
 
 use std::collections::HashSet;
 
-use crate::{schema::index_spec::IndexKind, Database};
+use crate::{Database, schema::index_spec::IndexKind};
 
 use super::{
-    column::Column, delete::Delete, insert::Insert, physical_column::PhysicalColumn,
-    predicate::ConcretePredicate, schema_object::SchemaObjectName, update::Update,
-    ExpressionBuilder, SQLBuilder,
+    ExpressionBuilder, SQLBuilder, column::Column, delete::Delete, insert::Insert,
+    physical_column::PhysicalColumn, predicate::ConcretePredicate, schema_object::SchemaObjectName,
+    update::Update,
 };
 
 use maybe_owned::MaybeOwned;

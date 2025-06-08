@@ -1,4 +1,4 @@
-use oidc_jwt_validator::{cache::Strategy, ValidationError, ValidationSettings, Validator};
+use oidc_jwt_validator::{ValidationError, ValidationSettings, Validator, cache::Strategy};
 use serde_json::Value;
 
 use super::authenticator::JwtConfigurationError;

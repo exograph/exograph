@@ -15,8 +15,8 @@ use std::{
 use anyhow::Result;
 use common::logging_tracing;
 use tokio::sync::{
-    broadcast::{Receiver, Sender},
     Mutex,
+    broadcast::{Receiver, Sender},
 };
 
 use commands::{

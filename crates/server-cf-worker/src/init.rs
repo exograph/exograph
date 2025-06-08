@@ -1,11 +1,11 @@
 use std::{cell::OnceCell, sync::Arc};
 
 use exo_env::Environment;
-use system_router::{create_system_router_from_system, SystemRouter};
+use system_router::{SystemRouter, create_system_router_from_system};
 use tracing::level_filters::LevelFilter;
 use wasm_bindgen::prelude::*;
 
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
+use tracing_subscriber::{Layer, layer::SubscriberExt, util::SubscriberInitExt};
 
 use core_plugin_shared::{
     serializable_system::SerializableSystem, system_serializer::SystemSerializer,

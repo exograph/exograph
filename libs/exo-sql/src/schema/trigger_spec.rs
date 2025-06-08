@@ -1,7 +1,7 @@
 use std::{str::FromStr, vec};
 
 use crate::{
-    database_error::DatabaseError, sql::connect::database_client::DatabaseClient, SchemaObjectName,
+    SchemaObjectName, database_error::DatabaseError, sql::connect::database_client::DatabaseClient,
 };
 
 use super::{issue::WithIssues, op::SchemaOp};

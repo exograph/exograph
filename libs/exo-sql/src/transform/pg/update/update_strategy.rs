@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    sql::transaction::TransactionScript, transform::pg::Postgres, AbstractUpdate, Database,
+    AbstractUpdate, Database, sql::transaction::TransactionScript, transform::pg::Postgres,
 };
 
 /// A strategy for generating a transaction script from an abstract update.

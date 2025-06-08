@@ -13,15 +13,15 @@ use crate::{
 };
 
 use crate::{
+    AbstractDelete, Column, Database,
     sql::{
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
     transform::{
-        pg::{selection_level::SelectionLevel, Postgres},
+        pg::{Postgres, selection_level::SelectionLevel},
         transformer::SelectTransformer,
     },
-    AbstractDelete, Column, Database,
 };
 
 use super::delete_strategy::DeleteStrategy;
@@ -135,10 +135,10 @@ fn to_delete<'a>(
 #[cfg(test)]
 mod tests {
     use crate::{
-        asql::selection::{AliasedSelectionElement, Selection, SelectionElement},
-        sql::{predicate::Predicate, ExpressionBuilder, SQLParamContainer},
-        transform::{pg::Postgres, test_util::TestSetup},
         AbstractPredicate, AbstractSelect, ColumnPath, PhysicalColumnPath,
+        asql::selection::{AliasedSelectionElement, Selection, SelectionElement},
+        sql::{ExpressionBuilder, SQLParamContainer, predicate::Predicate},
+        transform::{pg::Postgres, test_util::TestSetup},
     };
 
     use multiplatform_test::multiplatform_test;

@@ -9,7 +9,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::{asql::column_path::ColumnPathLink, PhysicalColumnPath, TableId};
+use crate::{PhysicalColumnPath, TableId, asql::column_path::ColumnPathLink};
 
 #[derive(Debug)]
 pub struct TableDependency {

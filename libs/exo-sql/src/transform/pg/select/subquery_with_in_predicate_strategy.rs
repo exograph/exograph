@@ -8,15 +8,15 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
+    Database,
     sql::{predicate::ConcretePredicate, select::Select},
     transform::{join_util, transformer::PredicateTransformer},
-    Database,
 };
 
 use super::{
     selection_context::SelectionContext,
     selection_strategy::{
-        compute_inner_select, compute_relation_predicate, nest_subselect, SelectionStrategy,
+        SelectionStrategy, compute_inner_select, compute_relation_predicate, nest_subselect,
     },
 };
 

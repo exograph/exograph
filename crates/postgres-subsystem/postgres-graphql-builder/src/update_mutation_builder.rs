@@ -24,15 +24,15 @@ use postgres_core_model::types::{EntityType, PostgresField, PostgresFieldType, T
 
 use crate::{
     mutation_builder::DataParamRole,
-    utils::{to_mutation_type, MutationTypeKind},
+    utils::{MutationTypeKind, to_mutation_type},
 };
 
 use postgres_core_builder::shallow::Shallow;
 
 use super::{
     builder::Builder,
-    mutation_builder::{create_data_type_name, update_data_type_name},
     mutation_builder::{DataParamBuilder, MutationBuilder},
+    mutation_builder::{create_data_type_name, update_data_type_name},
     naming::{ToPostgresMutationNames, ToPostgresTypeNames},
     query_builder,
     system_builder::SystemContextBuilding,
@@ -303,41 +303,40 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
                     .get_id(&nested_existing_type_name)
                     .unwrap();
 
-                &self
-                    .expanded_data_type(
-                        field_type,
-                        building,
-                        top_level_type,
-                        container_type,
-                        expanding_one_to_many,
-                    )?
-                    .first()
-                    .map(|tpe| {
-                        let base_type = tpe.1.clone();
-                        let mut base_type_fields = base_type.fields;
+                let expanded_data_type = self.expanded_data_type(
+                    field_type,
+                    building,
+                    top_level_type,
+                    container_type,
+                    expanding_one_to_many,
+                )?;
 
-                        let base_type_pk_fields =
-                            base_type_fields.iter_mut().filter(|f| f.relation.is_pk());
+                expanded_data_type.first().map(|tpe| {
+                    let base_type = tpe.1.clone();
+                    let mut base_type_fields = base_type.fields;
 
-                        // For a non-nested type ("base type"), we already have the PK field, but it is optional. So here
-                        // we make it required (by not wrapping the entity_pk_field it as optional)
-                        for (i, base_type_pk_field) in base_type_pk_fields.enumerate() {
-                            let entity_pk_field = field_type.pk_fields()[i];
-                            base_type_pk_field.typ = to_mutation_type(
-                                &entity_pk_field.typ,
-                                MutationTypeKind::Update,
-                                building,
-                            );
-                        }
+                    let base_type_pk_fields =
+                        base_type_fields.iter_mut().filter(|f| f.relation.is_pk());
 
-                        let type_with_id = MutationType {
-                            name: nested_existing_type_name,
-                            fields: base_type_fields,
-                            ..base_type
-                        };
+                    // For a non-nested type ("base type"), we already have the PK field, but it is optional. So here
+                    // we make it required (by not wrapping the entity_pk_field it as optional)
+                    for (i, base_type_pk_field) in base_type_pk_fields.enumerate() {
+                        let entity_pk_field = field_type.pk_fields()[i];
+                        base_type_pk_field.typ = to_mutation_type(
+                            &entity_pk_field.typ,
+                            MutationTypeKind::Update,
+                            building,
+                        );
+                    }
 
-                        (nested_existing_type_id, type_with_id)
-                    })
+                    let type_with_id = MutationType {
+                        name: nested_existing_type_name,
+                        fields: base_type_fields,
+                        ..base_type
+                    };
+
+                    (nested_existing_type_id, type_with_id)
+                })
             }
             .clone();
 

@@ -13,16 +13,16 @@ use tokio_postgres::{GenericClient, Row};
 use tracing::{error, info, instrument};
 
 use crate::{
-    database_error::DatabaseError,
-    sql::{select::Select, table::Table, SQLBuilder},
     Column, Database, Predicate, SQLParamContainer, TableId,
+    database_error::DatabaseError,
+    sql::{SQLBuilder, select::Select, table::Table},
 };
 
 use super::{
+    ExpressionBuilder, SQLValue,
     column::ArrayParamWrapper,
     predicate::ConcretePredicate,
     sql_operation::{SQLOperation, TemplateSQLOperation},
-    ExpressionBuilder, SQLValue,
 };
 
 /// Rows obtained from a SQL operation

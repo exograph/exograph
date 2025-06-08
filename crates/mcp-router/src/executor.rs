@@ -1,11 +1,11 @@
 use async_trait::async_trait;
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use common::{context::RequestContext, operation_payload::OperationsPayload};
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::{
-    plugin::subsystem_rpc_resolver::SubsystemRpcError, system_resolver::GraphQLSystemResolver,
-    QueryResponse,
+    QueryResponse, plugin::subsystem_rpc_resolver::SubsystemRpcError,
+    system_resolver::GraphQLSystemResolver,
 };
 use graphql_router::resolve_in_memory_for_payload;
 

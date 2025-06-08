@@ -10,9 +10,9 @@
 use tracing::debug;
 
 use crate::{
+    AbstractInsert, ColumnId, Database,
     sql::transaction::{TransactionScript, TransactionStepId},
     transform::pg::Postgres,
-    AbstractInsert, ColumnId, Database,
 };
 
 use super::{

@@ -20,7 +20,7 @@ use common::{
 use futures::StreamExt;
 use lambda_runtime::{Error, LambdaEvent};
 use request::LambdaRequest;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use system_router::SystemRouter;
 

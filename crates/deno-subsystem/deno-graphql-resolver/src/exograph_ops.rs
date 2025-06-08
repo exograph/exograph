@@ -7,8 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use anyhow::{anyhow, bail, Result};
-use exo_deno::deno_core::{error::AnyError, op2, OpState};
+use anyhow::{Result, anyhow, bail};
+use exo_deno::deno_core::{OpState, error::AnyError, op2};
 
 use core_resolver::system_resolver::SystemResolutionError;
 use serde_json::Value;

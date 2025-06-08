@@ -2,7 +2,7 @@ mod core;
 mod interaction;
 mod predefined_interaction;
 
-pub use core::{wipe_database, Migration, MigrationError, MigrationStatement, VerificationErrors};
+pub use core::{Migration, MigrationError, MigrationStatement, VerificationErrors, wipe_database};
 
-pub use interaction::{migrate_interactively, InteractionError, MigrationInteraction, TableAction};
+pub use interaction::{InteractionError, MigrationInteraction, TableAction, migrate_interactively};
 pub use predefined_interaction::PredefinedMigrationInteraction;

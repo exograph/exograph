@@ -16,21 +16,21 @@ use core_model::primitive_type::InjectedType;
 use core_model::types::{FieldType, Named};
 use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
 use core_model_builder::ast::ast_types::AstFieldType;
-use core_model_builder::builder::resolved_builder::{compute_fragment_fields, AnnotationMapHelper};
+use core_model_builder::builder::resolved_builder::{AnnotationMapHelper, compute_fragment_fields};
 use core_model_builder::builder::system_builder::BaseModelSystem;
-use core_model_builder::typechecker::typ::{Module, TypecheckedSystem};
 use core_model_builder::typechecker::AnnotationMap;
+use core_model_builder::typechecker::typ::{Module, TypecheckedSystem};
 use core_model_builder::{
     ast::ast_types::{
         AstAnnotationParams, AstArgument, AstExpr, AstMethodType, AstModelKind, AstModule,
     },
     error::ModelBuildingError,
-    typechecker::{typ::Type, Typed},
+    typechecker::{Typed, typ::Type},
 };
 use serde::{Deserialize, Serialize};
 
-use crate::builder::access_builder::build_access;
 use crate::ScriptProcessor;
+use crate::builder::access_builder::build_access;
 
 use super::access_builder::ResolvedAccess;
 
@@ -597,12 +597,12 @@ mod tests {
         ast::ast_types::AstModule,
         builder::system_builder::BaseModelSystem,
         error::ModelBuildingError,
-        typechecker::{typ::TypecheckedSystem, Typed},
+        typechecker::{Typed, typ::TypecheckedSystem},
     };
 
     use crate::ScriptProcessor;
 
-    use super::{build, ResolvedModuleSystem};
+    use super::{ResolvedModuleSystem, build};
 
     #[tokio::test]
     async fn type_disambiguation() {

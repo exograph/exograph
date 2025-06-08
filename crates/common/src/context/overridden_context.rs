@@ -12,7 +12,7 @@ use serde_json::Value;
 
 use crate::value::Val;
 
-use super::{request_context::CoreRequestContext, ContextExtractionError, RequestContext};
+use super::{ContextExtractionError, RequestContext, request_context::CoreRequestContext};
 
 /// Represents a request context that has been overridden explicitly through
 /// a call to `ExographPriv` with overriddent context that should last only for that call (including any nested calls).

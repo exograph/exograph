@@ -10,6 +10,7 @@
 use std::{ops::DerefMut, sync::atomic::AtomicBool};
 
 use crate::{
+    Database,
     database_error::DatabaseError,
     sql::{
         connect::{
@@ -19,7 +20,6 @@ use crate::{
         transaction::{TransactionScript, TransactionStepResult},
     },
     transform::{pg::Postgres, transformer::OperationTransformer},
-    Database,
 };
 
 use super::abstract_operation::AbstractOperation;

@@ -16,8 +16,8 @@ use postgres_core_model::aggregate::{AggregateField, AggregateFieldType, Aggrega
 use crate::query::AggregateQueryParameters;
 use crate::subsystem::PostgresGraphQLSubsystem;
 use core_model::type_normalization::{
-    default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
-    TypeDefinitionProvider,
+    FieldDefinitionProvider, InputValueProvider, TypeDefinitionProvider, default_positioned,
+    default_positioned_name,
 };
 use postgres_core_model::relation::{OneToManyRelation, PostgresRelation};
 

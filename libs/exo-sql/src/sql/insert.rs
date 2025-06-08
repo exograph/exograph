@@ -12,10 +12,10 @@ use maybe_owned::MaybeOwned;
 use crate::{Database, PhysicalTable};
 
 use super::{
+    ExpressionBuilder, SQLBuilder, SQLParamContainer,
     column::{Column, ProxyColumn},
     physical_column::PhysicalColumn,
     transaction::{TransactionContext, TransactionStepId},
-    ExpressionBuilder, SQLBuilder, SQLParamContainer,
 };
 
 /// An insert operation.

@@ -5,8 +5,8 @@ use async_trait::async_trait;
 use common::context::RequestContext;
 
 use core_resolver::access_solver::AccessSolver;
-use core_resolver::plugin::subsystem_rpc_resolver::{SubsystemRpcError, SubsystemRpcResponse};
 use core_resolver::plugin::SubsystemRpcResolver;
+use core_resolver::plugin::subsystem_rpc_resolver::{SubsystemRpcError, SubsystemRpcResponse};
 use core_resolver::{QueryResponse, QueryResponseBody};
 use exo_sql::{
     AbstractOperation, AbstractSelect, AliasedSelectionElement, DatabaseExecutor, Selection,
@@ -108,7 +108,7 @@ impl OperationResolver for PostgresOperation {
                 _ => {
                     return Err(SubsystemRpcError::UserDisplayError(
                         "Only queries are supported for this operation".to_string(),
-                    ))
+                    ));
                 }
             };
             &subsystem.core_subsystem.database_access_expressions[access_expr_index]

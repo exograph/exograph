@@ -44,7 +44,7 @@
 //! user-provided predicates (id = 100 for update and id =  110 for delete). TODO: Should we
 //! fail if the the combined predicate does not match any rows?
 
-use crate::{sql::column::Column, ColumnId, OneToMany, TableId};
+use crate::{ColumnId, OneToMany, TableId, sql::column::Column};
 
 use super::{
     delete::AbstractDelete, insert::AbstractInsert, predicate::AbstractPredicate,

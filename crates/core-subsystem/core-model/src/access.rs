@@ -110,7 +110,7 @@ where
 
     pub fn combiner(
         &self,
-    ) -> impl Fn(Box<PrimExpr>, Box<PrimExpr>) -> AccessRelationalOp<PrimExpr> {
+    ) -> impl Fn(Box<PrimExpr>, Box<PrimExpr>) -> AccessRelationalOp<PrimExpr> + use<PrimExpr> {
         match self {
             AccessRelationalOp::Eq(_, _) => AccessRelationalOp::Eq,
             AccessRelationalOp::Neq(_, _) => AccessRelationalOp::Neq,

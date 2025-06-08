@@ -8,13 +8,13 @@
 // by the Apache License, Version 2.0.
 
 use async_graphql_parser::{
-    types::{FieldDefinition, TypeDefinition},
     Positioned,
+    types::{FieldDefinition, TypeDefinition},
 };
 use core_model::{
     context_type::ContextType,
     mapped_arena::{MappedArena, SerializableSlab},
-    type_normalization::{default_positioned, FieldDefinitionProvider, TypeDefinitionProvider},
+    type_normalization::{FieldDefinitionProvider, TypeDefinitionProvider, default_positioned},
 };
 use serde::{Deserialize, Serialize};
 

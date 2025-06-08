@@ -26,8 +26,8 @@ use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 use crate::{
     auth_util::check_retrieve_access,
     column_path_util::to_column_path,
-    sql_mapper::{extract_and_map, SQLMapper},
-    util::{get_argument_field, Arguments},
+    sql_mapper::{SQLMapper, extract_and_map},
+    util::{Arguments, get_argument_field},
 };
 
 use postgres_core_resolver::cast::{cast_value, literal_column_path};

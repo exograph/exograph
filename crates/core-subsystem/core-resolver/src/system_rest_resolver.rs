@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use futures::{lock::Mutex, StreamExt};
+use futures::{StreamExt, lock::Mutex};
 
 use common::{context::RequestContext, http::ResponsePayload};
 use exo_env::Environment;

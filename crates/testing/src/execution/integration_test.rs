@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use colored::Colorize;
 
 use common::env_const::{
@@ -17,20 +17,20 @@ use common::env_const::{
 use common::http::{MemoryRequestHead, MemoryRequestPayload, RequestPayload, ResponseBodyError};
 use common::operation_payload::OperationsPayload;
 use common::router::{PlainRequestPayload, Router};
-use exo_sql::testing::db::EphemeralDatabaseServer;
 use exo_sql::DatabaseClientManager;
-use futures::future::OptionFuture;
+use exo_sql::testing::db::EphemeralDatabaseServer;
 use futures::FutureExt;
-use jsonwebtoken::{encode, EncodingKey, Header};
-use rand::{distributions::Alphanumeric, Rng};
+use futures::future::OptionFuture;
+use jsonwebtoken::{EncodingKey, Header, encode};
+use rand::{Rng, distributions::Alphanumeric};
 use regex::Regex;
-use serde_json::{json, Map, Value};
-use system_router::{create_system_router_from_file, SystemRouter};
+use serde_json::{Map, Value, json};
+use system_router::{SystemRouter, create_system_router_from_file};
 
 use std::collections::HashSet;
 use std::path::PathBuf;
-use std::sync::mpsc::Sender;
 use std::sync::Arc;
+use std::sync::mpsc::Sender;
 use std::time::Duration;
 use std::{collections::HashMap, time::SystemTime};
 
@@ -38,8 +38,8 @@ use exo_env::MapEnvironment;
 
 use crate::execution::assertion::assert_using_deno;
 use crate::model::{
-    resolve_testvariable, ApiOperation, ApiOperationInvariant, DatabaseOperation, InitOperation,
-    IntegrationTest,
+    ApiOperation, ApiOperationInvariant, DatabaseOperation, InitOperation, IntegrationTest,
+    resolve_testvariable,
 };
 
 use super::assertion::{dynamic_assert_using_deno, evaluate_using_deno};

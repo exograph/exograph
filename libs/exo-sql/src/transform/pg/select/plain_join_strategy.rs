@@ -7,11 +7,11 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{sql::select::Select, transform::transformer::OrderByTransformer, Database, Selection};
+use crate::{Database, Selection, sql::select::Select, transform::transformer::OrderByTransformer};
 
 use super::{
     selection_context::SelectionContext,
-    selection_strategy::{join_info, SelectionStrategy},
+    selection_strategy::{SelectionStrategy, join_info},
 };
 
 /// Strategy that uses a plain join of tables involved in clauses

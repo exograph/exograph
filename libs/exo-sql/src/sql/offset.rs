@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use crate::Database;
 
-use super::{sql_param::SQLParamWithType, ExpressionBuilder, SQLBuilder};
+use super::{ExpressionBuilder, SQLBuilder, sql_param::SQLParamWithType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Offset(pub i64);

@@ -12,11 +12,11 @@ use maybe_owned::MaybeOwned;
 use crate::{Database, OneToMany, SQLParamContainer};
 
 use super::{
+    ExpressionBuilder, SQLBuilder,
     column::Column,
     physical_table::PhysicalTable,
     predicate::ConcretePredicate,
     transaction::{TransactionContext, TransactionStepId},
-    ExpressionBuilder, SQLBuilder,
 };
 
 /// A delete operation.

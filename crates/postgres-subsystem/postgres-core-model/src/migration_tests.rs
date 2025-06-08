@@ -5,7 +5,7 @@ use exo_sql::{
     schema::{
         database_spec::DatabaseSpec,
         migration::{
-            migrate_interactively, Migration, MigrationStatement, PredefinedMigrationInteraction,
+            Migration, MigrationStatement, PredefinedMigrationInteraction, migrate_interactively,
         },
         spec::{MigrationScope, MigrationScopeMatches},
     },

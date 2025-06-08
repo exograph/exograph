@@ -14,14 +14,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use clap::{Arg, ArgAction, Command};
 use colored::Colorize;
 
 use crate::commands::{
     build::build,
-    command::{get, CommandDefinition},
+    command::{CommandDefinition, get},
 };
 use crate::config::Config;
 

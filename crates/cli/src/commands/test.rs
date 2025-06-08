@@ -9,8 +9,8 @@
 
 use std::path::PathBuf;
 
-use super::command::{get, get_required, CommandDefinition};
-use anyhow::{anyhow, Result};
+use super::command::{CommandDefinition, get, get_required};
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 use exo_sql::testing::db::EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE;
@@ -60,7 +60,10 @@ impl CommandDefinition for TestCommandDefinition {
         // Clear all EXO_ env vars before running tests (this way, if the user has set any, they won't affect the tests)
         for (key, _) in std::env::vars() {
             if key.starts_with("EXO_") && key != EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE {
-                std::env::remove_var(key);
+                // SAFETY: std::env::remove_var is unsafe if called from multiple threads. This is a start of the process and still in the main thread.
+                unsafe {
+                    std::env::remove_var(key);
+                }
             }
         }
 

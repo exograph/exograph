@@ -1,5 +1,5 @@
 use anyhow::Result;
-use builder::{build_from_ast_system, error::ParserError, parser, FileSystem};
+use builder::{FileSystem, build_from_ast_system, error::ParserError, parser};
 use codemap::CodeMap;
 use core_plugin_shared::trusted_documents::TrustedDocuments;
 use std::{

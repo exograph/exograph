@@ -9,10 +9,10 @@
 
 use std::collections::{HashMap, HashSet};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use async_graphql_parser::{
-    types::{DocumentOperations, ExecutableDocument, FragmentDefinition, Selection, SelectionSet},
     Positioned,
+    types::{DocumentOperations, ExecutableDocument, FragmentDefinition, Selection, SelectionSet},
 };
 use async_graphql_value::{Name, Value};
 use serde::Serialize;

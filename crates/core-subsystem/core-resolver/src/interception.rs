@@ -12,7 +12,7 @@ use async_recursion::async_recursion;
 
 use core_plugin_shared::interception::{InterceptionTree, InterceptorIndexWithSubsystemIndex};
 
-use super::{validation::field::ValidatedField, QueryResponse};
+use super::{QueryResponse, validation::field::ValidatedField};
 
 use common::context::RequestContext;
 

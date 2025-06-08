@@ -8,10 +8,10 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
+    Database, PhysicalColumnPath, TableId,
     asql::column_path::{ColumnPathLink, RelationLink},
     sql::{column::Column, join::LeftJoin, predicate::ConcretePredicate, table::Table},
     transform::table_dependency::{DependencyLink, TableDependency},
-    Database, PhysicalColumnPath, TableId,
 };
 
 use super::pg::selection_level::SelectionLevel;
@@ -106,9 +106,9 @@ pub fn compute_join(
 #[cfg(test)]
 mod tests {
     use crate::{
+        PhysicalColumnPath,
         sql::ExpressionBuilder,
         transform::{pg::selection_level::SelectionLevel, test_util::TestSetup},
-        PhysicalColumnPath,
     };
 
     use multiplatform_test::multiplatform_test;

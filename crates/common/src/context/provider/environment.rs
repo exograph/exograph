@@ -10,7 +10,7 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
+use crate::context::{ContextExtractionError, RequestContext, context_extractor::ContextExtractor};
 
 pub struct EnvironmentContextExtractor;
 

@@ -7,15 +7,15 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use clap::Command;
 use exo_sql::schema::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
 
 use crate::commands::command::{
-    database_arg, database_value, default_model_file, migration_scope_arg, migration_scope_value,
-    yes_arg, CommandDefinition,
+    CommandDefinition, database_arg, database_value, default_model_file, migration_scope_arg,
+    migration_scope_value, yes_arg,
 };
 use crate::commands::util::{compute_migration_scope, use_ir_arg};
 use crate::config::Config;
@@ -51,7 +51,9 @@ impl CommandDefinition for VerifyCommandDefinition {
         match &verification_result {
             Ok(()) => eprintln!("This model is compatible with the database schema!"),
             Err(e @ VerificationErrors::ModelNotCompatible(_)) => {
-                eprintln!("This model is not compatible with the current database schema. You may need to update your model to match, or perform a migration to update it.");
+                eprintln!(
+                    "This model is not compatible with the current database schema. You may need to update your model to match, or perform a migration to update it."
+                );
                 eprintln!("The following issues should be corrected:");
                 eprintln!("{e}")
             }

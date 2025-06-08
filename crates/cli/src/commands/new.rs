@@ -7,18 +7,18 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::fs::{create_dir_all, File};
+use std::fs::{File, create_dir_all};
 use std::io::Write;
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 use colored::Colorize;
 
 use super::command::{
-    database_arg, get_required, migration_scope_arg, mutation_access_arg, new_project_arg,
-    query_access_arg, CommandDefinition,
+    CommandDefinition, database_arg, get_required, migration_scope_arg, mutation_access_arg,
+    new_project_arg, query_access_arg,
 };
 use crate::commands::command::{
     database_value, migration_scope_value, mutation_access_value, query_access_value,

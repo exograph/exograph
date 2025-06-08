@@ -12,8 +12,8 @@ use std::collections::HashMap;
 use crate::{Database, Limit, Offset};
 
 use super::{
-    column::Column, group_by::GroupBy, order::OrderBy, predicate::ConcretePredicate, table::Table,
-    ExpressionBuilder, SQLBuilder,
+    ExpressionBuilder, SQLBuilder, column::Column, group_by::GroupBy, order::OrderBy,
+    predicate::ConcretePredicate, table::Table,
 };
 
 /// A select statement
@@ -99,13 +99,13 @@ impl ExpressionBuilder for Select {
 #[cfg(test)]
 mod tests {
     use crate::{
+        SchemaObjectName,
         schema::{
             database_spec::DatabaseSpec,
             table_spec::TableSpec,
             test_helper::{int_column, pk_column, string_column},
         },
         sql::json_object::{JsonObject, JsonObjectElement},
-        SchemaObjectName,
     };
 
     use multiplatform_test::multiplatform_test;

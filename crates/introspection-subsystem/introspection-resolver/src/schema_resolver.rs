@@ -13,7 +13,7 @@ use core_resolver::validation::field::ValidatedField;
 
 use async_trait::async_trait;
 use core_resolver::introspection::definition::schema::{
-    Schema, MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME,
+    MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME, Schema,
 };
 use serde_json::Value;
 

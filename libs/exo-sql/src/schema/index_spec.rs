@@ -12,8 +12,8 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    database_error::DatabaseError, sql::connect::database_client::DatabaseClient, SchemaObjectName,
-    VectorDistanceFunction,
+    SchemaObjectName, VectorDistanceFunction, database_error::DatabaseError,
+    sql::connect::database_client::DatabaseClient,
 };
 
 use super::{column_spec::ColumnSpec, issue::WithIssues, op::SchemaOp, table_spec::TableSpec};

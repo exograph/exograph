@@ -9,7 +9,7 @@
 
 use std::fmt::Display;
 
-use tokio_postgres::types::{to_sql_checked, FromSql, ToSql, Type};
+use tokio_postgres::types::{FromSql, ToSql, Type, to_sql_checked};
 
 use crate::database_error::DatabaseError;
 

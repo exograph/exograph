@@ -13,8 +13,8 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use actix_web::{
-    web::{self, ServiceConfig},
     HttpRequest, HttpResponse, HttpResponseBuilder, Responder,
+    web::{self, ServiceConfig},
 };
 use exo_env::Environment;
 use reqwest::StatusCode;
@@ -22,7 +22,7 @@ use system_router::SystemRouter;
 use url::Url;
 
 use common::{
-    env_const::{get_deployment_mode, DeploymentMode},
+    env_const::{DeploymentMode, get_deployment_mode},
     router::Router,
 };
 use common::{

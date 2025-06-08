@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use super::vector::VectorDistanceFunction;
-use crate::{sql::vector::VectorDistance, ColumnId, Database, SQLParamContainer};
+use crate::{ColumnId, Database, SQLParamContainer, sql::vector::VectorDistance};
 
 use super::{ExpressionBuilder, SQLBuilder};
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
@@ -107,9 +107,9 @@ mod test {
     use std::vec;
 
     use super::*;
+    use crate::SchemaObjectName;
     use crate::schema::test_helper::{int_column, pk_column, string_column};
     use crate::schema::{database_spec::DatabaseSpec, table_spec::TableSpec};
-    use crate::SchemaObjectName;
 
     use multiplatform_test::multiplatform_test;
 

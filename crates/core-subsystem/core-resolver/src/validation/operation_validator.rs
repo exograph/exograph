@@ -10,14 +10,14 @@
 use std::collections::HashMap;
 
 use async_graphql_parser::{
-    types::{FragmentDefinition, OperationDefinition, OperationType, VariableDefinition},
     Pos, Positioned,
+    types::{FragmentDefinition, OperationDefinition, OperationType, VariableDefinition},
 };
 use async_graphql_value::{ConstValue, Name};
 use serde_json::{Map, Value};
 
 use crate::{
-    introspection::definition::schema::{Schema, MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME},
+    introspection::definition::schema::{MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, Schema},
     validation::validation_error::ValidationError,
 };
 
@@ -113,7 +113,7 @@ impl<'a> OperationValidator<'a> {
                 return Err(ValidationError::OperationNotFound(
                     operation_type_name.to_string(),
                     Pos::default(),
-                ))
+                ));
             }
         };
 

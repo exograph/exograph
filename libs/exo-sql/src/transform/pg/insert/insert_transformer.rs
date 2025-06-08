@@ -24,9 +24,9 @@
 
 use super::insertion_strategy_chain::InsertionStrategyChain;
 use crate::{
+    AbstractInsert, ColumnId, Database,
     sql::transaction::{TransactionScript, TransactionStepId},
     transform::{pg::Postgres, transformer::InsertTransformer},
-    AbstractInsert, ColumnId, Database,
 };
 
 impl InsertTransformer for Postgres {

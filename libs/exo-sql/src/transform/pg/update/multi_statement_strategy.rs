@@ -10,6 +10,8 @@
 use maybe_owned::MaybeOwned;
 
 use crate::{
+    ColumnId, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractInsertSet,
+    NestedAbstractUpdate, PhysicalColumn, Predicate, SQLParamContainer,
     sql::{
         column::ArrayParamWrapper,
         delete::TemplateDelete,
@@ -26,20 +28,18 @@ use crate::{
         pg::precheck::add_precheck_queries,
         transformer::{InsertTransformer, PredicateTransformer},
     },
-    ColumnId, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractInsertSet,
-    NestedAbstractUpdate, PhysicalColumn, Predicate, SQLParamContainer,
 };
 
 use crate::{
+    AbstractUpdate, Column, Database,
     sql::{
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
     transform::{
-        pg::{selection_level::SelectionLevel, Postgres},
+        pg::{Postgres, selection_level::SelectionLevel},
         transformer::SelectTransformer,
     },
-    AbstractUpdate, Column, Database,
 };
 
 use super::update_strategy::UpdateStrategy;
@@ -326,6 +326,7 @@ fn delete_op<'a>(
 #[cfg(test)]
 mod tests {
     use crate::{
+        PhysicalColumnPath,
         asql::{
             column_path::ColumnPath,
             predicate::AbstractPredicate,
@@ -333,9 +334,8 @@ mod tests {
             selection::{AliasedSelectionElement, Selection, SelectionElement},
             update::NestedAbstractUpdate,
         },
-        sql::{column::Column, predicate::Predicate, SQLParamContainer},
+        sql::{SQLParamContainer, column::Column, predicate::Predicate},
         transform::{test_util::TestSetup, transformer::UpdateTransformer},
-        PhysicalColumnPath,
     };
 
     use multiplatform_test::multiplatform_test;

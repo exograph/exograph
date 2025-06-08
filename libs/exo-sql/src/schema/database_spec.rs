@@ -10,10 +10,10 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
+    Database, ManyToOne, PhysicalColumn, PhysicalIndex, PhysicalTable, SchemaObjectName, TableId,
     database_error::DatabaseError,
     schema::column_spec::ColumnSpec,
     sql::{connect::database_client::DatabaseClient, relation::RelationColumnPair},
-    Database, ManyToOne, PhysicalColumn, PhysicalIndex, PhysicalTable, SchemaObjectName, TableId,
 };
 
 use super::{
@@ -28,8 +28,7 @@ use super::{
     trigger_spec::{TriggerEvent, TriggerOrientation, TriggerSpec, TriggerTiming},
 };
 
-const SCHEMAS_QUERY: &str =
-    "SELECT schema_name FROM information_schema.schemata WHERE schema_name != 'information_schema' AND schema_name NOT LIKE 'pg_%' ORDER BY schema_name";
+const SCHEMAS_QUERY: &str = "SELECT schema_name FROM information_schema.schemata WHERE schema_name != 'information_schema' AND schema_name NOT LIKE 'pg_%' ORDER BY schema_name";
 
 const TABLE_NAMES_QUERY: &str =
     "SELECT table_name FROM information_schema.tables WHERE table_schema = $1 ORDER BY table_name";
@@ -40,8 +39,7 @@ const ENUM_NAMES_QUERY: &str = "SELECT t.typname AS enum_name FROM pg_type t JOI
 const MATERIALIZED_VIEWS_QUERY: &str =
     "SELECT matviewname as view_name FROM pg_matviews WHERE schemaname = $1 ORDER BY view_name";
 
-const SEQUENCE_NAMES_QUERY: &str =
-    "SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = $1 ORDER BY sequence_name";
+const SEQUENCE_NAMES_QUERY: &str = "SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = $1 ORDER BY sequence_name";
 
 #[derive(Debug, Clone)]
 pub struct DatabaseSpec {

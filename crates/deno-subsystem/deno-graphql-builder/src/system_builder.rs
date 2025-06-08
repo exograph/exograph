@@ -15,16 +15,16 @@ use core_model_builder::{
     builder::{resolved_builder::AnnotationMapHelper, system_builder::BaseModelSystem},
     error::ModelBuildingError,
     plugin::BuildMode,
-    typechecker::{typ::TypecheckedSystem, Typed},
+    typechecker::{Typed, typ::TypecheckedSystem},
 };
 
 use deno::{
-    args::{create_default_npmrc, CliOptions, PermissionFlags},
+    CliFactory, Flags, PathBuf,
+    args::{CliOptions, PermissionFlags, create_default_npmrc},
     cache::{ModuleInfoCache, ParsedSourceCache},
     node::CliCjsCodeAnalyzer,
     npm::ManagedCliNpmResolver,
     resolver::NpmModuleLoader,
-    CliFactory, Flags, PathBuf,
 };
 use deno_ast::{EmitOptions, MediaType, ParseParams};
 use deno_config::workspace::{
@@ -45,7 +45,7 @@ use deno_virtual_fs::virtual_fs::{VfsBuilder, VirtualDirectory};
 use exo_deno::{
     deno_executor_pool::{DenoScriptDefn, ResolvedModule},
     node_resolver::{
-        analyze::NodeCodeTranslator, NodeModuleKind, NodeResolution, NodeResolutionMode,
+        NodeModuleKind, NodeResolution, NodeResolutionMode, analyze::NodeCodeTranslator,
     },
 };
 use subsystem_model_builder_util::ScriptProcessor;
@@ -533,7 +533,7 @@ async fn walk_module_graph(
                     o => {
                         return Err(ModelBuildingError::Generic(format!(
                             "Unexpected module type {o:?} in Deno graph",
-                        )))
+                        )));
                     }
                 };
 

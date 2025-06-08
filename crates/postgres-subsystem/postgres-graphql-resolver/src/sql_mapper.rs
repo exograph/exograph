@@ -12,7 +12,7 @@ use common::context::RequestContext;
 use common::value::Val;
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
-use crate::util::{find_arg, Arguments};
+use crate::util::{Arguments, find_arg};
 
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 

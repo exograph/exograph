@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::{hash_map, HashMap};
+use std::collections::{HashMap, hash_map};
 
 use crate::{
     ast::ast_types::{AstAnnotation, AstAnnotationParams, Untyped},
@@ -19,10 +19,10 @@ use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::mapped_arena::MappedArena;
 use core_model_builder::typechecker::{
+    Typed,
     annotation::{AnnotationSpec, AnnotationTarget},
     annotation_map::AnnotationMap,
     typ::Type,
-    Typed,
 };
 
 pub trait AnnotationMapImpl {

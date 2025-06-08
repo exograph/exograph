@@ -10,11 +10,11 @@
 #![cfg(not(target_family = "wasm"))]
 
 use common::env_const::{
-    EXO_INTROSPECTION_LIVE_UPDATE, EXO_JWT_SOURCE_COOKIE, EXO_JWT_SOURCE_HEADER,
-    _EXO_UPSTREAM_ENDPOINT_URL,
+    _EXO_UPSTREAM_ENDPOINT_URL, EXO_INTROSPECTION_LIVE_UPDATE, EXO_JWT_SOURCE_COOKIE,
+    EXO_JWT_SOURCE_HEADER,
 };
 use exo_env::Environment;
-use include_dir::{include_dir, Dir};
+use include_dir::{Dir, include_dir};
 use serde::Serialize;
 use std::path::Path;
 

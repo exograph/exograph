@@ -21,9 +21,9 @@ mod tests {
     };
     use postgres_core_model::access::DatabaseAccessPrimitiveExpression;
     use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
 
-    use crate::access::test_util::{context_selection, test_request_context, TestRouter};
+    use crate::access::test_util::{TestRouter, context_selection, test_request_context};
 
     use core_resolver::access_solver::AccessSolver;
     use postgres_core_resolver::access::database_solver::to_column_path;

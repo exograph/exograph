@@ -1,10 +1,10 @@
 use crate::{
+    SchemaObjectName,
     schema::{
         database_spec::DatabaseSpec,
         op::SchemaOp,
-        spec::{diff, MigrationScope},
+        spec::{MigrationScope, diff},
     },
-    SchemaObjectName,
 };
 
 use super::core::Migration;

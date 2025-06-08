@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use actix_web::{middleware, web, App, HttpServer};
+use actix_web::{App, HttpServer, middleware, web};
 
 use common::env_const::get_mcp_http_path;
 use server_actix::configure_router;
@@ -20,10 +20,10 @@ use std::{io::ErrorKind, sync::Arc};
 
 use common::{
     env_const::{
-        get_deployment_mode, get_graphql_http_path, get_playground_http_path, DeploymentMode,
-        EXO_ENABLE_MCP_API, EXO_SERVER_PORT,
+        DeploymentMode, EXO_ENABLE_MCP_API, EXO_SERVER_PORT, get_deployment_mode,
+        get_graphql_http_path, get_playground_http_path,
     },
-    introspection::{introspection_mode, IntrospectionMode},
+    introspection::{IntrospectionMode, introspection_mode},
 };
 
 use exo_env::{Environment, SystemEnvironment};

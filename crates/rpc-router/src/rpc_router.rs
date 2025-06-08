@@ -12,9 +12,9 @@ use common::{
     router::Router,
 };
 use core_resolver::{
+    QueryResponseBody,
     plugin::subsystem_rpc_resolver::{JsonRpcId, JsonRpcRequest, SubsystemRpcError},
     system_rpc_resolver::SystemRpcResolver,
-    QueryResponseBody,
 };
 use exo_env::Environment;
 use http::StatusCode;

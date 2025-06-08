@@ -15,9 +15,9 @@ use common::context::RequestContext;
 use common::value::Val;
 use core_model::access::AccessRelationalOp;
 use core_resolver::access_solver::{
-    eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
-    reduce_common_primitive_expression, AccessInput, AccessPredicate, AccessSolution, AccessSolver,
-    AccessSolverError,
+    AccessInput, AccessPredicate, AccessSolution, AccessSolver, AccessSolverError, eq_values,
+    gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
+    reduce_common_primitive_expression,
 };
 
 use deno_graphql_model::{access::ModuleAccessPrimitiveExpression, subsystem::DenoSubsystem};

@@ -8,8 +8,8 @@
 // by the Apache License, Version 2.0.
 
 use async_graphql_parser::{
-    types::{EnumValueDefinition, FieldDefinition, InputValueDefinition, TypeDefinition, TypeKind},
     Pos, Positioned,
+    types::{EnumValueDefinition, FieldDefinition, InputValueDefinition, TypeDefinition, TypeKind},
 };
 use async_graphql_value::Name;
 

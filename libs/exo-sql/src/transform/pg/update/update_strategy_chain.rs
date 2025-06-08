@@ -10,7 +10,7 @@
 use tracing::debug;
 
 use crate::{
-    sql::transaction::TransactionScript, transform::pg::Postgres, AbstractUpdate, Database,
+    AbstractUpdate, Database, sql::transaction::TransactionScript, transform::pg::Postgres,
 };
 
 use super::{

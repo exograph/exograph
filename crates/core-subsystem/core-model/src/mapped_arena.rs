@@ -18,7 +18,7 @@
 //! a linear search.
 
 use std::{
-    collections::{hash_map::Keys, HashMap},
+    collections::{HashMap, hash_map::Keys},
     ops,
 };
 

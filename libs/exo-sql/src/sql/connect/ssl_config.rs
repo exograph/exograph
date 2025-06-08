@@ -82,7 +82,7 @@ impl SslConfig {
                 _ => {
                     return Err(DatabaseError::Config(format!(
                         "Invalid 'sslmode' parameter value {ssl_mode_string}"
-                    )))
+                    )));
                 }
             }
         }

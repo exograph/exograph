@@ -7,21 +7,21 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 use colored::Colorize;
 use common::env_const::{
-    EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
+    _EXO_DEPLOYMENT_MODE, EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
 };
 use exo_env::{MapEnvironment, SystemEnvironment};
-use exo_sql::schema::migration::{Migration, VerificationErrors};
 use exo_sql::DatabaseClient;
+use exo_sql::schema::migration::{Migration, VerificationErrors};
 use futures::FutureExt;
 use std::{path::PathBuf, sync::Arc};
 
 use super::command::{
-    enforce_trusted_documents_arg, get, migration_scope_arg, port_arg, CommandDefinition,
+    CommandDefinition, enforce_trusted_documents_arg, get, migration_scope_arg, port_arg,
 };
 use crate::commands::command::migration_scope_value;
 use crate::config::{Config, WatchStage};

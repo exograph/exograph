@@ -9,17 +9,17 @@
 
 use base64::DecodeError;
 use base64::Engine;
-use chrono::prelude::*;
 use chrono::DateTime;
-use common::value::val::ValNumber;
+use chrono::prelude::*;
 use common::value::Val;
-use exo_sql::database_error::DatabaseError;
+use common::value::val::ValNumber;
 #[cfg(feature = "bigdecimal")]
 use exo_sql::BigDecimal;
 use exo_sql::ColumnPath;
+use exo_sql::database_error::DatabaseError;
 use exo_sql::{
-    array_util::{self, ArrayEntry},
     Column, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, SQLParamContainer,
+    array_util::{self, ArrayEntry},
 };
 #[cfg(feature = "bigdecimal")]
 use std::str::FromStr;
@@ -259,7 +259,7 @@ fn cast_string(
                         _ => {
                             return Err(CastError::Generic(
                                 "missing case for datetime in inner match".into(),
-                            ))
+                            ));
                         }
                     }
                 }
@@ -286,7 +286,7 @@ fn cast_string(
                         _ => {
                             return Err(CastError::Generic(
                                 "missing case for datetime in inner match".into(),
-                            ))
+                            ));
                         }
                     }
                 }

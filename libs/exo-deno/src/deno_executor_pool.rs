@@ -9,14 +9,14 @@
 
 use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
-use deno_core::{url::Url, Extension, ModuleType};
+use deno_core::{Extension, ModuleType, url::Url};
 use deno_npm::resolution::SerializedNpmResolutionSnapshot;
 use deno_virtual_fs::virtual_fs::VirtualDirectory;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::Mutex;
 
-use crate::{deno_error::DenoError, Arg};
+use crate::{Arg, deno_error::DenoError};
 
 use super::{
     deno_actor::DenoActor,
@@ -101,11 +101,8 @@ pub struct DenoExecutorPool<C, M, R> {
     return_type: PhantomData<R>,
 }
 
-impl<
-        C: Sync + Send + Debug + 'static,
-        M: Sync + Send + 'static,
-        R: Sync + Send + Debug + 'static,
-    > DenoExecutorPool<C, M, R>
+impl<C: Sync + Send + Debug + 'static, M: Sync + Send + 'static, R: Sync + Send + Debug + 'static>
+    DenoExecutorPool<C, M, R>
 {
     pub fn new(
         user_agent_name: &'static str,

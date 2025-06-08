@@ -49,8 +49,8 @@ impl EphemeralDatabaseLauncher {
         Self { preference }
     }
 
-    fn create_local_server(
-    ) -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
+    fn create_local_server()
+    -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
         let local_available = LocalPostgresDatabaseServer::check_availability();
         if let Ok(true) = local_available {
             tracing::info!("Launching PostgreSQL locally...");
@@ -63,8 +63,8 @@ impl EphemeralDatabaseLauncher {
         }
     }
 
-    fn create_docker_server(
-    ) -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
+    fn create_docker_server()
+    -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
         let docker_available = DockerPostgresDatabaseServer::check_availability();
         if let Ok(true) = docker_available {
             tracing::info!("Launching PostgreSQL in Docker...");

@@ -1,11 +1,11 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use futures::FutureExt;
 use std::{
     ffi::OsStr,
     io::Write,
     path::Path,
     process::Command,
-    sync::{mpsc::Sender, Arc},
+    sync::{Arc, mpsc::Sender},
 };
 
 use exo_sql::testing::db::EphemeralDatabaseServer;

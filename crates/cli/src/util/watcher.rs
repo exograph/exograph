@@ -9,19 +9,19 @@
 
 use std::{path::Path, process::Stdio, time::Duration};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use builder::error::ParserError;
 use colored::Colorize;
 use common::env_const::EXO_SERVER_PORT;
 use exo_env::MapEnvironment;
-use futures::{future::BoxFuture, FutureExt};
+use futures::{FutureExt, future::BoxFuture};
 use notify_debouncer_mini::notify::RecursiveMode;
 use tokio::process::Child;
 
 use crate::config::Config;
 use crate::{
     commands::{
-        build::{build, BuildError},
+        build::{BuildError, build},
         command::default_trusted_documents_dir,
     },
     config::WatchStage,

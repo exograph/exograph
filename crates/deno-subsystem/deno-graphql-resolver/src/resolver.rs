@@ -14,11 +14,10 @@ use common::context::RequestContext;
 use core_model::mapped_arena::SerializableSlabIndex;
 use core_plugin_shared::interception::InterceptorIndex;
 use core_resolver::{
-    exograph_execute_query,
+    InterceptedOperation, QueryResponse, QueryResponseBody, exograph_execute_query,
     plugin::{SubsystemGraphQLResolver, SubsystemResolutionError},
     system_resolver::GraphQLSystemResolver,
     validation::field::ValidatedField,
-    InterceptedOperation, QueryResponse, QueryResponseBody,
 };
 use deno_graphql_model::{module::ModuleMethod, subsystem::DenoSubsystem};
 use exo_deno::DenoExecutorPool;

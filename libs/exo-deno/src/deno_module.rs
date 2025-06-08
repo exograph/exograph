@@ -7,6 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use deno_core::Extension;
+use deno_core::ModuleSpecifier;
+use deno_core::ModuleType;
 use deno_core::anyhow::bail;
 use deno_core::error::AnyError;
 use deno_core::error::JsError;
@@ -14,13 +17,12 @@ use deno_core::serde_json;
 use deno_core::serde_v8;
 use deno_core::url::Url;
 use deno_core::v8;
-use deno_core::Extension;
-use deno_core::ModuleSpecifier;
-use deno_core::ModuleType;
 use deno_fs::FileSystem;
+use deno_npm::NpmPackageCacheFolderId;
 use deno_npm::resolution::NpmResolutionSnapshot;
 use deno_npm::resolution::SerializedNpmResolutionSnapshot;
-use deno_npm::NpmPackageCacheFolderId;
+use deno_runtime::BootstrapOptions;
+use deno_runtime::WorkerExecutionMode;
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
 use deno_runtime::deno_io::Stdio;
 use deno_runtime::deno_node::DenoFsNodeResolverEnv;
@@ -33,10 +35,8 @@ use deno_runtime::permissions::RuntimePermissionDescriptorParser;
 use deno_runtime::worker::MainWorker;
 use deno_runtime::worker::WorkerOptions;
 use deno_runtime::worker::WorkerServiceOptions;
-use deno_runtime::BootstrapOptions;
-use deno_runtime::WorkerExecutionMode;
-use deno_semver::package::PackageNv;
 use deno_semver::Version;
+use deno_semver::package::PackageNv;
 use deno_virtual_fs::file_system::DenoCompileFileSystem;
 use deno_virtual_fs::virtual_fs::FileBackedVfs;
 use deno_virtual_fs::virtual_fs::VfsRoot;

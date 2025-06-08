@@ -11,13 +11,13 @@ use std::{io, path::PathBuf};
 
 use anyhow::anyhow;
 use colored::Colorize;
+use exo_sql::SchemaObjectName;
 use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::migration::{
-    migrate_interactively, InteractionError, Migration, MigrationError, MigrationInteraction,
-    PredefinedMigrationInteraction, TableAction,
+    InteractionError, Migration, MigrationError, MigrationInteraction,
+    PredefinedMigrationInteraction, TableAction, migrate_interactively,
 };
 use exo_sql::schema::spec::MigrationScope;
-use exo_sql::SchemaObjectName;
 use exo_sql::{Database, DatabaseClient};
 
 use crate::commands::command::{
@@ -26,7 +26,7 @@ use crate::commands::command::{
 use crate::config::Config;
 use crate::{
     commands::{
-        command::{database_arg, default_model_file, get, output_arg, CommandDefinition},
+        command::{CommandDefinition, database_arg, default_model_file, get, output_arg},
         util::{compute_migration_scope, use_ir_arg},
     },
     util::open_file_for_output,
@@ -170,7 +170,9 @@ impl MigrationInteraction for UserMigrationInteraction {
                 "The database has a few tables that the new schema doesn't need. Trying to handle them as according to the specified interactions."
             );
         } else {
-            println!("The database has a few tables that the new schema doesn't need. Please choose how to handle them.");
+            println!(
+                "The database has a few tables that the new schema doesn't need. Please choose how to handle them."
+            );
         }
     }
 

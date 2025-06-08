@@ -13,7 +13,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 use crate::{
-    database_error::DatabaseError, sql::connect::database_client::DatabaseClient, SchemaObjectName,
+    SchemaObjectName, database_error::DatabaseError, sql::connect::database_client::DatabaseClient,
 };
 
 pub(super) struct PrimaryKeyConstraint {

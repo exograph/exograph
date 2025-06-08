@@ -16,8 +16,8 @@ use serde_json::Value;
 
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::{
-    system_resolver::{ExographExecuteQueryFn, SystemResolutionError},
     QueryResponse,
+    system_resolver::{ExographExecuteQueryFn, SystemResolutionError},
 };
 
 use exo_deno::{

@@ -52,7 +52,7 @@ impl FieldResolver<Value, SubsystemResolutionError> for IntrospectionRootElement
                 return Err(SubsystemResolutionError::InvalidField(
                     self.name.into(),
                     "introspection root",
-                ))
+                ));
             }
         }
     }

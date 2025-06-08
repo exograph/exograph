@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use jsonwebtoken::{decode, DecodingKey, Validation};
+use jsonwebtoken::{DecodingKey, Validation, decode};
 use thiserror::Error;
 use tracing::error;
 
@@ -67,9 +67,9 @@ impl JwtAuthenticator {
         let style = match (secret, oidc_url) {
             (Some(secret), None) => Ok(JwtAuthenticatorStyle::Secret(secret)),
             (None, Some(oidc_url)) => Ok(JwtAuthenticatorStyle::Oidc(Oidc::new(oidc_url).await?)),
-            (Some(_), Some(_)) => {
-                Err(JwtConfigurationError::InvalidSetup(format!("Both {EXO_JWT_SECRET} and {EXO_OIDC_URL} are set. Only one of them can be set at a time")))
-            }
+            (Some(_), Some(_)) => Err(JwtConfigurationError::InvalidSetup(format!(
+                "Both {EXO_JWT_SECRET} and {EXO_OIDC_URL} are set. Only one of them can be set at a time"
+            ))),
             (None, None) => return Ok(None),
         }?;
 
@@ -89,13 +89,9 @@ impl JwtAuthenticator {
                 style,
                 authenticator_source: AuthenticatorSource::Header("Authorization".to_string()),
             })),
-            (Some(_), Some(_)) => {
-                Err(JwtConfigurationError::InvalidSetup(
-                    format!(
-                        "Both {EXO_JWT_SOURCE_HEADER} and {EXO_JWT_SOURCE_COOKIE} are set. Only one of them can be set at a time"
-                    )
-                ))
-            }
+            (Some(_), Some(_)) => Err(JwtConfigurationError::InvalidSetup(format!(
+                "Both {EXO_JWT_SOURCE_HEADER} and {EXO_JWT_SOURCE_COOKIE} are set. Only one of them can be set at a time"
+            ))),
         }
     }
 
@@ -198,7 +194,7 @@ mod tests {
     };
 
     use exo_env::MapEnvironment;
-    use jsonwebtoken::{encode, EncodingKey, Header};
+    use jsonwebtoken::{EncodingKey, Header, encode};
     use serde_json::json;
 
     use crate::{

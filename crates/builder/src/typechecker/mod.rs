@@ -18,9 +18,9 @@ use core_model::{
 use core_model_builder::{
     ast::ast_types::{AstEnum, AstModel, AstModelKind, AstModule, AstSystem, Untyped},
     typechecker::{
+        Scope,
         annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
         typ::{Module, Type, TypecheckedSystem},
-        Scope,
     },
 };
 use core_plugin_interface::interface::SubsystemBuilder;
