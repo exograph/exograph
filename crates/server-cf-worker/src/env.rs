@@ -30,4 +30,11 @@ impl Environment for WorkerEnvironment {
             .map(|binding| binding.to_string())
             .or(self.additional_envs.get(key).cloned())
     }
+
+    fn vars(&self) -> Vec<(String, String)> {
+        self.additional_envs
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
+    }
 }
