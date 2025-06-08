@@ -13,7 +13,7 @@ use anyhow::{anyhow, Context, Result};
 use builder::error::ParserError;
 use colored::Colorize;
 use common::env_const::EXO_SERVER_PORT;
-use exo_env::{Environment, MapEnvironment};
+use exo_env::MapEnvironment;
 use futures::{future::BoxFuture, FutureExt};
 use notify_debouncer_mini::notify::RecursiveMode;
 use tokio::process::Child;
@@ -160,9 +160,7 @@ where
 
             // Apply environment variables from MapEnvironment if provided
             if let Some(env_vars) = env_vars {
-                for (key, value) in env_vars.vars() {
-                    command.env(key, value);
-                }
+                command.envs(env_vars.vars());
             }
 
             if let Some(watch_stage) = watch_stage {

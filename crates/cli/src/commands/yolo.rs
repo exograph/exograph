@@ -19,7 +19,7 @@ use exo_env::{MapEnvironment, SystemEnvironment};
 use exo_sql::schema::migration::Migration;
 use std::{
     path::{Path, PathBuf},
-    sync::atomic::Ordering,
+    sync::{atomic::Ordering, Arc},
 };
 
 use crate::{
@@ -106,8 +106,7 @@ async fn run(
     }?;
 
     // Create environment variables for the child server process
-    let mut env_vars = MapEnvironment::new();
-    env_vars.extend_from_env(&SystemEnvironment);
+    let mut env_vars = MapEnvironment::new_with_fallback(Arc::new(SystemEnvironment));
     env_vars.set(EXO_POSTGRES_URL, &db.url());
     env_vars.set(EXO_INTROSPECTION, "true");
     env_vars.set(EXO_INTROSPECTION_LIVE_UPDATE, "true");

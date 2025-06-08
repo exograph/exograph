@@ -18,7 +18,7 @@ use exo_env::{MapEnvironment, SystemEnvironment};
 use exo_sql::schema::migration::{Migration, VerificationErrors};
 use exo_sql::DatabaseClient;
 use futures::FutureExt;
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use super::command::{
     enforce_trusted_documents_arg, get, migration_scope_arg, port_arg, CommandDefinition,
@@ -76,8 +76,7 @@ impl CommandDefinition for DevCommandDefinition {
         let migration_scope_str = migration_scope_value(matches);
 
         // Create environment variables for the child server process
-        let mut env_vars = MapEnvironment::new();
-        env_vars.extend_from_env(&SystemEnvironment);
+        let mut env_vars = MapEnvironment::new_with_fallback(Arc::new(SystemEnvironment));
         env_vars.set(EXO_INTROSPECTION, "true");
         env_vars.set(EXO_INTROSPECTION_LIVE_UPDATE, "true");
         env_vars.set(_EXO_DEPLOYMENT_MODE, "dev");

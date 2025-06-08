@@ -8,10 +8,10 @@
 // by the Apache License, Version 2.0.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 pub trait Environment: Send + Sync {
     fn get(&self, key: &str) -> Option<String>;
-    fn vars(&self) -> Vec<(String, String)>;
 
     fn enabled(&self, key: &str, default_value: bool) -> bool {
         match self.get(key) {
@@ -37,33 +37,29 @@ impl Environment for SystemEnvironment {
     fn get(&self, key: &str) -> Option<String> {
         std::env::var(key).ok()
     }
-
-    fn vars(&self) -> Vec<(String, String)> {
-        std::env::vars().collect()
-    }
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone, Default)]
 pub struct MapEnvironment {
     values: HashMap<String, String>,
+    fallback: Option<Arc<dyn Environment>>,
 }
 
 impl Environment for MapEnvironment {
     fn get(&self, key: &str) -> Option<String> {
-        self.values.get(key).cloned()
-    }
-
-    fn vars(&self) -> Vec<(String, String)> {
         self.values
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect()
+            .get(key)
+            .cloned()
+            .or_else(|| self.fallback.as_ref().and_then(|fb| fb.get(key)))
     }
 }
 
 impl From<HashMap<String, String>> for MapEnvironment {
     fn from(values: HashMap<String, String>) -> Self {
-        Self { values }
+        Self {
+            values,
+            fallback: None,
+        }
     }
 }
 
@@ -75,6 +71,7 @@ impl<const N: usize> From<[(&str, &str); N]> for MapEnvironment {
                     .into_iter()
                     .map(|(k, v)| (k.to_string(), v.to_string())),
             ),
+            fallback: None,
         }
     }
 }
@@ -83,6 +80,14 @@ impl MapEnvironment {
     pub fn new() -> Self {
         Self {
             values: HashMap::new(),
+            fallback: None,
+        }
+    }
+
+    pub fn new_with_fallback(fallback: Arc<dyn Environment>) -> Self {
+        Self {
+            values: HashMap::new(),
+            fallback: Some(fallback),
         }
     }
 
@@ -90,9 +95,7 @@ impl MapEnvironment {
         self.values.insert(key.to_string(), value.to_string());
     }
 
-    pub fn extend_from_env(&mut self, env: &dyn Environment) {
-        for (key, value) in env.vars() {
-            self.values.entry(key).or_insert(value);
-        }
+    pub fn vars(&self) -> impl Iterator<Item = (&str, &str)> + '_ {
+        self.values.iter().map(|(k, v)| (k.as_str(), v.as_str()))
     }
 }

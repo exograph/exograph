@@ -1,6 +1,6 @@
 use colored::Colorize;
 use futures::FutureExt;
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use anyhow::anyhow;
 use async_trait::async_trait;
@@ -49,8 +49,7 @@ impl CommandDefinition for PlaygroundCommandDefinition {
         ensure_exo_project_dir(&PathBuf::from("."))?;
 
         // Create environment variables for the child server process
-        let mut env_vars = MapEnvironment::new();
-        env_vars.extend_from_env(&SystemEnvironment);
+        let mut env_vars = MapEnvironment::new_with_fallback(Arc::new(SystemEnvironment));
         env_vars.set(EXO_INTROSPECTION, "only");
         // We don't need a database connection in playground mode, but the Postgres resolver
         // currently requires a valid URL to be set (when we fix
