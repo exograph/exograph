@@ -27,7 +27,9 @@ use crate::commands::command::migration_scope_value;
 use crate::config::{Config, WatchStage};
 use crate::{
     commands::{
-        command::{default_model_file, ensure_exo_project_dir, trusted_documents_enforcement_env},
+        command::{
+            default_model_file, ensure_exo_project_dir, setup_trusted_documents_enforcement,
+        },
         schema::util,
         util::wait_for_enter,
     },
@@ -63,8 +65,6 @@ impl CommandDefinition for DevCommandDefinition {
         let model_file: PathBuf = default_model_file();
         let port: Option<u32> = get(matches, "port");
 
-        let trusted_document_env = trusted_documents_enforcement_env(matches);
-
         let ignore_migration_errors: bool =
             get(matches, "ignore-migration-errors").unwrap_or(false);
 
@@ -77,14 +77,11 @@ impl CommandDefinition for DevCommandDefinition {
 
         // Create environment variables for the child server process
         let mut env_vars = MapEnvironment::new_with_fallback(Arc::new(SystemEnvironment));
+        setup_trusted_documents_enforcement(matches, &mut env_vars);
         env_vars.set(EXO_INTROSPECTION, "true");
         env_vars.set(EXO_INTROSPECTION_LIVE_UPDATE, "true");
         env_vars.set(_EXO_DEPLOYMENT_MODE, "dev");
         env_vars.set(EXO_CORS_DOMAINS, "*");
-
-        if let Some((ref key, ref value)) = trusted_document_env {
-            env_vars.set(key, value);
-        }
 
         const MIGRATE: &str = "Attempt migration";
         const CONTINUE: &str = "Continue with old schema";

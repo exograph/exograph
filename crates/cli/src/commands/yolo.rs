@@ -18,7 +18,7 @@ use common::env_const::{
 use exo_env::{MapEnvironment, SystemEnvironment};
 use exo_sql::schema::migration::Migration;
 use std::{
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::{atomic::Ordering, Arc},
 };
 
@@ -31,7 +31,7 @@ use common::env_const::{EXO_JWT_SECRET, EXO_POSTGRES_URL};
 
 use super::command::{
     default_model_file, enforce_trusted_documents_arg, ensure_exo_project_dir, get, port_arg,
-    seed_arg, trusted_documents_enforcement_env, CommandDefinition,
+    seed_arg, setup_trusted_documents_enforcement, CommandDefinition,
 };
 use common::env_const::EXO_OIDC_URL;
 use exo_sql::{
@@ -65,83 +65,67 @@ impl CommandDefinition for YoloCommandDefinition {
         ensure_exo_project_dir(&root_path)?;
 
         let port: Option<u32> = get(matches, "port");
-
-        let env = trusted_documents_enforcement_env(matches);
-
         let seed_path: Option<PathBuf> = get(matches, "seed");
 
-        run(&root_path, port, seed_path, config, env).await
-    }
-}
+        // make sure we do not exit on SIGINT
+        // we spawn processes/containers that need to be cleaned up through drop(),
+        // which does not run on a normal SIGINT exit
+        crate::EXIT_ON_SIGINT.store(false, Ordering::SeqCst);
 
-async fn run(
-    root_path: &Path,
-    port: Option<u32>,
-    seed: Option<PathBuf>,
-    config: &Config,
-    env: Option<(String, String)>,
-) -> Result<()> {
-    // make sure we do not exit on SIGINT
-    // we spawn processes/containers that need to be cleaned up through drop(),
-    // which does not run on a normal SIGINT exit
-    crate::EXIT_ON_SIGINT.store(false, Ordering::SeqCst);
+        let model: PathBuf = default_model_file();
 
-    let model: PathBuf = default_model_file();
+        let db_server = EphemeralDatabaseLauncher::from_env().create_server()?;
+        let db = db_server.create_database("yolo")?;
 
-    let db_server = EphemeralDatabaseLauncher::from_env().create_server()?;
-    let db = db_server.create_database("yolo")?;
+        let jwt_secret = std::env::var(EXO_JWT_SECRET).ok();
+        let oidc_url = std::env::var(EXO_OIDC_URL).ok();
 
-    let jwt_secret = std::env::var(EXO_JWT_SECRET).ok();
-    let oidc_url = std::env::var(EXO_OIDC_URL).ok();
+        let jwt_secret = match (jwt_secret, oidc_url) {
+            (Some(_), Some(_)) => Err(anyhow::anyhow!(
+                "Both {} and {} are set. Please unset one of them.",
+                EXO_JWT_SECRET,
+                EXO_OIDC_URL
+            )),
+            (Some(s), None) => Ok(JWTSecret::EnvSecret(s)),
+            (None, Some(s)) => Ok(JWTSecret::EnvOidc(s)),
+            (None, None) => Ok(JWTSecret::Generated(super::util::generate_random_string())),
+        }?;
 
-    let jwt_secret = match (jwt_secret, oidc_url) {
-        (Some(_), Some(_)) => Err(anyhow::anyhow!(
-            "Both {} and {} are set. Please unset one of them.",
-            EXO_JWT_SECRET,
-            EXO_OIDC_URL
-        )),
-        (Some(s), None) => Ok(JWTSecret::EnvSecret(s)),
-        (None, Some(s)) => Ok(JWTSecret::EnvOidc(s)),
-        (None, None) => Ok(JWTSecret::Generated(super::util::generate_random_string())),
-    }?;
+        // Create environment variables for the child server process
+        let mut env_vars = MapEnvironment::new_with_fallback(Arc::new(SystemEnvironment));
+        setup_trusted_documents_enforcement(matches, &mut env_vars);
+        env_vars.set(EXO_POSTGRES_URL, &db.url());
+        env_vars.set(EXO_INTROSPECTION, "true");
+        env_vars.set(EXO_INTROSPECTION_LIVE_UPDATE, "true");
+        env_vars.set(_EXO_DEPLOYMENT_MODE, "yolo");
 
-    // Create environment variables for the child server process
-    let mut env_vars = MapEnvironment::new_with_fallback(Arc::new(SystemEnvironment));
-    env_vars.set(EXO_POSTGRES_URL, &db.url());
-    env_vars.set(EXO_INTROSPECTION, "true");
-    env_vars.set(EXO_INTROSPECTION_LIVE_UPDATE, "true");
-    env_vars.set(_EXO_DEPLOYMENT_MODE, "yolo");
+        match &jwt_secret {
+            JWTSecret::EnvSecret(s) => env_vars.set(EXO_JWT_SECRET, s),
+            JWTSecret::Generated(s) => env_vars.set(EXO_JWT_SECRET, s),
+            JWTSecret::EnvOidc(s) => env_vars.set(EXO_OIDC_URL, s),
+        };
+        env_vars.set(EXO_CORS_DOMAINS, "*");
 
-    match &jwt_secret {
-        JWTSecret::EnvSecret(s) => env_vars.set(EXO_JWT_SECRET, s),
-        JWTSecret::Generated(s) => env_vars.set(EXO_JWT_SECRET, s),
-        JWTSecret::EnvOidc(s) => env_vars.set(EXO_OIDC_URL, s),
-    };
-    env_vars.set(EXO_CORS_DOMAINS, "*");
+        let prestart_callback = || {
+            setup_database(
+                &model,
+                &jwt_secret,
+                db.as_ref(),
+                seed_path.clone(),
+                env_vars.clone(),
+            )
+            .boxed()
+        };
 
-    if let Some((ref key, ref value)) = env {
-        env_vars.set(key, value);
-    }
-
-    let prestart_callback = || {
-        setup_database(
-            &model,
-            &jwt_secret,
-            db.as_ref(),
-            seed.clone(),
-            env_vars.clone(),
+        watcher::start_watcher(
+            &root_path,
+            port,
+            config,
+            Some(&WatchStage::Yolo),
+            prestart_callback,
         )
-        .boxed()
-    };
-
-    watcher::start_watcher(
-        root_path,
-        port,
-        config,
-        Some(&WatchStage::Yolo),
-        prestart_callback,
-    )
-    .await
+        .await
+    }
 }
 
 #[async_recursion]
