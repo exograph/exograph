@@ -54,5 +54,5 @@ pub enum SelectionElement {
     /// A constant such as `"hello"` (useful to supply it to database and get back the same value). Useful for `__typename` field.
     Constant(String),
     /// A subselect such as `... (SELECT * FROM table)`
-    SubSelect(RelationId, AbstractSelect),
+    SubSelect(RelationId, Box<AbstractSelect>),
 }

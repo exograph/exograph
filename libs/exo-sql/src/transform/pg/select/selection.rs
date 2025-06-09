@@ -109,7 +109,7 @@ impl SelectionElement {
             SelectionElement::SubSelect(relation_id, select) => {
                 let new_selection_level = selection_level.with_relation_id(relation_id);
                 Column::SubSelect(Box::new(transformer.compute_select(
-                    select,
+                    *select,
                     &new_selection_level,
                     false,
                     database,

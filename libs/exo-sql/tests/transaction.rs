@@ -126,10 +126,10 @@ fn basic_transaction() {
                 vec![people_table_info.age_col.into()],
             );
 
-            let step_a = Rc::new(TransactionStep::Concrete(ConcreteTransactionStep {
+            let step_a = Rc::new(TransactionStep::Concrete(Box::new(ConcreteTransactionStep {
                 operation: SQLOperation::Insert(insertion_op),
                 values: RefCell::new(vec![]),
-            }));
+            })));
 
             // insertion from people_table into ages_table
             let lazy_col = ProxyColumn::Template {
@@ -187,10 +187,10 @@ fn transaction_zero_matches() {
                 vec![people_table_info.age_col.into()],
             );
 
-            let step_a = Rc::new(TransactionStep::Concrete(ConcreteTransactionStep {
+            let step_a = Rc::new(TransactionStep::Concrete(Box::new(ConcreteTransactionStep {
                 operation: SQLOperation::Update(update_op),
                 values: RefCell::new(vec![]),
-            }));
+            })));
 
             let age_proxy_column = ProxyColumn::Template {
                 col_index: 0,

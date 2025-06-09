@@ -66,8 +66,8 @@ impl CommandDefinition for SchemaCommandDefinition {
                     Some(output) => output,
                     None => {
                         fs::create_dir_all("generated")?;
-                        let output = Path::new("generated/schema.json").to_path_buf();
-                        output
+
+                        Path::new("generated/schema.json").to_path_buf()
                     }
                 };
 
@@ -78,8 +78,8 @@ impl CommandDefinition for SchemaCommandDefinition {
                     Some(output) => output,
                     None => {
                         fs::create_dir_all("generated")?;
-                        let output = Path::new("generated/schema.graphql").to_path_buf();
-                        output
+
+                        Path::new("generated/schema.graphql").to_path_buf()
                     }
                 };
 

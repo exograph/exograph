@@ -10,7 +10,7 @@
 use anyhow::{Result, anyhow};
 use std::{
     fs::File,
-    io::{self, Read, Write, stdin, stdout},
+    io::{self, BufRead, BufReader, Write, stdin, stdout},
     path::Path,
 };
 
@@ -25,9 +25,11 @@ pub fn open_file_for_output(output: Option<&Path>, yes: bool) -> Result<Box<dyn 
             );
             io::stdout().flush()?;
 
-            let char = stdin().bytes().next().unwrap().unwrap();
+            let mut input = String::new();
+            BufReader::new(stdin()).read_line(&mut input)?;
+            let char = input.trim().chars().next().unwrap_or('n');
 
-            if char != b'y' {
+            if char != 'y' {
                 return Err(anyhow!("Not overwriting file"));
             }
         }

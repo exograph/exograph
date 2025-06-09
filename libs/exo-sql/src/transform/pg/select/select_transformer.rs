@@ -122,8 +122,8 @@ impl SelectTransformer for Postgres {
     ) -> TransactionScript<'a> {
         let select = self.to_select(abstract_select, database);
         let mut transaction_script = TransactionScript::default();
-        transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-            SQLOperation::Select(select),
+        transaction_script.add_step(TransactionStep::Concrete(Box::new(
+            ConcreteTransactionStep::new(SQLOperation::Select(select)),
         )));
         transaction_script
     }
@@ -305,7 +305,7 @@ mod tests {
                                             .get_otm_relation(&database)
                                             .unwrap(),
                                     ),
-                                    AbstractSelect {
+                                    Box::new(AbstractSelect {
                                         table_id: venues_table,
                                         selection: Selection::Json(
                                             vec![AliasedSelectionElement::new(
@@ -318,7 +318,7 @@ mod tests {
                                         order_by: None,
                                         offset: None,
                                         limit: None,
-                                    },
+                                    }),
                                 ),
                             ),
                         ],
@@ -367,7 +367,7 @@ mod tests {
                                             .get_otm_relation(&database)
                                             .unwrap(),
                                     ),
-                                    AbstractSelect {
+                                    Box::new(AbstractSelect {
                                         table_id: concerts_table,
                                         selection: Selection::Json(
                                             vec![AliasedSelectionElement::new(
@@ -380,7 +380,7 @@ mod tests {
                                         order_by: None,
                                         offset: None,
                                         limit: None,
-                                    },
+                                    }),
                                 ),
                             ),
                         ],
@@ -430,7 +430,7 @@ mod tests {
                                             .get_otm_relation(&database)
                                             .unwrap(),
                                     ),
-                                    AbstractSelect {
+                                    Box::new(AbstractSelect {
                                         table_id: concerts_table,
                                         selection: Selection::Json(
                                             vec![AliasedSelectionElement::new(
@@ -450,7 +450,7 @@ mod tests {
                                         order_by: None,
                                         offset: None,
                                         limit: None,
-                                    },
+                                    }),
                                 ),
                             ),
                         ],
@@ -662,7 +662,7 @@ mod tests {
                                             .get_mto_relation(&database)
                                             .unwrap(),
                                     ),
-                                    AbstractSelect {
+                                    Box::new(AbstractSelect {
                                         table_id: venues_table,
                                         selection: Selection::Json(
                                             vec![AliasedSelectionElement::new(
@@ -675,7 +675,7 @@ mod tests {
                                         order_by: None,
                                         offset: None,
                                         limit: None,
-                                    },
+                                    }),
                                 ),
                             ),
                         ],
