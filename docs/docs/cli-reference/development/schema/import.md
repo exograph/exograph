@@ -23,14 +23,12 @@ You can specify the database to use using either the `EXO_POSTGRES_URL` or `DATA
 exo schema import --database postgres://user:password@host:port/database
 ```
 
-By default, the index.exo file will have all access control rules set to `@access(false)`. You can override this through the `--query-access` and `--mutation-access` options.
+By default, the index.exo file will have all access control rules set to `@access(false)`. You can override this through the `--query-access` and `--mutation-access` options. For example, to allow all queries, but no mutations (which is the default):
 
 ```shell-session
 # shell-command-next-line
 exo schema import --query-access true 
 ```
-
-Here, we are allowing all queries, but no mutations.
 
 You should examine the generated exo file, especially regarding access control rules.
 
