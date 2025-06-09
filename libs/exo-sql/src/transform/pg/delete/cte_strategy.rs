@@ -69,9 +69,9 @@ impl DeleteStrategy for CteStrategy {
             transformer,
         );
 
-        let _ = transaction_script.add_step(TransactionStep::Concrete(
+        let _ = transaction_script.add_step(TransactionStep::Concrete(Box::new(
             ConcreteTransactionStep::new(SQLOperation::WithQuery(delete_query)),
-        ));
+        )));
     }
 }
 

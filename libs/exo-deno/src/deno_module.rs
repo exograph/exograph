@@ -618,7 +618,7 @@ impl DenoModule {
             }
             _ => {
                 // generic error message
-                DenoError::JsError(js_error)
+                js_error.into()
             }
         }
     }

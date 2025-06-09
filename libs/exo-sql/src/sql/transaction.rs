@@ -95,7 +95,7 @@ impl<'a> TransactionScript<'a> {
 
 #[derive(Debug)]
 pub enum TransactionStep<'a> {
-    Concrete(ConcreteTransactionStep<'a>),
+    Concrete(Box<ConcreteTransactionStep<'a>>),
     Template(TemplateTransactionStep<'a>),
     Filter(TemplateFilterOperation),
     Dynamic(DynamicTransactionStep<'a>),
@@ -278,7 +278,7 @@ impl TemplateFilterOperation {
             },
         );
 
-        let op = ConcreteTransactionStep {
+        ConcreteTransactionStep {
             operation: SQLOperation::Select(Select {
                 table: Table::physical(self.table_id, None),
                 predicate,
@@ -292,9 +292,7 @@ impl TemplateFilterOperation {
                     .collect(),
                 group_by: None,
             }),
-        };
-
-        op
+        }
     }
 }
 

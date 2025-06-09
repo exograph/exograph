@@ -22,7 +22,7 @@ pub enum Table {
         alias: Option<String>,
     },
     /// A join between two tables such as `concerts LEFT JOIN venues ON concerts.venue_id = venues.id`.
-    Join(LeftJoin),
+    Join(Box<LeftJoin>),
     /// A sub-select such as `(SELECT * FROM concerts) AS concerts`.
     SubSelect {
         select: Box<Select>,

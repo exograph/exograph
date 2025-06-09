@@ -135,9 +135,9 @@ impl UpdateStrategy for MultiStatementStrategy {
             ))
         };
 
-        let root_step_id = transaction_script.add_step(TransactionStep::Concrete(
+        let root_step_id = transaction_script.add_step(TransactionStep::Concrete(Box::new(
             ConcreteTransactionStep::new(root_step),
-        ));
+        )));
 
         abstract_update
             .nested_updates

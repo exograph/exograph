@@ -235,7 +235,7 @@ async fn map_persistent_field<'content>(
 
             Ok(SelectionElement::SubSelect(
                 RelationId::ManyToOne(relation.relation_id),
-                nested_abstract_select,
+                Box::new(nested_abstract_select),
             ))
         }
         PostgresRelation::OneToMany(relation) => {
@@ -264,7 +264,7 @@ async fn map_persistent_field<'content>(
 
             Ok(SelectionElement::SubSelect(
                 RelationId::OneToMany(relation.relation_id),
-                nested_abstract_select,
+                Box::new(nested_abstract_select),
             ))
         }
         PostgresRelation::Embedded => {
@@ -306,7 +306,7 @@ async fn map_aggregate_field<'content>(
 
         Ok(SelectionElement::SubSelect(
             RelationId::OneToMany(*relation_id),
-            nested_abstract_select,
+            Box::new(nested_abstract_select),
         ))
     } else {
         // Reaching this point means our validation logic failed

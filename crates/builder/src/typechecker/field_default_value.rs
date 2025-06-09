@@ -67,11 +67,7 @@ impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
         };
 
         match &mut self.kind {
-            AstFieldDefaultKind::Function(_, args) => {
-                let args_changed = args.iter_mut().any(check_literal);
-
-                args_changed
-            }
+            AstFieldDefaultKind::Function(_, args) => args.iter_mut().any(check_literal),
             AstFieldDefaultKind::Value(expr) => check_literal(expr),
         }
     }

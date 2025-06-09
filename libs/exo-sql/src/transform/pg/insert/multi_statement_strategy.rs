@@ -220,8 +220,8 @@ fn insert_self_row<'a>(
                 vec![values],
                 returning.into_iter().map(|c| c.into()).collect(),
             ));
-            transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-                insert,
+            transaction_script.add_step(TransactionStep::Concrete(Box::new(
+                ConcreteTransactionStep::new(insert),
             )))
         }
     }

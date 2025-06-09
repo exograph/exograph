@@ -79,11 +79,11 @@ impl UpdateStrategy for CteStrategy {
 
         let table_name = &database.get_table(abstract_update.table_id).name;
 
-        transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-            SQLOperation::WithQuery(WithQuery {
+        transaction_script.add_step(TransactionStep::Concrete(Box::new(
+            ConcreteTransactionStep::new(SQLOperation::WithQuery(WithQuery {
                 expressions: vec![CteExpression::new_auto_name(table_name, root_update)],
                 select,
-            }),
+            })),
         )));
     }
 }

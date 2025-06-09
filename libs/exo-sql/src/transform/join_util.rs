@@ -90,7 +90,11 @@ pub fn compute_join(
                     _ => join_table_query,
                 };
 
-                Table::Join(LeftJoin::new(acc, join_table_query, join_predicate))
+                Table::Join(Box::new(LeftJoin::new(
+                    acc,
+                    join_table_query,
+                    join_predicate,
+                )))
             },
         )
     }
