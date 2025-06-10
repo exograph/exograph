@@ -18,7 +18,7 @@ use crate::resolved_type::{
 use common::value::Val;
 use common::value::val::ValNumber;
 use core_model::access::AccessPredicateExpression;
-use core_model::primitive_type::PrimitiveBaseType;
+use core_model::primitive_type;
 use core_model::types::{Named, TypeValidationProvider};
 use postgres_core_model::access::{CreationAccessExpression, PrecheckAccessPrimitiveExpression};
 use postgres_core_model::types::{
@@ -103,7 +103,8 @@ fn create_shallow_type(
                     kind: PostgresPrimitiveTypeKind::Builtin,
                 },
             );
-            if matches!(pt, PrimitiveType::Plain(PrimitiveBaseType::Vector)) {
+            if matches!(pt, PrimitiveType::Plain(pbt) if pbt.name() == primitive_type::VectorType::NAME)
+            {
                 let vector_distance_type = VectorDistanceType::new("VectorDistance".to_string());
                 building
                     .vector_distance_types
@@ -587,7 +588,7 @@ fn create_persistent_field(
                     Ok(PostgresFieldDefaultValue::Static(Val::Bool(*boolean)))
                 }
                 AstExpr::NumberLiteral(number, _) => {
-                    let parsed_number = if field.typ.name() == "Float" {
+                    let parsed_number = if field.typ.name() == primitive_type::FloatType::NAME {
                         let float_number = number.parse::<f64>().map_err(|_| {
                             ModelBuildingError::Generic(format!(
                                 "Invalid float default value: {}",
@@ -595,7 +596,7 @@ fn create_persistent_field(
                             ))
                         })?;
                         Ok(ValNumber::F64(float_number))
-                    } else if field.typ.name() == "Int" {
+                    } else if field.typ.name() == primitive_type::IntType::NAME {
                         let int_number = number.parse::<i64>().map_err(|_| {
                             ModelBuildingError::Generic(format!(
                                 "Invalid int default value: {}",

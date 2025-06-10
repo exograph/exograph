@@ -16,8 +16,10 @@ use crate::resolved_type::{
 };
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use core_model::primitive_type::PrimitiveBaseType;
-use core_model::{primitive_type::PrimitiveType, types::FieldType};
+use core_model::{
+    primitive_type::{self, PrimitiveType},
+    types::FieldType,
+};
 use core_model_builder::ast::ast_types::{FieldSelection, FieldSelectionElement};
 use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError};
 
@@ -138,7 +140,9 @@ fn expand_database_info(
                     None => indices.push(PhysicalIndex {
                         name: index_name.clone(),
                         columns: HashSet::from_iter(field.column_names.clone()),
-                        index_kind: if field.typ.innermost().type_name == "Vector" {
+                        index_kind: if field.typ.innermost().type_name
+                            == primitive_type::VectorType::NAME
+                        {
                             let distance_function = match field.type_hint {
                                 Some(ResolvedTypeHint::Vector {
                                     distance_function, ..
@@ -255,7 +259,9 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
             },
             ResolvedFieldDefault::PostgresFunction(string) => {
                 if string == "now()" {
-                    if matches!(field.typ.innermost().type_name.as_str(), "LocalDate") {
+                    if field.typ.innermost().type_name.as_str()
+                        == primitive_type::LocalDateType::NAME
+                    {
                         Some(ColumnDefault::CurrentDate)
                     } else {
                         Some(ColumnDefault::CurrentTimestamp)
@@ -491,7 +497,7 @@ fn determine_column_type<'a>(
                     }
 
                     ResolvedTypeHint::Int { bits, range } => {
-                        assert!(matches!(base_pt_type, PrimitiveBaseType::Int));
+                        assert!(base_pt_type.name() == primitive_type::IntType::NAME);
 
                         // determine the proper sized type to use
                         if let Some(bits) = bits {
@@ -535,7 +541,7 @@ fn determine_column_type<'a>(
                     }
 
                     ResolvedTypeHint::Float { bits, .. } => {
-                        assert!(matches!(base_pt_type, PrimitiveBaseType::Float));
+                        assert!(base_pt_type.name() == primitive_type::FloatType::NAME);
 
                         if let Some(bits) = *bits {
                             if (1..=24).contains(&bits) {
@@ -557,7 +563,7 @@ fn determine_column_type<'a>(
                     }
 
                     ResolvedTypeHint::Decimal { precision, scale } => {
-                        assert!(matches!(base_pt_type, PrimitiveBaseType::Decimal));
+                        assert!(base_pt_type.name() == primitive_type::DecimalType::NAME);
 
                         // cannot have scale and no precision specified
                         if precision.is_none() {
@@ -571,7 +577,7 @@ fn determine_column_type<'a>(
                     }
 
                     ResolvedTypeHint::String { max_length } => {
-                        assert!(matches!(base_pt_type, PrimitiveBaseType::String));
+                        assert!(base_pt_type.name() == primitive_type::StringType::NAME);
 
                         // length hint provided, use it
                         PhysicalColumnType::String {
@@ -579,58 +585,75 @@ fn determine_column_type<'a>(
                         }
                     }
 
-                    ResolvedTypeHint::DateTime { precision } => match base_pt_type {
-                        PrimitiveBaseType::LocalTime => PhysicalColumnType::Time {
-                            precision: Some(*precision),
-                        },
-                        PrimitiveBaseType::LocalDateTime => PhysicalColumnType::Timestamp {
-                            precision: Some(*precision),
-                            timezone: false,
-                        },
-                        PrimitiveBaseType::Instant => PhysicalColumnType::Timestamp {
-                            precision: Some(*precision),
-                            timezone: true,
-                        },
-                        _ => panic!(),
-                    },
+                    ResolvedTypeHint::DateTime { precision } => {
+                        if base_pt_type.name() == primitive_type::LocalTimeType::NAME {
+                            PhysicalColumnType::Time {
+                                precision: Some(*precision),
+                            }
+                        } else if base_pt_type.name() == primitive_type::LocalDateTimeType::NAME {
+                            PhysicalColumnType::Timestamp {
+                                precision: Some(*precision),
+                                timezone: false,
+                            }
+                        } else if base_pt_type.name() == primitive_type::InstantType::NAME {
+                            PhysicalColumnType::Timestamp {
+                                precision: Some(*precision),
+                                timezone: true,
+                            }
+                        } else {
+                            panic!("Invalid type for DateTime hint: {:?}", base_pt_type);
+                        }
+                    }
 
                     ResolvedTypeHint::Vector { size, .. } => {
-                        assert!(matches!(base_pt_type, PrimitiveBaseType::Vector));
+                        assert!(base_pt_type.name() == primitive_type::VectorType::NAME);
 
                         PhysicalColumnType::Vector {
                             size: (*size).unwrap_or(DEFAULT_VECTOR_SIZE),
                         }
                     }
                 }
-            } else {
-                match base_pt_type {
-                    PrimitiveBaseType::Int => PhysicalColumnType::Int { bits: IntBits::_32 },
-                    PrimitiveBaseType::Float => PhysicalColumnType::Float {
-                        bits: FloatBits::_24,
-                    },
-                    PrimitiveBaseType::Decimal => PhysicalColumnType::Numeric {
-                        precision: None,
-                        scale: None,
-                    },
-                    PrimitiveBaseType::String => PhysicalColumnType::String { max_length: None },
-                    PrimitiveBaseType::Boolean => PhysicalColumnType::Boolean,
-                    PrimitiveBaseType::LocalTime => PhysicalColumnType::Time { precision: None },
-                    PrimitiveBaseType::LocalDateTime => PhysicalColumnType::Timestamp {
-                        precision: None,
-                        timezone: false,
-                    },
-                    PrimitiveBaseType::Instant => PhysicalColumnType::Timestamp {
-                        precision: None,
-                        timezone: true,
-                    },
-                    PrimitiveBaseType::LocalDate => PhysicalColumnType::Date,
-                    PrimitiveBaseType::Json => PhysicalColumnType::Json,
-                    PrimitiveBaseType::Blob => PhysicalColumnType::Blob,
-                    PrimitiveBaseType::Uuid => PhysicalColumnType::Uuid,
-                    PrimitiveBaseType::Vector => PhysicalColumnType::Vector {
-                        size: DEFAULT_VECTOR_SIZE,
-                    },
+            } else if base_pt_type.name() == primitive_type::IntType::NAME {
+                PhysicalColumnType::Int { bits: IntBits::_32 }
+            } else if base_pt_type.name() == primitive_type::FloatType::NAME {
+                PhysicalColumnType::Float {
+                    bits: FloatBits::_24,
                 }
+            } else if base_pt_type.name() == primitive_type::DecimalType::NAME {
+                PhysicalColumnType::Numeric {
+                    precision: None,
+                    scale: None,
+                }
+            } else if base_pt_type.name() == primitive_type::StringType::NAME {
+                PhysicalColumnType::String { max_length: None }
+            } else if base_pt_type.name() == primitive_type::BooleanType::NAME {
+                PhysicalColumnType::Boolean
+            } else if base_pt_type.name() == primitive_type::LocalTimeType::NAME {
+                PhysicalColumnType::Time { precision: None }
+            } else if base_pt_type.name() == primitive_type::LocalDateTimeType::NAME {
+                PhysicalColumnType::Timestamp {
+                    precision: None,
+                    timezone: false,
+                }
+            } else if base_pt_type.name() == primitive_type::InstantType::NAME {
+                PhysicalColumnType::Timestamp {
+                    precision: None,
+                    timezone: true,
+                }
+            } else if base_pt_type.name() == primitive_type::LocalDateType::NAME {
+                PhysicalColumnType::Date
+            } else if base_pt_type.name() == primitive_type::JsonType::NAME {
+                PhysicalColumnType::Json
+            } else if base_pt_type.name() == primitive_type::BlobType::NAME {
+                PhysicalColumnType::Blob
+            } else if base_pt_type.name() == primitive_type::UuidType::NAME {
+                PhysicalColumnType::Uuid
+            } else if base_pt_type.name() == primitive_type::VectorType::NAME {
+                PhysicalColumnType::Vector {
+                    size: DEFAULT_VECTOR_SIZE,
+                }
+            } else {
+                panic!("Unknown primitive type: {:?}", base_pt_type);
             }
         }
     }

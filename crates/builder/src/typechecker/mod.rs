@@ -13,7 +13,7 @@ use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::{
     mapped_arena::MappedArena,
-    primitive_type::{InjectedType, PrimitiveBaseType, PrimitiveType},
+    primitive_type::{self, InjectedType, PrimitiveType},
 };
 use core_model_builder::{
     ast::ast_types::{AstEnum, AstModel, AstModelKind, AstModule, AstSystem, Untyped},
@@ -67,59 +67,9 @@ where
 }
 
 fn populate_type_env(env: &mut MappedArena<Type>) {
-    // TODO: maybe we don't need to do this manually
-    env.add(
-        "Boolean",
-        Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Boolean)),
-    );
-    env.add(
-        "Int",
-        Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Int)),
-    );
-    env.add(
-        "Float",
-        Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Float)),
-    );
-    env.add(
-        "Decimal",
-        Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Decimal)),
-    );
-    env.add(
-        "String",
-        Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::String)),
-    );
-    env.add(
-        "LocalTime",
-        Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::LocalTime)),
-    );
-    env.add(
-        "LocalDateTime",
-        Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::LocalDateTime)),
-    );
-    env.add(
-        "LocalDate",
-        Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::LocalDate)),
-    );
-    env.add(
-        "Instant",
-        Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Instant)),
-    );
-    env.add(
-        "Json",
-        Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Json)),
-    );
-    env.add(
-        "Blob",
-        Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Blob)),
-    );
-    env.add(
-        "Uuid",
-        Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Uuid)),
-    );
-    env.add(
-        "Vector",
-        Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Vector)),
-    );
+    for (name, primitive_type) in primitive_type::PRIMITIVE_REGISTRY.iter() {
+        env.add(name, Type::Primitive(PrimitiveType::Plain(*primitive_type)));
+    }
 
     env.add("Exograph", Type::Injected(InjectedType::Exograph));
     env.add("ExographPriv", Type::Injected(InjectedType::ExographPriv));

@@ -17,7 +17,7 @@ use core_model::{
     },
     context_type::{ContextFieldType, ContextSelection},
     mapped_arena::MappedArena,
-    primitive_type::{PrimitiveBaseType, PrimitiveType},
+    primitive_type::{self, PrimitiveType},
     types::FieldType,
 };
 use core_model_builder::{
@@ -81,7 +81,7 @@ pub fn compute_precheck_predicate_expression(
                         subsystem_entity_types.values_ref(),
                     );
 
-                    if field_entity_type.name() == "Boolean" {
+                    if field_entity_type.name() == primitive_type::BooleanType::NAME {
                         // Treat boolean context expressions in the same way as an "eq" relational expression
                         // For example, treat `AuthContext.superUser` the same way as `AuthContext.superUser == true`
                         Ok(AccessPredicateExpression::RelationalOp(
@@ -102,7 +102,8 @@ pub fn compute_precheck_predicate_expression(
                     }
                 }
                 PrecheckPathSelection::Context(context_selection, field_type) => {
-                    if field_type.innermost() == &PrimitiveType::Plain(PrimitiveBaseType::Boolean) {
+                    if field_type.innermost() == &PrimitiveType::Plain(primitive_type::BOOLEAN_TYPE)
+                    {
                         // Treat boolean context expressions in the same way as an "eq" relational expression
                         // For example, treat `AuthContext.superUser` the same way as `AuthContext.superUser == true`
                         Ok(AccessPredicateExpression::RelationalOp(

@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use core_model::primitive_type::{PrimitiveBaseType, PrimitiveType};
+use core_model::primitive_type::{self, PrimitiveType};
 
 use crate::ast::ast_types::AstExpr;
 
@@ -20,20 +20,20 @@ impl AstExpr<Typed> {
             AstExpr::LogicalOp(logic) => logic.typ().clone(),
             AstExpr::RelationalOp(relation) => relation.typ().clone(),
             AstExpr::StringLiteral(_, _) => {
-                Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::String))
+                Type::Primitive(PrimitiveType::Plain(primitive_type::STRING_TYPE))
             }
             AstExpr::BooleanLiteral(_, _) => {
-                Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Boolean))
+                Type::Primitive(PrimitiveType::Plain(primitive_type::BOOLEAN_TYPE))
             }
             AstExpr::NumberLiteral(value, _) => {
                 if value.parse::<i64>().is_ok() {
-                    Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Int))
+                    Type::Primitive(PrimitiveType::Plain(primitive_type::INT_TYPE))
                 } else {
-                    Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Float))
+                    Type::Primitive(PrimitiveType::Plain(primitive_type::FLOAT_TYPE))
                 }
             }
             AstExpr::StringList(_, _) => Type::Array(Box::new(Type::Primitive(
-                PrimitiveType::Plain(PrimitiveBaseType::String),
+                PrimitiveType::Plain(primitive_type::STRING_TYPE),
             ))),
             AstExpr::NullLiteral(_) => Type::Null,
         }

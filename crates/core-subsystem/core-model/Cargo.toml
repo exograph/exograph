@@ -9,6 +9,7 @@ serde.workspace = true
 typed-generational-arena.workspace = true
 async-graphql-parser.workspace = true
 async-graphql-value.workspace = true
+indexmap.workspace = true
 
 [dev-dependencies]
 

@@ -15,7 +15,7 @@ use core_model::{
         ContextContainer, ContextField, ContextFieldType, ContextSelection,
         ContextSelectionElement, ContextType,
     },
-    primitive_type::{NumberLiteral, PrimitiveBaseType, PrimitiveType, PrimitiveValue},
+    primitive_type::{self, NumberLiteral, PrimitiveType, PrimitiveValue},
     types::FieldType,
 };
 use futures::StreamExt;
@@ -219,46 +219,86 @@ fn coerce(value: Val, typ: &ContextFieldType) -> Result<Val, ContextExtractionEr
 }
 
 fn coerce_primitive(value: Val, typ: &PrimitiveType) -> Result<Val, ContextExtractionError> {
-    match (value, typ) {
-        // Special case for null values.
-        // If the context value is null, we can return it as is for any type. This allows correct
-        // handling of expressions such as `<something> || SomeContext.role == "admin"` when
-        // `SomeContext.role` isn't supplied. In this case, the `SomeContext.role == "admin"` will
-        // evaluate to `false`, and the `||` operator will return the value of `<something>`.
-        (value, _) if value == Val::Null => Ok(value),
-        (value @ Val::String(_), PrimitiveType::Plain(PrimitiveBaseType::String)) => Ok(value),
-        (value @ Val::Number(_), PrimitiveType::Plain(PrimitiveBaseType::Int)) => Ok(value),
-        (value @ Val::Number(_), PrimitiveType::Plain(PrimitiveBaseType::Float)) => Ok(value),
-        (value @ Val::Bool(_), PrimitiveType::Plain(PrimitiveBaseType::Boolean)) => Ok(value),
-        (value @ Val::String(_), PrimitiveType::Plain(PrimitiveBaseType::Uuid)) => Ok(value),
-        (Val::String(str), pt) => match pt {
-            PrimitiveType::Plain(PrimitiveBaseType::Int) => str
-                .parse::<i64>()
-                .map(|i| Val::Number(ValNumber::I64(i)))
-                .map_err(|_| ContextExtractionError::TypeMismatch {
+    // Special case for null values.
+    // If the context value is null, we can return it as is for any type. This allows correct
+    // handling of expressions such as `<something> || SomeContext.role == "admin"` when
+    // `SomeContext.role` isn't supplied. In this case, the `SomeContext.role == "admin"` will
+    // evaluate to `false`, and the `||` operator will return the value of `<something>`.
+    if value == Val::Null {
+        return Ok(value);
+    }
+
+    match typ {
+        PrimitiveType::Plain(primitive_type) => {
+            let type_name = primitive_type.name();
+            match (&value, type_name) {
+                // Direct matches for compatible types
+                (Val::String(_), _type_name)
+                    if primitive_type.name() == primitive_type::StringType::NAME =>
+                {
+                    Ok(value)
+                }
+                (Val::Number(_), _type_name)
+                    if primitive_type.name() == primitive_type::IntType::NAME =>
+                {
+                    Ok(value)
+                }
+                (Val::Number(_), _type_name)
+                    if primitive_type.name() == primitive_type::FloatType::NAME =>
+                {
+                    Ok(value)
+                }
+                (Val::Bool(_), _type_name)
+                    if primitive_type.name() == primitive_type::BooleanType::NAME =>
+                {
+                    Ok(value)
+                }
+                (Val::String(_), _type_name)
+                    if primitive_type.name() == primitive_type::UuidType::NAME =>
+                {
+                    Ok(value)
+                }
+
+                // String coercion to other types
+                (Val::String(str), _type_name)
+                    if primitive_type.name() == primitive_type::IntType::NAME =>
+                {
+                    str.parse::<i64>()
+                        .map(|i| Val::Number(ValNumber::I64(i)))
+                        .map_err(|_| ContextExtractionError::TypeMismatch {
+                            expected: typ.name(),
+                            actual: str.clone(),
+                        })
+                }
+                (Val::String(str), _type_name)
+                    if primitive_type.name() == primitive_type::FloatType::NAME =>
+                {
+                    str.parse::<f64>()
+                        .map(|f| Val::Number(ValNumber::F64(f)))
+                        .map_err(|_| ContextExtractionError::TypeMismatch {
+                            expected: typ.name(),
+                            actual: str.clone(),
+                        })
+                }
+                (Val::String(str), _type_name)
+                    if primitive_type.name() == primitive_type::BooleanType::NAME =>
+                {
+                    str.parse::<bool>().map(Val::Bool).map_err(|_| {
+                        ContextExtractionError::TypeMismatch {
+                            expected: typ.name(),
+                            actual: str.clone(),
+                        }
+                    })
+                }
+
+                // Type mismatch
+                _ => Err(ContextExtractionError::TypeMismatch {
                     expected: typ.name(),
-                    actual: str,
+                    actual: value.to_string(),
                 }),
-            PrimitiveType::Plain(PrimitiveBaseType::Float) => str
-                .parse::<f64>()
-                .map(|f| Val::Number(ValNumber::F64(f)))
-                .map_err(|_| ContextExtractionError::TypeMismatch {
-                    expected: typ.name(),
-                    actual: str,
-                }),
-            PrimitiveType::Plain(PrimitiveBaseType::Boolean) => str
-                .parse::<bool>()
-                .map(Val::Bool)
-                .map_err(|_| ContextExtractionError::TypeMismatch {
-                    expected: typ.name(),
-                    actual: str,
-                }),
-            _ => Err(ContextExtractionError::TypeMismatch {
-                expected: typ.name(),
-                actual: str,
-            }),
-        },
-        (value, _) => Err(ContextExtractionError::TypeMismatch {
+            }
+        }
+        PrimitiveType::Array(_) => Err(ContextExtractionError::TypeMismatch {
             expected: typ.name(),
             actual: value.to_string(),
         }),

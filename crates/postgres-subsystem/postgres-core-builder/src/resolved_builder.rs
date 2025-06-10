@@ -27,6 +27,7 @@ use crate::resolved_type::{
 };
 use core_model::{
     mapped_arena::MappedArena,
+    primitive_type,
     types::{FieldType, Named},
 };
 use core_model_builder::{
@@ -352,22 +353,17 @@ fn resolve_field_default_type(
         AstFieldDefaultKind::Value(expr) => ResolvedFieldDefault::Value(Box::new(expr.to_owned())),
         AstFieldDefaultKind::Function(fn_name, args) => match fn_name.as_str() {
             DEFAULT_FN_AUTO_INCREMENT => {
-                match field_underlying_type {
-                    "Int" => {}
-                    _ => {
-                        errors.push(Diagnostic {
-                            level: Level::Error,
-                            message: format!(
-                                "{DEFAULT_FN_AUTO_INCREMENT}() can only be used on Ints"
-                            ),
-                            code: Some("C000".to_string()),
-                            spans: vec![SpanLabel {
-                                span: default_value.span,
-                                style: SpanStyle::Primary,
-                                label: None,
-                            }],
-                        });
-                    }
+                if field_underlying_type != primitive_type::IntType::NAME {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: format!("{DEFAULT_FN_AUTO_INCREMENT}() can only be used on Ints"),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: default_value.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    });
                 }
 
                 match &args[..] {
@@ -418,43 +414,39 @@ fn resolve_field_default_type(
                 }
             }
             DEFAULT_FN_CURRENT_TIME => {
-                match field_underlying_type {
-                    "Instant" | "LocalDate" | "LocalTime" | "LocalDateTime" => {}
-                    _ => {
-                        errors.push(Diagnostic {
-                            level: Level::Error,
-                            message: format!(
-                                "{DEFAULT_FN_CURRENT_TIME}() can only be used for time-related types"
-                            ),
-                            code: Some("C000".to_string()),
-                            spans: vec![SpanLabel {
-                                span: default_value.span,
-                                style: SpanStyle::Primary,
-                                label: None,
-                            }],
-                        });
-                    }
+                if field_underlying_type != primitive_type::InstantType::NAME
+                    && field_underlying_type != primitive_type::LocalDateType::NAME
+                    && field_underlying_type != primitive_type::LocalTimeType::NAME
+                    && field_underlying_type != primitive_type::LocalDateTimeType::NAME
+                {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: format!(
+                            "{DEFAULT_FN_CURRENT_TIME}() can only be used for time-related types"
+                        ),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: default_value.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    });
                 }
 
                 ResolvedFieldDefault::PostgresFunction("now()".to_string())
             }
             DEFAULT_FN_GENERATE_UUID => {
-                match field_underlying_type {
-                    "Uuid" => {}
-                    _ => {
-                        errors.push(Diagnostic {
-                            level: Level::Error,
-                            message: format!(
-                                "{DEFAULT_FN_GENERATE_UUID}() can only be used on Uuids"
-                            ),
-                            code: Some("C000".to_string()),
-                            spans: vec![SpanLabel {
-                                span: default_value.span,
-                                style: SpanStyle::Primary,
-                                label: None,
-                            }],
-                        });
-                    }
+                if field_underlying_type != primitive_type::UuidType::NAME {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: format!("{DEFAULT_FN_GENERATE_UUID}() can only be used on Uuids"),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: default_value.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    });
                 }
 
                 ResolvedFieldDefault::PostgresFunction("gen_random_uuid()".to_string())
@@ -491,7 +483,7 @@ fn build_type_hint(
         // but we need to know the type of the field before constructing the
         // appropriate type hint
         // needed to disambiguate between Int and Float hints
-        if field.typ.get_underlying_typename(types).unwrap() != "Int" {
+        if field.typ.get_underlying_typename(types).unwrap() != primitive_type::IntType::NAME {
             None
         } else {
             let range_hint = field.annotations.get("range").map(|params| {
@@ -540,7 +532,7 @@ fn build_type_hint(
 
     let float_hint = {
         // needed to disambiguate between Int and Float hints
-        if field.typ.get_underlying_typename(types).unwrap() != "Float" {
+        if field.typ.get_underlying_typename(types).unwrap() != primitive_type::FloatType::NAME {
             None
         } else {
             let mut range_hint = None;
@@ -624,7 +616,7 @@ fn build_type_hint(
 
     let number_hint = {
         // needed to disambiguate between DateTime and Decimal hints
-        if field.typ.get_underlying_typename(types).unwrap() != "Decimal" {
+        if field.typ.get_underlying_typename(types).unwrap() != primitive_type::DecimalType::NAME {
             None
         } else {
             let precision_hint = field
@@ -679,7 +671,8 @@ fn build_type_hint(
                 .get_underlying_typename(types)
                 .unwrap()
                 .contains("Time")
-            || field.typ.get_underlying_typename(types).unwrap() != "Instant"
+            || field.typ.get_underlying_typename(types).unwrap()
+                != primitive_type::InstantType::NAME
         {
             None
         } else {
@@ -692,7 +685,9 @@ fn build_type_hint(
         }
     };
 
-    let vector_hint = if field.typ.get_underlying_typename(types).unwrap() == "Vector" {
+    let vector_hint = if field.typ.get_underlying_typename(types).unwrap()
+        == primitive_type::VectorType::NAME
+    {
         let size = field
             .annotations
             .get("size")

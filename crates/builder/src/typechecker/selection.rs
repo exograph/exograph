@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::{
     mapped_arena::MappedArena,
-    primitive_type::{PrimitiveBaseType, PrimitiveType},
+    primitive_type::{self, PrimitiveType},
 };
 use core_model_builder::{
     ast::ast_types::{AstExpr, AstModel, FieldSelectionElement},
@@ -217,7 +217,7 @@ impl TypecheckFunctionCallFrom<FieldSelectionElement<Untyped>> for FieldSelectio
                         if let Some(elem_type) = elem_type {
                             if identical_match(elem_type, &param_type) {
                                 *typ = Type::Primitive(PrimitiveType::Plain(
-                                    PrimitiveBaseType::Boolean,
+                                    primitive_type::BOOLEAN_TYPE,
                                 ));
                             } else {
                                 *typ = Type::Error;

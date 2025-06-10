@@ -15,6 +15,7 @@ use async_graphql_parser::{
 };
 use async_graphql_value::{ConstValue, Name, Number, Value, indexmap::IndexMap};
 use bytes::Bytes;
+use core_model::primitive_type;
 
 use crate::{
     introspection::definition::schema::Schema, validation::validation_error::ValidationError,
@@ -213,7 +214,10 @@ impl<'a> ArgumentValidator<'a> {
         // TODO: Use the types from PrimitiveType (but that is currently in the builder crate, which we don't want to depend on)
         self.validate_scalar_argument(
             "Number",
-            &["Int", "Float"],
+            &[
+                primitive_type::IntType::NAME,
+                primitive_type::FloatType::NAME,
+            ],
             || {
                 Ok(Val::Number(number.clone().try_into().map_err(|_| {
                     ValidationError::InvalidArgumentType {
