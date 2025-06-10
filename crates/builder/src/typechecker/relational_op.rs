@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveBaseType};
+use core_model::{mapped_arena::MappedArena, primitive_type};
 use core_model_builder::typechecker::{Typed, annotation::AnnotationSpec};
 
 use crate::ast::ast_types::{AstExpr, RelationalOp, Untyped};
@@ -59,7 +59,7 @@ impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
                     && right_typ.is_complete()
                     && type_match(&left_typ, &right_typ)
                 {
-                    *o_typ = Type::Primitive(PrimitiveType::Plain(PrimitiveBaseType::Boolean));
+                    *o_typ = Type::Primitive(PrimitiveType::Plain(primitive_type::BOOLEAN_TYPE));
                     true
                 } else {
                     *o_typ = Type::Error;
@@ -138,13 +138,15 @@ pub fn identical_match(left: &Type, right: &Type) -> bool {
             (Type::Primitive(left_typ), Type::Primitive(right_typ)) => {
                 match (left_typ, right_typ) {
                     (
-                        PrimitiveType::Plain(PrimitiveBaseType::Float),
-                        PrimitiveType::Plain(PrimitiveBaseType::Int),
-                    )
-                    | (
-                        PrimitiveType::Plain(PrimitiveBaseType::Int),
-                        PrimitiveType::Plain(PrimitiveBaseType::Float),
-                    ) => true,
+                        PrimitiveType::Plain(left_primitive),
+                        PrimitiveType::Plain(right_primitive),
+                    ) if (left_primitive.name() == primitive_type::FloatType::NAME
+                        && right_primitive.name() == primitive_type::IntType::NAME)
+                        || (left_primitive.name() == primitive_type::IntType::NAME
+                            && right_primitive.name() == primitive_type::FloatType::NAME) =>
+                    {
+                        true
+                    }
                     _ => left_typ == right_typ,
                 }
             }

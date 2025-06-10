@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use core_model::function_defn::FunctionDefinition;
-use core_model::primitive_type::{PrimitiveBaseType, PrimitiveType};
+use core_model::primitive_type::PrimitiveType;
 use core_model::types::FieldType;
 use core_model::{context_type::ContextType, mapped_arena::MappedArena};
 
@@ -48,7 +48,9 @@ pub fn build(
 
     vec![FunctionDefinition {
         name: "contains".to_string(),
-        return_type: FieldType::Plain(PrimitiveType::Plain(PrimitiveBaseType::Boolean)),
+        return_type: FieldType::Plain(PrimitiveType::Plain(
+            core_model::primitive_type::BOOLEAN_TYPE,
+        )),
     }]
     .into_iter()
     .for_each(|defn| {

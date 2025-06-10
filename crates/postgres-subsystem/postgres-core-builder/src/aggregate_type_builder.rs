@@ -9,6 +9,7 @@
 
 use std::collections::HashMap;
 
+use core_model::primitive_type;
 use core_model::types::Named;
 use core_model_builder::error::ModelBuildingError;
 use lazy_static::lazy_static;
@@ -75,7 +76,7 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
                 // For enums, we support only the count aggregate
                 name: ScalarAggregateFieldKind::Count.name().to_string(),
                 typ: AggregateFieldType::Scalar {
-                    type_name: "Int".to_string(),
+                    type_name: primitive_type::IntType::NAME.to_string(),
                     kind: ScalarAggregateFieldKind::Count,
                 },
                 relation: None,
@@ -110,7 +111,7 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
                     // Always add the count aggregate
                     name: ScalarAggregateFieldKind::Count.name().to_string(),
                     typ: AggregateFieldType::Scalar {
-                        type_name: "Int".to_string(),
+                        type_name: primitive_type::IntType::NAME.to_string(),
                         kind: ScalarAggregateFieldKind::Count,
                     },
                     relation: None,
@@ -201,19 +202,19 @@ lazy_static! {
     // We don't specify the "count" aggregate here because it is always supported (see above)
     // The second element in the tuple is the return type of the avg, if it differs from the input type
     static ref AGG_MAP: HashMap<&'static str, Vec<(ScalarAggregateFieldKind, Option<&'static str>)>> = HashMap::from([
-        ("Int",
+        (primitive_type::IntType::NAME,
             vec![(ScalarAggregateFieldKind::Min, None), (ScalarAggregateFieldKind::Max, None),
-                 (ScalarAggregateFieldKind::Sum, None), (ScalarAggregateFieldKind::Avg, Some("Float"))]),
-        ("Float",
+                 (ScalarAggregateFieldKind::Sum, None), (ScalarAggregateFieldKind::Avg, Some(primitive_type::FloatType::NAME))]),
+        (primitive_type::FloatType::NAME,
             vec![(ScalarAggregateFieldKind::Min, None), (ScalarAggregateFieldKind::Max, None),
-                 (ScalarAggregateFieldKind::Sum, Some("Float")), (ScalarAggregateFieldKind::Avg, Some("Float"))]),
-        ("Decimal",
+                 (ScalarAggregateFieldKind::Sum, Some(primitive_type::FloatType::NAME)), (ScalarAggregateFieldKind::Avg, Some(primitive_type::FloatType::NAME))]),
+        (primitive_type::DecimalType::NAME,
             vec![(ScalarAggregateFieldKind::Min, None), (ScalarAggregateFieldKind::Max, None),
                  (ScalarAggregateFieldKind::Sum, None), (ScalarAggregateFieldKind::Avg, None)]),
 
-        ("String",
+        (primitive_type::StringType::NAME,
                 vec![(ScalarAggregateFieldKind::Min, None), (ScalarAggregateFieldKind::Max, None)]),
 
-        ("Vector", vec![(ScalarAggregateFieldKind::Avg, None)])
+        (primitive_type::VectorType::NAME, vec![(ScalarAggregateFieldKind::Avg, None)])
     ]);
 }

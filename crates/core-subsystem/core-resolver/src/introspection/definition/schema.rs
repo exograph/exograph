@@ -17,8 +17,11 @@ use async_graphql_parser::{
 };
 
 use async_graphql_value::Name;
-use core_model::type_normalization::{
-    TypeDefinitionIntrospection, default_positioned, default_positioned_name,
+use core_model::{
+    primitive_type,
+    type_normalization::{
+        TypeDefinitionIntrospection, default_positioned, default_positioned_name,
+    },
 };
 
 use crate::{plugin::SubsystemGraphQLResolver, validation::underlying_type};
@@ -69,7 +72,7 @@ impl Schema {
                                 profile.query_matches(
                                     field_return_type,
                                     &field_defn.name.node,
-                                    core_model::primitive_type::PrimitiveBaseType::is_primitive,
+                                    primitive_type::PrimitiveType::is_primitive,
                                 )
                             })
                             .collect::<Vec<FieldDefinition>>(),
@@ -95,7 +98,7 @@ impl Schema {
                                 profile.mutation_matches(
                                     field_return_type,
                                     &field_defn.name.node,
-                                    core_model::primitive_type::PrimitiveBaseType::is_primitive,
+                                    primitive_type::PrimitiveType::is_primitive,
                                 )
                             })
                             .collect::<Vec<FieldDefinition>>(),

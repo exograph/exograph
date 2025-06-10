@@ -10,6 +10,7 @@
 use core_model::{
     access::AccessPredicateExpression,
     mapped_arena::{MappedArena, SerializableSlabIndex},
+    primitive_type,
     types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
 };
 
@@ -388,25 +389,25 @@ pub fn expand_unique_queries(
 }
 
 pub fn limit_param(primitive_types: &MappedArena<PostgresPrimitiveType>) -> LimitParameter {
-    let param_type_name = "Int".to_string();
+    let param_type_name = primitive_type::IntType::NAME;
 
     LimitParameter {
         name: "limit".to_string(),
         typ: FieldType::Optional(Box::new(FieldType::Plain(LimitParameterType {
-            type_name: param_type_name.clone(),
-            type_id: primitive_types.get_id(&param_type_name).unwrap(),
+            type_name: param_type_name.to_string(),
+            type_id: primitive_types.get_id(param_type_name).unwrap(),
         }))),
     }
 }
 
 pub fn offset_param(primitive_types: &MappedArena<PostgresPrimitiveType>) -> OffsetParameter {
-    let param_type_name = "Int".to_string();
+    let param_type_name = primitive_type::IntType::NAME;
 
     OffsetParameter {
         name: "offset".to_string(),
         typ: FieldType::Optional(Box::new(FieldType::Plain(OffsetParameterType {
-            type_name: param_type_name.clone(),
-            type_id: primitive_types.get_id(&param_type_name).unwrap(),
+            type_name: param_type_name.to_string(),
+            type_id: primitive_types.get_id(param_type_name).unwrap(),
         }))),
     }
 }
