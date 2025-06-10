@@ -548,63 +548,24 @@ impl_default_type_hint_provider!(
 pub static TYPE_HINT_PROVIDER_REGISTRY: LazyLock<
     HashMap<&'static str, &'static dyn ResolveTypeHintProvider>,
 > = LazyLock::new(|| {
-    let mut registry = HashMap::new();
-
-    // Register all primitive types that can compute type hints
-    registry.insert(
-        primitive_type::IntType::NAME,
+    [
         &primitive_type::IntType as &'static dyn ResolveTypeHintProvider,
-    );
-    registry.insert(
-        primitive_type::FloatType::NAME,
         &primitive_type::FloatType as &'static dyn ResolveTypeHintProvider,
-    );
-    registry.insert(
-        primitive_type::DecimalType::NAME,
         &primitive_type::DecimalType as &'static dyn ResolveTypeHintProvider,
-    );
-    registry.insert(
-        primitive_type::StringType::NAME,
         &primitive_type::StringType as &'static dyn ResolveTypeHintProvider,
-    );
-    registry.insert(
-        primitive_type::InstantType::NAME,
         &primitive_type::InstantType as &'static dyn ResolveTypeHintProvider,
-    );
-    registry.insert(
-        primitive_type::VectorType::NAME,
         &primitive_type::VectorType as &'static dyn ResolveTypeHintProvider,
-    );
-    registry.insert(
-        primitive_type::BooleanType::NAME,
         &primitive_type::BooleanType as &'static dyn ResolveTypeHintProvider,
-    );
-    registry.insert(
-        primitive_type::LocalDateType::NAME,
         &primitive_type::LocalDateType as &'static dyn ResolveTypeHintProvider,
-    );
-    registry.insert(
-        primitive_type::LocalTimeType::NAME,
         &primitive_type::LocalTimeType as &'static dyn ResolveTypeHintProvider,
-    );
-    registry.insert(
-        primitive_type::LocalDateTimeType::NAME,
         &primitive_type::LocalDateTimeType as &'static dyn ResolveTypeHintProvider,
-    );
-    registry.insert(
-        primitive_type::JsonType::NAME,
         &primitive_type::JsonType as &'static dyn ResolveTypeHintProvider,
-    );
-    registry.insert(
-        primitive_type::BlobType::NAME,
         &primitive_type::BlobType as &'static dyn ResolveTypeHintProvider,
-    );
-    registry.insert(
-        primitive_type::UuidType::NAME,
         &primitive_type::UuidType as &'static dyn ResolveTypeHintProvider,
-    );
-
-    registry
+    ]
+    .iter()
+    .map(|provider| (provider.name(), *provider))
+    .collect()
 });
 
 static ALL_HINT_ANNOTATION_NAMES: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
