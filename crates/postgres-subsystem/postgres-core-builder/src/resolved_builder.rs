@@ -27,7 +27,7 @@ use crate::resolved_type::{
 };
 use core_model::{
     mapped_arena::MappedArena,
-    primitive_type::{self, PRIMITIVE_REGISTRY},
+    primitive_type,
     types::{FieldType, Named},
 };
 use core_model_builder::{
@@ -39,6 +39,7 @@ use core_model_builder::{
     error::ModelBuildingError,
     typechecker::{
         Typed,
+        annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
         typ::{Module, Type, TypecheckedSystem},
     },
 };
@@ -58,6 +59,14 @@ pub trait ResolveTypeHintProvider: Send + Sync {
         field: &AstField<Typed>,
         errors: &mut Vec<Diagnostic>,
     ) -> Option<ResolvedTypeHint>;
+
+    /// Returns the list of annotations that this type hint provider supports
+    fn applicable_hint_annotations(
+        &self,
+    ) -> Vec<(
+        &'static str,
+        core_model_builder::typechecker::annotation::AnnotationSpec,
+    )>;
 }
 
 impl ResolveTypeHintProvider for primitive_type::IntType {
@@ -105,6 +114,56 @@ impl ResolveTypeHintProvider for primitive_type::IntType {
         } else {
             None
         }
+    }
+
+    fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
+        vec![
+            (
+                "range",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: false,
+                    single_params: false,
+                    mapped_params: Some(&[
+                        MappedAnnotationParamSpec {
+                            name: "min",
+                            optional: false,
+                        },
+                        MappedAnnotationParamSpec {
+                            name: "max",
+                            optional: false,
+                        },
+                    ]),
+                },
+            ),
+            (
+                "bits16",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: true,
+                    single_params: false,
+                    mapped_params: None,
+                },
+            ),
+            (
+                "bits32",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: true,
+                    single_params: false,
+                    mapped_params: None,
+                },
+            ),
+            (
+                "bits64",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: true,
+                    single_params: false,
+                    mapped_params: None,
+                },
+            ),
+        ]
     }
 }
 
@@ -190,6 +249,47 @@ impl ResolveTypeHintProvider for primitive_type::FloatType {
             None
         }
     }
+
+    fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
+        vec![
+            (
+                "range",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: false,
+                    single_params: false,
+                    mapped_params: Some(&[
+                        MappedAnnotationParamSpec {
+                            name: "min",
+                            optional: false,
+                        },
+                        MappedAnnotationParamSpec {
+                            name: "max",
+                            optional: false,
+                        },
+                    ]),
+                },
+            ),
+            (
+                "singlePrecision",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: true,
+                    single_params: false,
+                    mapped_params: None,
+                },
+            ),
+            (
+                "doublePrecision",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: true,
+                    single_params: false,
+                    mapped_params: None,
+                },
+            ),
+        ]
+    }
 }
 
 impl ResolveTypeHintProvider for primitive_type::DecimalType {
@@ -226,6 +326,29 @@ impl ResolveTypeHintProvider for primitive_type::DecimalType {
             scale: scale_hint,
         })
     }
+
+    fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
+        vec![
+            (
+                "precision",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: false,
+                    single_params: true,
+                    mapped_params: None,
+                },
+            ),
+            (
+                "scale",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: false,
+                    single_params: true,
+                    mapped_params: None,
+                },
+            ),
+        ]
+    }
 }
 
 impl ResolveTypeHintProvider for primitive_type::StringType {
@@ -241,6 +364,18 @@ impl ResolveTypeHintProvider for primitive_type::StringType {
 
         max_length_annotation.map(|max_length| ResolvedTypeHint::String { max_length })
     }
+
+    fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
+        vec![(
+            "maxLength",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        )]
+    }
 }
 
 impl ResolveTypeHintProvider for primitive_type::InstantType {
@@ -255,6 +390,18 @@ impl ResolveTypeHintProvider for primitive_type::InstantType {
             .map(|p| ResolvedTypeHint::DateTime {
                 precision: p.as_single().as_int() as usize,
             })
+    }
+
+    fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
+        vec![(
+            "precision",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        )]
     }
 }
 
@@ -293,6 +440,29 @@ impl ResolveTypeHintProvider for primitive_type::VectorType {
             distance_function,
         })
     }
+
+    fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
+        vec![
+            (
+                "size",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: false,
+                    single_params: true,
+                    mapped_params: None,
+                },
+            ),
+            (
+                "distanceFunction",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: false,
+                    single_params: true,
+                    mapped_params: None,
+                },
+            ),
+        ]
+    }
 }
 
 // Default implementation for primitive types that don't have special type hints
@@ -306,6 +476,10 @@ macro_rules! impl_default_type_hint_provider {
                     _errors: &mut Vec<Diagnostic>,
                 ) -> Option<ResolvedTypeHint> {
                     None
+                }
+
+                fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
+                    vec![]
                 }
             }
         )*
@@ -327,7 +501,7 @@ use std::sync::LazyLock;
 
 /// A registry that maps primitive type names to type hint providers
 /// This avoids the need to manually enumerate types in the compute function
-static TYPE_HINT_PROVIDER_REGISTRY: LazyLock<
+pub static TYPE_HINT_PROVIDER_REGISTRY: LazyLock<
     HashMap<&'static str, &'static dyn ResolveTypeHintProvider>,
 > = LazyLock::new(|| {
     let mut registry = HashMap::new();
@@ -388,25 +562,6 @@ static TYPE_HINT_PROVIDER_REGISTRY: LazyLock<
 
     registry
 });
-
-/// Helper function to compute type hints for a primitive type using registries
-/// Uses a dedicated type hint provider registry to avoid manual enumeration
-fn compute_type_hint_for_primitive(
-    type_name: &str,
-    field: &AstField<Typed>,
-    errors: &mut Vec<Diagnostic>,
-) -> Option<ResolvedTypeHint> {
-    // First, validate that this is a known primitive type using the main registry
-    if !PRIMITIVE_REGISTRY.contains_key(type_name) {
-        return None;
-    }
-
-    // Then, look up the type hint provider from our dedicated registry
-    let type_hint_provider = TYPE_HINT_PROVIDER_REGISTRY.get(type_name)?;
-
-    // Call compute on the trait object - no manual enumeration needed!
-    type_hint_provider.compute(field, errors)
-}
 
 /// Consume typed-checked types and build resolved types
 pub fn build(
@@ -832,10 +987,8 @@ fn build_type_hint(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
 ) -> Option<ResolvedTypeHint> {
-    // Get the underlying type name
     let type_name = field.typ.get_underlying_typename(types)?;
 
-    // Check for explicit dbtype hint
     let explicit_dbtype_hint = field
         .annotations
         .get("dbtype")
@@ -844,8 +997,11 @@ fn build_type_hint(
             dbtype: s.to_uppercase(),
         });
 
-    // Get the primitive-specific hint using the new trait-based approach with PRIMITIVE_REGISTRY
-    let primitive_hint = compute_type_hint_for_primitive(&type_name, field, errors);
+    let primitive_hint = {
+        let type_hint_provider = TYPE_HINT_PROVIDER_REGISTRY.get(type_name.as_str())?;
+
+        type_hint_provider.compute(field, errors)
+    };
 
     // Validate that we don't have conflicting hints
     if explicit_dbtype_hint.is_some() && primitive_hint.is_some() {
