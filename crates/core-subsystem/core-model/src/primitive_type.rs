@@ -141,17 +141,8 @@ pub static PRIMITIVE_REGISTRY: LazyLock<
 // Convenience constants for commonly used types (TODO: Once the full refactor is done, we can remove these)
 pub static INT_TYPE: &'static dyn PrimitiveBaseType = &IntType;
 pub static FLOAT_TYPE: &'static dyn PrimitiveBaseType = &FloatType;
-pub static DECIMAL_TYPE: &'static dyn PrimitiveBaseType = &DecimalType;
 pub static STRING_TYPE: &'static dyn PrimitiveBaseType = &StringType;
 pub static BOOLEAN_TYPE: &'static dyn PrimitiveBaseType = &BooleanType;
-pub static LOCAL_DATE_TYPE: &'static dyn PrimitiveBaseType = &LocalDateType;
-pub static LOCAL_TIME_TYPE: &'static dyn PrimitiveBaseType = &LocalTimeType;
-pub static LOCAL_DATE_TIME_TYPE: &'static dyn PrimitiveBaseType = &LocalDateTimeType;
-pub static INSTANT_TYPE: &'static dyn PrimitiveBaseType = &InstantType;
-pub static JSON_TYPE: &'static dyn PrimitiveBaseType = &JsonType;
-pub static BLOB_TYPE: &'static dyn PrimitiveBaseType = &BlobType;
-pub static UUID_TYPE: &'static dyn PrimitiveBaseType = &UuidType;
-pub static VECTOR_TYPE: &'static dyn PrimitiveBaseType = &VectorType;
 
 impl PrimitiveType {
     pub fn name(&self) -> String {
