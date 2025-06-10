@@ -16,10 +16,13 @@ use core_plugin_interface::interface::{SubsystemBuild, SubsystemBuilder};
 use core_plugin_shared::{
     serializable_system::SerializableCoreBytes, system_serializer::SystemSerializer,
 };
-use postgres_core_builder::resolved_type::ResolvedTypeEnv;
+use postgres_core_builder::{
+    resolved_builder::TYPE_HINT_PROVIDER_REGISTRY, resolved_type::ResolvedTypeEnv,
+};
 use postgres_graphql_builder::PostgresGraphQLSubsystemBuilder;
 use postgres_rest_builder::PostgresRestSubsystemBuilder;
 use postgres_rpc_builder::PostgresRpcSubsystemBuilder;
+
 pub struct PostgresSubsystemBuilder {
     pub graphql_builder: Option<PostgresGraphQLSubsystemBuilder>,
     pub rest_builder: Option<PostgresRestSubsystemBuilder>,
@@ -43,7 +46,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
     }
 
     fn annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
-        vec![
+        let mut annotations = vec![
             (
                 "postgres",
                 AnnotationSpec {
@@ -90,15 +93,6 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                 },
             ),
             (
-                "maxLength",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: false,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
                 "pk",
                 AnnotationSpec {
                     targets: &[AnnotationTarget::Field],
@@ -131,105 +125,6 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     targets: &[AnnotationTarget::Type],
                     no_params: false,
                     single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "precision",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: false,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "range",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: false,
-                    single_params: false,
-                    mapped_params: Some(&[
-                        MappedAnnotationParamSpec {
-                            name: "min",
-                            optional: false,
-                        },
-                        MappedAnnotationParamSpec {
-                            name: "max",
-                            optional: false,
-                        },
-                    ]),
-                },
-            ),
-            (
-                "scale",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: false,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "bits16",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: true,
-                    single_params: false,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "bits32",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: true,
-                    single_params: false,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "bits64",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: true,
-                    single_params: false,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "singlePrecision",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: true,
-                    single_params: false,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "size", // vector size
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: false,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "distanceFunction", // vector distance function
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: false,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "doublePrecision",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: true,
-                    single_params: false,
                     mapped_params: None,
                 },
             ),
@@ -300,7 +195,13 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     mapped_params: None,
                 },
             ),
-        ]
+        ];
+
+        for (_, provider) in TYPE_HINT_PROVIDER_REGISTRY.iter() {
+            annotations.extend(provider.applicable_hint_annotations());
+        }
+
+        annotations
     }
 
     async fn build(
