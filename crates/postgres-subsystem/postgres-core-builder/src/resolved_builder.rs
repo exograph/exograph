@@ -13,6 +13,9 @@
 //! column name, here that information is encoded into an attribute of `ResolvedType`.
 //! If no @column is provided, the encoded information is set to an appropriate default value.
 
+use std::collections::{HashMap, HashSet};
+use std::sync::LazyLock;
+
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use postgres_core_model::types::EntityRepresentation;
 use serde::{Deserialize, Serialize};
@@ -27,7 +30,7 @@ use crate::resolved_type::{
 };
 use core_model::{
     mapped_arena::MappedArena,
-    primitive_type,
+    primitive_type::{self, PrimitiveBaseType},
     types::{FieldType, Named},
 };
 use core_model_builder::{
@@ -52,25 +55,69 @@ const DEFAULT_FN_CURRENT_TIME: &str = "now";
 const DEFAULT_FN_GENERATE_UUID: &str = "generate_uuid";
 
 /// Trait for providing type hint resolution for primitive types
-pub trait ResolveTypeHintProvider: Send + Sync {
-    /// Computes type hints for a field of this primitive type
-    fn compute(
+pub trait ResolveTypeHintProvider: Send + Sync + PrimitiveBaseType {
+    /// "protected" (as in Java) computation method
+    /// Implementations should call this method to compute the type hint,
+    /// but not worry about validating the stray hint annotations.
+    #[doc(hidden)]
+    fn __protected_compute_type_hint(
         &self,
         field: &AstField<Typed>,
         errors: &mut Vec<Diagnostic>,
     ) -> Option<ResolvedTypeHint>;
 
-    /// Returns the list of annotations that this type hint provider supports
-    fn applicable_hint_annotations(
+    /// Computes the type hint for a field, validating that only supported hint annotations are used.
+    fn compute_type_hint(
         &self,
-    ) -> Vec<(
-        &'static str,
-        core_model_builder::typechecker::annotation::AnnotationSpec,
-    )>;
+        field: &AstField<Typed>,
+        errors: &mut Vec<Diagnostic>,
+    ) -> Option<ResolvedTypeHint> {
+        let field_annotations = field.annotations.annotations.keys();
+        let supported_hint_annotations: std::collections::HashSet<&str> = self
+            .applicable_hint_annotations()
+            .iter()
+            .map(|(name, _)| *name)
+            .collect();
+
+        let unsupported_hint_annotations = field_annotations
+            .filter(|annotation| {
+                // Only validate against hint annotations that this type supports
+                // Skip annotations that are not hint annotations (they'll be validated elsewhere)
+                ALL_HINT_ANNOTATION_NAMES.contains(annotation.as_str())
+                    && !supported_hint_annotations.contains(annotation.as_str())
+            })
+            .collect::<Vec<_>>();
+
+        if !unsupported_hint_annotations.is_empty() {
+            errors.push(Diagnostic {
+                level: Level::Error,
+                message: format!(
+                    "Annotation @{} is not supported for type {}",
+                    unsupported_hint_annotations
+                        .iter()
+                        .map(|a| a.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    self.name()
+                ),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: field.span,
+                    style: SpanStyle::Primary,
+                    label: None,
+                }],
+            });
+        }
+
+        self.__protected_compute_type_hint(field, errors)
+    }
+
+    /// Returns the list of annotations that this type hint provider supports
+    fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)>;
 }
 
 impl ResolveTypeHintProvider for primitive_type::IntType {
-    fn compute(
+    fn __protected_compute_type_hint(
         &self,
         field: &AstField<Typed>,
         errors: &mut Vec<Diagnostic>,
@@ -168,7 +215,7 @@ impl ResolveTypeHintProvider for primitive_type::IntType {
 }
 
 impl ResolveTypeHintProvider for primitive_type::FloatType {
-    fn compute(
+    fn __protected_compute_type_hint(
         &self,
         field: &AstField<Typed>,
         errors: &mut Vec<Diagnostic>,
@@ -293,7 +340,7 @@ impl ResolveTypeHintProvider for primitive_type::FloatType {
 }
 
 impl ResolveTypeHintProvider for primitive_type::DecimalType {
-    fn compute(
+    fn __protected_compute_type_hint(
         &self,
         field: &AstField<Typed>,
         errors: &mut Vec<Diagnostic>,
@@ -352,7 +399,7 @@ impl ResolveTypeHintProvider for primitive_type::DecimalType {
 }
 
 impl ResolveTypeHintProvider for primitive_type::StringType {
-    fn compute(
+    fn __protected_compute_type_hint(
         &self,
         field: &AstField<Typed>,
         _errors: &mut Vec<Diagnostic>,
@@ -379,7 +426,7 @@ impl ResolveTypeHintProvider for primitive_type::StringType {
 }
 
 impl ResolveTypeHintProvider for primitive_type::InstantType {
-    fn compute(
+    fn __protected_compute_type_hint(
         &self,
         field: &AstField<Typed>,
         _errors: &mut Vec<Diagnostic>,
@@ -406,7 +453,7 @@ impl ResolveTypeHintProvider for primitive_type::InstantType {
 }
 
 impl ResolveTypeHintProvider for primitive_type::VectorType {
-    fn compute(
+    fn __protected_compute_type_hint(
         &self,
         field: &AstField<Typed>,
         errors: &mut Vec<Diagnostic>,
@@ -470,7 +517,7 @@ macro_rules! impl_default_type_hint_provider {
     ($($type_name:ty),* $(,)?) => {
         $(
             impl ResolveTypeHintProvider for $type_name {
-                fn compute(
+                fn __protected_compute_type_hint(
                     &self,
                     _field: &AstField<Typed>,
                     _errors: &mut Vec<Diagnostic>,
@@ -495,9 +542,6 @@ impl_default_type_hint_provider!(
     primitive_type::BlobType,
     primitive_type::UuidType,
 );
-
-use std::collections::HashMap;
-use std::sync::LazyLock;
 
 /// A registry that maps primitive type names to type hint providers
 /// This avoids the need to manually enumerate types in the compute function
@@ -562,6 +606,21 @@ pub static TYPE_HINT_PROVIDER_REGISTRY: LazyLock<
 
     registry
 });
+
+static ALL_HINT_ANNOTATION_NAMES: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
+    collect_all_hint_annotations()
+        .iter()
+        .map(|(name, _)| *name)
+        .collect()
+});
+
+/// Collects all hint annotations from all registered type hint providers
+pub fn collect_all_hint_annotations() -> Vec<(&'static str, AnnotationSpec)> {
+    TYPE_HINT_PROVIDER_REGISTRY
+        .iter()
+        .flat_map(|(_, provider)| provider.applicable_hint_annotations())
+        .collect()
+}
 
 /// Consume typed-checked types and build resolved types
 pub fn build(
@@ -999,8 +1058,7 @@ fn build_type_hint(
 
     let primitive_hint = {
         let type_hint_provider = TYPE_HINT_PROVIDER_REGISTRY.get(type_name.as_str())?;
-
-        type_hint_provider.compute(field, errors)
+        type_hint_provider.compute_type_hint(field, errors)
     };
 
     // Validate that we don't have conflicting hints

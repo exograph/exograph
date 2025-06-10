@@ -1,0 +1,9 @@
+@postgres
+module TestModule {
+    type Product {
+        @pk id: Int = autoIncrement()
+        @bits16 price: Decimal  // This should cause an error - bits16 is not supported for Decimal
+        @maxLength(20) description: String
+        @singlePrecision weight: Int  // This should also cause an error - singlePrecision is not supported for Int
+    }
+}

@@ -1,0 +1,13 @@
+error[C000]: Annotation @bits16 is not supported for type Decimal
+ --> src/index.exo:5:9
+  |
+5 |         @bits16 price: Decimal  // This should cause an error - bits16 is not supported for Decimal
+  |         ^^^^^^^^^^^^^^^^^^^^^^
+error[C000]: Annotation @singlePrecision is not supported for type Int
+ --> src/index.exo:7:9
+  |
+7 |         @singlePrecision weight: Int  // This should also cause an error - singlePrecision is not supported for Int
+  |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Error: Parser error: Could not process input exo files
+
