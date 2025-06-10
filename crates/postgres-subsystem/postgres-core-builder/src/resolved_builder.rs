@@ -27,7 +27,7 @@ use crate::resolved_type::{
 };
 use core_model::{
     mapped_arena::MappedArena,
-    primitive_type,
+    primitive_type::{self, PRIMITIVE_REGISTRY},
     types::{FieldType, Named},
 };
 use core_model_builder::{
@@ -49,6 +49,364 @@ use heck::ToSnakeCase;
 const DEFAULT_FN_AUTO_INCREMENT: &str = "autoIncrement";
 const DEFAULT_FN_CURRENT_TIME: &str = "now";
 const DEFAULT_FN_GENERATE_UUID: &str = "generate_uuid";
+
+/// Trait for providing type hint resolution for primitive types
+pub trait ResolveTypeHintProvider: Send + Sync {
+    /// Computes type hints for a field of this primitive type
+    fn compute(
+        &self,
+        field: &AstField<Typed>,
+        errors: &mut Vec<Diagnostic>,
+    ) -> Option<ResolvedTypeHint>;
+}
+
+impl ResolveTypeHintProvider for primitive_type::IntType {
+    fn compute(
+        &self,
+        field: &AstField<Typed>,
+        errors: &mut Vec<Diagnostic>,
+    ) -> Option<ResolvedTypeHint> {
+        let range_hint = field.annotations.get("range").map(|params| {
+            (
+                params.as_map().get("min").unwrap().as_int(),
+                params.as_map().get("max").unwrap().as_int(),
+            )
+        });
+
+        let is_bits16 = field.annotations.contains("bits16");
+        let is_bits32 = field.annotations.contains("bits32");
+        let is_bits64 = field.annotations.contains("bits64");
+
+        let bits_hint = match (is_bits16, is_bits32, is_bits64) {
+            (true, false, false) => Some(16),
+            (false, true, false) => Some(32),
+            (false, false, true) => Some(64),
+            (false, false, false) => None,
+            _ => {
+                errors.push(Diagnostic {
+                    level: Level::Error,
+                    message: "Cannot have more than one of @bits16, @bits32, @bits64".to_string(),
+                    code: Some("C000".to_string()),
+                    spans: vec![SpanLabel {
+                        span: field.span,
+                        style: SpanStyle::Primary,
+                        label: None,
+                    }],
+                });
+                None
+            }
+        };
+
+        if bits_hint.is_some() || range_hint.is_some() {
+            Some(ResolvedTypeHint::Int {
+                bits: bits_hint,
+                range: range_hint,
+            })
+        } else {
+            None
+        }
+    }
+}
+
+impl ResolveTypeHintProvider for primitive_type::FloatType {
+    fn compute(
+        &self,
+        field: &AstField<Typed>,
+        errors: &mut Vec<Diagnostic>,
+    ) -> Option<ResolvedTypeHint> {
+        let mut range_hint = None;
+        if let Some(params) = field.annotations.get("range") {
+            let min = params
+                .as_map()
+                .get("min")
+                .unwrap()
+                .as_string()
+                .parse::<f64>();
+            let max = params
+                .as_map()
+                .get("max")
+                .unwrap()
+                .as_string()
+                .parse::<f64>();
+
+            if min.is_err() || max.is_err() {
+                if min.is_err() {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: "Cannot parse @range 'min' as f64".to_string(),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: field.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    });
+                }
+                if max.is_err() {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: "Cannot parse @range 'max' as f64".to_string(),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: field.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    });
+                }
+            } else {
+                range_hint = Some((min.unwrap(), max.unwrap()));
+            }
+        };
+
+        let is_single_precision = field.annotations.contains("singlePrecision");
+        let is_double_precision = field.annotations.contains("doublePrecision");
+
+        let bits_hint = match (is_single_precision, is_double_precision) {
+            (true, false) => Some(24),
+            (false, true) => Some(53),
+            (false, false) => None,
+            _ => {
+                errors.push(Diagnostic {
+                    level: Level::Error,
+                    message: "Cannot have both @singlePrecision and @doublePrecision".to_string(),
+                    code: Some("C000".to_string()),
+                    spans: vec![SpanLabel {
+                        span: field.span,
+                        style: SpanStyle::Primary,
+                        label: None,
+                    }],
+                });
+                None
+            }
+        };
+
+        if bits_hint.is_some() || range_hint.is_some() {
+            Some(ResolvedTypeHint::Float {
+                bits: bits_hint,
+                range: range_hint,
+            })
+        } else {
+            None
+        }
+    }
+}
+
+impl ResolveTypeHintProvider for primitive_type::DecimalType {
+    fn compute(
+        &self,
+        field: &AstField<Typed>,
+        errors: &mut Vec<Diagnostic>,
+    ) -> Option<ResolvedTypeHint> {
+        let precision_hint = field
+            .annotations
+            .get("precision")
+            .map(|p| p.as_single().as_int() as usize);
+
+        let scale_hint = field
+            .annotations
+            .get("scale")
+            .map(|p| p.as_single().as_int() as usize);
+
+        if scale_hint.is_some() && precision_hint.is_none() {
+            errors.push(Diagnostic {
+                level: Level::Error,
+                message: "@scale is not allowed without specifying @precision".to_string(),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: field.span,
+                    style: SpanStyle::Primary,
+                    label: None,
+                }],
+            });
+        }
+
+        Some(ResolvedTypeHint::Decimal {
+            precision: precision_hint,
+            scale: scale_hint,
+        })
+    }
+}
+
+impl ResolveTypeHintProvider for primitive_type::StringType {
+    fn compute(
+        &self,
+        field: &AstField<Typed>,
+        _errors: &mut Vec<Diagnostic>,
+    ) -> Option<ResolvedTypeHint> {
+        let max_length_annotation = field
+            .annotations
+            .get("maxLength")
+            .map(|p| p.as_single().as_int() as usize);
+
+        max_length_annotation.map(|max_length| ResolvedTypeHint::String { max_length })
+    }
+}
+
+impl ResolveTypeHintProvider for primitive_type::InstantType {
+    fn compute(
+        &self,
+        field: &AstField<Typed>,
+        _errors: &mut Vec<Diagnostic>,
+    ) -> Option<ResolvedTypeHint> {
+        field
+            .annotations
+            .get("precision")
+            .map(|p| ResolvedTypeHint::DateTime {
+                precision: p.as_single().as_int() as usize,
+            })
+    }
+}
+
+impl ResolveTypeHintProvider for primitive_type::VectorType {
+    fn compute(
+        &self,
+        field: &AstField<Typed>,
+        errors: &mut Vec<Diagnostic>,
+    ) -> Option<ResolvedTypeHint> {
+        let size = field
+            .annotations
+            .get("size")
+            .map(|p| p.as_single().as_int() as usize);
+
+        let distance_function = field.annotations.get("distanceFunction").and_then(|p| {
+            match VectorDistanceFunction::from_model_string(p.as_single().as_string().as_str()) {
+                Ok(distance_function) => Some(distance_function),
+                Err(e) => {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: e.to_string(),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: field.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    });
+                    None
+                }
+            }
+        });
+
+        Some(ResolvedTypeHint::Vector {
+            size,
+            distance_function,
+        })
+    }
+}
+
+// Default implementation for primitive types that don't have special type hints
+macro_rules! impl_default_type_hint_provider {
+    ($($type_name:ty),* $(,)?) => {
+        $(
+            impl ResolveTypeHintProvider for $type_name {
+                fn compute(
+                    &self,
+                    _field: &AstField<Typed>,
+                    _errors: &mut Vec<Diagnostic>,
+                ) -> Option<ResolvedTypeHint> {
+                    None
+                }
+            }
+        )*
+    };
+}
+
+impl_default_type_hint_provider!(
+    primitive_type::BooleanType,
+    primitive_type::LocalDateType,
+    primitive_type::LocalTimeType,
+    primitive_type::LocalDateTimeType,
+    primitive_type::JsonType,
+    primitive_type::BlobType,
+    primitive_type::UuidType,
+);
+
+use std::collections::HashMap;
+use std::sync::LazyLock;
+
+/// A registry that maps primitive type names to type hint providers
+/// This avoids the need to manually enumerate types in the compute function
+static TYPE_HINT_PROVIDER_REGISTRY: LazyLock<
+    HashMap<&'static str, &'static dyn ResolveTypeHintProvider>,
+> = LazyLock::new(|| {
+    let mut registry = HashMap::new();
+
+    // Register all primitive types that can compute type hints
+    registry.insert(
+        primitive_type::IntType::NAME,
+        &primitive_type::IntType as &'static dyn ResolveTypeHintProvider,
+    );
+    registry.insert(
+        primitive_type::FloatType::NAME,
+        &primitive_type::FloatType as &'static dyn ResolveTypeHintProvider,
+    );
+    registry.insert(
+        primitive_type::DecimalType::NAME,
+        &primitive_type::DecimalType as &'static dyn ResolveTypeHintProvider,
+    );
+    registry.insert(
+        primitive_type::StringType::NAME,
+        &primitive_type::StringType as &'static dyn ResolveTypeHintProvider,
+    );
+    registry.insert(
+        primitive_type::InstantType::NAME,
+        &primitive_type::InstantType as &'static dyn ResolveTypeHintProvider,
+    );
+    registry.insert(
+        primitive_type::VectorType::NAME,
+        &primitive_type::VectorType as &'static dyn ResolveTypeHintProvider,
+    );
+    registry.insert(
+        primitive_type::BooleanType::NAME,
+        &primitive_type::BooleanType as &'static dyn ResolveTypeHintProvider,
+    );
+    registry.insert(
+        primitive_type::LocalDateType::NAME,
+        &primitive_type::LocalDateType as &'static dyn ResolveTypeHintProvider,
+    );
+    registry.insert(
+        primitive_type::LocalTimeType::NAME,
+        &primitive_type::LocalTimeType as &'static dyn ResolveTypeHintProvider,
+    );
+    registry.insert(
+        primitive_type::LocalDateTimeType::NAME,
+        &primitive_type::LocalDateTimeType as &'static dyn ResolveTypeHintProvider,
+    );
+    registry.insert(
+        primitive_type::JsonType::NAME,
+        &primitive_type::JsonType as &'static dyn ResolveTypeHintProvider,
+    );
+    registry.insert(
+        primitive_type::BlobType::NAME,
+        &primitive_type::BlobType as &'static dyn ResolveTypeHintProvider,
+    );
+    registry.insert(
+        primitive_type::UuidType::NAME,
+        &primitive_type::UuidType as &'static dyn ResolveTypeHintProvider,
+    );
+
+    registry
+});
+
+/// Helper function to compute type hints for a primitive type using registries
+/// Uses a dedicated type hint provider registry to avoid manual enumeration
+fn compute_type_hint_for_primitive(
+    type_name: &str,
+    field: &AstField<Typed>,
+    errors: &mut Vec<Diagnostic>,
+) -> Option<ResolvedTypeHint> {
+    // First, validate that this is a known primitive type using the main registry
+    if !PRIMITIVE_REGISTRY.contains_key(type_name) {
+        return None;
+    }
+
+    // Then, look up the type hint provider from our dedicated registry
+    let type_hint_provider = TYPE_HINT_PROVIDER_REGISTRY.get(type_name)?;
+
+    // Call compute on the trait object - no manual enumeration needed!
+    type_hint_provider.compute(field, errors)
+}
 
 /// Consume typed-checked types and build resolved types
 pub fn build(
@@ -474,261 +832,10 @@ fn build_type_hint(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
 ) -> Option<ResolvedTypeHint> {
-    ////
-    // Part 1: parse out and validate hints for each primitive
-    ////
+    // Get the underlying type name
+    let type_name = field.typ.get_underlying_typename(types)?;
 
-    let int_hint = {
-        // TODO: not great that we're 'type checking' here
-        // but we need to know the type of the field before constructing the
-        // appropriate type hint
-        // needed to disambiguate between Int and Float hints
-        if field.typ.get_underlying_typename(types).unwrap() != primitive_type::IntType::NAME {
-            None
-        } else {
-            let range_hint = field.annotations.get("range").map(|params| {
-                (
-                    params.as_map().get("min").unwrap().as_int(),
-                    params.as_map().get("max").unwrap().as_int(),
-                )
-            });
-
-            let is_bits16 = field.annotations.contains("bits16");
-            let is_bits32 = field.annotations.contains("bits32");
-            let is_bits64 = field.annotations.contains("bits64");
-
-            let bits_hint = match (is_bits16, is_bits32, is_bits64) {
-                (true, false, false) => Some(16),
-                (false, true, false) => Some(32),
-                (false, false, true) => Some(64),
-                (false, false, false) => None,
-                _ => {
-                    errors.push(Diagnostic {
-                        level: Level::Error,
-                        message: "Cannot have more than one of @bits16, @bits32, @bits64"
-                            .to_string(),
-                        code: Some("C000".to_string()),
-                        spans: vec![SpanLabel {
-                            span: field.span,
-                            style: SpanStyle::Primary,
-                            label: None,
-                        }],
-                    });
-                    None
-                }
-            };
-
-            if bits_hint.is_some() || range_hint.is_some() {
-                Some(ResolvedTypeHint::Int {
-                    bits: bits_hint,
-                    range: range_hint,
-                })
-            } else {
-                // no useful hints to pass along
-                None
-            }
-        }
-    };
-
-    let float_hint = {
-        // needed to disambiguate between Int and Float hints
-        if field.typ.get_underlying_typename(types).unwrap() != primitive_type::FloatType::NAME {
-            None
-        } else {
-            let mut range_hint = None;
-            if let Some(params) = field.annotations.get("range") {
-                let min = params
-                    .as_map()
-                    .get("min")
-                    .unwrap()
-                    .as_string()
-                    .parse::<f64>();
-                let max = params
-                    .as_map()
-                    .get("max")
-                    .unwrap()
-                    .as_string()
-                    .parse::<f64>();
-
-                if min.is_err() || max.is_err() {
-                    if min.is_err() {
-                        errors.push(Diagnostic {
-                            level: Level::Error,
-                            message: "Cannot parse @range 'min' as f64".to_string(),
-                            code: Some("C000".to_string()),
-                            spans: vec![SpanLabel {
-                                span: field.span,
-                                style: SpanStyle::Primary,
-                                label: None,
-                            }],
-                        });
-                    }
-                    if max.is_err() {
-                        errors.push(Diagnostic {
-                            level: Level::Error,
-                            message: "Cannot parse @range 'max' as f64".to_string(),
-                            code: Some("C000".to_string()),
-                            spans: vec![SpanLabel {
-                                span: field.span,
-                                style: SpanStyle::Primary,
-                                label: None,
-                            }],
-                        });
-                    }
-                } else {
-                    range_hint = Some((min.unwrap(), max.unwrap()));
-                }
-            };
-
-            let is_single_precision = field.annotations.contains("singlePrecision");
-            let is_double_precision = field.annotations.contains("doublePrecision");
-
-            let bits_hint = match (is_single_precision, is_double_precision) {
-                (true, false) => Some(24),
-                (false, true) => Some(53),
-                (false, false) => None,
-                _ => {
-                    errors.push(Diagnostic {
-                        level: Level::Error,
-                        message: "Cannot have both @singlePrecision and @doublePrecision"
-                            .to_string(),
-                        code: Some("C000".to_string()),
-                        spans: vec![SpanLabel {
-                            span: field.span,
-                            style: SpanStyle::Primary,
-                            label: None,
-                        }],
-                    });
-                    None
-                }
-            };
-
-            if bits_hint.is_some() || range_hint.is_some() {
-                Some(ResolvedTypeHint::Float {
-                    bits: bits_hint,
-                    range: range_hint,
-                })
-            } else {
-                None
-            }
-        }
-    };
-
-    let number_hint = {
-        // needed to disambiguate between DateTime and Decimal hints
-        if field.typ.get_underlying_typename(types).unwrap() != primitive_type::DecimalType::NAME {
-            None
-        } else {
-            let precision_hint = field
-                .annotations
-                .get("precision")
-                .map(|p| p.as_single().as_int() as usize);
-
-            let scale_hint = field
-                .annotations
-                .get("scale")
-                .map(|p| p.as_single().as_int() as usize);
-
-            if scale_hint.is_some() && precision_hint.is_none() {
-                errors.push(Diagnostic {
-                    level: Level::Error,
-                    message: "@scale is not allowed without specifying @precision".to_string(),
-                    code: Some("C000".to_string()),
-                    spans: vec![SpanLabel {
-                        span: field.span,
-                        style: SpanStyle::Primary,
-                        label: None,
-                    }],
-                });
-            }
-
-            Some(ResolvedTypeHint::Decimal {
-                precision: precision_hint,
-                scale: scale_hint,
-            })
-        }
-    };
-
-    let string_hint = {
-        let max_length_annotation = field
-            .annotations
-            .get("maxLength")
-            .map(|p| p.as_single().as_int() as usize);
-
-        // None if there is no maxLength annotation
-        max_length_annotation.map(|max_length| ResolvedTypeHint::String { max_length })
-    };
-
-    let datetime_hint = {
-        // needed to disambiguate between DateTime and Decimal hints
-        if field
-            .typ
-            .get_underlying_typename(types)
-            .unwrap()
-            .contains("Date")
-            || field
-                .typ
-                .get_underlying_typename(types)
-                .unwrap()
-                .contains("Time")
-            || field.typ.get_underlying_typename(types).unwrap()
-                != primitive_type::InstantType::NAME
-        {
-            None
-        } else {
-            field
-                .annotations
-                .get("precision")
-                .map(|p| ResolvedTypeHint::DateTime {
-                    precision: p.as_single().as_int() as usize,
-                })
-        }
-    };
-
-    let vector_hint = if field.typ.get_underlying_typename(types).unwrap()
-        == primitive_type::VectorType::NAME
-    {
-        let size = field
-            .annotations
-            .get("size")
-            .map(|p| p.as_single().as_int() as usize);
-
-        let distance_function = field.annotations.get("distanceFunction").and_then(|p| {
-            match VectorDistanceFunction::from_model_string(p.as_single().as_string().as_str()) {
-                Ok(distance_function) => Some(distance_function),
-                Err(e) => {
-                    errors.push(Diagnostic {
-                        level: Level::Error,
-                        message: e.to_string(),
-                        code: Some("C000".to_string()),
-                        spans: vec![SpanLabel {
-                            span: field.span,
-                            style: SpanStyle::Primary,
-                            label: None,
-                        }],
-                    });
-                    None
-                }
-            }
-        });
-
-        Some(ResolvedTypeHint::Vector {
-            size,
-            distance_function,
-        })
-    } else {
-        None
-    };
-
-    let primitive_hints = vec![
-        int_hint,
-        float_hint,
-        number_hint,
-        string_hint,
-        datetime_hint,
-        vector_hint,
-    ];
-
+    // Check for explicit dbtype hint
     let explicit_dbtype_hint = field
         .annotations
         .get("dbtype")
@@ -737,19 +844,11 @@ fn build_type_hint(
             dbtype: s.to_uppercase(),
         });
 
-    ////
-    // Part 2: make sure user specified a valid combination of hints
-    // e.g. they didn't specify hints for two different types
-    ////
+    // Get the primitive-specific hint using the new trait-based approach with PRIMITIVE_REGISTRY
+    let primitive_hint = compute_type_hint_for_primitive(&type_name, field, errors);
 
-    let number_of_valid_primitive_hints: usize = primitive_hints
-        .iter()
-        .map(|hint| usize::from(hint.is_some()))
-        .sum();
-
-    let valid_primitive_hints_exist = number_of_valid_primitive_hints > 0;
-
-    if explicit_dbtype_hint.is_some() && valid_primitive_hints_exist {
+    // Validate that we don't have conflicting hints
+    if explicit_dbtype_hint.is_some() && primitive_hint.is_some() {
         errors.push(Diagnostic {
             level: Level::Error,
             message: format!(
@@ -765,45 +864,8 @@ fn build_type_hint(
         });
     }
 
-    if number_of_valid_primitive_hints > 1 {
-        errors.push(Diagnostic {
-            level: Level::Error,
-            message: format!("Conflicting type hints specified for {}", field.name),
-            code: Some("C000".to_string()),
-            spans: vec![SpanLabel {
-                span: field.span,
-                style: SpanStyle::Primary,
-                label: None,
-            }],
-        });
-    }
-
-    ////
-    // Part 3: return appropriate hint
-    ////
-
-    if explicit_dbtype_hint.is_some() {
-        explicit_dbtype_hint
-    } else if number_of_valid_primitive_hints == 1 {
-        match primitive_hints.into_iter().find(|hint| hint.is_some()) {
-            Some(Some(hint)) => Some(hint),
-            _ => {
-                errors.push(Diagnostic {
-                    level: Level::Error,
-                    message: "Could not find a valid hint".to_string(),
-                    code: Some("C000".to_string()),
-                    spans: vec![SpanLabel {
-                        span: field.span,
-                        style: SpanStyle::Primary,
-                        label: None,
-                    }],
-                });
-                None
-            }
-        }
-    } else {
-        None
-    }
+    // Return the appropriate hint (explicit takes precedence)
+    explicit_dbtype_hint.or(primitive_hint)
 }
 struct ColumnInfo {
     names: Vec<String>,
