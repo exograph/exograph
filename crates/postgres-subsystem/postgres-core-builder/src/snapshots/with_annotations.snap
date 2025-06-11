@@ -67,7 +67,8 @@ values:
               update: ~
               delete: ~
             type_hint:
-              Explicit:
+              type: Explicit
+              data:
                 dbtype: BIGINT
             unique_constraints: []
             indices: []
@@ -96,7 +97,8 @@ values:
               update: ~
               delete: ~
             type_hint:
-              String:
+              type: String
+              data:
                 max_length: 12
             unique_constraints: []
             indices: []
@@ -150,7 +152,8 @@ values:
               update: ~
               delete: ~
             type_hint:
-              Int:
+              type: Int
+              data:
                 bits: ~
                 range:
                   - 0
@@ -181,7 +184,8 @@ values:
               update: ~
               delete: ~
             type_hint:
-              DateTime:
+              type: DateTime
+              data:
                 precision: 4
             unique_constraints: []
             indices: []
@@ -209,7 +213,8 @@ values:
               update: ~
               delete: ~
             type_hint:
-              Decimal:
+              type: Decimal
+              data:
                 precision: 10
                 scale: 2
             unique_constraints: []
@@ -335,7 +340,8 @@ values:
               update: ~
               delete: ~
             type_hint:
-              Int:
+              type: Int
+              data:
                 bits: 16
                 range: ~
             unique_constraints: []
@@ -364,7 +370,8 @@ values:
               update: ~
               delete: ~
             type_hint:
-              Float:
+              type: Float
+              data:
                 bits: 24
                 range: ~
             unique_constraints: []

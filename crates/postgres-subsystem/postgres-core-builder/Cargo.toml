@@ -7,6 +7,7 @@ publish = false
 [dependencies]
 heck.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 codemap-diagnostic.workspace = true
 codemap.workspace = true
 lazy_static.workspace = true

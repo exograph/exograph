@@ -67,7 +67,8 @@ values:
               update: ~
               delete: ~
             type_hint:
-              Explicit:
+              type: Explicit
+              data:
                 dbtype: BIGINT
             unique_constraints: []
             indices: []
@@ -221,7 +222,8 @@ values:
               update: ~
               delete: ~
             type_hint:
-              Explicit:
+              type: Explicit
+              data:
                 dbtype: BIGINT
             unique_constraints: []
             indices: []

@@ -6858,6 +6858,7 @@ dependencies = [
  "postgres-builder",
  "postgres-core-model",
  "serde",
+ "serde_json",
  "wasm-bindgen-test",
  "wasm-bindgen-test-macro",
 ]

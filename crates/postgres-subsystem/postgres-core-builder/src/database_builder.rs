@@ -10,9 +10,10 @@
 use std::collections::HashSet;
 
 use crate::naming::ToPlural;
+use crate::resolved_builder::PRIMITIVE_TYPE_PROVIDER_REGISTRY;
 use crate::resolved_type::{
-    ResolvedCompositeType, ResolvedEnumType, ResolvedField, ResolvedFieldDefault,
-    ResolvedFieldType, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
+    ExplicitTypeHint, ResolvedCompositeType, ResolvedEnumType, ResolvedField, ResolvedFieldDefault,
+    ResolvedFieldType, ResolvedType, ResolvedTypeEnv, VectorTypeHint,
 };
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
@@ -25,8 +26,7 @@ use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError};
 
 use exo_sql::schema::column_spec::{ColumnAutoincrement, ColumnDefault};
 use exo_sql::{
-    ColumnId, DEFAULT_VECTOR_SIZE, FloatBits, IntBits, ManyToOne, PhysicalColumn,
-    PhysicalColumnType, PhysicalIndex, PhysicalTable, TableId, VectorDistanceFunction,
+    ColumnId, ManyToOne, PhysicalColumn, PhysicalColumnType, PhysicalIndex, PhysicalTable, TableId,
     schema::index_spec::IndexKind,
 };
 use exo_sql::{Database, PhysicalEnum, RelationColumnPair};
@@ -143,13 +143,15 @@ fn expand_database_info(
                         index_kind: if field.typ.innermost().type_name
                             == primitive_type::VectorType::NAME
                         {
-                            let distance_function = match field.type_hint {
-                                Some(ResolvedTypeHint::Vector {
-                                    distance_function, ..
-                                }) => distance_function,
-                                _ => None,
-                            }
-                            .unwrap_or(VectorDistanceFunction::default());
+                            let distance_function = field
+                                .type_hint
+                                .as_ref()
+                                .and_then(|hint| {
+                                    (hint.0.as_ref() as &dyn std::any::Any)
+                                        .downcast_ref::<VectorTypeHint>()
+                                        .and_then(|v| v.distance_function)
+                                })
+                                .unwrap_or_default();
 
                             IndexKind::HNWS {
                                 distance_function,
@@ -485,173 +487,21 @@ fn determine_column_type<'a>(
     pt: &'a PrimitiveType,
     field: &'a ResolvedField,
 ) -> PhysicalColumnType {
+    // Check for explicit type hints first
+    if let Some(hint) = &field.type_hint {
+        let hint_ref = hint.0.as_ref() as &dyn std::any::Any;
+        if let Some(explicit) = hint_ref.downcast_ref::<ExplicitTypeHint>() {
+            return PhysicalColumnType::from_string(&explicit.dbtype).unwrap();
+        }
+    }
+
     match pt {
         PrimitiveType::Array(underlying_pt) => PhysicalColumnType::Array {
             typ: Box::new(determine_column_type(underlying_pt, field)),
         },
         PrimitiveType::Plain(base_pt_type) => {
-            if let Some(hint) = &field.type_hint {
-                match hint {
-                    ResolvedTypeHint::Explicit { dbtype } => {
-                        PhysicalColumnType::from_string(dbtype).unwrap()
-                    }
-
-                    ResolvedTypeHint::Int { bits, range } => {
-                        assert!(base_pt_type.name() == primitive_type::IntType::NAME);
-
-                        // determine the proper sized type to use
-                        if let Some(bits) = bits {
-                            PhysicalColumnType::Int {
-                                bits: match bits {
-                                    16 => IntBits::_16,
-                                    32 => IntBits::_32,
-                                    64 => IntBits::_64,
-                                    _ => panic!("Invalid bits"),
-                                },
-                            }
-                        } else if let Some(range) = range {
-                            let is_superset = |bound_min: i64, bound_max: i64| {
-                                let range_min = range.0;
-                                let range_max = range.1;
-                                assert!(range_min <= range_max);
-                                assert!(bound_min <= bound_max);
-
-                                // is this bound a superset of the provided range?
-                                (bound_min <= range_min && bound_min <= range_max)
-                                    && (bound_max >= range_max && bound_max >= range_min)
-                            };
-
-                            // determine which SQL type is appropriate for this range
-                            {
-                                if is_superset(i16::MIN.into(), i16::MAX.into()) {
-                                    PhysicalColumnType::Int { bits: IntBits::_16 }
-                                } else if is_superset(i32::MIN.into(), i32::MAX.into()) {
-                                    PhysicalColumnType::Int { bits: IntBits::_32 }
-                                } else if is_superset(i64::MIN, i64::MAX) {
-                                    PhysicalColumnType::Int { bits: IntBits::_64 }
-                                } else {
-                                    // TODO: numeric type
-                                    panic!("Requested range is too big")
-                                }
-                            }
-                        } else {
-                            // no hints provided, go with default
-                            PhysicalColumnType::Int { bits: IntBits::_32 }
-                        }
-                    }
-
-                    ResolvedTypeHint::Float { bits, .. } => {
-                        assert!(base_pt_type.name() == primitive_type::FloatType::NAME);
-
-                        if let Some(bits) = *bits {
-                            if (1..=24).contains(&bits) {
-                                PhysicalColumnType::Float {
-                                    bits: FloatBits::_24,
-                                }
-                            } else if bits > 24 && bits <= 53 {
-                                PhysicalColumnType::Float {
-                                    bits: FloatBits::_53,
-                                }
-                            } else {
-                                panic!("Invalid bits")
-                            }
-                        } else {
-                            PhysicalColumnType::Float {
-                                bits: FloatBits::_53,
-                            }
-                        }
-                    }
-
-                    ResolvedTypeHint::Decimal { precision, scale } => {
-                        assert!(base_pt_type.name() == primitive_type::DecimalType::NAME);
-
-                        // cannot have scale and no precision specified
-                        if precision.is_none() {
-                            assert!(scale.is_none())
-                        }
-
-                        PhysicalColumnType::Numeric {
-                            precision: *precision,
-                            scale: *scale,
-                        }
-                    }
-
-                    ResolvedTypeHint::String { max_length } => {
-                        assert!(base_pt_type.name() == primitive_type::StringType::NAME);
-
-                        // length hint provided, use it
-                        PhysicalColumnType::String {
-                            max_length: Some(*max_length),
-                        }
-                    }
-
-                    ResolvedTypeHint::DateTime { precision } => {
-                        if base_pt_type.name() == primitive_type::LocalTimeType::NAME {
-                            PhysicalColumnType::Time {
-                                precision: Some(*precision),
-                            }
-                        } else if base_pt_type.name() == primitive_type::LocalDateTimeType::NAME {
-                            PhysicalColumnType::Timestamp {
-                                precision: Some(*precision),
-                                timezone: false,
-                            }
-                        } else if base_pt_type.name() == primitive_type::InstantType::NAME {
-                            PhysicalColumnType::Timestamp {
-                                precision: Some(*precision),
-                                timezone: true,
-                            }
-                        } else {
-                            panic!("Invalid type for DateTime hint: {:?}", base_pt_type);
-                        }
-                    }
-
-                    ResolvedTypeHint::Vector { size, .. } => {
-                        assert!(base_pt_type.name() == primitive_type::VectorType::NAME);
-
-                        PhysicalColumnType::Vector {
-                            size: (*size).unwrap_or(DEFAULT_VECTOR_SIZE),
-                        }
-                    }
-                }
-            } else if base_pt_type.name() == primitive_type::IntType::NAME {
-                PhysicalColumnType::Int { bits: IntBits::_32 }
-            } else if base_pt_type.name() == primitive_type::FloatType::NAME {
-                PhysicalColumnType::Float {
-                    bits: FloatBits::_24,
-                }
-            } else if base_pt_type.name() == primitive_type::DecimalType::NAME {
-                PhysicalColumnType::Numeric {
-                    precision: None,
-                    scale: None,
-                }
-            } else if base_pt_type.name() == primitive_type::StringType::NAME {
-                PhysicalColumnType::String { max_length: None }
-            } else if base_pt_type.name() == primitive_type::BooleanType::NAME {
-                PhysicalColumnType::Boolean
-            } else if base_pt_type.name() == primitive_type::LocalTimeType::NAME {
-                PhysicalColumnType::Time { precision: None }
-            } else if base_pt_type.name() == primitive_type::LocalDateTimeType::NAME {
-                PhysicalColumnType::Timestamp {
-                    precision: None,
-                    timezone: false,
-                }
-            } else if base_pt_type.name() == primitive_type::InstantType::NAME {
-                PhysicalColumnType::Timestamp {
-                    precision: None,
-                    timezone: true,
-                }
-            } else if base_pt_type.name() == primitive_type::LocalDateType::NAME {
-                PhysicalColumnType::Date
-            } else if base_pt_type.name() == primitive_type::JsonType::NAME {
-                PhysicalColumnType::Json
-            } else if base_pt_type.name() == primitive_type::BlobType::NAME {
-                PhysicalColumnType::Blob
-            } else if base_pt_type.name() == primitive_type::UuidType::NAME {
-                PhysicalColumnType::Uuid
-            } else if base_pt_type.name() == primitive_type::VectorType::NAME {
-                PhysicalColumnType::Vector {
-                    size: DEFAULT_VECTOR_SIZE,
-                }
+            if let Some(provider) = PRIMITIVE_TYPE_PROVIDER_REGISTRY.get(base_pt_type.name()) {
+                provider.determine_column_type(field)
             } else {
                 panic!("Unknown primitive type: {:?}", base_pt_type);
             }

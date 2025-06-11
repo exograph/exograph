@@ -29,7 +29,8 @@ use postgres_core_builder::shallow::Shallow;
 use super::system_builder::SystemContextBuilding;
 
 use postgres_core_builder::resolved_type::{
-    ResolvedCompositeType, ResolvedField, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
+    ResolvedCompositeType, ResolvedField, ResolvedType, ResolvedTypeEnv, SerializableTypeHint,
+    VectorTypeHint,
 };
 
 impl crate::shallow::Shallow for OrderByParameter {
@@ -163,7 +164,7 @@ fn new_param(
     column_path_link: Option<ColumnPathLink>,
     order_by_types: &MappedArena<OrderByParameterType>,
     access: Option<Access>,
-    type_hint: Option<&ResolvedTypeHint>,
+    type_hint: Option<&SerializableTypeHint>,
 ) -> OrderByParameter {
     let (param_type_name, param_type_id) =
         order_by_param_type(entity_type_name, is_primitive, order_by_types);
@@ -194,11 +195,10 @@ fn new_param(
         typ: FieldType::Optional(Box::new(wrapped_type)),
         column_path_link,
         access,
-        vector_distance_function: type_hint.and_then(|hint| match hint {
-            ResolvedTypeHint::Vector {
-                distance_function, ..
-            } => *distance_function,
-            _ => None,
+        vector_distance_function: type_hint.and_then(|hint| {
+            (hint.0.as_ref() as &dyn std::any::Any)
+                .downcast_ref::<VectorTypeHint>()
+                .and_then(|v| v.distance_function)
         }),
     }
 }
