@@ -7,17 +7,15 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashMap;
-
 use core_model::primitive_type;
 use core_model::types::Named;
 use core_model_builder::error::ModelBuildingError;
-use lazy_static::lazy_static;
 use postgres_core_model::aggregate::{
     AggregateField, AggregateFieldType, AggregateType, ScalarAggregateFieldKind,
 };
 use postgres_core_model::types::EntityRepresentation;
 
+use crate::resolved_builder::PRIMITIVE_TYPE_PROVIDER_REGISTRY;
 use crate::resolved_type::ResolvedType;
 use crate::resolved_type::ResolvedTypeEnv;
 
@@ -89,17 +87,18 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
             }
         }
         ResolvedType::Primitive(_) => {
-            let supported_kinds = AGG_MAP
+            let supported_kinds = PRIMITIVE_TYPE_PROVIDER_REGISTRY
                 .get(resolved_type.name().as_str())
-                .map(|ks| ks.iter())
-                .unwrap_or_else(|| [].iter());
+                .map(|provider| provider.supported_aggregates())
+                .unwrap_or_default();
 
             let fields = supported_kinds
+                .iter()
                 .map(|(kind, agg_return_type)| AggregateField {
                     name: kind.name().to_string(),
                     typ: AggregateFieldType::Scalar {
                         type_name: agg_return_type
-                            .map(|t| t.to_string())
+                            .map(|t| t.name().to_string())
                             .unwrap_or_else(|| resolved_type.name()),
                         kind: *kind,
                     },
@@ -197,24 +196,3 @@ fn expand_type(resolved_type: &ResolvedType, building: &mut SystemContextBuildin
 }
 
 // TODO: Support aggregates for more types (https://github.com/exograph/exograph/issues/604)
-lazy_static! {
-    // An immutable map defining the aggregates allowed for each scalar type
-    // We don't specify the "count" aggregate here because it is always supported (see above)
-    // The second element in the tuple is the return type of the avg, if it differs from the input type
-    static ref AGG_MAP: HashMap<&'static str, Vec<(ScalarAggregateFieldKind, Option<&'static str>)>> = HashMap::from([
-        (primitive_type::IntType::NAME,
-            vec![(ScalarAggregateFieldKind::Min, None), (ScalarAggregateFieldKind::Max, None),
-                 (ScalarAggregateFieldKind::Sum, None), (ScalarAggregateFieldKind::Avg, Some(primitive_type::FloatType::NAME))]),
-        (primitive_type::FloatType::NAME,
-            vec![(ScalarAggregateFieldKind::Min, None), (ScalarAggregateFieldKind::Max, None),
-                 (ScalarAggregateFieldKind::Sum, Some(primitive_type::FloatType::NAME)), (ScalarAggregateFieldKind::Avg, Some(primitive_type::FloatType::NAME))]),
-        (primitive_type::DecimalType::NAME,
-            vec![(ScalarAggregateFieldKind::Min, None), (ScalarAggregateFieldKind::Max, None),
-                 (ScalarAggregateFieldKind::Sum, None), (ScalarAggregateFieldKind::Avg, None)]),
-
-        (primitive_type::StringType::NAME,
-                vec![(ScalarAggregateFieldKind::Min, None), (ScalarAggregateFieldKind::Max, None)]),
-
-        (primitive_type::VectorType::NAME, vec![(ScalarAggregateFieldKind::Avg, None)])
-    ]);
-}
