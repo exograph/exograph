@@ -13,7 +13,7 @@ use crate::access_builder::ResolvedAccess;
 use crate::resolved_builder::Cardinality;
 use crate::resolved_type::{
     ResolvedCompositeType, ResolvedField, ResolvedFieldDefault, ResolvedFieldType,
-    ResolvedFieldTypeHelper, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
+    ResolvedFieldTypeHelper, ResolvedType, ResolvedTypeEnv, VectorTypeHint,
 };
 use common::value::Val;
 use common::value::val::ValNumber;
@@ -692,29 +692,34 @@ fn create_vector_distance_field(
     building: &SystemContextBuilding,
     env: &ResolvedTypeEnv,
 ) -> Option<VectorDistanceField> {
-    match field.type_hint {
-        Some(ResolvedTypeHint::Vector {
-            size,
-            distance_function,
-        }) => {
-            let self_type = &building.entity_types[*type_id];
-            let self_table_id = &self_type.table_id;
-            let column_id = building
-                .database
-                .get_column_id(*self_table_id, field.column_name())
-                .unwrap();
+    match &field.type_hint {
+        Some(hint) => {
+            if let Some(vector_hint) =
+                (hint.0.as_ref() as &dyn std::any::Any).downcast_ref::<VectorTypeHint>()
+            {
+                let self_type = &building.entity_types[*type_id];
+                let self_table_id = &self_type.table_id;
+                let column_id = building
+                    .database
+                    .get_column_id(*self_table_id, field.column_name())
+                    .unwrap();
 
-            let access = compute_access(&field.access, *type_id, env, building).unwrap();
+                let access = compute_access(&field.access, *type_id, env, building).unwrap();
 
-            Some(VectorDistanceField {
-                name: format!("{}Distance", field.name),
-                column_id,
-                size: size.unwrap_or(DEFAULT_VECTOR_SIZE),
-                distance_function: distance_function.unwrap_or(VectorDistanceFunction::default()),
-                access,
-            })
+                Some(VectorDistanceField {
+                    name: format!("{}Distance", field.name),
+                    column_id,
+                    size: vector_hint.size.unwrap_or(DEFAULT_VECTOR_SIZE),
+                    distance_function: vector_hint
+                        .distance_function
+                        .unwrap_or(VectorDistanceFunction::default()),
+                    access,
+                })
+            } else {
+                None
+            }
         }
-        _ => None,
+        None => None,
     }
 }
 

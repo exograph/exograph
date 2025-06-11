@@ -27,7 +27,7 @@ use std::collections::HashMap;
 use super::system_builder::SystemContextBuilding;
 
 use postgres_core_builder::resolved_type::{
-    ResolvedCompositeType, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
+    ResolvedCompositeType, ResolvedType, ResolvedTypeEnv, VectorTypeHint,
 };
 use postgres_core_builder::shallow::Shallow;
 
@@ -278,12 +278,9 @@ fn expand_entity_type(
                 column_path_link,
                 access: Some(field.access.clone()),
                 vector_distance_function: resolved_field.type_hint.as_ref().and_then(|hint| {
-                    match hint {
-                        ResolvedTypeHint::Vector {
-                            distance_function, ..
-                        } => *distance_function,
-                        _ => None,
-                    }
+                    (hint.0.as_ref() as &dyn std::any::Any)
+                        .downcast_ref::<VectorTypeHint>()
+                        .and_then(|v| v.distance_function)
                 }),
             }
         })
