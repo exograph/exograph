@@ -145,16 +145,47 @@ impl Serialize for SerializableTypeHint {
     }
 }
 
-// For now, implement a simple deserialize that creates empty hints
 impl<'de> Deserialize<'de> for SerializableTypeHint {
-    fn deserialize<D>(_deserializer: D) -> Result<Self, D::Error>
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        // For now, create a default hint - this will be improved later
-        Ok(SerializableTypeHint(Box::new(ExplicitTypeHint {
-            dbtype: "TEXT".to_string(),
-        })))
+        #[derive(Deserialize)]
+        struct TypeHintData {
+            #[serde(rename = "type")]
+            type_name: String,
+            data: serde_json::Value,
+        }
+
+        let hint_data = TypeHintData::deserialize(deserializer)?;
+
+        let boxed_hint = if hint_data.type_name == "Explicit" {
+            // Handle ExplicitTypeHint separately since it's not specific to a primitive type
+            let hint: ExplicitTypeHint = serde_json::from_value(hint_data.data).map_err(|e| {
+                serde::de::Error::custom(format!("Failed to deserialize ExplicitTypeHint: {}", e))
+            })?;
+            Box::new(hint) as Box<dyn ResolvedTypeHint>
+        } else {
+            crate::resolved_builder::PRIMITIVE_TYPE_PROVIDER_REGISTRY
+                .get(hint_data.type_name.as_str())
+                .ok_or_else(|| {
+                    serde::de::Error::custom(format!(
+                        "Unknown type hint type: {}. Available types: {:?}",
+                        hint_data.type_name,
+                        std::iter::once("Explicit")
+                            .chain(
+                                crate::resolved_builder::PRIMITIVE_TYPE_PROVIDER_REGISTRY
+                                    .keys()
+                                    .cloned()
+                            )
+                            .collect::<Vec<_>>()
+                    ))
+                })?
+                .deserialize_type_hint(hint_data.data)
+                .map_err(serde::de::Error::custom)?
+        };
+
+        Ok(SerializableTypeHint(boxed_hint))
     }
 }
 
@@ -224,7 +255,6 @@ impl TypeValidationProvider for FloatTypeHint {
     }
 }
 
-/// Decimal type hint implementation
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DecimalTypeHint {
     pub precision: Option<usize>,
@@ -241,7 +271,6 @@ impl ResolvedTypeHint for DecimalTypeHint {
     }
 }
 
-/// String type hint implementation
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StringTypeHint {
     pub max_length: usize,
@@ -257,7 +286,6 @@ impl ResolvedTypeHint for StringTypeHint {
     }
 }
 
-/// DateTime type hint implementation
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DateTimeTypeHint {
     pub precision: usize,
@@ -273,7 +301,6 @@ impl ResolvedTypeHint for DateTimeTypeHint {
     }
 }
 
-/// Vector type hint implementation
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VectorTypeHint {
     pub size: Option<usize>,

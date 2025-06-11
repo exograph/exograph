@@ -27,7 +27,8 @@ use super::{
 use crate::resolved_type::{
     DateTimeTypeHint, DecimalTypeHint, ExplicitTypeHint, FloatTypeHint, IntTypeHint,
     ResolvedCompositeType, ResolvedEnumType, ResolvedField, ResolvedFieldDefault,
-    ResolvedFieldType, ResolvedType, SerializableTypeHint, StringTypeHint, VectorTypeHint,
+    ResolvedFieldType, ResolvedType, ResolvedTypeHint, SerializableTypeHint, StringTypeHint,
+    VectorTypeHint,
 };
 use core_model::{
     mapped_arena::MappedArena,
@@ -58,75 +59,36 @@ const DEFAULT_FN_AUTO_INCREMENT: &str = "autoIncrement";
 const DEFAULT_FN_CURRENT_TIME: &str = "now";
 const DEFAULT_FN_GENERATE_UUID: &str = "generate_uuid";
 
-/// Trait for providing physical column type determination for primitive types
-pub trait PhysicalColumnTypeProvider: Send + Sync + PrimitiveBaseType {
+/// Provide Postgres-specific functionality for primitive types
+/// Handles physical column type determination, type hints, annotations, and deserialization
+pub trait PrimitiveTypeProvider: Send + Sync + PrimitiveBaseType {
     /// Determines the physical column type for a field with this primitive type
     fn determine_column_type(&self, field: &ResolvedField) -> PhysicalColumnType;
-}
-
-/// Trait for providing type hint resolution for primitive types
-pub trait ResolveTypeHintProvider: Send + Sync + PrimitiveBaseType {
-    /// "protected" (as in Java) computation method
-    /// Implementations should call this method to compute the type hint,
-    /// but not worry about validating the stray hint annotations.
-    #[doc(hidden)]
-    fn __protected_compute_type_hint(
-        &self,
-        field: &AstField<Typed>,
-        errors: &mut Vec<Diagnostic>,
-    ) -> Option<SerializableTypeHint>;
 
     /// Computes the type hint for a field, validating that only supported hint annotations are used.
     fn compute_type_hint(
         &self,
         field: &AstField<Typed>,
         errors: &mut Vec<Diagnostic>,
-    ) -> Option<SerializableTypeHint> {
-        let field_annotations = field.annotations.annotations.keys();
-        let supported_hint_annotations: std::collections::HashSet<&str> = self
-            .applicable_hint_annotations()
-            .iter()
-            .map(|(name, _)| *name)
-            .collect();
+    ) -> Option<SerializableTypeHint>;
 
-        let unsupported_hint_annotations = field_annotations
-            .filter(|annotation| {
-                // Only validate against hint annotations that this type supports
-                // Skip annotations that are not hint annotations (they'll be validated elsewhere)
-                ALL_HINT_ANNOTATION_NAMES.contains(annotation.as_str())
-                    && !supported_hint_annotations.contains(annotation.as_str())
-            })
-            .collect::<Vec<_>>();
-
-        if !unsupported_hint_annotations.is_empty() {
-            errors.push(Diagnostic {
-                level: Level::Error,
-                message: format!(
-                    "Annotation @{} is not supported for type {}",
-                    unsupported_hint_annotations
-                        .iter()
-                        .map(|a| a.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                    self.name()
-                ),
-                code: Some("C000".to_string()),
-                spans: vec![SpanLabel {
-                    span: field.span,
-                    style: SpanStyle::Primary,
-                    label: None,
-                }],
-            });
-        }
-
-        self.__protected_compute_type_hint(field, errors)
+    /// Deserialize JSON data into a type hint for this provider
+    /// Returns an error for primitive types that don't support type hints.
+    fn deserialize_type_hint(
+        &self,
+        _data: serde_json::Value,
+    ) -> Result<Box<dyn ResolvedTypeHint>, String> {
+        Err(format!("Type {} does not support type hints", self.name()))
     }
 
-    /// Returns the list of annotations that this type hint provider supports
-    fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)>;
+    /// Get applicable hint annotations for this type
+    /// Returns an empty vector for types that don't support type hints.
+    fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
+        vec![]
+    }
 }
 
-impl PhysicalColumnTypeProvider for primitive_type::IntType {
+impl PrimitiveTypeProvider for primitive_type::IntType {
     fn determine_column_type(&self, field: &ResolvedField) -> PhysicalColumnType {
         match &field.type_hint {
             Some(hint) => {
@@ -181,10 +143,8 @@ impl PhysicalColumnTypeProvider for primitive_type::IntType {
             }
         }
     }
-}
 
-impl ResolveTypeHintProvider for primitive_type::IntType {
-    fn __protected_compute_type_hint(
+    fn compute_type_hint(
         &self,
         field: &AstField<Typed>,
         errors: &mut Vec<Diagnostic>,
@@ -228,6 +188,15 @@ impl ResolveTypeHintProvider for primitive_type::IntType {
         } else {
             None
         }
+    }
+
+    fn deserialize_type_hint(
+        &self,
+        data: serde_json::Value,
+    ) -> Result<Box<dyn ResolvedTypeHint>, String> {
+        let hint: IntTypeHint = serde_json::from_value(data)
+            .map_err(|e| format!("Failed to deserialize IntTypeHint: {}", e))?;
+        Ok(Box::new(hint))
     }
 
     fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
@@ -281,7 +250,7 @@ impl ResolveTypeHintProvider for primitive_type::IntType {
     }
 }
 
-impl PhysicalColumnTypeProvider for primitive_type::FloatType {
+impl PrimitiveTypeProvider for primitive_type::FloatType {
     fn determine_column_type(&self, field: &ResolvedField) -> PhysicalColumnType {
         match &field.type_hint {
             Some(hint) => {
@@ -316,10 +285,8 @@ impl PhysicalColumnTypeProvider for primitive_type::FloatType {
             },
         }
     }
-}
 
-impl ResolveTypeHintProvider for primitive_type::FloatType {
-    fn __protected_compute_type_hint(
+    fn compute_type_hint(
         &self,
         field: &AstField<Typed>,
         errors: &mut Vec<Diagnostic>,
@@ -401,6 +368,15 @@ impl ResolveTypeHintProvider for primitive_type::FloatType {
         }
     }
 
+    fn deserialize_type_hint(
+        &self,
+        data: serde_json::Value,
+    ) -> Result<Box<dyn ResolvedTypeHint>, String> {
+        let hint: FloatTypeHint = serde_json::from_value(data)
+            .map_err(|e| format!("Failed to deserialize FloatTypeHint: {}", e))?;
+        Ok(Box::new(hint))
+    }
+
     fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
         vec![
             (
@@ -443,7 +419,7 @@ impl ResolveTypeHintProvider for primitive_type::FloatType {
     }
 }
 
-impl PhysicalColumnTypeProvider for primitive_type::DecimalType {
+impl PrimitiveTypeProvider for primitive_type::DecimalType {
     fn determine_column_type(&self, field: &ResolvedField) -> PhysicalColumnType {
         match &field.type_hint {
             Some(hint) => {
@@ -472,10 +448,8 @@ impl PhysicalColumnTypeProvider for primitive_type::DecimalType {
             },
         }
     }
-}
 
-impl ResolveTypeHintProvider for primitive_type::DecimalType {
-    fn __protected_compute_type_hint(
+    fn compute_type_hint(
         &self,
         field: &AstField<Typed>,
         errors: &mut Vec<Diagnostic>,
@@ -509,6 +483,15 @@ impl ResolveTypeHintProvider for primitive_type::DecimalType {
         })))
     }
 
+    fn deserialize_type_hint(
+        &self,
+        data: serde_json::Value,
+    ) -> Result<Box<dyn ResolvedTypeHint>, String> {
+        let hint: DecimalTypeHint = serde_json::from_value(data)
+            .map_err(|e| format!("Failed to deserialize DecimalTypeHint: {}", e))?;
+        Ok(Box::new(hint))
+    }
+
     fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
         vec![
             (
@@ -533,7 +516,7 @@ impl ResolveTypeHintProvider for primitive_type::DecimalType {
     }
 }
 
-impl PhysicalColumnTypeProvider for primitive_type::StringType {
+impl PrimitiveTypeProvider for primitive_type::StringType {
     fn determine_column_type(&self, field: &ResolvedField) -> PhysicalColumnType {
         match &field.type_hint {
             Some(hint) => {
@@ -551,10 +534,8 @@ impl PhysicalColumnTypeProvider for primitive_type::StringType {
             None => PhysicalColumnType::String { max_length: None },
         }
     }
-}
 
-impl ResolveTypeHintProvider for primitive_type::StringType {
-    fn __protected_compute_type_hint(
+    fn compute_type_hint(
         &self,
         field: &AstField<Typed>,
         _errors: &mut Vec<Diagnostic>,
@@ -566,6 +547,15 @@ impl ResolveTypeHintProvider for primitive_type::StringType {
 
         max_length_annotation
             .map(|max_length| SerializableTypeHint(Box::new(StringTypeHint { max_length })))
+    }
+
+    fn deserialize_type_hint(
+        &self,
+        data: serde_json::Value,
+    ) -> Result<Box<dyn ResolvedTypeHint>, String> {
+        let hint: StringTypeHint = serde_json::from_value(data)
+            .map_err(|e| format!("Failed to deserialize StringTypeHint: {}", e))?;
+        Ok(Box::new(hint))
     }
 
     fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
@@ -581,7 +571,7 @@ impl ResolveTypeHintProvider for primitive_type::StringType {
     }
 }
 
-impl PhysicalColumnTypeProvider for primitive_type::InstantType {
+impl PrimitiveTypeProvider for primitive_type::InstantType {
     fn determine_column_type(&self, field: &ResolvedField) -> PhysicalColumnType {
         match &field.type_hint {
             Some(hint) => {
@@ -605,10 +595,8 @@ impl PhysicalColumnTypeProvider for primitive_type::InstantType {
             },
         }
     }
-}
 
-impl ResolveTypeHintProvider for primitive_type::InstantType {
-    fn __protected_compute_type_hint(
+    fn compute_type_hint(
         &self,
         field: &AstField<Typed>,
         _errors: &mut Vec<Diagnostic>,
@@ -618,6 +606,15 @@ impl ResolveTypeHintProvider for primitive_type::InstantType {
                 precision: p.as_single().as_int() as usize,
             }))
         })
+    }
+
+    fn deserialize_type_hint(
+        &self,
+        data: serde_json::Value,
+    ) -> Result<Box<dyn ResolvedTypeHint>, String> {
+        let hint: DateTimeTypeHint = serde_json::from_value(data)
+            .map_err(|e| format!("Failed to deserialize DateTimeTypeHint: {}", e))?;
+        Ok(Box::new(hint))
     }
 
     fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
@@ -633,7 +630,7 @@ impl ResolveTypeHintProvider for primitive_type::InstantType {
     }
 }
 
-impl PhysicalColumnTypeProvider for primitive_type::VectorType {
+impl PrimitiveTypeProvider for primitive_type::VectorType {
     fn determine_column_type(&self, field: &ResolvedField) -> PhysicalColumnType {
         match &field.type_hint {
             Some(hint) => {
@@ -654,10 +651,8 @@ impl PhysicalColumnTypeProvider for primitive_type::VectorType {
             },
         }
     }
-}
 
-impl ResolveTypeHintProvider for primitive_type::VectorType {
-    fn __protected_compute_type_hint(
+    fn compute_type_hint(
         &self,
         field: &AstField<Typed>,
         errors: &mut Vec<Diagnostic>,
@@ -692,6 +687,15 @@ impl ResolveTypeHintProvider for primitive_type::VectorType {
         })))
     }
 
+    fn deserialize_type_hint(
+        &self,
+        data: serde_json::Value,
+    ) -> Result<Box<dyn ResolvedTypeHint>, String> {
+        let hint: VectorTypeHint = serde_json::from_value(data)
+            .map_err(|e| format!("Failed to deserialize VectorTypeHint: {}", e))?;
+        Ok(Box::new(hint))
+    }
+
     fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
         vec![
             (
@@ -717,35 +721,27 @@ impl ResolveTypeHintProvider for primitive_type::VectorType {
 }
 
 // Default implementation for primitive types that don't have special type hints
-macro_rules! impl_default_type_hint_provider {
-    ($($type_name:ty, $physical_type:expr),* $(,)?) => {
-        $(
-            impl PhysicalColumnTypeProvider for $type_name {
-                fn determine_column_type(&self, _field: &ResolvedField) -> PhysicalColumnType {
-                    // ExplicitTypeHint is handled in database_builder.rs, so we just return the default
-                    $physical_type
-                }
+macro_rules! impl_default_primitive_type_provider {
+    ($type_name:ty, $physical_type:expr) => {
+        impl PrimitiveTypeProvider for $type_name {
+            fn determine_column_type(&self, _field: &ResolvedField) -> PhysicalColumnType {
+                // ExplicitTypeHint is handled in database_builder.rs, so we just return the default
+                $physical_type
             }
 
-            impl ResolveTypeHintProvider for $type_name {
-                fn __protected_compute_type_hint(
-                    &self,
-                    _field: &AstField<Typed>,
-                    _errors: &mut Vec<Diagnostic>,
-                ) -> Option<SerializableTypeHint> {
-                    None
-                }
-
-                fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
-                    vec![]
-                }
+            fn compute_type_hint(
+                &self,
+                _field: &AstField<Typed>,
+                _errors: &mut Vec<Diagnostic>,
+            ) -> Option<SerializableTypeHint> {
+                None
             }
-        )*
+        }
     };
 }
 
 // Special implementations for time types that can have datetime hints
-impl PhysicalColumnTypeProvider for primitive_type::LocalTimeType {
+impl PrimitiveTypeProvider for primitive_type::LocalTimeType {
     fn determine_column_type(&self, field: &ResolvedField) -> PhysicalColumnType {
         match &field.type_hint {
             Some(hint) => {
@@ -762,9 +758,17 @@ impl PhysicalColumnTypeProvider for primitive_type::LocalTimeType {
             None => PhysicalColumnType::Time { precision: None },
         }
     }
+
+    fn compute_type_hint(
+        &self,
+        _field: &AstField<Typed>,
+        _errors: &mut Vec<Diagnostic>,
+    ) -> Option<SerializableTypeHint> {
+        None
+    }
 }
 
-impl PhysicalColumnTypeProvider for primitive_type::LocalDateTimeType {
+impl PrimitiveTypeProvider for primitive_type::LocalDateTimeType {
     fn determine_column_type(&self, field: &ResolvedField) -> PhysicalColumnType {
         match &field.type_hint {
             Some(hint) => {
@@ -788,95 +792,46 @@ impl PhysicalColumnTypeProvider for primitive_type::LocalDateTimeType {
             },
         }
     }
+
+    fn compute_type_hint(
+        &self,
+        _field: &AstField<Typed>,
+        _errors: &mut Vec<Diagnostic>,
+    ) -> Option<SerializableTypeHint> {
+        None
+    }
 }
 
-// Default implementation for time types that use ResolveTypeHintProvider
-macro_rules! impl_time_type_hint_provider {
-    ($($type_name:ty),* $(,)?) => {
-        $(
-            impl ResolveTypeHintProvider for $type_name {
-                fn __protected_compute_type_hint(
-                    &self,
-                    _field: &AstField<Typed>,
-                    _errors: &mut Vec<Diagnostic>,
-                ) -> Option<SerializableTypeHint> {
-                    None
-                }
+impl_default_primitive_type_provider!(primitive_type::BooleanType, PhysicalColumnType::Boolean);
+impl_default_primitive_type_provider!(primitive_type::LocalDateType, PhysicalColumnType::Date);
+impl_default_primitive_type_provider!(primitive_type::JsonType, PhysicalColumnType::Json);
+impl_default_primitive_type_provider!(primitive_type::BlobType, PhysicalColumnType::Blob);
+impl_default_primitive_type_provider!(primitive_type::UuidType, PhysicalColumnType::Uuid);
 
-                fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
-                    vec![]
-                }
-            }
-        )*
-    };
-}
-
-impl_time_type_hint_provider!(
-    primitive_type::LocalTimeType,
-    primitive_type::LocalDateTimeType,
-);
-
-impl_default_type_hint_provider!(
-    primitive_type::BooleanType,
-    PhysicalColumnType::Boolean,
-    primitive_type::LocalDateType,
-    PhysicalColumnType::Date,
-    primitive_type::JsonType,
-    PhysicalColumnType::Json,
-    primitive_type::BlobType,
-    PhysicalColumnType::Blob,
-    primitive_type::UuidType,
-    PhysicalColumnType::Uuid,
-);
-
-/// A registry that maps primitive type names to type hint providers
-/// This avoids the need to manually enumerate types in the compute function
-pub static TYPE_HINT_PROVIDER_REGISTRY: LazyLock<
-    HashMap<&'static str, &'static dyn ResolveTypeHintProvider>,
+/// Unified registry mapping primitive type names to their providers
+/// Handles all primitive type functionality: column types, type hints, annotations, deserialization
+pub static PRIMITIVE_TYPE_PROVIDER_REGISTRY: LazyLock<
+    HashMap<&'static str, &'static dyn PrimitiveTypeProvider>,
 > = LazyLock::new(|| {
-    [
-        &primitive_type::IntType as &'static dyn ResolveTypeHintProvider,
-        &primitive_type::FloatType as &'static dyn ResolveTypeHintProvider,
-        &primitive_type::DecimalType as &'static dyn ResolveTypeHintProvider,
-        &primitive_type::StringType as &'static dyn ResolveTypeHintProvider,
-        &primitive_type::InstantType as &'static dyn ResolveTypeHintProvider,
-        &primitive_type::VectorType as &'static dyn ResolveTypeHintProvider,
-        &primitive_type::BooleanType as &'static dyn ResolveTypeHintProvider,
-        &primitive_type::LocalDateType as &'static dyn ResolveTypeHintProvider,
-        &primitive_type::LocalTimeType as &'static dyn ResolveTypeHintProvider,
-        &primitive_type::LocalDateTimeType as &'static dyn ResolveTypeHintProvider,
-        &primitive_type::JsonType as &'static dyn ResolveTypeHintProvider,
-        &primitive_type::BlobType as &'static dyn ResolveTypeHintProvider,
-        &primitive_type::UuidType as &'static dyn ResolveTypeHintProvider,
-    ]
-    .iter()
-    .map(|provider| (provider.name(), *provider))
-    .collect()
-});
-
-/// A registry that maps primitive type names to physical column type providers
-/// This enables extensible physical column type determination
-pub static PHYSICAL_COLUMN_TYPE_PROVIDER_REGISTRY: LazyLock<
-    HashMap<&'static str, &'static dyn PhysicalColumnTypeProvider>,
-> = LazyLock::new(|| {
-    [
-        &primitive_type::IntType as &'static dyn PhysicalColumnTypeProvider,
-        &primitive_type::FloatType as &'static dyn PhysicalColumnTypeProvider,
-        &primitive_type::DecimalType as &'static dyn PhysicalColumnTypeProvider,
-        &primitive_type::StringType as &'static dyn PhysicalColumnTypeProvider,
-        &primitive_type::InstantType as &'static dyn PhysicalColumnTypeProvider,
-        &primitive_type::VectorType as &'static dyn PhysicalColumnTypeProvider,
-        &primitive_type::BooleanType as &'static dyn PhysicalColumnTypeProvider,
-        &primitive_type::LocalDateType as &'static dyn PhysicalColumnTypeProvider,
-        &primitive_type::LocalTimeType as &'static dyn PhysicalColumnTypeProvider,
-        &primitive_type::LocalDateTimeType as &'static dyn PhysicalColumnTypeProvider,
-        &primitive_type::JsonType as &'static dyn PhysicalColumnTypeProvider,
-        &primitive_type::BlobType as &'static dyn PhysicalColumnTypeProvider,
-        &primitive_type::UuidType as &'static dyn PhysicalColumnTypeProvider,
-    ]
-    .iter()
-    .map(|provider| (provider.name(), *provider))
-    .collect()
+    let all_primitive_type_providers: &[&dyn PrimitiveTypeProvider] = &[
+        &primitive_type::IntType,
+        &primitive_type::FloatType,
+        &primitive_type::DecimalType,
+        &primitive_type::StringType,
+        &primitive_type::InstantType,
+        &primitive_type::VectorType,
+        &primitive_type::BooleanType,
+        &primitive_type::LocalDateType,
+        &primitive_type::LocalTimeType,
+        &primitive_type::LocalDateTimeType,
+        &primitive_type::JsonType,
+        &primitive_type::BlobType,
+        &primitive_type::UuidType,
+    ];
+    all_primitive_type_providers
+        .iter()
+        .map(|provider| (provider.name(), *provider))
+        .collect()
 });
 
 static ALL_HINT_ANNOTATION_NAMES: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
@@ -886,9 +841,55 @@ static ALL_HINT_ANNOTATION_NAMES: LazyLock<HashSet<&'static str>> = LazyLock::ne
         .collect()
 });
 
+/// Validates that only supported hint annotations are used for a given field and type provider
+fn validate_hint_annotations(
+    field: &AstField<Typed>,
+    provider: &dyn PrimitiveTypeProvider,
+    errors: &mut Vec<Diagnostic>,
+) {
+    let field_annotations = field.annotations.annotations.keys();
+    let supported_annotations: Vec<&'static str> = provider
+        .applicable_hint_annotations()
+        .iter()
+        .map(|(name, _)| *name)
+        .collect();
+    let supported_hint_annotations_set: std::collections::HashSet<&str> =
+        supported_annotations.iter().copied().collect();
+
+    let unsupported_hint_annotations = field_annotations
+        .filter(|annotation| {
+            // Only validate against hint annotations that this type supports
+            // Skip annotations that are not hint annotations (they'll be validated elsewhere)
+            ALL_HINT_ANNOTATION_NAMES.contains(annotation.as_str())
+                && !supported_hint_annotations_set.contains(annotation.as_str())
+        })
+        .collect::<Vec<_>>();
+
+    if !unsupported_hint_annotations.is_empty() {
+        errors.push(Diagnostic {
+            level: Level::Error,
+            message: format!(
+                "Annotation @{} is not supported for type {}",
+                unsupported_hint_annotations
+                    .iter()
+                    .map(|a| a.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                provider.name()
+            ),
+            code: Some("C000".to_string()),
+            spans: vec![SpanLabel {
+                span: field.span,
+                style: SpanStyle::Primary,
+                label: None,
+            }],
+        });
+    }
+}
+
 /// Collects all hint annotations from all registered type hint providers
 pub fn collect_all_hint_annotations() -> Vec<(&'static str, AnnotationSpec)> {
-    TYPE_HINT_PROVIDER_REGISTRY
+    PRIMITIVE_TYPE_PROVIDER_REGISTRY
         .iter()
         .flat_map(|(_, provider)| provider.applicable_hint_annotations())
         .collect()
@@ -1331,7 +1332,8 @@ fn build_type_hint(
         });
 
     let primitive_hint = {
-        let type_hint_provider = TYPE_HINT_PROVIDER_REGISTRY.get(type_name.as_str())?;
+        let type_hint_provider = PRIMITIVE_TYPE_PROVIDER_REGISTRY.get(type_name.as_str())?;
+        validate_hint_annotations(field, *type_hint_provider, errors);
         type_hint_provider.compute_type_hint(field, errors)
     };
 

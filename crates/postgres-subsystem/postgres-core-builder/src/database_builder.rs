@@ -10,7 +10,7 @@
 use std::collections::HashSet;
 
 use crate::naming::ToPlural;
-use crate::resolved_builder::PHYSICAL_COLUMN_TYPE_PROVIDER_REGISTRY;
+use crate::resolved_builder::PRIMITIVE_TYPE_PROVIDER_REGISTRY;
 use crate::resolved_type::{
     ExplicitTypeHint, ResolvedCompositeType, ResolvedEnumType, ResolvedField, ResolvedFieldDefault,
     ResolvedFieldType, ResolvedType, ResolvedTypeEnv, VectorTypeHint,
@@ -500,9 +500,7 @@ fn determine_column_type<'a>(
             typ: Box::new(determine_column_type(underlying_pt, field)),
         },
         PrimitiveType::Plain(base_pt_type) => {
-            // Use the registry to find the appropriate provider
-            if let Some(provider) = PHYSICAL_COLUMN_TYPE_PROVIDER_REGISTRY.get(base_pt_type.name())
-            {
+            if let Some(provider) = PRIMITIVE_TYPE_PROVIDER_REGISTRY.get(base_pt_type.name()) {
                 provider.determine_column_type(field)
             } else {
                 panic!("Unknown primitive type: {:?}", base_pt_type);
