@@ -6852,7 +6852,6 @@ dependencies = [
  "exo-sql",
  "heck 0.5.0",
  "insta",
- "lazy_static",
  "multiplatform_test",
  "pluralizer",
  "postgres-builder",

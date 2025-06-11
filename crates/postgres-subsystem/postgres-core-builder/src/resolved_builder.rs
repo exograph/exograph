@@ -52,6 +52,7 @@ use exo_sql::{
     DEFAULT_VECTOR_SIZE, FloatBits, IntBits, PhysicalColumnType, SchemaObjectName,
     VectorDistanceFunction,
 };
+use postgres_core_model::aggregate::ScalarAggregateFieldKind;
 
 use heck::ToSnakeCase;
 
@@ -91,6 +92,19 @@ pub trait PrimitiveTypeProvider: Send + Sync + PrimitiveBaseType {
     /// Returns None if the type supports no operators (implicit equality only)
     /// Returns Some(operators) if the type supports specific operators
     fn supported_operators(&self) -> Option<Vec<&'static str>>;
+
+    /// Get supported aggregate functions for this primitive type
+    /// Returns a vector of (aggregate_kind, optional_return_type) tuples
+    /// The return type is Some when the aggregate function returns a different type than the input
+    /// (e.g., avg of Int returns Float). The "count" aggregate is always supported and doesn't need to be listed here.
+    fn supported_aggregates(
+        &self,
+    ) -> Vec<(
+        ScalarAggregateFieldKind,
+        Option<&'static dyn PrimitiveBaseType>,
+    )> {
+        vec![]
+    }
 }
 
 impl PrimitiveTypeProvider for primitive_type::IntType {
@@ -256,6 +270,21 @@ impl PrimitiveTypeProvider for primitive_type::IntType {
 
     fn supported_operators(&self) -> Option<Vec<&'static str>> {
         Some(vec!["eq", "neq", "lt", "lte", "gt", "gte"])
+    }
+
+    fn supported_aggregates(
+        &self,
+    ) -> Vec<(
+        ScalarAggregateFieldKind,
+        Option<&'static dyn PrimitiveBaseType>,
+    )> {
+        use ScalarAggregateFieldKind::*;
+        vec![
+            (Min, None),
+            (Max, None),
+            (Sum, None),
+            (Avg, Some(&primitive_type::FloatType)),
+        ]
     }
 }
 
@@ -430,6 +459,21 @@ impl PrimitiveTypeProvider for primitive_type::FloatType {
     fn supported_operators(&self) -> Option<Vec<&'static str>> {
         Some(vec!["eq", "neq", "lt", "lte", "gt", "gte"])
     }
+
+    fn supported_aggregates(
+        &self,
+    ) -> Vec<(
+        ScalarAggregateFieldKind,
+        Option<&'static dyn PrimitiveBaseType>,
+    )> {
+        use ScalarAggregateFieldKind::*;
+        vec![
+            (Min, None),
+            (Max, None),
+            (Sum, Some(&primitive_type::FloatType)),
+            (Avg, Some(&primitive_type::FloatType)),
+        ]
+    }
 }
 
 impl PrimitiveTypeProvider for primitive_type::DecimalType {
@@ -531,6 +575,16 @@ impl PrimitiveTypeProvider for primitive_type::DecimalType {
     fn supported_operators(&self) -> Option<Vec<&'static str>> {
         Some(vec!["eq", "neq", "lt", "lte", "gt", "gte"])
     }
+
+    fn supported_aggregates(
+        &self,
+    ) -> Vec<(
+        ScalarAggregateFieldKind,
+        Option<&'static dyn PrimitiveBaseType>,
+    )> {
+        use ScalarAggregateFieldKind::*;
+        vec![(Min, None), (Max, None), (Sum, None), (Avg, None)]
+    }
 }
 
 impl PrimitiveTypeProvider for primitive_type::StringType {
@@ -600,6 +654,16 @@ impl PrimitiveTypeProvider for primitive_type::StringType {
             "startsWith",
             "endsWith",
         ])
+    }
+
+    fn supported_aggregates(
+        &self,
+    ) -> Vec<(
+        ScalarAggregateFieldKind,
+        Option<&'static dyn PrimitiveBaseType>,
+    )> {
+        use ScalarAggregateFieldKind::*;
+        vec![(Min, None), (Max, None)]
     }
 }
 
@@ -757,6 +821,16 @@ impl PrimitiveTypeProvider for primitive_type::VectorType {
 
     fn supported_operators(&self) -> Option<Vec<&'static str>> {
         Some(vec!["similar", "eq", "neq"])
+    }
+
+    fn supported_aggregates(
+        &self,
+    ) -> Vec<(
+        ScalarAggregateFieldKind,
+        Option<&'static dyn PrimitiveBaseType>,
+    )> {
+        use ScalarAggregateFieldKind::*;
+        vec![(Avg, None)]
     }
 }
 
