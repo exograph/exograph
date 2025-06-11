@@ -28,9 +28,11 @@ use postgres_core_builder::shallow::Shallow;
 
 use super::system_builder::SystemContextBuilding;
 
-use postgres_core_builder::resolved_type::{
-    ResolvedCompositeType, ResolvedField, ResolvedType, ResolvedTypeEnv, SerializableTypeHint,
-    VectorTypeHint,
+use postgres_core_builder::{
+    resolved_type::{
+        ResolvedCompositeType, ResolvedField, ResolvedType, ResolvedTypeEnv, SerializableTypeHint,
+    },
+    type_provider::VectorTypeHint,
 };
 
 impl crate::shallow::Shallow for OrderByParameter {

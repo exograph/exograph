@@ -7,6 +7,7 @@ pub mod resolved_type;
 pub mod shallow;
 pub mod system_builder;
 pub mod type_builder;
+pub mod type_provider;
 
 pub use system_builder::SystemContextBuilding;
 
