@@ -6915,7 +6915,6 @@ dependencies = [
  "core-plugin-shared",
  "exo-sql",
  "heck 0.5.0",
- "lazy_static",
  "postgres-core-builder",
  "postgres-core-model",
  "postgres-graphql-model",
