@@ -6,7 +6,6 @@ publish = false
 
 [dependencies]
 heck.workspace = true
-lazy_static.workspace = true
 
 core-model = { path = "../../core-subsystem/core-model" }
 core-model-builder = { path = "../../core-subsystem/core-model-builder" }

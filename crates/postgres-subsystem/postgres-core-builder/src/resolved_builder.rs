@@ -86,6 +86,11 @@ pub trait PrimitiveTypeProvider: Send + Sync + PrimitiveBaseType {
     fn applicable_hint_annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
         vec![]
     }
+
+    /// Get supported operators for this primitive type
+    /// Returns None if the type supports no operators (implicit equality only)
+    /// Returns Some(operators) if the type supports specific operators
+    fn supported_operators(&self) -> Option<Vec<&'static str>>;
 }
 
 impl PrimitiveTypeProvider for primitive_type::IntType {
@@ -247,6 +252,10 @@ impl PrimitiveTypeProvider for primitive_type::IntType {
                 },
             ),
         ]
+    }
+
+    fn supported_operators(&self) -> Option<Vec<&'static str>> {
+        Some(vec!["eq", "neq", "lt", "lte", "gt", "gte"])
     }
 }
 
@@ -417,6 +426,10 @@ impl PrimitiveTypeProvider for primitive_type::FloatType {
             ),
         ]
     }
+
+    fn supported_operators(&self) -> Option<Vec<&'static str>> {
+        Some(vec!["eq", "neq", "lt", "lte", "gt", "gte"])
+    }
 }
 
 impl PrimitiveTypeProvider for primitive_type::DecimalType {
@@ -514,6 +527,10 @@ impl PrimitiveTypeProvider for primitive_type::DecimalType {
             ),
         ]
     }
+
+    fn supported_operators(&self) -> Option<Vec<&'static str>> {
+        Some(vec!["eq", "neq", "lt", "lte", "gt", "gte"])
+    }
 }
 
 impl PrimitiveTypeProvider for primitive_type::StringType {
@@ -568,6 +585,21 @@ impl PrimitiveTypeProvider for primitive_type::StringType {
                 mapped_params: None,
             },
         )]
+    }
+
+    fn supported_operators(&self) -> Option<Vec<&'static str>> {
+        Some(vec![
+            "eq",
+            "neq",
+            "lt",
+            "lte",
+            "gt",
+            "gte",
+            "like",
+            "ilike",
+            "startsWith",
+            "endsWith",
+        ])
     }
 }
 
@@ -627,6 +659,10 @@ impl PrimitiveTypeProvider for primitive_type::InstantType {
                 mapped_params: None,
             },
         )]
+    }
+
+    fn supported_operators(&self) -> Option<Vec<&'static str>> {
+        Some(vec!["eq", "neq", "lt", "lte", "gt", "gte"])
     }
 }
 
@@ -718,26 +754,10 @@ impl PrimitiveTypeProvider for primitive_type::VectorType {
             ),
         ]
     }
-}
 
-// Default implementation for primitive types that don't have special type hints
-macro_rules! impl_default_primitive_type_provider {
-    ($type_name:ty, $physical_type:expr) => {
-        impl PrimitiveTypeProvider for $type_name {
-            fn determine_column_type(&self, _field: &ResolvedField) -> PhysicalColumnType {
-                // ExplicitTypeHint is handled in database_builder.rs, so we just return the default
-                $physical_type
-            }
-
-            fn compute_type_hint(
-                &self,
-                _field: &AstField<Typed>,
-                _errors: &mut Vec<Diagnostic>,
-            ) -> Option<SerializableTypeHint> {
-                None
-            }
-        }
-    };
+    fn supported_operators(&self) -> Option<Vec<&'static str>> {
+        Some(vec!["similar", "eq", "neq"])
+    }
 }
 
 // Special implementations for time types that can have datetime hints
@@ -765,6 +785,10 @@ impl PrimitiveTypeProvider for primitive_type::LocalTimeType {
         _errors: &mut Vec<Diagnostic>,
     ) -> Option<SerializableTypeHint> {
         None
+    }
+
+    fn supported_operators(&self) -> Option<Vec<&'static str>> {
+        Some(vec!["eq", "neq", "lt", "lte", "gt", "gte"])
     }
 }
 
@@ -800,13 +824,107 @@ impl PrimitiveTypeProvider for primitive_type::LocalDateTimeType {
     ) -> Option<SerializableTypeHint> {
         None
     }
+
+    fn supported_operators(&self) -> Option<Vec<&'static str>> {
+        Some(vec!["eq", "neq", "lt", "lte", "gt", "gte"])
+    }
 }
 
-impl_default_primitive_type_provider!(primitive_type::BooleanType, PhysicalColumnType::Boolean);
-impl_default_primitive_type_provider!(primitive_type::LocalDateType, PhysicalColumnType::Date);
-impl_default_primitive_type_provider!(primitive_type::JsonType, PhysicalColumnType::Json);
-impl_default_primitive_type_provider!(primitive_type::BlobType, PhysicalColumnType::Blob);
-impl_default_primitive_type_provider!(primitive_type::UuidType, PhysicalColumnType::Uuid);
+impl PrimitiveTypeProvider for primitive_type::BooleanType {
+    fn determine_column_type(&self, _field: &ResolvedField) -> PhysicalColumnType {
+        PhysicalColumnType::Boolean
+    }
+
+    fn compute_type_hint(
+        &self,
+        _field: &AstField<Typed>,
+        _errors: &mut Vec<Diagnostic>,
+    ) -> Option<SerializableTypeHint> {
+        None
+    }
+
+    fn supported_operators(&self) -> Option<Vec<&'static str>> {
+        Some(vec!["eq", "neq"])
+    }
+}
+
+impl PrimitiveTypeProvider for primitive_type::LocalDateType {
+    fn determine_column_type(&self, _field: &ResolvedField) -> PhysicalColumnType {
+        PhysicalColumnType::Date
+    }
+
+    fn compute_type_hint(
+        &self,
+        _field: &AstField<Typed>,
+        _errors: &mut Vec<Diagnostic>,
+    ) -> Option<SerializableTypeHint> {
+        None
+    }
+
+    fn supported_operators(&self) -> Option<Vec<&'static str>> {
+        Some(vec!["eq", "neq", "lt", "lte", "gt", "gte"])
+    }
+}
+
+impl PrimitiveTypeProvider for primitive_type::JsonType {
+    fn determine_column_type(&self, _field: &ResolvedField) -> PhysicalColumnType {
+        PhysicalColumnType::Json
+    }
+
+    fn compute_type_hint(
+        &self,
+        _field: &AstField<Typed>,
+        _errors: &mut Vec<Diagnostic>,
+    ) -> Option<SerializableTypeHint> {
+        None
+    }
+
+    fn supported_operators(&self) -> Option<Vec<&'static str>> {
+        Some(vec![
+            "contains",
+            "containedBy",
+            "matchKey",
+            "matchAllKeys",
+            "matchAnyKey",
+        ])
+    }
+}
+
+impl PrimitiveTypeProvider for primitive_type::BlobType {
+    fn determine_column_type(&self, _field: &ResolvedField) -> PhysicalColumnType {
+        PhysicalColumnType::Blob
+    }
+
+    fn compute_type_hint(
+        &self,
+        _field: &AstField<Typed>,
+        _errors: &mut Vec<Diagnostic>,
+    ) -> Option<SerializableTypeHint> {
+        None
+    }
+
+    fn supported_operators(&self) -> Option<Vec<&'static str>> {
+        None
+    }
+}
+
+impl PrimitiveTypeProvider for primitive_type::UuidType {
+    fn determine_column_type(&self, _field: &ResolvedField) -> PhysicalColumnType {
+        PhysicalColumnType::Uuid
+    }
+
+    fn compute_type_hint(
+        &self,
+        _field: &AstField<Typed>,
+        _errors: &mut Vec<Diagnostic>,
+    ) -> Option<SerializableTypeHint> {
+        None
+    }
+
+    fn supported_operators(&self) -> Option<Vec<&'static str>> {
+        Some(vec!["eq", "neq"])
+    }
+}
 
 /// Unified registry mapping primitive type names to their providers
 /// Handles all primitive type functionality: column types, type hints, annotations, deserialization

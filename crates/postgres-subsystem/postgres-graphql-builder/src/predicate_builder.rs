@@ -22,16 +22,13 @@ use postgres_core_model::{
 };
 use postgres_core_model::{relation::PostgresRelation, types::EntityRepresentation};
 
-use std::collections::HashMap;
-
 use super::system_builder::SystemContextBuilding;
 
+use postgres_core_builder::resolved_builder::PRIMITIVE_TYPE_PROVIDER_REGISTRY;
 use postgres_core_builder::resolved_type::{
     ResolvedCompositeType, ResolvedType, ResolvedTypeEnv, VectorTypeHint,
 };
 use postgres_core_builder::shallow::Shallow;
-
-use lazy_static::lazy_static;
 
 impl crate::shallow::Shallow for PredicateParameter {
     fn shallow() -> Self {
@@ -390,66 +387,6 @@ fn expand_unique_type(
     PredicateParameterTypeKind::Reference(field_predicates)
 }
 
-lazy_static! {
-    // immutable map defining the operators allowed for each type
-    // TODO: could probably be done better?
-    static ref TYPE_OPERATORS: HashMap<&'static str, Option<Vec<&'static str>>> = {
-        let mut supported_operators = HashMap::new();
-
-        let numeric_operators = Some(vec![
-            "eq", "neq",
-            "lt", "lte", "gt", "gte"
-        ]);
-
-        supported_operators.insert("Int", numeric_operators.clone());
-        supported_operators.insert("Float", numeric_operators.clone());
-        supported_operators.insert("Decimal", numeric_operators.clone());
-
-        supported_operators.insert(
-            "String",
-            Some(vec![
-                "eq", "neq",
-                "lt", "lte", "gt", "gte",
-                "like", "ilike", "startsWith", "endsWith"
-            ])
-        );
-
-        supported_operators.insert(
-            "Boolean",
-            Some(vec!["eq", "neq"])
-        );
-
-        let datetime_operators = Some(vec![
-            "eq", "neq",
-            "lt", "lte", "gt", "gte"
-        ]);
-
-        supported_operators.insert("LocalTime", datetime_operators.clone());
-        supported_operators.insert("LocalDateTime", datetime_operators.clone());
-        supported_operators.insert("LocalDate", datetime_operators.clone());
-        supported_operators.insert("Instant", datetime_operators.clone());
-
-        supported_operators.insert(
-            "Json",
-            Some(vec!["contains", "containedBy", "matchKey", "matchAllKeys", "matchAnyKey"])
-        );
-
-        supported_operators.insert(
-            "Blob",
-            None
-        );
-
-        supported_operators.insert(
-            "Uuid",
-            Some(vec!["eq", "neq"])
-        );
-
-        supported_operators.insert("Vector", Some(vec!["similar", "eq", "neq"]));
-
-        supported_operators
-    };
-}
-
 fn create_operator_filter_type_kind(
     primitive_type: &PostgresPrimitiveType,
     building: &SystemContextBuilding,
@@ -475,9 +412,10 @@ fn create_operator_filter_type_kind(
         }
     };
 
-    // look up type in (type, operations) table
-    if let Some(maybe_operators) = TYPE_OPERATORS.get(&primitive_type.name as &str) {
-        if let Some(operators) = maybe_operators {
+    // look up type provider to get supported operators
+    if let Some(type_provider) = PRIMITIVE_TYPE_PROVIDER_REGISTRY.get(primitive_type.name.as_str())
+    {
+        if let Some(operators) = type_provider.supported_operators() {
             // type supports specific operations, construct kind with supported operations
             let parameters: Vec<PredicateParameter> =
                 operators.iter().map(parameter_constructor).collect();
@@ -488,7 +426,10 @@ fn create_operator_filter_type_kind(
             PredicateParameterTypeKind::ImplicitEqual
         }
     } else {
-        // type given is not listed in TYPE_OPERATORS?
-        todo!("{} does not support any operators", primitive_type.name)
+        // type given is not listed in PRIMITIVE_TYPE_PROVIDER_REGISTRY?
+        todo!(
+            "Unknown type: {}. This should not happen.",
+            primitive_type.name
+        )
     }
 }
