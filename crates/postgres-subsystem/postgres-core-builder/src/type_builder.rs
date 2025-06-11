@@ -11,9 +11,12 @@ use std::collections::HashMap;
 
 use crate::access_builder::ResolvedAccess;
 use crate::resolved_builder::Cardinality;
-use crate::resolved_type::{
-    ResolvedCompositeType, ResolvedField, ResolvedFieldDefault, ResolvedFieldType,
-    ResolvedFieldTypeHelper, ResolvedType, ResolvedTypeEnv, VectorTypeHint,
+use crate::{
+    resolved_type::{
+        ResolvedCompositeType, ResolvedField, ResolvedFieldDefault, ResolvedFieldType,
+        ResolvedFieldTypeHelper, ResolvedType, ResolvedTypeEnv,
+    },
+    type_provider::VectorTypeHint,
 };
 use common::value::Val;
 use common::value::val::ValNumber;

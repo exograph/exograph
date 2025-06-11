@@ -24,11 +24,12 @@ use postgres_core_model::{relation::PostgresRelation, types::EntityRepresentatio
 
 use super::system_builder::SystemContextBuilding;
 
-use postgres_core_builder::resolved_builder::PRIMITIVE_TYPE_PROVIDER_REGISTRY;
-use postgres_core_builder::resolved_type::{
-    ResolvedCompositeType, ResolvedType, ResolvedTypeEnv, VectorTypeHint,
-};
 use postgres_core_builder::shallow::Shallow;
+use postgres_core_builder::type_provider::PRIMITIVE_TYPE_PROVIDER_REGISTRY;
+use postgres_core_builder::{
+    resolved_type::{ResolvedCompositeType, ResolvedType, ResolvedTypeEnv},
+    type_provider::VectorTypeHint,
+};
 
 impl crate::shallow::Shallow for PredicateParameter {
     fn shallow() -> Self {

@@ -16,7 +16,7 @@ use core_plugin_interface::interface::{SubsystemBuild, SubsystemBuilder};
 use core_plugin_shared::{
     serializable_system::SerializableCoreBytes, system_serializer::SystemSerializer,
 };
-use postgres_core_builder::{resolved_builder, resolved_type::ResolvedTypeEnv};
+use postgres_core_builder::resolved_type::ResolvedTypeEnv;
 use postgres_graphql_builder::PostgresGraphQLSubsystemBuilder;
 use postgres_rest_builder::PostgresRestSubsystemBuilder;
 use postgres_rpc_builder::PostgresRpcSubsystemBuilder;
@@ -195,7 +195,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
             ),
         ];
 
-        annotations.extend(resolved_builder::collect_all_hint_annotations());
+        annotations.extend(postgres_core_builder::type_provider::collect_all_hint_annotations());
 
         annotations
     }

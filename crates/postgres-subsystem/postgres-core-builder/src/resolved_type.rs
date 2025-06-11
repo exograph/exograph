@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use codemap::Span;
-use exo_sql::{SchemaObjectName, VectorDistanceFunction};
+use exo_sql::SchemaObjectName;
 use postgres_core_model::types::EntityRepresentation;
 use serde::{Deserialize, Serialize};
 
@@ -166,7 +166,7 @@ impl<'de> Deserialize<'de> for SerializableTypeHint {
             })?;
             Box::new(hint) as Box<dyn ResolvedTypeHint>
         } else {
-            crate::resolved_builder::PRIMITIVE_TYPE_PROVIDER_REGISTRY
+            crate::type_provider::PRIMITIVE_TYPE_PROVIDER_REGISTRY
                 .get(hint_data.type_name.as_str())
                 .ok_or_else(|| {
                     serde::de::Error::custom(format!(
@@ -174,7 +174,7 @@ impl<'de> Deserialize<'de> for SerializableTypeHint {
                         hint_data.type_name,
                         std::iter::once("Explicit")
                             .chain(
-                                crate::resolved_builder::PRIMITIVE_TYPE_PROVIDER_REGISTRY
+                                crate::type_provider::PRIMITIVE_TYPE_PROVIDER_REGISTRY
                                     .keys()
                                     .cloned()
                             )
@@ -205,124 +205,12 @@ impl ResolvedTypeHint for ExplicitTypeHint {
     }
 }
 
-/// Int type hint implementation
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct IntTypeHint {
-    pub bits: Option<usize>,
-    pub range: Option<(i64, i64)>,
-}
-
-impl ResolvedTypeHint for IntTypeHint {
-    fn hint_type_name(&self) -> &'static str {
-        "Int"
-    }
-
-    fn serialize_data(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap()
-    }
-}
-
-impl TypeValidationProvider for IntTypeHint {
-    fn get_type_validation(&self) -> Option<TypeValidation> {
-        self.range.as_ref().map(|r| TypeValidation::Int {
-            range: r.to_owned(),
-        })
-    }
-}
-
-/// Float type hint implementation
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct FloatTypeHint {
-    pub bits: Option<usize>,
-    pub range: Option<(f64, f64)>,
-}
-
-impl ResolvedTypeHint for FloatTypeHint {
-    fn hint_type_name(&self) -> &'static str {
-        "Float"
-    }
-
-    fn serialize_data(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap()
-    }
-}
-
-impl TypeValidationProvider for FloatTypeHint {
-    fn get_type_validation(&self) -> Option<TypeValidation> {
-        self.range.as_ref().map(|r| TypeValidation::Float {
-            range: r.to_owned(),
-        })
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct DecimalTypeHint {
-    pub precision: Option<usize>,
-    pub scale: Option<usize>,
-}
-
-impl ResolvedTypeHint for DecimalTypeHint {
-    fn hint_type_name(&self) -> &'static str {
-        "Decimal"
-    }
-
-    fn serialize_data(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct StringTypeHint {
-    pub max_length: usize,
-}
-
-impl ResolvedTypeHint for StringTypeHint {
-    fn hint_type_name(&self) -> &'static str {
-        "String"
-    }
-
-    fn serialize_data(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct DateTimeTypeHint {
-    pub precision: usize,
-}
-
-impl ResolvedTypeHint for DateTimeTypeHint {
-    fn hint_type_name(&self) -> &'static str {
-        "DateTime"
-    }
-
-    fn serialize_data(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct VectorTypeHint {
-    pub size: Option<usize>,
-    pub distance_function: Option<VectorDistanceFunction>,
-}
-
-impl ResolvedTypeHint for VectorTypeHint {
-    fn hint_type_name(&self) -> &'static str {
-        "Vector"
-    }
-
-    fn serialize_data(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap()
-    }
-}
-
 impl TypeValidationProvider for SerializableTypeHint {
     fn get_type_validation(&self) -> Option<TypeValidation> {
         let hint_ref = self.0.as_ref() as &dyn std::any::Any;
 
         // Check if this is an IntTypeHint
-        if let Some(int_hint) = hint_ref.downcast_ref::<IntTypeHint>() {
+        if let Some(int_hint) = hint_ref.downcast_ref::<crate::type_provider::IntTypeHint>() {
             if let Some(r) = &int_hint.range {
                 return Some(TypeValidation::Int {
                     range: r.to_owned(),
@@ -330,7 +218,9 @@ impl TypeValidationProvider for SerializableTypeHint {
             }
         }
         // Check if this is a FloatTypeHint
-        else if let Some(float_hint) = hint_ref.downcast_ref::<FloatTypeHint>() {
+        else if let Some(float_hint) =
+            hint_ref.downcast_ref::<crate::type_provider::FloatTypeHint>()
+        {
             if let Some(r) = &float_hint.range {
                 return Some(TypeValidation::Float {
                     range: r.to_owned(),

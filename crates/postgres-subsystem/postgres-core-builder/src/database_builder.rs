@@ -10,10 +10,13 @@
 use std::collections::HashSet;
 
 use crate::naming::ToPlural;
-use crate::resolved_builder::PRIMITIVE_TYPE_PROVIDER_REGISTRY;
-use crate::resolved_type::{
-    ExplicitTypeHint, ResolvedCompositeType, ResolvedEnumType, ResolvedField, ResolvedFieldDefault,
-    ResolvedFieldType, ResolvedType, ResolvedTypeEnv, VectorTypeHint,
+use crate::type_provider::PRIMITIVE_TYPE_PROVIDER_REGISTRY;
+use crate::{
+    resolved_type::{
+        ExplicitTypeHint, ResolvedCompositeType, ResolvedEnumType, ResolvedField,
+        ResolvedFieldDefault, ResolvedFieldType, ResolvedType, ResolvedTypeEnv,
+    },
+    type_provider::VectorTypeHint,
 };
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};

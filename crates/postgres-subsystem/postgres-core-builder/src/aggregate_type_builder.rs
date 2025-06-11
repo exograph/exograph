@@ -15,9 +15,9 @@ use postgres_core_model::aggregate::{
 };
 use postgres_core_model::types::EntityRepresentation;
 
-use crate::resolved_builder::PRIMITIVE_TYPE_PROVIDER_REGISTRY;
 use crate::resolved_type::ResolvedType;
 use crate::resolved_type::ResolvedTypeEnv;
+use crate::type_provider::PRIMITIVE_TYPE_PROVIDER_REGISTRY;
 
 use crate::shallow::Shallow;
 use crate::system_builder::SystemContextBuilding;
