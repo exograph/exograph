@@ -19,6 +19,8 @@ use super::{
     error::EphemeralDatabaseSetupError,
 };
 
+pub const EXO_SQL_EPHEMERAL_DATABASE_DOCKER_IMAGE: &str = "EXO_SQL_EPHEMERAL_DATABASE_DOCKER_IMAGE";
+
 pub struct DockerPostgresDatabaseServer {
     container_name: String,
     port: u16,
@@ -53,6 +55,9 @@ impl DockerPostgresDatabaseServer {
         // generate container name
         let container_name = format!("exograph-db-{}", generate_random_string());
 
+        let docker_image = std::env::var(EXO_SQL_EPHEMERAL_DATABASE_DOCKER_IMAGE)
+            .unwrap_or_else(|_| "pgvector/pgvector:pg14".to_string());
+
         // start postgres docker in background
         let mut db_background = std::process::Command::new("docker");
         let db_background = db_background
@@ -67,7 +72,7 @@ impl DockerPostgresDatabaseServer {
                 "POSTGRES_PASSWORD=exo",
                 "-p",
                 &format!("{port}:5432"),
-                "postgres",
+                &docker_image,
             ])
             .stdin(Stdio::null())
             .stdout(Stdio::piped())

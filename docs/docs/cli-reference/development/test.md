@@ -13,4 +13,8 @@ Like the [yolo] mode, it will use the locally installed Postgres server or start
 exo test <directory> [pattern]
 ```
 
+import EphemeralDb from './_ephemeral_db.md';
+
+<EphemeralDb/>
+
 Please see the [testing](/production/testing.md) section for more information about writing tests.

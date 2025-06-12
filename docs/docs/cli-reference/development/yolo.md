@@ -42,6 +42,10 @@ Started server on localhost:9876 in 6.14 ms
         http://localhost:9876/graphql
 ```
 
+import EphemeralDb from './_ephemeral_db.md';
+
+<EphemeralDb/>
+
 ## Authentication Options
 
 By default, the yolo mode will use symmetric authentication with an auto-generated secret. However, you may use your secret or an external OpenID provider for authentication.
