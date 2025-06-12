@@ -187,7 +187,7 @@ impl ColumnDefault {
 pub struct ColumnReferenceSpec {
     pub foreign_table_name: SchemaObjectName,
     pub foreign_pk_column_name: String,
-    pub foreign_pk_type: Box<ColumnTypeSpec>,
+    pub foreign_pk_type: Box<PhysicalColumnType>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -433,9 +433,7 @@ impl ColumnSpec {
                     ColumnTypeSpec::Reference(ColumnReferenceSpec {
                         foreign_table_name: foreign_table.name.clone(),
                         foreign_pk_column_name: foreign_pk_column.name.clone(),
-                        foreign_pk_type: Box::new(ColumnTypeSpec::from_physical(
-                            foreign_pk_column.typ.clone(),
-                        )),
+                        foreign_pk_type: Box::new(foreign_pk_column.typ.clone()),
                     })
                 }
                 None => ColumnTypeSpec::from_physical(column.typ),
@@ -730,7 +728,7 @@ impl ColumnTypeSpec {
             ColumnTypeSpec::Direct(physical_type) => physical_type.clone(),
             ColumnTypeSpec::Reference(ColumnReferenceSpec {
                 foreign_pk_type, ..
-            }) => foreign_pk_type.to_database_type(),
+            }) => (**foreign_pk_type).clone(),
         }
     }
 

@@ -125,7 +125,7 @@ impl TableSpec {
                             ColumnTypeSpec::Reference(ColumnReferenceSpec {
                                 foreign_table_name: foreign_constraint.foreign_table.clone(),
                                 foreign_pk_column_name: foreign_column.clone(),
-                                foreign_pk_type: Box::new(spec.typ),
+                                foreign_pk_type: Box::new(spec.typ.to_database_type()),
                             }),
                             spec.group_name.clone(),
                         ),

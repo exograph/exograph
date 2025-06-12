@@ -33,9 +33,9 @@ pub fn pk_reference_column(
                 foreign_table_schema_name,
             ),
             foreign_pk_column_name: "id".to_string(),
-            foreign_pk_type: Box::new(ColumnTypeSpec::Direct(PhysicalColumnType::Int {
+            foreign_pk_type: Box::new(PhysicalColumnType::Int {
                 bits: crate::IntBits::_16,
-            })),
+            }),
         }),
         is_pk: false,
         is_nullable: false,

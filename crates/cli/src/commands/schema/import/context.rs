@@ -247,7 +247,7 @@ impl<'a> ImportContext<'a> {
                 let model_name = self.model_name(foreign_table_name);
                 match model_name {
                     Some(model_name) => ColumnTypeName::ReferenceType(model_name.to_string()),
-                    None => self.type_name(foreign_pk_type),
+                    None => self.type_name(&ColumnTypeSpec::Direct((**foreign_pk_type).clone())),
                 }
             }
         }
