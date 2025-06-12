@@ -3,7 +3,7 @@ use anyhow::Result;
 use exo_sql::schema::column_spec::{ColumnSpec, ColumnTypeSpec};
 
 use exo_sql::schema::table_spec::TableSpec;
-use exo_sql::{FloatBits, IntBits};
+use exo_sql::{FloatBits, IntBits, PhysicalColumnType};
 
 use super::{ImportContext, ModelProcessor};
 
@@ -23,7 +23,7 @@ impl ModelProcessor<TableSpec> for ColumnSpec {
         let is_column_type_name_reference =
             matches!(column_type_name, ColumnTypeName::ReferenceType(_));
 
-        if let ColumnTypeSpec::ColumnReference(reference) = &self.typ {
+        if let ColumnTypeSpec::Reference(reference) = &self.typ {
             // The column was referring to a table, but that table is not in the context
             if !is_column_type_name_reference {
                 writeln!(
@@ -40,7 +40,7 @@ impl ModelProcessor<TableSpec> for ColumnSpec {
             write!(writer, "@pk ")?;
         }
 
-        if let ColumnTypeSpec::ColumnReference(reference) = &self.typ {
+        if let ColumnTypeSpec::Reference(reference) = &self.typ {
             if parent.name == reference.foreign_table_name {
                 let cardinality_annotation =
                     if self.unique_constraints.is_empty() || self.is_nullable {
@@ -98,41 +98,44 @@ pub enum ColumnTypeName {
 
 fn type_annotation(column_type: &ColumnTypeSpec) -> String {
     match column_type {
-        ColumnTypeSpec::Int { bits } => match bits {
-            IntBits::_16 => "@bits16".to_string(),
-            IntBits::_32 => "".to_string(),
-            IntBits::_64 => "@bits64".to_string(),
-        },
-        ColumnTypeSpec::Float { bits } => match bits {
-            FloatBits::_24 => "@singlePrecision".to_string(),
-            FloatBits::_53 => "@doublePrecision".to_string(),
-        },
-        ColumnTypeSpec::Numeric { precision, scale } => {
-            let precision_part = precision.map(|p| format!("@precision({p})"));
-            let scale_part = scale.map(|s| format!("@scale({s})"));
-            match (precision_part, scale_part) {
-                (Some(precision), Some(scale)) => format!("{precision} {scale}"),
-                (Some(precision), None) => precision,
-                (None, Some(scale)) => scale,
-                (None, None) => "".to_string(),
+        ColumnTypeSpec::Direct(physical_type) => match physical_type {
+            PhysicalColumnType::Int { bits } => match bits {
+                IntBits::_16 => "@bits16".to_string(),
+                IntBits::_32 => "".to_string(),
+                IntBits::_64 => "@bits64".to_string(),
+            },
+            PhysicalColumnType::Float { bits } => match bits {
+                FloatBits::_24 => "@singlePrecision".to_string(),
+                FloatBits::_53 => "@doublePrecision".to_string(),
+            },
+            PhysicalColumnType::Numeric { precision, scale } => {
+                let precision_part = precision.map(|p| format!("@precision({p})"));
+                let scale_part = scale.map(|s| format!("@scale({s})"));
+                match (precision_part, scale_part) {
+                    (Some(precision), Some(scale)) => format!("{precision} {scale}"),
+                    (Some(precision), None) => precision,
+                    (None, Some(scale)) => scale,
+                    (None, None) => "".to_string(),
+                }
             }
-        }
-        ColumnTypeSpec::String {
-            max_length: Some(max_length),
-        } => format!("@maxLength({max_length})"),
-        ColumnTypeSpec::String { max_length: None } => "".to_string(),
-        ColumnTypeSpec::Timestamp {
-            precision: Some(precision),
-            ..
-        } => format!("@precision({precision})"),
-        ColumnTypeSpec::Timestamp {
-            precision: None, ..
-        } => "".to_string(),
-        ColumnTypeSpec::Time {
-            precision: Some(precision),
-            ..
-        } => format!("@precision({precision})"),
-        ColumnTypeSpec::Vector { size } => format!("@size({size})"),
+            PhysicalColumnType::String {
+                max_length: Some(max_length),
+            } => format!("@maxLength({max_length})"),
+            PhysicalColumnType::String { max_length: None } => "".to_string(),
+            PhysicalColumnType::Timestamp {
+                precision: Some(precision),
+                ..
+            } => format!("@precision({precision})"),
+            PhysicalColumnType::Timestamp {
+                precision: None, ..
+            } => "".to_string(),
+            PhysicalColumnType::Time {
+                precision: Some(precision),
+                ..
+            } => format!("@precision({precision})"),
+            PhysicalColumnType::Vector { size } => format!("@size({size})"),
+            _ => "".to_string(),
+        },
         _ => "".to_string(),
     }
 }

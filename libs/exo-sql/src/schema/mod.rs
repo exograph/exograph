@@ -21,4 +21,4 @@ pub mod test_helper;
 pub mod trigger_spec;
 
 mod constraint;
-mod statement;
+pub mod statement;

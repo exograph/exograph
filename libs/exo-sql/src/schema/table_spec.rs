@@ -12,7 +12,7 @@ use std::collections::{HashMap, HashSet};
 use crate::database_error::DatabaseError;
 use crate::schema::constraint::ForeignKeyConstraintColumnPair;
 use crate::sql::connect::database_client::DatabaseClient;
-use crate::{PhysicalTable, SchemaObjectName};
+use crate::{PhysicalColumnType, PhysicalTable, SchemaObjectName};
 
 use super::column_spec::{ColumnAttribute, ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec};
 use super::constraint::{Constraints, sorted_comma_list};
@@ -122,10 +122,10 @@ impl TableSpec {
                     column_type_mapping.insert(
                         self_column.clone(),
                         (
-                            ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
+                            ColumnTypeSpec::Reference(ColumnReferenceSpec {
                                 foreign_table_name: foreign_constraint.foreign_table.clone(),
                                 foreign_pk_column_name: foreign_column.clone(),
-                                foreign_pk_type: Box::new(spec.typ),
+                                foreign_pk_type: Box::new(spec.typ.to_database_type()),
                             }),
                             spec.group_name.clone(),
                         ),
@@ -254,11 +254,14 @@ impl TableSpec {
         let mut required_extensions = HashSet::new();
 
         for col_spec in self.columns.iter() {
-            if let ColumnTypeSpec::Uuid = col_spec.typ {
-                required_extensions.insert("pgcrypto".to_string());
-            }
-            if let ColumnTypeSpec::Vector { .. } = col_spec.typ {
-                required_extensions.insert("vector".to_string());
+            match &col_spec.typ {
+                ColumnTypeSpec::Direct(PhysicalColumnType::Uuid) => {
+                    required_extensions.insert("pgcrypto".to_string());
+                }
+                ColumnTypeSpec::Direct(PhysicalColumnType::Vector { .. }) => {
+                    required_extensions.insert("vector".to_string());
+                }
+                _ => {}
             }
         }
 
@@ -533,7 +536,7 @@ impl TableSpec {
             HashMap::new();
 
         for column in self.columns.iter() {
-            if let ColumnTypeSpec::ColumnReference(column_reference) = &column.typ {
+            if let ColumnTypeSpec::Reference(column_reference) = &column.typ {
                 let group_name = column
                     .group_name
                     .clone()

@@ -11,6 +11,7 @@ use crate::{
     Database, ManyToOneId, OneToManyId, SchemaObjectName, TableId,
     database_error::DatabaseError,
     schema::column_spec::{ColumnAutoincrement, ColumnDefault},
+    schema::statement::SchemaStatement,
 };
 
 use super::{ExpressionBuilder, SQLBuilder};
@@ -239,6 +240,7 @@ impl PhysicalColumnType {
                 "TEXT" => PhysicalColumnType::String { max_length: None },
                 "BOOLEAN" => PhysicalColumnType::Boolean,
                 "JSONB" => PhysicalColumnType::Json,
+                "BYTEA" => PhysicalColumnType::Blob,
                 s => {
                     // parse types with arguments
                     // TODO: more robust parsing
@@ -270,19 +272,36 @@ impl PhysicalColumnType {
                     } else if s.starts_with("DATE") {
                         PhysicalColumnType::Date
                     } else if s.starts_with("NUMERIC") {
-                        let regex =
-                            Regex::new("NUMERIC\\((?P<precision>\\d+),?(?P<scale>\\d+)?\\)")
-                                .map_err(|_| {
-                                    DatabaseError::Validation("Invalid numeric column spec".into())
-                                })?;
-                        let captures = regex.captures(s).unwrap();
+                        if s == "NUMERIC" {
+                            // NUMERIC without precision/scale parameters
+                            PhysicalColumnType::Numeric {
+                                precision: None,
+                                scale: None,
+                            }
+                        } else {
+                            // NUMERIC with precision/scale parameters
+                            let regex =
+                                Regex::new("NUMERIC\\((?P<precision>\\d+),?(?P<scale>\\d+)?\\)")
+                                    .map_err(|_| {
+                                        DatabaseError::Validation(
+                                            "Invalid numeric column spec".into(),
+                                        )
+                                    })?;
+                            let captures = regex.captures(s).ok_or_else(|| {
+                                DatabaseError::Validation(format!(
+                                    "Invalid numeric column spec: {}",
+                                    s
+                                ))
+                            })?;
 
-                        let precision = captures
-                            .name("precision")
-                            .and_then(|s| s.as_str().parse().ok());
-                        let scale = captures.name("scale").and_then(|s| s.as_str().parse().ok());
+                            let precision = captures
+                                .name("precision")
+                                .and_then(|s| s.as_str().parse().ok());
+                            let scale =
+                                captures.name("scale").and_then(|s| s.as_str().parse().ok());
 
-                        PhysicalColumnType::Numeric { precision, scale }
+                            PhysicalColumnType::Numeric { precision, scale }
+                        }
                     } else {
                         return Err(DatabaseError::Validation(format!("unknown type {s}")));
                     }
@@ -326,6 +345,172 @@ impl PhysicalColumnType {
             PhysicalColumnType::Numeric { .. } => Type::NUMERIC,
             PhysicalColumnType::Vector { .. } => Type::FLOAT4_ARRAY,
             PhysicalColumnType::Enum { .. } => Type::TEXT,
+        }
+    }
+
+    pub fn to_sql(&self, default_value: Option<&ColumnDefault>) -> SchemaStatement {
+        use std::fmt::Write;
+
+        match self {
+            Self::Int { bits } => SchemaStatement {
+                statement: {
+                    if matches!(
+                        default_value,
+                        Some(ColumnDefault::Autoincrement(ColumnAutoincrement::Serial))
+                    ) {
+                        match bits {
+                            IntBits::_16 => "SMALLSERIAL",
+                            IntBits::_32 => "SERIAL",
+                            IntBits::_64 => "BIGSERIAL",
+                        }
+                    } else {
+                        match bits {
+                            IntBits::_16 => "SMALLINT",
+                            IntBits::_32 => "INT",
+                            IntBits::_64 => "BIGINT",
+                        }
+                    }
+                }
+                .to_owned(),
+                pre_statements: vec![],
+                post_statements: vec![],
+            },
+
+            Self::Float { bits } => SchemaStatement {
+                statement: match bits {
+                    FloatBits::_24 => "REAL",
+                    FloatBits::_53 => "DOUBLE PRECISION",
+                }
+                .to_owned(),
+                pre_statements: vec![],
+                post_statements: vec![],
+            },
+
+            Self::Numeric { precision, scale } => SchemaStatement {
+                statement: {
+                    if let Some(p) = precision {
+                        if let Some(s) = scale {
+                            format!("NUMERIC({p}, {s})")
+                        } else {
+                            format!("NUMERIC({p})")
+                        }
+                    } else {
+                        assert!(scale.is_none()); // can't have a scale and no precision
+                        "NUMERIC".to_owned()
+                    }
+                },
+                pre_statements: vec![],
+                post_statements: vec![],
+            },
+
+            Self::String { max_length } => SchemaStatement {
+                statement: if let Some(max_length) = max_length {
+                    format!("VARCHAR({max_length})")
+                } else {
+                    "TEXT".to_owned()
+                },
+                pre_statements: vec![],
+                post_statements: vec![],
+            },
+
+            Self::Boolean => SchemaStatement {
+                statement: "BOOLEAN".to_owned(),
+                pre_statements: vec![],
+                post_statements: vec![],
+            },
+
+            Self::Timestamp {
+                timezone,
+                precision,
+            } => SchemaStatement {
+                statement: {
+                    let timezone_option = if *timezone {
+                        "WITH TIME ZONE"
+                    } else {
+                        "WITHOUT TIME ZONE"
+                    };
+                    let precision_option = if let Some(p) = precision {
+                        format!("({p})")
+                    } else {
+                        String::default()
+                    };
+
+                    // e.g. "TIMESTAMP(3) WITH TIME ZONE"
+                    format!("TIMESTAMP{precision_option} {timezone_option}")
+                },
+                pre_statements: vec![],
+                post_statements: vec![],
+            },
+
+            Self::Time { precision } => SchemaStatement {
+                statement: if let Some(p) = precision {
+                    format!("TIME({p})")
+                } else {
+                    "TIME".to_owned()
+                },
+                pre_statements: vec![],
+                post_statements: vec![],
+            },
+
+            Self::Date => SchemaStatement {
+                statement: "DATE".to_owned(),
+                pre_statements: vec![],
+                post_statements: vec![],
+            },
+
+            Self::Json => SchemaStatement {
+                statement: "JSONB".to_owned(),
+                pre_statements: vec![],
+                post_statements: vec![],
+            },
+
+            Self::Blob => SchemaStatement {
+                statement: "BYTEA".to_owned(),
+                pre_statements: vec![],
+                post_statements: vec![],
+            },
+
+            Self::Uuid => SchemaStatement {
+                statement: "uuid".to_owned(),
+                pre_statements: vec![],
+                post_statements: vec![],
+            },
+
+            Self::Vector { size, .. } => SchemaStatement {
+                statement: format!("Vector({size})"),
+                pre_statements: vec![],
+                post_statements: vec![],
+            },
+
+            Self::Array { typ } => {
+                // 'unwrap' nested arrays all the way to the underlying primitive type
+
+                let mut underlying_typ = typ;
+                let mut dimensions = 1;
+
+                while let Self::Array { typ } = &**underlying_typ {
+                    underlying_typ = typ;
+                    dimensions += 1;
+                }
+
+                // build dimensions
+
+                let mut dimensions_part = String::new();
+
+                for _ in 0..dimensions {
+                    write!(&mut dimensions_part, "[]").unwrap();
+                }
+
+                let mut sql_statement = underlying_typ.to_sql(default_value);
+                sql_statement.statement += &dimensions_part;
+                sql_statement
+            }
+
+            Self::Enum { enum_name } => SchemaStatement {
+                statement: enum_name.sql_name(),
+                pre_statements: vec![],
+                post_statements: vec![],
+            },
         }
     }
 }
