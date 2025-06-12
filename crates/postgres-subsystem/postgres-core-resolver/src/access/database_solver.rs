@@ -25,7 +25,9 @@ use core_resolver::access_solver::{
     AccessInput, AccessPredicate, AccessSolution, AccessSolver, AccessSolverError, eq_values,
     neq_values, reduce_common_primitive_expression,
 };
-use exo_sql::{AbstractPredicate, ColumnPath, PhysicalColumnPath, SQLParamContainer};
+use exo_sql::{
+    AbstractPredicate, ColumnPath, PhysicalColumnPath, PhysicalColumnTypeExt, SQLParamContainer,
+};
 use postgres_core_model::{
     access::DatabaseAccessPrimitiveExpression, subsystem::PostgresCoreSubsystem,
 };
@@ -156,8 +158,12 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                     let physical_column = column.leaf_column().get_column(&self.database);
 
                     Ok(AccessSolution::Solved(column_predicate(
-                        cast::literal_column_path(&value, &physical_column.typ, op.needs_unnest())
-                            .map_err(|_| AccessSolverError::Generic("Invalid literal".into()))?,
+                        cast::literal_column_path(
+                            &value,
+                            physical_column.typ.inner(),
+                            op.needs_unnest(),
+                        )
+                        .map_err(|_| AccessSolverError::Generic("Invalid literal".into()))?,
                         to_column_path(&column),
                     )))
                 }
@@ -168,13 +174,14 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                 ) => {
                     let physical_column = column.leaf_column().get_column(&self.database);
 
-                    let literal_column_path =
-                        cast::literal_column_path(&value, &physical_column.typ, op.needs_unnest())
-                            .map_err(|e| {
-                                AccessSolverError::Generic(
-                                    format!("Invalid literal: {:?}", e).into(),
-                                )
-                            })?;
+                    let literal_column_path = cast::literal_column_path(
+                        &value,
+                        physical_column.typ.inner(),
+                        op.needs_unnest(),
+                    )
+                    .map_err(|e| {
+                        AccessSolverError::Generic(format!("Invalid literal: {:?}", e).into())
+                    })?;
 
                     Ok(AccessSolution::Solved(column_predicate(
                         to_column_path(&column),

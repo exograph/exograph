@@ -23,7 +23,8 @@ use core_resolver::access_solver::{
     neq_values, reduce_common_primitive_expression,
 };
 use exo_sql::{
-    AbstractPredicate, ColumnPath, ColumnPathLink, Database, PhysicalColumnPath, PhysicalColumnType,
+    AbstractPredicate, BooleanColumnType, ColumnPath, ColumnPathLink, Database, PhysicalColumnPath,
+    PhysicalColumnType, PhysicalColumnTypeExt,
 };
 use maybe_owned::MaybeOwned;
 use postgres_core_model::subsystem::PostgresCoreSubsystem;
@@ -625,8 +626,8 @@ fn process_predicate_common_expr(
         }
         _ => {
             let predicate_column_path = ColumnPath::Predicate(Box::new(predicate.clone()));
-            let value_column_path =
-                literal_column_path(&value, &PhysicalColumnType::Boolean, false).unwrap();
+            let boolean_type = BooleanColumnType;
+            let value_column_path = literal_column_path(&value, &boolean_type, false).unwrap();
 
             Ok(AccessSolution::Solved(AbstractPredicateWrapper(
                 if commute {
@@ -753,8 +754,12 @@ async fn compute_relational_predicate(
 fn column_type<'a>(
     physical_column_path: &PhysicalColumnPath,
     database: &'a Database,
-) -> &'a PhysicalColumnType {
-    &physical_column_path.leaf_column().get_column(database).typ
+) -> &'a dyn PhysicalColumnType {
+    physical_column_path
+        .leaf_column()
+        .get_column(database)
+        .typ
+        .inner()
 }
 
 async fn resolve_value<'a>(

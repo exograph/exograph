@@ -11,7 +11,12 @@ use std::collections::HashMap;
 
 use crate::database_error::DatabaseError;
 use crate::sql::connect::database_client::DatabaseClient;
-use crate::{Database, IntBits, ManyToOne, PhysicalColumn, PhysicalColumnType, SchemaObjectName};
+use crate::sql::physical_column_type::{
+    ArrayColumnType, BooleanColumnType, DateColumnType, EnumColumnType, IntBits, IntColumnType,
+    PhysicalColumnType, PhysicalColumnTypeExt, StringColumnType, TimestampColumnType,
+    VectorColumnType,
+};
+use crate::{Database, ManyToOne, PhysicalColumn, SchemaObjectName};
 
 use super::enum_spec::EnumSpec;
 use super::issue::{Issue, WithIssues};
@@ -58,8 +63,8 @@ impl ColumnDefault {
         db_type: Option<ColumnTypeSpec>,
     ) -> Result<ColumnDefault, DatabaseError> {
         match db_type {
-            Some(ColumnTypeSpec::Direct(physical_type)) => match physical_type {
-                PhysicalColumnType::String { .. } => {
+            Some(ColumnTypeSpec::Direct(physical_type)) => {
+                if physical_type.is::<StringColumnType>() {
                     // The default value from the database is a string with a type cast to text.
                     if default_value.ends_with(TEXT_TYPE_CAST_PREFIX) {
                         let text_value = default_value
@@ -77,8 +82,7 @@ impl ColumnDefault {
                             default_value
                         )))
                     }
-                }
-                PhysicalColumnType::Timestamp { .. } => {
+                } else if physical_type.is::<TimestampColumnType>() {
                     if default_value == CURRENT_TIMESTAMP_VALUE || default_value == NOW_VALUE {
                         Ok(ColumnDefault::CurrentTimestamp)
                     } else {
@@ -87,8 +91,7 @@ impl ColumnDefault {
                             default_value
                         )))
                     }
-                }
-                PhysicalColumnType::Date => {
+                } else if physical_type.is::<DateColumnType>() {
                     if default_value == CURRENT_DATE_VALUE || default_value == NOW_VALUE {
                         Ok(ColumnDefault::CurrentDate)
                     } else {
@@ -97,8 +100,7 @@ impl ColumnDefault {
                             default_value
                         )))
                     }
-                }
-                PhysicalColumnType::Uuid => {
+                } else if physical_type.is::<crate::sql::physical_column_type::UuidColumnType>() {
                     if default_value == "gen_random_uuid()" {
                         Ok(ColumnDefault::Uuid)
                     } else {
@@ -107,29 +109,34 @@ impl ColumnDefault {
                             default_value
                         )))
                     }
-                }
-                PhysicalColumnType::Int { .. } | PhysicalColumnType::Float { .. } => {
+                } else if physical_type.is::<IntColumnType>()
+                    || physical_type.is::<crate::sql::physical_column_type::FloatColumnType>()
+                {
                     match default_value.parse() {
                         Ok(value) => Ok(ColumnDefault::Number(value)),
                         Err(_) => Ok(ColumnDefault::Function(default_value)),
                     }
-                }
-                PhysicalColumnType::Boolean => Ok(ColumnDefault::Boolean(default_value == "true")),
-                PhysicalColumnType::Enum { enum_name } => {
+                } else if physical_type.is::<BooleanColumnType>() {
+                    Ok(ColumnDefault::Boolean(default_value == "true"))
+                } else if let Some(enum_type) =
+                    physical_type.as_any().downcast_ref::<EnumColumnType>()
+                {
+                    let enum_name = &enum_type.enum_name;
                     // Remove the type cast from the default value
-                    let enum_name = match &enum_name.schema {
+                    let enum_name_str = match &enum_name.schema {
                         Some(schema) => format!("{}.{}", schema, enum_name.name),
                         None => enum_name.name.clone(),
                     };
                     let default_value = default_value
                         .strip_prefix("'")
-                        .and_then(|s| s.strip_suffix(format!("'::{}", enum_name).as_str()))
+                        .and_then(|s| s.strip_suffix(format!("'::{}", enum_name_str).as_str()))
                         .unwrap_or(&default_value);
 
                     Ok(ColumnDefault::Enum(default_value.to_string()))
+                } else {
+                    Ok(ColumnDefault::Function(default_value))
                 }
-                _ => Ok(ColumnDefault::Function(default_value)),
-            },
+            }
             Some(ColumnTypeSpec::Reference(_)) | None => Ok(ColumnDefault::Function(default_value)),
         }
     }
@@ -183,18 +190,40 @@ impl ColumnDefault {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct ColumnReferenceSpec {
     pub foreign_table_name: SchemaObjectName,
     pub foreign_pk_column_name: String,
-    pub foreign_pk_type: Box<PhysicalColumnType>,
+    pub foreign_pk_type: Box<dyn PhysicalColumnType>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+impl PartialEq for ColumnReferenceSpec {
+    fn eq(&self, other: &Self) -> bool {
+        self.foreign_table_name == other.foreign_table_name
+            && self.foreign_pk_column_name == other.foreign_pk_column_name
+            && self.foreign_pk_type.equals(other.foreign_pk_type.as_ref())
+    }
+}
+
+impl Eq for ColumnReferenceSpec {}
+
+#[derive(Debug, Clone)]
 pub enum ColumnTypeSpec {
-    Direct(PhysicalColumnType),
+    Direct(Box<dyn PhysicalColumnType>),
     Reference(ColumnReferenceSpec),
 }
+
+impl PartialEq for ColumnTypeSpec {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (ColumnTypeSpec::Direct(a), ColumnTypeSpec::Direct(b)) => a.equals(b.as_ref()),
+            (ColumnTypeSpec::Reference(a), ColumnTypeSpec::Reference(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for ColumnTypeSpec {}
 
 const COLUMNS_TYPE_QUERY: &str = "
   SELECT pg_class.relname as table_name, attname as column_name, format_type(atttypid, atttypmod), attndims, attnotnull FROM pg_attribute 
@@ -433,7 +462,7 @@ impl ColumnSpec {
                     ColumnTypeSpec::Reference(ColumnReferenceSpec {
                         foreign_table_name: foreign_table.name.clone(),
                         foreign_pk_column_name: foreign_pk_column.name.clone(),
-                        foreign_pk_type: Box::new(foreign_pk_column.typ.clone()),
+                        foreign_pk_type: foreign_pk_column.typ.clone(),
                     })
                 }
                 None => ColumnTypeSpec::from_physical(column.typ),
@@ -456,11 +485,11 @@ impl ColumnSpec {
             (ColumnTypeSpec::Reference { .. }, ColumnTypeSpec::Reference { .. }) => {
                 (self.typ != new.typ) && {
                     Self {
-                        typ: ColumnTypeSpec::Direct(PhysicalColumnType::Int { bits: IntBits::_16 }),
+                        typ: ColumnTypeSpec::Direct(Box::new(IntColumnType { bits: IntBits::_16 })),
                         group_name: None,
                         ..self.clone()
                     } == Self {
-                        typ: ColumnTypeSpec::Direct(PhysicalColumnType::Int { bits: IntBits::_16 }),
+                        typ: ColumnTypeSpec::Direct(Box::new(IntColumnType { bits: IntBits::_16 })),
                         group_name: None,
                         ..new.clone()
                     }
@@ -662,7 +691,7 @@ impl ColumnTypeSpec {
         let vector_re = Regex::new(r"VECTOR\((\d+)\)").unwrap();
         if let Some(captures) = vector_re.captures(&s_upper) {
             let size = captures.get(1).unwrap().as_str().parse().unwrap();
-            return Ok(ColumnTypeSpec::Direct(PhysicalColumnType::Vector { size }));
+            return Ok(ColumnTypeSpec::Direct(Box::new(VectorColumnType { size })));
         }
 
         // Check for array types
@@ -691,13 +720,10 @@ impl ColumnTypeSpec {
                 let base_spec = ColumnTypeSpec::from_string(db_type, enums)?;
                 let base_physical = base_spec.to_database_type();
 
-                let mut array_type = PhysicalColumnType::Array {
-                    typ: Box::new(base_physical),
-                };
+                let mut array_type: Box<dyn PhysicalColumnType> =
+                    Box::new(ArrayColumnType { typ: base_physical });
                 for _ in 0..count - 1 {
-                    array_type = PhysicalColumnType::Array {
-                        typ: Box::new(array_type),
-                    };
+                    array_type = Box::new(ArrayColumnType { typ: array_type });
                 }
                 Ok(ColumnTypeSpec::Direct(array_type))
             }
@@ -712,23 +738,24 @@ impl ColumnTypeSpec {
                 });
 
                 if let Some(enum_type) = enum_type {
-                    Ok(ColumnTypeSpec::Direct(PhysicalColumnType::Enum {
+                    Ok(ColumnTypeSpec::Direct(Box::new(EnumColumnType {
                         enum_name: enum_type.name.clone(),
-                    }))
+                    })))
                 } else {
                     // Try to parse as a regular PhysicalColumnType
-                    PhysicalColumnType::from_string(s).map(ColumnTypeSpec::Direct)
+                    crate::sql::physical_column_type::physical_column_type_from_string_boxed(s)
+                        .map(ColumnTypeSpec::Direct)
                 }
             }
         }
     }
 
-    pub fn to_database_type(&self) -> PhysicalColumnType {
+    pub fn to_database_type(&self) -> Box<dyn PhysicalColumnType> {
         match self {
             ColumnTypeSpec::Direct(physical_type) => physical_type.clone(),
             ColumnTypeSpec::Reference(ColumnReferenceSpec {
                 foreign_pk_type, ..
-            }) => (**foreign_pk_type).clone(),
+            }) => foreign_pk_type.clone(),
         }
     }
 
@@ -741,7 +768,7 @@ impl ColumnTypeSpec {
         }
     }
 
-    pub fn from_physical(typ: PhysicalColumnType) -> ColumnTypeSpec {
+    pub fn from_physical(typ: Box<dyn PhysicalColumnType>) -> ColumnTypeSpec {
         ColumnTypeSpec::Direct(typ)
     }
 }

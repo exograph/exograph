@@ -10,8 +10,8 @@
 use crate::{Column, Database};
 
 use super::{
-    ExpressionBuilder, SQLBuilder,
-    physical_column::{PhysicalColumn, PhysicalColumnType},
+    ExpressionBuilder, SQLBuilder, physical_column::PhysicalColumn,
+    physical_column_type::PhysicalColumnTypeExt,
 };
 
 /// A JSON object corresponding to the Postgres' `json_build_object` function.
@@ -52,23 +52,23 @@ impl ExpressionBuilder for JsonObjectElement {
 
         if let Column::Physical { column_id, .. } = self.value {
             let PhysicalColumn { typ, .. } = column_id.get_column(database);
-            match &typ {
+            match typ.inner().as_any() {
                 // encode blob fields in JSON objects as base64
                 // PostgreSQL inserts newlines into encoded base64 every 76 characters when in aligned mode
                 // need to filter out using translate(...) function
-                PhysicalColumnType::Blob => {
+                x if x.is::<crate::sql::physical_column_type::BlobColumnType>() => {
                     builder.push_str("translate(encode(");
                     self.value.build(database, builder);
                     builder.push_str(", \'base64\'), E'\\n', '')");
                 }
 
                 // numerics must be outputted as text to avoid any loss in precision
-                PhysicalColumnType::Numeric { .. } => {
+                x if x.is::<crate::sql::physical_column_type::NumericColumnType>() => {
                     self.value.build(database, builder);
                     builder.push_str("::text");
                 }
 
-                PhysicalColumnType::Vector { .. } => {
+                x if x.is::<crate::sql::physical_column_type::VectorColumnType>() => {
                     self.value.build(database, builder);
                     builder.push_str("::real[]");
                 }

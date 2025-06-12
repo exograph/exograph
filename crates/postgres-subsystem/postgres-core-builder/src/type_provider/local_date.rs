@@ -1,15 +1,15 @@
 use codemap_diagnostic::Diagnostic;
 use core_model::primitive_type::{self, PrimitiveBaseType};
 use core_model_builder::{ast::ast_types::AstField, typechecker::Typed};
-use exo_sql::PhysicalColumnType;
+use exo_sql::{DateColumnType, PhysicalColumnType};
 use postgres_core_model::aggregate::ScalarAggregateFieldKind;
 
 use super::PrimitiveTypeProvider;
 use crate::resolved_type::{ResolvedField, SerializableTypeHint};
 
 impl PrimitiveTypeProvider for primitive_type::LocalDateType {
-    fn determine_column_type(&self, _field: &ResolvedField) -> PhysicalColumnType {
-        PhysicalColumnType::Date
+    fn determine_column_type(&self, _field: &ResolvedField) -> Box<dyn PhysicalColumnType> {
+        Box::new(DateColumnType)
     }
 
     fn compute_type_hint(

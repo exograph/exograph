@@ -18,7 +18,7 @@ use tokio_postgres::types::{ToSql, Type, to_sql_checked};
 
 use crate::{SQLBytes, SQLParam, SchemaObjectName};
 
-use super::{SQLValue, physical_column::to_pg_array_type, sql_param::SQLParamWithType};
+use super::{SQLValue, physical_column_type::to_pg_array_type, sql_param::SQLParamWithType};
 
 #[derive(Clone)]
 pub struct SQLParamContainer(SQLParamWithType);

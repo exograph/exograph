@@ -3748,12 +3748,14 @@ version = "0.17.0"
 name = "exo-sql"
 version = "0.17.0"
 dependencies = [
+ "bincode",
  "bytes",
  "chrono",
  "ctor",
  "deadpool-postgres",
  "exo-sql",
  "futures",
+ "indexmap 2.9.0",
  "lazy_static",
  "maybe-owned",
  "multiplatform_test",

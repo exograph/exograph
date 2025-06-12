@@ -3,7 +3,10 @@ use anyhow::Result;
 use exo_sql::schema::column_spec::{ColumnSpec, ColumnTypeSpec};
 
 use exo_sql::schema::table_spec::TableSpec;
-use exo_sql::{FloatBits, IntBits, PhysicalColumnType};
+use exo_sql::{
+    FloatBits, FloatColumnType, IntBits, IntColumnType, NumericColumnType, PhysicalColumnTypeExt,
+    StringColumnType, TimeColumnType, TimestampColumnType, VectorColumnType,
+};
 
 use super::{ImportContext, ModelProcessor};
 
@@ -98,44 +101,63 @@ pub enum ColumnTypeName {
 
 fn type_annotation(column_type: &ColumnTypeSpec) -> String {
     match column_type {
-        ColumnTypeSpec::Direct(physical_type) => match physical_type {
-            PhysicalColumnType::Int { bits } => match bits {
-                IntBits::_16 => "@bits16".to_string(),
-                IntBits::_32 => "".to_string(),
-                IntBits::_64 => "@bits64".to_string(),
-            },
-            PhysicalColumnType::Float { bits } => match bits {
-                FloatBits::_24 => "@singlePrecision".to_string(),
-                FloatBits::_53 => "@doublePrecision".to_string(),
-            },
-            PhysicalColumnType::Numeric { precision, scale } => {
-                let precision_part = precision.map(|p| format!("@precision({p})"));
-                let scale_part = scale.map(|s| format!("@scale({s})"));
-                match (precision_part, scale_part) {
-                    (Some(precision), Some(scale)) => format!("{precision} {scale}"),
-                    (Some(precision), None) => precision,
-                    (None, Some(scale)) => scale,
-                    (None, None) => "".to_string(),
+        ColumnTypeSpec::Direct(physical_type) => {
+            let inner_type = physical_type.inner();
+            match inner_type {
+                x if x.as_any().is::<IntColumnType>() => {
+                    let int_type = x.as_any().downcast_ref::<IntColumnType>().unwrap();
+                    match int_type.bits {
+                        IntBits::_16 => "@bits16".to_string(),
+                        IntBits::_32 => "".to_string(),
+                        IntBits::_64 => "@bits64".to_string(),
+                    }
                 }
+                x if x.as_any().is::<FloatColumnType>() => {
+                    let float_type = x.as_any().downcast_ref::<FloatColumnType>().unwrap();
+                    match float_type.bits {
+                        FloatBits::_24 => "@singlePrecision".to_string(),
+                        FloatBits::_53 => "@doublePrecision".to_string(),
+                    }
+                }
+                x if x.as_any().is::<NumericColumnType>() => {
+                    let numeric_type = x.as_any().downcast_ref::<NumericColumnType>().unwrap();
+                    let precision_part = numeric_type.precision.map(|p| format!("@precision({p})"));
+                    let scale_part = numeric_type.scale.map(|s| format!("@scale({s})"));
+                    match (precision_part, scale_part) {
+                        (Some(precision), Some(scale)) => format!("{precision} {scale}"),
+                        (Some(precision), None) => precision,
+                        (None, Some(scale)) => scale,
+                        (None, None) => "".to_string(),
+                    }
+                }
+                x if x.as_any().is::<StringColumnType>() => {
+                    let string_type = x.as_any().downcast_ref::<StringColumnType>().unwrap();
+                    match string_type.max_length {
+                        Some(max_length) => format!("@maxLength({max_length})"),
+                        None => "".to_string(),
+                    }
+                }
+                x if x.as_any().is::<TimestampColumnType>() => {
+                    let timestamp_type = x.as_any().downcast_ref::<TimestampColumnType>().unwrap();
+                    match timestamp_type.precision {
+                        Some(precision) => format!("@precision({precision})"),
+                        None => "".to_string(),
+                    }
+                }
+                x if x.as_any().is::<TimeColumnType>() => {
+                    let time_type = x.as_any().downcast_ref::<TimeColumnType>().unwrap();
+                    match time_type.precision {
+                        Some(precision) => format!("@precision({precision})"),
+                        None => "".to_string(),
+                    }
+                }
+                x if x.as_any().is::<VectorColumnType>() => {
+                    let vector_type = x.as_any().downcast_ref::<VectorColumnType>().unwrap();
+                    format!("@size({})", vector_type.size)
+                }
+                _ => "".to_string(),
             }
-            PhysicalColumnType::String {
-                max_length: Some(max_length),
-            } => format!("@maxLength({max_length})"),
-            PhysicalColumnType::String { max_length: None } => "".to_string(),
-            PhysicalColumnType::Timestamp {
-                precision: Some(precision),
-                ..
-            } => format!("@precision({precision})"),
-            PhysicalColumnType::Timestamp {
-                precision: None, ..
-            } => "".to_string(),
-            PhysicalColumnType::Time {
-                precision: Some(precision),
-                ..
-            } => format!("@precision({precision})"),
-            PhysicalColumnType::Vector { size } => format!("@size({size})"),
-            _ => "".to_string(),
-        },
+        }
         _ => "".to_string(),
     }
 }

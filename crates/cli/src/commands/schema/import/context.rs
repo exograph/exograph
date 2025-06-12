@@ -1,7 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
 use exo_sql::{
-    PhysicalColumnType, SchemaObjectName,
+    ArrayColumnType, BlobColumnType, BooleanColumnType, DateColumnType, EnumColumnType,
+    FloatColumnType, IntColumnType, JsonColumnType, NumericColumnType, PhysicalColumnTypeExt,
+    SchemaObjectName, StringColumnType, TimeColumnType, TimestampColumnType, UuidColumnType,
+    VectorColumnType,
     schema::{
         column_spec::{ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec},
         database_spec::DatabaseSpec,
@@ -200,45 +203,73 @@ impl<'a> ImportContext<'a> {
 
     pub(super) fn type_name(&self, column_type: &ColumnTypeSpec) -> ColumnTypeName {
         match column_type {
-            ColumnTypeSpec::Direct(physical_type) => match physical_type {
-                PhysicalColumnType::Int { .. } => ColumnTypeName::SelfType("Int".to_string()),
-                PhysicalColumnType::Float { .. } => ColumnTypeName::SelfType("Float".to_string()),
-                PhysicalColumnType::Numeric { .. } => {
-                    ColumnTypeName::SelfType("Decimal".to_string())
-                }
-                PhysicalColumnType::String { .. } => ColumnTypeName::SelfType("String".to_string()),
-                PhysicalColumnType::Boolean => ColumnTypeName::SelfType("Boolean".to_string()),
-                PhysicalColumnType::Timestamp { timezone, .. } => ColumnTypeName::SelfType(
-                    if *timezone {
-                        "Instant"
-                    } else {
-                        "LocalDateTime"
+            ColumnTypeSpec::Direct(physical_type) => {
+                let inner_type = physical_type.inner();
+                match inner_type {
+                    x if x.as_any().is::<IntColumnType>() => {
+                        ColumnTypeName::SelfType("Int".to_string())
                     }
-                    .to_string(),
-                ),
-                PhysicalColumnType::Time { .. } => {
-                    ColumnTypeName::SelfType("LocalTime".to_string())
-                }
-                PhysicalColumnType::Date => ColumnTypeName::SelfType("LocalDate".to_string()),
-                PhysicalColumnType::Json => ColumnTypeName::SelfType("Json".to_string()),
-                PhysicalColumnType::Blob => ColumnTypeName::SelfType("Blob".to_string()),
-                PhysicalColumnType::Uuid => ColumnTypeName::SelfType("Uuid".to_string()),
-                PhysicalColumnType::Vector { .. } => ColumnTypeName::SelfType("Vector".to_string()),
-                PhysicalColumnType::Array { typ } => {
-                    let inner_spec = ColumnTypeSpec::Direct((**typ).clone());
-                    match self.type_name(&inner_spec) {
-                        ColumnTypeName::SelfType(data_type) => {
-                            ColumnTypeName::SelfType(format!("Array<{data_type}>"))
-                        }
-                        ColumnTypeName::ReferenceType(data_type) => {
-                            ColumnTypeName::ReferenceType(format!("Array<{data_type}>"))
+                    x if x.as_any().is::<FloatColumnType>() => {
+                        ColumnTypeName::SelfType("Float".to_string())
+                    }
+                    x if x.as_any().is::<NumericColumnType>() => {
+                        ColumnTypeName::SelfType("Decimal".to_string())
+                    }
+                    x if x.as_any().is::<StringColumnType>() => {
+                        ColumnTypeName::SelfType("String".to_string())
+                    }
+                    x if x.as_any().is::<BooleanColumnType>() => {
+                        ColumnTypeName::SelfType("Boolean".to_string())
+                    }
+                    x if x.as_any().is::<TimestampColumnType>() => {
+                        let timestamp_type =
+                            x.as_any().downcast_ref::<TimestampColumnType>().unwrap();
+                        ColumnTypeName::SelfType(
+                            if timestamp_type.timezone {
+                                "Instant"
+                            } else {
+                                "LocalDateTime"
+                            }
+                            .to_string(),
+                        )
+                    }
+                    x if x.as_any().is::<TimeColumnType>() => {
+                        ColumnTypeName::SelfType("LocalTime".to_string())
+                    }
+                    x if x.as_any().is::<DateColumnType>() => {
+                        ColumnTypeName::SelfType("LocalDate".to_string())
+                    }
+                    x if x.as_any().is::<JsonColumnType>() => {
+                        ColumnTypeName::SelfType("Json".to_string())
+                    }
+                    x if x.as_any().is::<BlobColumnType>() => {
+                        ColumnTypeName::SelfType("Blob".to_string())
+                    }
+                    x if x.as_any().is::<UuidColumnType>() => {
+                        ColumnTypeName::SelfType("Uuid".to_string())
+                    }
+                    x if x.as_any().is::<VectorColumnType>() => {
+                        ColumnTypeName::SelfType("Vector".to_string())
+                    }
+                    x if x.as_any().is::<ArrayColumnType>() => {
+                        let array_type = x.as_any().downcast_ref::<ArrayColumnType>().unwrap();
+                        let inner_spec = ColumnTypeSpec::Direct(array_type.typ.clone());
+                        match self.type_name(&inner_spec) {
+                            ColumnTypeName::SelfType(data_type) => {
+                                ColumnTypeName::SelfType(format!("Array<{data_type}>"))
+                            }
+                            ColumnTypeName::ReferenceType(data_type) => {
+                                ColumnTypeName::ReferenceType(format!("Array<{data_type}>"))
+                            }
                         }
                     }
+                    x if x.as_any().is::<EnumColumnType>() => {
+                        let enum_type = x.as_any().downcast_ref::<EnumColumnType>().unwrap();
+                        ColumnTypeName::SelfType(enum_type.enum_name.name.to_upper_camel_case())
+                    }
+                    _ => ColumnTypeName::SelfType("Unknown".to_string()),
                 }
-                PhysicalColumnType::Enum { enum_name } => {
-                    ColumnTypeName::SelfType(enum_name.name.to_upper_camel_case())
-                }
-            },
+            }
             ColumnTypeSpec::Reference(ColumnReferenceSpec {
                 foreign_table_name,
                 foreign_pk_type,
@@ -247,7 +278,9 @@ impl<'a> ImportContext<'a> {
                 let model_name = self.model_name(foreign_table_name);
                 match model_name {
                     Some(model_name) => ColumnTypeName::ReferenceType(model_name.to_string()),
-                    None => self.type_name(&ColumnTypeSpec::Direct((**foreign_pk_type).clone())),
+                    None => {
+                        self.type_name(&ColumnTypeSpec::Direct((**foreign_pk_type).clone_box()))
+                    }
                 }
             }
         }

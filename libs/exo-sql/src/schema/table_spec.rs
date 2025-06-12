@@ -12,7 +12,8 @@ use std::collections::{HashMap, HashSet};
 use crate::database_error::DatabaseError;
 use crate::schema::constraint::ForeignKeyConstraintColumnPair;
 use crate::sql::connect::database_client::DatabaseClient;
-use crate::{PhysicalColumnType, PhysicalTable, SchemaObjectName};
+use crate::sql::physical_column_type::PhysicalColumnTypeExt;
+use crate::{PhysicalTable, SchemaObjectName};
 
 use super::column_spec::{ColumnAttribute, ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec};
 use super::constraint::{Constraints, sorted_comma_list};
@@ -125,7 +126,7 @@ impl TableSpec {
                             ColumnTypeSpec::Reference(ColumnReferenceSpec {
                                 foreign_table_name: foreign_constraint.foreign_table.clone(),
                                 foreign_pk_column_name: foreign_column.clone(),
-                                foreign_pk_type: Box::new(spec.typ.to_database_type()),
+                                foreign_pk_type: spec.typ.to_database_type(),
                             }),
                             spec.group_name.clone(),
                         ),
@@ -255,10 +256,14 @@ impl TableSpec {
 
         for col_spec in self.columns.iter() {
             match &col_spec.typ {
-                ColumnTypeSpec::Direct(PhysicalColumnType::Uuid) => {
+                ColumnTypeSpec::Direct(col_type)
+                    if col_type.is::<crate::sql::physical_column_type::UuidColumnType>() =>
+                {
                     required_extensions.insert("pgcrypto".to_string());
                 }
-                ColumnTypeSpec::Direct(PhysicalColumnType::Vector { .. }) => {
+                ColumnTypeSpec::Direct(col_type)
+                    if col_type.is::<crate::sql::physical_column_type::VectorColumnType>() =>
+                {
                     required_extensions.insert("vector".to_string());
                 }
                 _ => {}

@@ -11,7 +11,7 @@ use core_model_builder::{
         annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
     },
 };
-use exo_sql::{IntBits, PhysicalColumnType};
+use exo_sql::{IntBits, IntColumnType, PhysicalColumnType};
 use postgres_core_model::aggregate::ScalarAggregateFieldKind;
 use serde::{Deserialize, Serialize};
 
@@ -43,7 +43,7 @@ impl TypeValidationProvider for IntTypeHint {
 }
 
 impl PrimitiveTypeProvider for primitive_type::IntType {
-    fn determine_column_type(&self, field: &ResolvedField) -> PhysicalColumnType {
+    fn determine_column_type(&self, field: &ResolvedField) -> Box<dyn PhysicalColumnType> {
         match &field.type_hint {
             Some(hint) => {
                 let hint_ref = hint.0.as_ref() as &dyn std::any::Any;
@@ -51,14 +51,14 @@ impl PrimitiveTypeProvider for primitive_type::IntType {
                 if let Some(int_hint) = hint_ref.downcast_ref::<IntTypeHint>() {
                     // determine the proper sized type to use
                     if let Some(bits) = int_hint.bits {
-                        PhysicalColumnType::Int {
+                        Box::new(IntColumnType {
                             bits: match bits {
                                 16 => IntBits::_16,
                                 32 => IntBits::_32,
                                 64 => IntBits::_64,
                                 _ => panic!("Invalid bits"),
                             },
-                        }
+                        })
                     } else if let Some(range) = &int_hint.range {
                         let is_superset = |bound_min: i64, bound_max: i64| {
                             let range_min = range.0;
@@ -73,27 +73,27 @@ impl PrimitiveTypeProvider for primitive_type::IntType {
 
                         // determine which SQL type is appropriate for this range
                         if is_superset(i16::MIN.into(), i16::MAX.into()) {
-                            PhysicalColumnType::Int { bits: IntBits::_16 }
+                            Box::new(IntColumnType { bits: IntBits::_16 })
                         } else if is_superset(i32::MIN.into(), i32::MAX.into()) {
-                            PhysicalColumnType::Int { bits: IntBits::_32 }
+                            Box::new(IntColumnType { bits: IntBits::_32 })
                         } else if is_superset(i64::MIN, i64::MAX) {
-                            PhysicalColumnType::Int { bits: IntBits::_64 }
+                            Box::new(IntColumnType { bits: IntBits::_64 })
                         } else {
                             // TODO: numeric type
                             panic!("Requested range is too big")
                         }
                     } else {
                         // no specific hints provided, go with default
-                        PhysicalColumnType::Int { bits: IntBits::_32 }
+                        Box::new(IntColumnType { bits: IntBits::_32 })
                     }
                 } else {
                     // no relevant hints provided, go with default
-                    PhysicalColumnType::Int { bits: IntBits::_32 }
+                    Box::new(IntColumnType { bits: IntBits::_32 })
                 }
             }
             None => {
                 // no hints provided, go with default
-                PhysicalColumnType::Int { bits: IntBits::_32 }
+                Box::new(IntColumnType { bits: IntBits::_32 })
             }
         }
     }
