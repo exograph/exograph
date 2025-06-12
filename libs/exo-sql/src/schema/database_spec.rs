@@ -160,7 +160,7 @@ impl DatabaseSpec {
                         .unwrap();
 
                     match &column_spec.typ {
-                        ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
+                        ColumnTypeSpec::Reference(ColumnReferenceSpec {
                             foreign_table_name,
                             foreign_pk_column_name,
                             ..
@@ -451,7 +451,7 @@ mod tests {
     use crate::schema::column_spec::{ColumnAutoincrement, ColumnDefault};
     use crate::testing::test_support::*;
 
-    use crate::IntBits;
+    use crate::{IntBits, PhysicalColumnType};
 
     use super::*;
 
@@ -473,7 +473,9 @@ mod tests {
                     vec![
                         ColumnSpec {
                             name: "id".into(),
-                            typ: ColumnTypeSpec::Int { bits: IntBits::_32 },
+                            typ: ColumnTypeSpec::Direct(PhysicalColumnType::Int {
+                                bits: IntBits::_32,
+                            }),
                             is_pk: true,
                             is_nullable: false,
                             unique_constraints: vec![],
@@ -484,9 +486,9 @@ mod tests {
                         },
                         ColumnSpec {
                             name: "name".into(),
-                            typ: ColumnTypeSpec::String {
+                            typ: ColumnTypeSpec::Direct(PhysicalColumnType::String {
                                 max_length: Some(255),
-                            },
+                            }),
                             is_pk: false,
                             is_nullable: true,
                             unique_constraints: vec![],
@@ -495,7 +497,9 @@ mod tests {
                         },
                         ColumnSpec {
                             name: "email".into(),
-                            typ: ColumnTypeSpec::String { max_length: None },
+                            typ: ColumnTypeSpec::Direct(PhysicalColumnType::String {
+                                max_length: None,
+                            }),
                             is_pk: false,
                             is_nullable: true,
                             unique_constraints: vec![],
@@ -526,7 +530,7 @@ mod tests {
                     },
                     vec![ColumnSpec {
                         name: "complete".into(),
-                        typ: ColumnTypeSpec::Boolean,
+                        typ: ColumnTypeSpec::Direct(PhysicalColumnType::Boolean),
                         is_pk: false,
                         is_nullable: true,
                         unique_constraints: vec![],
@@ -558,10 +562,10 @@ mod tests {
                     vec![
                         ColumnSpec {
                             name: "precision_and_scale".into(),
-                            typ: ColumnTypeSpec::Numeric {
+                            typ: ColumnTypeSpec::Direct(PhysicalColumnType::Numeric {
                                 precision: Some(10),
                                 scale: Some(2),
-                            },
+                            }),
                             is_pk: false,
                             is_nullable: true,
                             unique_constraints: vec![],
@@ -570,10 +574,10 @@ mod tests {
                         },
                         ColumnSpec {
                             name: "just_precision".into(),
-                            typ: ColumnTypeSpec::Numeric {
+                            typ: ColumnTypeSpec::Direct(PhysicalColumnType::Numeric {
                                 precision: Some(20),
                                 scale: Some(0), // Default scale for NUMERIC is 0 (https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-NUMERIC-DECIMAL)
-                            },
+                            }),
                             is_pk: false,
                             is_nullable: true,
                             unique_constraints: vec![],
@@ -582,10 +586,10 @@ mod tests {
                         },
                         ColumnSpec {
                             name: "no_precision_and_scale".into(),
-                            typ: ColumnTypeSpec::Numeric {
+                            typ: ColumnTypeSpec::Direct(PhysicalColumnType::Numeric {
                                 precision: None,
                                 scale: None,
-                            },
+                            }),
                             is_pk: false,
                             is_nullable: true,
                             unique_constraints: vec![],
