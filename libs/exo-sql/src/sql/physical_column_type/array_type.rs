@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use super::{PhysicalColumnType, to_pg_array_type};
+use super::{PhysicalColumnType, PhysicalColumnTypeSerializer, to_pg_array_type};
 use crate::schema::{column_spec::ColumnDefault, statement::SchemaStatement};
 use serde::Serialize;
 use std::any::Any;
@@ -40,12 +40,6 @@ impl PartialEq for ArrayColumnType {
 }
 
 impl Eq for ArrayColumnType {}
-
-impl std::hash::Hash for ArrayColumnType {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.typ.hash(state);
-    }
-}
 
 impl PhysicalColumnType for ArrayColumnType {
     fn type_string(&self) -> String {
@@ -93,11 +87,6 @@ impl PhysicalColumnType for ArrayColumnType {
     fn equals(&self, other: &dyn PhysicalColumnType) -> bool {
         other.as_any().downcast_ref::<Self>() == Some(self)
     }
-
-    fn hash_type(&self, state: &mut dyn std::hash::Hasher) {
-        state.write(self.type_name().as_bytes());
-        self.typ.hash_type(state);
-    }
 }
 
 impl Serialize for ArrayColumnType {
@@ -112,37 +101,39 @@ impl Serialize for ArrayColumnType {
     }
 }
 
-pub fn serialize_array_column_type(
-    column_type: &dyn PhysicalColumnType,
-) -> Result<Vec<u8>, String> {
-    column_type
-        .as_any()
-        .downcast_ref::<ArrayColumnType>()
-        .ok_or_else(|| "Expected ArrayColumnType".to_string())
-        .and_then(|t| {
-            bincode::serialize(t).map_err(|e| format!("Failed to serialize Array: {}", e))
-        })
-}
+pub struct ArrayColumnTypeSerializer;
 
-// Special function to deserialize ArrayColumnType avoiding recursion
-pub fn deserialize_array_column_type(data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-    use super::PHYSICAL_COLUMN_TYPE_REGISTRY;
-
-    #[derive(serde::Deserialize)]
-    struct ArrayData {
-        typ: super::SerializedPhysicalColumnType,
+impl PhysicalColumnTypeSerializer for ArrayColumnTypeSerializer {
+    fn serialize(&self, column_type: &dyn PhysicalColumnType) -> Result<Vec<u8>, String> {
+        column_type
+            .as_any()
+            .downcast_ref::<ArrayColumnType>()
+            .ok_or_else(|| "Expected ArrayColumnType".to_string())
+            .and_then(|t| {
+                bincode::serialize(t).map_err(|e| format!("Failed to serialize Array: {}", e))
+            })
     }
 
-    let array_data: ArrayData = bincode::deserialize(data)
-        .map_err(|e| format!("Failed to deserialize ArrayColumnType structure: {}", e))?;
+    fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
+        use super::PHYSICAL_COLUMN_TYPE_REGISTRY;
 
-    // Look up the inner type in the registry
-    let entry = PHYSICAL_COLUMN_TYPE_REGISTRY
-        .get(array_data.typ.type_name.as_str())
-        .ok_or_else(|| format!("Unknown inner type for array: {}", array_data.typ.type_name))?;
+        #[derive(serde::Deserialize)]
+        struct ArrayData {
+            typ: super::SerializedPhysicalColumnType,
+        }
 
-    let inner_type = (entry.deserialize)(&array_data.typ.data)
-        .map_err(|e| format!("Failed to deserialize inner type: {}", e))?;
+        let array_data: ArrayData = bincode::deserialize(data)
+            .map_err(|e| format!("Failed to deserialize ArrayColumnType structure: {}", e))?;
 
-    Ok(Box::new(ArrayColumnType::new(inner_type)) as Box<dyn PhysicalColumnType>)
+        // Look up the inner type in the registry
+        let entry = PHYSICAL_COLUMN_TYPE_REGISTRY
+            .get(array_data.typ.type_name.as_str())
+            .ok_or_else(|| format!("Unknown inner type for array: {}", array_data.typ.type_name))?;
+
+        let inner_type = entry
+            .deserialize(&array_data.typ.data)
+            .map_err(|e| format!("Failed to deserialize inner type: {}", e))?;
+
+        Ok(Box::new(ArrayColumnType::new(inner_type)) as Box<dyn PhysicalColumnType>)
+    }
 }

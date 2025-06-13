@@ -72,20 +72,6 @@ impl PartialEq for PhysicalColumn {
 
 impl Eq for PhysicalColumn {}
 
-impl std::hash::Hash for PhysicalColumn {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.table_id.hash(state);
-        self.name.hash(state);
-        self.typ.hash(state);
-        self.is_pk.hash(state);
-        self.is_nullable.hash(state);
-        self.unique_constraints.hash(state);
-        self.default_value.hash(state);
-        self.update_sync.hash(state);
-        self.group_name.hash(state);
-    }
-}
-
 /// Simpler implementation of Debug for PhysicalColumn.
 ///
 /// The derived implementation of Debug for PhysicalColumn is not very useful, since it includes

@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use super::PhysicalColumnType;
+use super::{PhysicalColumnType, PhysicalColumnTypeSerializer};
 use crate::schema::{
     column_spec::{ColumnAutoincrement, ColumnDefault},
     statement::SchemaStatement,
@@ -94,27 +94,24 @@ impl PhysicalColumnType for IntColumnType {
     fn equals(&self, other: &dyn PhysicalColumnType) -> bool {
         other.as_any().downcast_ref::<Self>() == Some(self)
     }
+}
 
-    fn hash_type(&self, state: &mut dyn std::hash::Hasher) {
-        state.write(self.type_name().as_bytes());
-        state.write_u8(match self.bits {
-            IntBits::_16 => 16,
-            IntBits::_32 => 32,
-            IntBits::_64 => 64,
-        });
+pub struct IntColumnTypeSerializer;
+
+impl PhysicalColumnTypeSerializer for IntColumnTypeSerializer {
+    fn serialize(&self, column_type: &dyn PhysicalColumnType) -> Result<Vec<u8>, String> {
+        column_type
+            .as_any()
+            .downcast_ref::<IntColumnType>()
+            .ok_or_else(|| "Expected IntColumnType".to_string())
+            .and_then(|t| {
+                bincode::serialize(t).map_err(|e| format!("Failed to serialize Int: {}", e))
+            })
     }
-}
 
-pub fn serialize_int_column_type(column_type: &dyn PhysicalColumnType) -> Result<Vec<u8>, String> {
-    column_type
-        .as_any()
-        .downcast_ref::<IntColumnType>()
-        .ok_or_else(|| "Expected IntColumnType".to_string())
-        .and_then(|t| bincode::serialize(t).map_err(|e| format!("Failed to serialize Int: {}", e)))
-}
-
-pub fn deserialize_int_column_type(data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-    bincode::deserialize::<IntColumnType>(data)
-        .map(|t| Box::new(t) as Box<dyn PhysicalColumnType>)
-        .map_err(|e| format!("Failed to deserialize Int: {}", e))
+    fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
+        bincode::deserialize::<IntColumnType>(data)
+            .map(|t| Box::new(t) as Box<dyn PhysicalColumnType>)
+            .map_err(|e| format!("Failed to deserialize Int: {}", e))
+    }
 }

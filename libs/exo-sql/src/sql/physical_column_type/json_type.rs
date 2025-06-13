@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use super::PhysicalColumnType;
+use super::{PhysicalColumnType, PhysicalColumnTypeSerializer};
 use crate::schema::{column_spec::ColumnDefault, statement::SchemaStatement};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
@@ -49,22 +49,24 @@ impl PhysicalColumnType for JsonColumnType {
     fn equals(&self, other: &dyn PhysicalColumnType) -> bool {
         other.as_any().downcast_ref::<Self>().is_some()
     }
+}
 
-    fn hash_type(&self, state: &mut dyn std::hash::Hasher) {
-        state.write(self.type_name().as_bytes());
+pub struct JsonColumnTypeSerializer;
+
+impl PhysicalColumnTypeSerializer for JsonColumnTypeSerializer {
+    fn serialize(&self, column_type: &dyn PhysicalColumnType) -> Result<Vec<u8>, String> {
+        column_type
+            .as_any()
+            .downcast_ref::<JsonColumnType>()
+            .ok_or_else(|| "Expected JsonColumnType".to_string())
+            .and_then(|t| {
+                bincode::serialize(t).map_err(|e| format!("Failed to serialize Json: {}", e))
+            })
     }
-}
 
-pub fn serialize_json_column_type(column_type: &dyn PhysicalColumnType) -> Result<Vec<u8>, String> {
-    column_type
-        .as_any()
-        .downcast_ref::<JsonColumnType>()
-        .ok_or_else(|| "Expected JsonColumnType".to_string())
-        .and_then(|t| bincode::serialize(t).map_err(|e| format!("Failed to serialize Json: {}", e)))
-}
-
-pub fn deserialize_json_column_type(data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-    bincode::deserialize::<JsonColumnType>(data)
-        .map(|t| Box::new(t) as Box<dyn PhysicalColumnType>)
-        .map_err(|e| format!("Failed to deserialize Json: {}", e))
+    fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
+        bincode::deserialize::<JsonColumnType>(data)
+            .map(|t| Box::new(t) as Box<dyn PhysicalColumnType>)
+            .map_err(|e| format!("Failed to deserialize Json: {}", e))
+    }
 }
