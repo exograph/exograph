@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use super::PhysicalColumnType;
+use super::{PhysicalColumnType, PhysicalColumnTypeSerializer};
 use crate::schema::{column_spec::ColumnDefault, statement::SchemaStatement};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
@@ -82,20 +82,22 @@ impl PhysicalColumnType for NumericColumnType {
     }
 }
 
-pub fn serialize_numeric_column_type(
-    column_type: &dyn PhysicalColumnType,
-) -> Result<Vec<u8>, String> {
-    column_type
-        .as_any()
-        .downcast_ref::<NumericColumnType>()
-        .ok_or_else(|| "Expected NumericColumnType".to_string())
-        .and_then(|t| {
-            bincode::serialize(t).map_err(|e| format!("Failed to serialize Numeric: {}", e))
-        })
-}
+pub struct NumericColumnTypeSerializer;
 
-pub fn deserialize_numeric_column_type(data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-    bincode::deserialize::<NumericColumnType>(data)
-        .map(|t| Box::new(t) as Box<dyn PhysicalColumnType>)
-        .map_err(|e| format!("Failed to deserialize Numeric: {}", e))
+impl PhysicalColumnTypeSerializer for NumericColumnTypeSerializer {
+    fn serialize(&self, column_type: &dyn PhysicalColumnType) -> Result<Vec<u8>, String> {
+        column_type
+            .as_any()
+            .downcast_ref::<NumericColumnType>()
+            .ok_or_else(|| "Expected NumericColumnType".to_string())
+            .and_then(|t| {
+                bincode::serialize(t).map_err(|e| format!("Failed to serialize Numeric: {}", e))
+            })
+    }
+
+    fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
+        bincode::deserialize::<NumericColumnType>(data)
+            .map(|t| Box::new(t) as Box<dyn PhysicalColumnType>)
+            .map_err(|e| format!("Failed to deserialize Numeric: {}", e))
+    }
 }

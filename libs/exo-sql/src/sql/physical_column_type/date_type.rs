@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use super::PhysicalColumnType;
+use super::{PhysicalColumnType, PhysicalColumnTypeSerializer};
 use crate::schema::{column_spec::ColumnDefault, statement::SchemaStatement};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
@@ -55,16 +55,22 @@ impl PhysicalColumnType for DateColumnType {
     }
 }
 
-pub fn serialize_date_column_type(column_type: &dyn PhysicalColumnType) -> Result<Vec<u8>, String> {
-    column_type
-        .as_any()
-        .downcast_ref::<DateColumnType>()
-        .ok_or_else(|| "Expected DateColumnType".to_string())
-        .and_then(|t| bincode::serialize(t).map_err(|e| format!("Failed to serialize Date: {}", e)))
-}
+pub struct DateColumnTypeSerializer;
 
-pub fn deserialize_date_column_type(data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-    bincode::deserialize::<DateColumnType>(data)
-        .map(|t| Box::new(t) as Box<dyn PhysicalColumnType>)
-        .map_err(|e| format!("Failed to deserialize Date: {}", e))
+impl PhysicalColumnTypeSerializer for DateColumnTypeSerializer {
+    fn serialize(&self, column_type: &dyn PhysicalColumnType) -> Result<Vec<u8>, String> {
+        column_type
+            .as_any()
+            .downcast_ref::<DateColumnType>()
+            .ok_or_else(|| "Expected DateColumnType".to_string())
+            .and_then(|t| {
+                bincode::serialize(t).map_err(|e| format!("Failed to serialize Date: {}", e))
+            })
+    }
+
+    fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
+        bincode::deserialize::<DateColumnType>(data)
+            .map(|t| Box::new(t) as Box<dyn PhysicalColumnType>)
+            .map_err(|e| format!("Failed to deserialize Date: {}", e))
+    }
 }

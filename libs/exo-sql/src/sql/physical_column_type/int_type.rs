@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use super::PhysicalColumnType;
+use super::{PhysicalColumnType, PhysicalColumnTypeSerializer};
 use crate::schema::{
     column_spec::{ColumnAutoincrement, ColumnDefault},
     statement::SchemaStatement,
@@ -105,16 +105,22 @@ impl PhysicalColumnType for IntColumnType {
     }
 }
 
-pub fn serialize_int_column_type(column_type: &dyn PhysicalColumnType) -> Result<Vec<u8>, String> {
-    column_type
-        .as_any()
-        .downcast_ref::<IntColumnType>()
-        .ok_or_else(|| "Expected IntColumnType".to_string())
-        .and_then(|t| bincode::serialize(t).map_err(|e| format!("Failed to serialize Int: {}", e)))
-}
+pub struct IntColumnTypeSerializer;
 
-pub fn deserialize_int_column_type(data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-    bincode::deserialize::<IntColumnType>(data)
-        .map(|t| Box::new(t) as Box<dyn PhysicalColumnType>)
-        .map_err(|e| format!("Failed to deserialize Int: {}", e))
+impl PhysicalColumnTypeSerializer for IntColumnTypeSerializer {
+    fn serialize(&self, column_type: &dyn PhysicalColumnType) -> Result<Vec<u8>, String> {
+        column_type
+            .as_any()
+            .downcast_ref::<IntColumnType>()
+            .ok_or_else(|| "Expected IntColumnType".to_string())
+            .and_then(|t| {
+                bincode::serialize(t).map_err(|e| format!("Failed to serialize Int: {}", e))
+            })
+    }
+
+    fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
+        bincode::deserialize::<IntColumnType>(data)
+            .map(|t| Box::new(t) as Box<dyn PhysicalColumnType>)
+            .map_err(|e| format!("Failed to deserialize Int: {}", e))
+    }
 }

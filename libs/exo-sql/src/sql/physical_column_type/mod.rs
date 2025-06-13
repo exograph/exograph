@@ -22,34 +22,20 @@ mod timestamp_type;
 mod uuid_type;
 mod vector_type;
 
-pub use array_type::{ArrayColumnType, deserialize_array_column_type, serialize_array_column_type};
-pub use blob_type::{BlobColumnType, deserialize_blob_column_type, serialize_blob_column_type};
-pub use boolean_type::{
-    BooleanColumnType, deserialize_boolean_column_type, serialize_boolean_column_type,
-};
-pub use date_type::{DateColumnType, deserialize_date_column_type, serialize_date_column_type};
-pub use enum_type::{EnumColumnType, deserialize_enum_column_type, serialize_enum_column_type};
-pub use float_type::{
-    FloatBits, FloatColumnType, deserialize_float_column_type, serialize_float_column_type,
-};
-pub use int_type::{
-    IntBits, IntColumnType, deserialize_int_column_type, serialize_int_column_type,
-};
-pub use json_type::{JsonColumnType, deserialize_json_column_type, serialize_json_column_type};
-pub use numeric_type::{
-    NumericColumnType, deserialize_numeric_column_type, serialize_numeric_column_type,
-};
-pub use string_type::{
-    StringColumnType, deserialize_string_column_type, serialize_string_column_type,
-};
-pub use time_type::{TimeColumnType, deserialize_time_column_type, serialize_time_column_type};
-pub use timestamp_type::{
-    TimestampColumnType, deserialize_timestamp_column_type, serialize_timestamp_column_type,
-};
-pub use uuid_type::{UuidColumnType, deserialize_uuid_column_type, serialize_uuid_column_type};
-pub use vector_type::{
-    VectorColumnType, deserialize_vector_column_type, serialize_vector_column_type,
-};
+pub use array_type::{ArrayColumnType, ArrayColumnTypeSerializer};
+pub use blob_type::{BlobColumnType, BlobColumnTypeSerializer};
+pub use boolean_type::{BooleanColumnType, BooleanColumnTypeSerializer};
+pub use date_type::{DateColumnType, DateColumnTypeSerializer};
+pub use enum_type::{EnumColumnType, EnumColumnTypeSerializer};
+pub use float_type::{FloatBits, FloatColumnType, FloatColumnTypeSerializer};
+pub use int_type::{IntBits, IntColumnType, IntColumnTypeSerializer};
+pub use json_type::{JsonColumnType, JsonColumnTypeSerializer};
+pub use numeric_type::{NumericColumnType, NumericColumnTypeSerializer};
+pub use string_type::{StringColumnType, StringColumnTypeSerializer};
+pub use time_type::{TimeColumnType, TimeColumnTypeSerializer};
+pub use timestamp_type::{TimestampColumnType, TimestampColumnTypeSerializer};
+pub use uuid_type::{UuidColumnType, UuidColumnTypeSerializer};
+pub use vector_type::{VectorColumnType, VectorColumnTypeSerializer};
 
 use crate::database_error::DatabaseError;
 use crate::schema::column_spec::ColumnDefault;
@@ -270,120 +256,78 @@ fn physical_column_type_from_string(s: &str) -> Result<Box<dyn PhysicalColumnTyp
     }
 }
 
-// Registry entry containing serialize and deserialize functions
-#[allow(clippy::type_complexity)]
-struct TypeRegistryEntry {
-    serialize: fn(&dyn PhysicalColumnType) -> Result<Vec<u8>, String>,
-    deserialize: fn(&[u8]) -> Result<Box<dyn PhysicalColumnType>, String>,
+// Trait for serializing and deserializing physical column types
+pub trait PhysicalColumnTypeSerializer: Send + Sync {
+    fn serialize(&self, column_type: &dyn PhysicalColumnType) -> Result<Vec<u8>, String>;
+    fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String>;
 }
 
 // Global registry for physical column types
-static PHYSICAL_COLUMN_TYPE_REGISTRY: LazyLock<IndexMap<&'static str, TypeRegistryEntry>> =
-    LazyLock::new(|| {
-        let mut registry = IndexMap::new();
+static PHYSICAL_COLUMN_TYPE_REGISTRY: LazyLock<
+    IndexMap<&'static str, Box<dyn PhysicalColumnTypeSerializer>>,
+> = LazyLock::new(|| {
+    let mut registry = IndexMap::new();
 
-        // Register all built-in types
-        registry.insert(
-            "Int",
-            TypeRegistryEntry {
-                serialize: serialize_int_column_type,
-                deserialize: deserialize_int_column_type,
-            },
-        );
-        registry.insert(
-            "String",
-            TypeRegistryEntry {
-                serialize: serialize_string_column_type,
-                deserialize: deserialize_string_column_type,
-            },
-        );
-        registry.insert(
-            "Boolean",
-            TypeRegistryEntry {
-                serialize: serialize_boolean_column_type,
-                deserialize: deserialize_boolean_column_type,
-            },
-        );
-        registry.insert(
-            "Timestamp",
-            TypeRegistryEntry {
-                serialize: serialize_timestamp_column_type,
-                deserialize: deserialize_timestamp_column_type,
-            },
-        );
-        registry.insert(
-            "Date",
-            TypeRegistryEntry {
-                serialize: serialize_date_column_type,
-                deserialize: deserialize_date_column_type,
-            },
-        );
-        registry.insert(
-            "Time",
-            TypeRegistryEntry {
-                serialize: serialize_time_column_type,
-                deserialize: deserialize_time_column_type,
-            },
-        );
-        registry.insert(
-            "Json",
-            TypeRegistryEntry {
-                serialize: serialize_json_column_type,
-                deserialize: deserialize_json_column_type,
-            },
-        );
-        registry.insert(
-            "Blob",
-            TypeRegistryEntry {
-                serialize: serialize_blob_column_type,
-                deserialize: deserialize_blob_column_type,
-            },
-        );
-        registry.insert(
-            "Uuid",
-            TypeRegistryEntry {
-                serialize: serialize_uuid_column_type,
-                deserialize: deserialize_uuid_column_type,
-            },
-        );
-        registry.insert(
-            "Vector",
-            TypeRegistryEntry {
-                serialize: serialize_vector_column_type,
-                deserialize: deserialize_vector_column_type,
-            },
-        );
-        registry.insert(
-            "Float",
-            TypeRegistryEntry {
-                serialize: serialize_float_column_type,
-                deserialize: deserialize_float_column_type,
-            },
-        );
-        registry.insert(
-            "Numeric",
-            TypeRegistryEntry {
-                serialize: serialize_numeric_column_type,
-                deserialize: deserialize_numeric_column_type,
-            },
-        );
-        registry.insert(
-            "Enum",
-            TypeRegistryEntry {
-                serialize: serialize_enum_column_type,
-                deserialize: deserialize_enum_column_type,
-            },
-        );
-        registry.insert(
-            "Array",
-            TypeRegistryEntry {
-                serialize: serialize_array_column_type,
-                deserialize: deserialize_array_column_type,
-            },
-        );
+    // Register all built-in types
+    registry.insert(
+        "Int",
+        Box::new(IntColumnTypeSerializer) as Box<dyn PhysicalColumnTypeSerializer>,
+    );
+    registry.insert(
+        "String",
+        Box::new(StringColumnTypeSerializer) as Box<dyn PhysicalColumnTypeSerializer>,
+    );
+    registry.insert(
+        "Boolean",
+        Box::new(BooleanColumnTypeSerializer) as Box<dyn PhysicalColumnTypeSerializer>,
+    );
+    registry.insert(
+        "Timestamp",
+        Box::new(TimestampColumnTypeSerializer) as Box<dyn PhysicalColumnTypeSerializer>,
+    );
+    registry.insert(
+        "Date",
+        Box::new(DateColumnTypeSerializer) as Box<dyn PhysicalColumnTypeSerializer>,
+    );
+    registry.insert(
+        "Time",
+        Box::new(TimeColumnTypeSerializer) as Box<dyn PhysicalColumnTypeSerializer>,
+    );
+    registry.insert(
+        "Json",
+        Box::new(JsonColumnTypeSerializer) as Box<dyn PhysicalColumnTypeSerializer>,
+    );
+    registry.insert(
+        "Blob",
+        Box::new(BlobColumnTypeSerializer) as Box<dyn PhysicalColumnTypeSerializer>,
+    );
+    registry.insert(
+        "Uuid",
+        Box::new(UuidColumnTypeSerializer) as Box<dyn PhysicalColumnTypeSerializer>,
+    );
+    registry.insert(
+        "Vector",
+        Box::new(VectorColumnTypeSerializer) as Box<dyn PhysicalColumnTypeSerializer>,
+    );
+    registry.insert(
+        "Float",
+        Box::new(FloatColumnTypeSerializer) as Box<dyn PhysicalColumnTypeSerializer>,
+    );
+    registry.insert(
+        "Numeric",
+        Box::new(NumericColumnTypeSerializer) as Box<dyn PhysicalColumnTypeSerializer>,
+    );
+    registry.insert(
+        "Enum",
+        Box::new(EnumColumnTypeSerializer) as Box<dyn PhysicalColumnTypeSerializer>,
+    );
+    registry.insert(
+        "Array",
+        Box::new(ArrayColumnTypeSerializer) as Box<dyn PhysicalColumnTypeSerializer>,
+    );
 
-        registry
-    });
+    registry
+});
 
 // Individual deserialize functions are now defined in their respective type files
 
@@ -408,7 +352,9 @@ impl Serialize for Box<dyn PhysicalColumnType> {
                 serde::ser::Error::custom(format!("Unknown physical column type: {}", type_name))
             })?;
 
-        let data = (entry.serialize)(self.as_ref()).map_err(serde::ser::Error::custom)?;
+        let data = entry
+            .serialize(self.as_ref())
+            .map_err(serde::ser::Error::custom)?;
 
         let wrapper = SerializedPhysicalColumnType {
             type_name: type_name.to_string(),
@@ -437,7 +383,9 @@ impl<'de> Deserialize<'de> for Box<dyn PhysicalColumnType> {
             })?;
 
         // Deserialize using the registered function
-        (entry.deserialize)(&wrapper.data).map_err(serde::de::Error::custom)
+        entry
+            .deserialize(&wrapper.data)
+            .map_err(serde::de::Error::custom)
     }
 }
 
