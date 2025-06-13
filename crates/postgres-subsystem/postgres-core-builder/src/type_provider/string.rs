@@ -8,7 +8,7 @@ use core_model_builder::{
         annotation::{AnnotationSpec, AnnotationTarget},
     },
 };
-use exo_sql::PhysicalColumnType;
+use exo_sql::{PhysicalColumnType, StringColumnType};
 use postgres_core_model::aggregate::ScalarAggregateFieldKind;
 use serde::{Deserialize, Serialize};
 
@@ -31,21 +31,21 @@ impl ResolvedTypeHint for StringTypeHint {
 }
 
 impl PrimitiveTypeProvider for primitive_type::StringType {
-    fn determine_column_type(&self, field: &ResolvedField) -> PhysicalColumnType {
+    fn determine_column_type(&self, field: &ResolvedField) -> Box<dyn PhysicalColumnType> {
         match &field.type_hint {
             Some(hint) => {
                 let hint_ref = hint.0.as_ref() as &dyn std::any::Any;
 
                 if let Some(string_hint) = hint_ref.downcast_ref::<StringTypeHint>() {
                     // length hint provided, use it
-                    PhysicalColumnType::String {
+                    Box::new(StringColumnType {
                         max_length: Some(string_hint.max_length),
-                    }
+                    })
                 } else {
-                    PhysicalColumnType::String { max_length: None }
+                    Box::new(StringColumnType { max_length: None })
                 }
             }
-            None => PhysicalColumnType::String { max_length: None },
+            None => Box::new(StringColumnType { max_length: None }),
         }
     }
 

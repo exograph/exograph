@@ -13,8 +13,8 @@ use futures::{StreamExt, TryStreamExt};
 use common::context::RequestContext;
 use common::value::Val;
 use exo_sql::{
-    AbstractPredicate, CaseSensitivity, ColumnPath, ColumnPathLink, ParamEquality,
-    PhysicalColumnPath, PhysicalColumnType, Predicate,
+    AbstractPredicate, ArrayColumnType, CaseSensitivity, ColumnPath, ColumnPathLink, ParamEquality,
+    PhysicalColumnPath, PhysicalColumnType, PhysicalColumnTypeExt, Predicate, StringColumnType,
 };
 
 use exo_sql::{NumericComparator, SQLParamContainer};
@@ -90,9 +90,10 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
 
                                 let op_value = literal_column_path(
                                     arg,
-                                    &leaf_column_id
+                                    leaf_column_id
                                         .get_column(&subsystem.core_subsystem.database)
-                                        .typ,
+                                        .typ
+                                        .inner(),
                                     false,
                                 )?;
 
@@ -167,14 +168,11 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                                 )),
                                             }?;
 
-                                            let threshold = cast_value(
-                                                threshold,
-                                                &exo_sql::PhysicalColumnType::Float {
-                                                    bits: exo_sql::FloatBits::_53,
-                                                },
-                                                false,
-                                            )?
-                                            .unwrap();
+                                            let float_type = exo_sql::FloatColumnType {
+                                                bits: exo_sql::FloatBits::_53,
+                                            };
+                                            let threshold =
+                                                cast_value(threshold, &float_type, false)?.unwrap();
                                             let target_vector =
                                                 SQLParamContainer::f32_array(vector_value);
 
@@ -200,21 +198,21 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                         )),
                                     }
                                 } else {
-                                    let override_op_value_type = match parameter.name.as_str() {
-                                        "matchAllKeys" | "matchAnyKey" => {
-                                            Some(PhysicalColumnType::Array {
-                                                typ: Box::new(PhysicalColumnType::String {
-                                                    max_length: None,
-                                                }),
-                                            })
-                                        }
-                                        _ => None,
+                                    let string_type = StringColumnType { max_length: None };
+                                    let array_type = ArrayColumnType {
+                                        typ: Box::new(string_type),
                                     };
+
+                                    let override_op_value_type: Option<&dyn PhysicalColumnType> =
+                                        match parameter.name.as_str() {
+                                            "matchAllKeys" | "matchAnyKey" => Some(&array_type),
+                                            _ => None,
+                                        };
 
                                     let (op_key_column, op_value_column) = operands(
                                         self.param,
                                         op_value,
-                                        override_op_value_type.as_ref(),
+                                        override_op_value_type,
                                         &self.parent_column_path,
                                         subsystem,
                                     )
@@ -427,7 +425,7 @@ pub fn predicate_from_name<C: PartialEq + ParamEquality>(
 fn operands<'a>(
     param: &'a PredicateParameter,
     op_value: &'a Val,
-    op_value_type: Option<&PhysicalColumnType>,
+    op_value_type: Option<&dyn PhysicalColumnType>,
     parent_column_path: &Option<PhysicalColumnPath>,
     subsystem: &'a PostgresGraphQLSubsystem,
 ) -> Result<(ColumnPath, ColumnPath), PostgresExecutionError> {
@@ -445,7 +443,7 @@ fn operands<'a>(
 
     let op_value = literal_column_path(
         op_value,
-        op_value_type.unwrap_or(&op_physical_column.typ),
+        op_value_type.unwrap_or(op_physical_column.typ.inner()),
         false,
     )?;
 

@@ -8,7 +8,7 @@ use core_model_builder::{
         annotation::{AnnotationSpec, AnnotationTarget},
     },
 };
-use exo_sql::PhysicalColumnType;
+use exo_sql::{PhysicalColumnType, TimestampColumnType};
 use postgres_core_model::aggregate::ScalarAggregateFieldKind;
 use serde::{Deserialize, Serialize};
 
@@ -31,27 +31,27 @@ impl ResolvedTypeHint for DateTimeTypeHint {
 }
 
 impl PrimitiveTypeProvider for primitive_type::InstantType {
-    fn determine_column_type(&self, field: &ResolvedField) -> PhysicalColumnType {
+    fn determine_column_type(&self, field: &ResolvedField) -> Box<dyn PhysicalColumnType> {
         match &field.type_hint {
             Some(hint) => {
                 let hint_ref = hint.0.as_ref() as &dyn std::any::Any;
 
                 if let Some(datetime_hint) = hint_ref.downcast_ref::<DateTimeTypeHint>() {
-                    PhysicalColumnType::Timestamp {
+                    Box::new(TimestampColumnType {
                         precision: Some(datetime_hint.precision),
                         timezone: true,
-                    }
+                    })
                 } else {
-                    PhysicalColumnType::Timestamp {
+                    Box::new(TimestampColumnType {
                         precision: None,
                         timezone: true,
-                    }
+                    })
                 }
             }
-            None => PhysicalColumnType::Timestamp {
+            None => Box::new(TimestampColumnType {
                 precision: None,
                 timezone: true,
-            },
+            }),
         }
     }
 

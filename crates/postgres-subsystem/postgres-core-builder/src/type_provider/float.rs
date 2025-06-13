@@ -11,7 +11,7 @@ use core_model_builder::{
         annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
     },
 };
-use exo_sql::{FloatBits, PhysicalColumnType};
+use exo_sql::{FloatBits, FloatColumnType, PhysicalColumnType};
 use postgres_core_model::aggregate::ScalarAggregateFieldKind;
 use serde::{Deserialize, Serialize};
 
@@ -43,7 +43,7 @@ impl TypeValidationProvider for FloatTypeHint {
 }
 
 impl PrimitiveTypeProvider for primitive_type::FloatType {
-    fn determine_column_type(&self, field: &ResolvedField) -> PhysicalColumnType {
+    fn determine_column_type(&self, field: &ResolvedField) -> Box<dyn PhysicalColumnType> {
         match &field.type_hint {
             Some(hint) => {
                 let hint_ref = hint.0.as_ref() as &dyn std::any::Any;
@@ -51,30 +51,30 @@ impl PrimitiveTypeProvider for primitive_type::FloatType {
                 if let Some(float_hint) = hint_ref.downcast_ref::<FloatTypeHint>() {
                     if let Some(bits) = float_hint.bits {
                         if (1..=24).contains(&bits) {
-                            PhysicalColumnType::Float {
+                            Box::new(FloatColumnType {
                                 bits: FloatBits::_24,
-                            }
+                            })
                         } else if bits > 24 && bits <= 53 {
-                            PhysicalColumnType::Float {
+                            Box::new(FloatColumnType {
                                 bits: FloatBits::_53,
-                            }
+                            })
                         } else {
                             panic!("Invalid bits")
                         }
                     } else {
-                        PhysicalColumnType::Float {
+                        Box::new(FloatColumnType {
                             bits: FloatBits::_53,
-                        }
+                        })
                     }
                 } else {
-                    PhysicalColumnType::Float {
+                    Box::new(FloatColumnType {
                         bits: FloatBits::_24,
-                    }
+                    })
                 }
             }
-            None => PhysicalColumnType::Float {
+            None => Box::new(FloatColumnType {
                 bits: FloatBits::_24,
-            },
+            }),
         }
     }
 

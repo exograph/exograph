@@ -9,7 +9,10 @@
 
 use std::collections::{HashMap, hash_map::Entry};
 
-use crate::{PhysicalColumnType, database_error::DatabaseError};
+use crate::{
+    database_error::DatabaseError,
+    sql::physical_column_type::{ArrayColumnType, JsonColumnType, PhysicalColumnType},
+};
 
 use super::SQLParamContainer;
 use postgres_array::{Array, Dimension};
@@ -34,19 +37,20 @@ type OptionalSQLParam = Option<SQLParamContainer>;
 /// * `to_sql_param` - A function to convert an element of an array to an SQLParam.
 pub fn to_sql_param<T>(
     elems: &[T],
-    destination_type: &PhysicalColumnType,
+    destination_type: &dyn PhysicalColumnType,
     array_entry: fn(&T) -> ArrayEntry<T>,
     to_sql_param: &impl Fn(&T) -> Result<OptionalSQLParam, DatabaseError>,
 ) -> Result<Option<SQLParamContainer>, DatabaseError> {
-    let element_pg_type = match destination_type {
-        PhysicalColumnType::Array { typ } => typ.get_pg_type(),
-        PhysicalColumnType::Json => Type::JSONB,
-        _ => {
+    let element_pg_type =
+        if let Some(array_type) = destination_type.as_any().downcast_ref::<ArrayColumnType>() {
+            array_type.typ.get_pg_type()
+        } else if destination_type.as_any().is::<JsonColumnType>() {
+            Type::JSONB
+        } else {
             return Err(DatabaseError::Validation(
                 "Destination type is not an array".to_string(),
             ));
-        }
-    };
+        };
     to_sql_array(elems, element_pg_type, array_entry, to_sql_param).map(|array| {
         Some(SQLParamContainer::new(
             array,

@@ -23,6 +23,7 @@ pub mod database;
 pub mod function;
 pub mod order;
 pub mod physical_column;
+pub mod physical_column_type;
 pub mod predicate;
 pub mod relation;
 pub mod schema_object;

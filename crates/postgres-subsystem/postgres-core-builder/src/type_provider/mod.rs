@@ -39,7 +39,7 @@ pub use vector::VectorTypeHint;
 /// Handles physical column type determination, type hints, annotations, and deserialization
 pub trait PrimitiveTypeProvider: Send + Sync + PrimitiveBaseType {
     /// Determines the physical column type for a field with this primitive type
-    fn determine_column_type(&self, field: &ResolvedField) -> PhysicalColumnType;
+    fn determine_column_type(&self, field: &ResolvedField) -> Box<dyn PhysicalColumnType>;
 
     /// Computes the type hint for a field, validating that only supported hint annotations are used.
     fn compute_type_hint(

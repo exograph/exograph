@@ -29,7 +29,8 @@ use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError};
 
 use exo_sql::schema::column_spec::{ColumnAutoincrement, ColumnDefault};
 use exo_sql::{
-    ColumnId, ManyToOne, PhysicalColumn, PhysicalColumnType, PhysicalIndex, PhysicalTable, TableId,
+    ArrayColumnType, BooleanColumnType, ColumnId, EnumColumnType, JsonColumnType, ManyToOne,
+    PhysicalColumn, PhysicalColumnType, PhysicalIndex, PhysicalTable, TableId,
     schema::index_spec::IndexKind,
 };
 use exo_sql::{Database, PhysicalEnum, RelationColumnPair};
@@ -350,10 +351,10 @@ fn create_columns(
                                 table_id,
                                 name: name.to_string(),
                                 typ: if composite.representation == EntityRepresentation::Json {
-                                    PhysicalColumnType::Json
+                                    Box::new(JsonColumnType)
                                 } else {
                                     // A placeholder value. Will be resolved in the next phase (see expand_type_relations)
-                                    PhysicalColumnType::Boolean
+                                    Box::new(BooleanColumnType)
                                 },
                                 is_pk: field.is_pk,
                                 is_nullable: optional,
@@ -371,9 +372,9 @@ fn create_columns(
                     .map(|name| PhysicalColumn {
                         table_id,
                         name: name.to_string(),
-                        typ: PhysicalColumnType::Enum {
+                        typ: Box::new(EnumColumnType {
                             enum_name: enum_type.enum_name.clone(),
-                        },
+                        }),
                         is_pk: field.is_pk,
                         is_nullable: optional,
                         unique_constraints: unique_constraint_name.clone(),
@@ -489,19 +490,25 @@ fn compute_many_to_one_relation(
 fn determine_column_type<'a>(
     pt: &'a PrimitiveType,
     field: &'a ResolvedField,
-) -> PhysicalColumnType {
+) -> Box<dyn PhysicalColumnType> {
     // Check for explicit type hints first
     if let Some(hint) = &field.type_hint {
         let hint_ref = hint.0.as_ref() as &dyn std::any::Any;
         if let Some(explicit) = hint_ref.downcast_ref::<ExplicitTypeHint>() {
-            return PhysicalColumnType::from_string(&explicit.dbtype).unwrap();
+            return exo_sql::schema::column_spec::ColumnTypeSpec::from_string(
+                &explicit.dbtype,
+                &vec![],
+            )
+            .unwrap()
+            .to_database_type();
         }
     }
 
     match pt {
-        PrimitiveType::Array(underlying_pt) => PhysicalColumnType::Array {
-            typ: Box::new(determine_column_type(underlying_pt, field)),
-        },
+        PrimitiveType::Array(underlying_pt) => {
+            let inner_type = determine_column_type(underlying_pt, field);
+            Box::new(ArrayColumnType { typ: inner_type })
+        }
         PrimitiveType::Plain(base_pt_type) => {
             if let Some(provider) = PRIMITIVE_TYPE_PROVIDER_REGISTRY.get(base_pt_type.name()) {
                 provider.determine_column_type(field)

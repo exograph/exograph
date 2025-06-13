@@ -275,7 +275,9 @@ mod tests {
 
     use core_plugin_shared::error::ModelSerializationError;
     use exo_sql::{
-        Database, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, PhysicalTable,
+        Database, FloatBits, FloatColumnType, IntBits, IntColumnType, NumericColumnType,
+        PhysicalColumn, PhysicalColumnTypeExt, PhysicalTable, StringColumnType,
+        TimestampColumnType,
     };
     use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
@@ -546,77 +548,121 @@ mod tests {
         let logs_granular = get_column_from_table("granular", logs);
 
         // @dbtype("bigint")
-        if let PhysicalColumnType::Int { bits } = &logs_id.typ {
-            assert!(*bits == IntBits::_64)
+        if let Some(int_type) = logs_id.typ.inner().as_any().downcast_ref::<IntColumnType>() {
+            assert!(int_type.bits == IntBits::_64)
         } else {
             panic!()
         }
 
         // Int @bits16
-        if let PhysicalColumnType::Int { bits } = &logs_nonce.typ {
-            assert!(*bits == IntBits::_16)
+        if let Some(int_type) = logs_nonce
+            .typ
+            .inner()
+            .as_any()
+            .downcast_ref::<IntColumnType>()
+        {
+            assert!(int_type.bits == IntBits::_16)
         } else {
             panic!()
         }
 
         // Int @bits64
-        if let PhysicalColumnType::Int { bits } = &logs_hash.typ {
-            assert!(*bits == IntBits::_64)
+        if let Some(int_type) = logs_hash
+            .typ
+            .inner()
+            .as_any()
+            .downcast_ref::<IntColumnType>()
+        {
+            assert!(int_type.bits == IntBits::_64)
         } else {
             panic!()
         }
 
         // Float @singlePrecision
-        if let PhysicalColumnType::Float { bits } = &logs_float.typ {
-            assert!(*bits == FloatBits::_24)
+        if let Some(float_type) = logs_float
+            .typ
+            .inner()
+            .as_any()
+            .downcast_ref::<FloatColumnType>()
+        {
+            assert!(float_type.bits == FloatBits::_24)
         } else {
             panic!()
         }
 
         // Double @doublePrecision
-        if let PhysicalColumnType::Float { bits } = &logs_double.typ {
-            assert!(*bits == FloatBits::_53)
+        if let Some(float_type) = logs_double
+            .typ
+            .inner()
+            .as_any()
+            .downcast_ref::<FloatColumnType>()
+        {
+            assert!(float_type.bits == FloatBits::_53)
         } else {
             panic!()
         }
 
         // Decimal @precision(4)
-        if let PhysicalColumnType::Numeric { precision, scale } = &logs_latitude.typ {
-            assert!(*precision == Some(4));
-            assert!(scale.is_none());
+        if let Some(numeric_type) = logs_latitude
+            .typ
+            .inner()
+            .as_any()
+            .downcast_ref::<NumericColumnType>()
+        {
+            assert!(numeric_type.precision == Some(4));
+            assert!(numeric_type.scale.is_none());
         }
 
         // Decimal @precision(5) @scale(2)
-        if let PhysicalColumnType::Numeric { precision, scale } = &logs_longitude.typ {
-            assert!(*precision == Some(5));
-            assert!(*scale == Some(2));
+        if let Some(numeric_type) = logs_longitude
+            .typ
+            .inner()
+            .as_any()
+            .downcast_ref::<NumericColumnType>()
+        {
+            assert!(numeric_type.precision == Some(5));
+            assert!(numeric_type.scale == Some(2));
         }
 
         // @range(min=0, max=32770)
-        if let PhysicalColumnType::Int { bits } = &logs_weird.typ {
+        if let Some(int_type) = logs_weird
+            .typ
+            .inner()
+            .as_any()
+            .downcast_ref::<IntColumnType>()
+        {
             // range in hint does NOT fit in SMALLINT
-            assert!(*bits == IntBits::_32)
+            assert!(int_type.bits == IntBits::_32)
         } else {
             panic!()
         }
 
         // @maxLength(15)
-        if let PhysicalColumnType::String { max_length } = &logs_prefix.typ {
-            assert!((*max_length).unwrap() == 15)
+        if let Some(string_type) = logs_prefix
+            .typ
+            .inner()
+            .as_any()
+            .downcast_ref::<StringColumnType>()
+        {
+            assert!(string_type.max_length.unwrap() == 15)
         } else {
             panic!()
         }
 
         // @precision(6)
-        match &logs_granular.typ {
-            PhysicalColumnType::Timestamp { precision, .. } => {
-                if let Some(p) = precision {
-                    assert!(*p == 6)
-                } else {
-                    panic!()
-                }
+        if let Some(timestamp_type) = logs_granular
+            .typ
+            .inner()
+            .as_any()
+            .downcast_ref::<TimestampColumnType>()
+        {
+            if let Some(p) = timestamp_type.precision {
+                assert!(p == 6)
+            } else {
+                panic!()
             }
-            _ => panic!(),
+        } else {
+            panic!()
         };
     }
 

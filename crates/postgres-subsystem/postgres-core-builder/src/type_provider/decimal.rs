@@ -8,7 +8,7 @@ use core_model_builder::{
         annotation::{AnnotationSpec, AnnotationTarget},
     },
 };
-use exo_sql::PhysicalColumnType;
+use exo_sql::{NumericColumnType, PhysicalColumnType};
 use postgres_core_model::aggregate::ScalarAggregateFieldKind;
 use serde::{Deserialize, Serialize};
 
@@ -32,7 +32,7 @@ impl ResolvedTypeHint for DecimalTypeHint {
 }
 
 impl PrimitiveTypeProvider for primitive_type::DecimalType {
-    fn determine_column_type(&self, field: &ResolvedField) -> PhysicalColumnType {
+    fn determine_column_type(&self, field: &ResolvedField) -> Box<dyn PhysicalColumnType> {
         match &field.type_hint {
             Some(hint) => {
                 let hint_ref = hint.0.as_ref() as &dyn std::any::Any;
@@ -43,21 +43,21 @@ impl PrimitiveTypeProvider for primitive_type::DecimalType {
                         assert!(decimal_hint.scale.is_none())
                     }
 
-                    PhysicalColumnType::Numeric {
+                    Box::new(NumericColumnType {
                         precision: decimal_hint.precision,
                         scale: decimal_hint.scale,
-                    }
+                    })
                 } else {
-                    PhysicalColumnType::Numeric {
+                    Box::new(NumericColumnType {
                         precision: None,
                         scale: None,
-                    }
+                    })
                 }
             }
-            None => PhysicalColumnType::Numeric {
+            None => Box::new(NumericColumnType {
                 precision: None,
                 scale: None,
-            },
+            }),
         }
     }
 

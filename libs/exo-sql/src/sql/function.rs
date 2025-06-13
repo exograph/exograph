@@ -1,4 +1,4 @@
-use crate::{ColumnId, Database, PhysicalColumnType, SQLParamContainer, VectorDistanceFunction};
+use crate::{ColumnId, Database, PhysicalColumnTypeExt, SQLParamContainer, VectorDistanceFunction};
 
 use super::{ExpressionBuilder, SQLBuilder};
 
@@ -27,7 +27,9 @@ impl ExpressionBuilder for Function {
                 let column = column_id.get_column(database);
                 column.build(database, builder);
                 builder.push(')');
-                if matches!(column.typ, PhysicalColumnType::Vector { .. })
+                if column
+                    .typ
+                    .is::<crate::sql::physical_column_type::VectorColumnType>()
                     && function_name != "count"
                 {
                     // For vectors, we need to cast the result to a real array (otherwise it will be a string)

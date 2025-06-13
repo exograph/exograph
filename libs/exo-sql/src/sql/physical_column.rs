@@ -9,25 +9,21 @@
 
 use crate::{
     Database, ManyToOneId, OneToManyId, SchemaObjectName, TableId,
-    database_error::DatabaseError,
     schema::column_spec::{ColumnAutoincrement, ColumnDefault},
-    schema::statement::SchemaStatement,
 };
 
 use super::{ExpressionBuilder, SQLBuilder};
-use regex::Regex;
 use serde::{Deserialize, Serialize};
-use tokio_postgres::types::Type;
 
 /// A column in a physical table
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
+#[derive(Serialize, Deserialize)]
 pub struct PhysicalColumn {
     /// The name of the table this column belongs to
     pub table_id: TableId,
     /// The name of the column
     pub name: String,
     /// The type of the column
-    pub typ: PhysicalColumnType,
+    pub typ: Box<dyn PhysicalColumnType>,
     /// Is this column a part of the PK for the table
     pub is_pk: bool,
     /// should this type have a NOT NULL constraint or not?
@@ -42,6 +38,52 @@ pub struct PhysicalColumn {
 
     /// A name that can be used to group columns together (for example to generate a foreign key constraint name for composite primary keys)
     pub group_name: Option<String>,
+}
+
+impl Clone for PhysicalColumn {
+    fn clone(&self) -> Self {
+        PhysicalColumn {
+            table_id: self.table_id,
+            name: self.name.clone(),
+            typ: self.typ.clone(),
+            is_pk: self.is_pk,
+            is_nullable: self.is_nullable,
+            unique_constraints: self.unique_constraints.clone(),
+            default_value: self.default_value.clone(),
+            update_sync: self.update_sync,
+            group_name: self.group_name.clone(),
+        }
+    }
+}
+
+impl PartialEq for PhysicalColumn {
+    fn eq(&self, other: &Self) -> bool {
+        self.table_id == other.table_id
+            && self.name == other.name
+            && self.typ.equals(other.typ.as_ref())
+            && self.is_pk == other.is_pk
+            && self.is_nullable == other.is_nullable
+            && self.unique_constraints == other.unique_constraints
+            && self.default_value == other.default_value
+            && self.update_sync == other.update_sync
+            && self.group_name == other.group_name
+    }
+}
+
+impl Eq for PhysicalColumn {}
+
+impl std::hash::Hash for PhysicalColumn {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.table_id.hash(state);
+        self.name.hash(state);
+        self.typ.hash(state);
+        self.is_pk.hash(state);
+        self.is_nullable.hash(state);
+        self.unique_constraints.hash(state);
+        self.default_value.hash(state);
+        self.update_sync.hash(state);
+        self.group_name.hash(state);
+    }
 }
 
 /// Simpler implementation of Debug for PhysicalColumn.
@@ -82,458 +124,8 @@ impl ExpressionBuilder for PhysicalColumn {
     }
 }
 
-/// The type of a column in a physical table to include more precise information than just the type
-/// name.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
-pub enum PhysicalColumnType {
-    Int {
-        bits: IntBits,
-    },
-    String {
-        max_length: Option<usize>,
-    },
-    Boolean,
-    Timestamp {
-        timezone: bool,
-        precision: Option<usize>,
-    },
-    Date,
-    Time {
-        precision: Option<usize>,
-    },
-    Json,
-    Blob,
-    Uuid,
-    Vector {
-        size: usize,
-    },
-    Array {
-        typ: Box<PhysicalColumnType>,
-    },
-    Float {
-        bits: FloatBits,
-    },
-    Numeric {
-        precision: Option<usize>,
-        scale: Option<usize>,
-    },
-    Enum {
-        enum_name: SchemaObjectName,
-    },
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum IntBits {
-    _16,
-    _32,
-    _64,
-}
-
-impl IntBits {
-    pub fn bits(&self) -> usize {
-        match self {
-            IntBits::_16 => 16,
-            IntBits::_32 => 32,
-            IntBits::_64 => 64,
-        }
-    }
-}
-
-/// Number of bits in the float's mantissa.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum FloatBits {
-    _24,
-    _53,
-}
-
-impl PhysicalColumnType {
-    pub fn type_string(&self) -> String {
-        match self {
-            PhysicalColumnType::Int { bits } => format!("{}-bit integer", bits.bits()),
-            PhysicalColumnType::String { max_length } => {
-                format!("String of max length {max_length:?}")
-            }
-            PhysicalColumnType::Boolean => "Boolean".to_string(),
-            PhysicalColumnType::Timestamp {
-                timezone,
-                precision,
-            } => {
-                format!("Timestamp with timezone: {timezone:?}, precision: {precision:?}")
-            }
-            PhysicalColumnType::Date => "Date".to_string(),
-            PhysicalColumnType::Time { precision } => {
-                format!("Time with precision: {precision:?}")
-            }
-            PhysicalColumnType::Json => "Json".to_string(),
-            PhysicalColumnType::Blob => "Blob".to_string(),
-            PhysicalColumnType::Uuid => "Uuid".to_string(),
-            PhysicalColumnType::Vector { size } => format!("Vector of size {size:?}"),
-            PhysicalColumnType::Array { typ } => format!("Array of {typ:?}"),
-            PhysicalColumnType::Float { bits } => match bits {
-                FloatBits::_24 => "Single precision floating point".to_string(),
-                FloatBits::_53 => "Double precision floating point".to_string(),
-            },
-            PhysicalColumnType::Numeric { precision, scale } => {
-                format!("Numeric with precision: {precision:?}, scale: {scale:?}")
-            }
-            PhysicalColumnType::Enum { enum_name } => {
-                format!("Enum with type name: {enum_name:?}")
-            }
-        }
-    }
-    /// Create a new physical column type given the SQL type string. This is used to reverse-engineer
-    /// a database schema to a Exograph model.
-    pub fn from_string(s: &str) -> Result<PhysicalColumnType, DatabaseError> {
-        let s = s.to_uppercase();
-
-        match s.find('[') {
-            // If the type contains `[`, then it's an array type
-            Some(idx) => {
-                let db_type = &s[..idx]; // The underlying data type (e.g. `INT` in `INT[][]`)
-                let mut dims = &s[idx..]; // The array brackets (e.g. `[][]` in `INT[][]`)
-
-                // Count how many `[]` exist in `dims` (how many dimensions does this array have)
-                let mut count = 0;
-                loop {
-                    if !dims.is_empty() {
-                        if dims.len() >= 2 && &dims[0..2] == "[]" {
-                            dims = &dims[2..];
-                            count += 1;
-                        } else {
-                            return Err(DatabaseError::Validation(format!("unknown type {s}")));
-                        }
-                    } else {
-                        break;
-                    }
-                }
-
-                // Wrap the underlying type with `PhysicalColumnType::Array`
-                let mut array_type = PhysicalColumnType::Array {
-                    typ: Box::new(PhysicalColumnType::from_string(db_type)?),
-                };
-                for _ in 0..count - 1 {
-                    array_type = PhysicalColumnType::Array {
-                        typ: Box::new(array_type),
-                    };
-                }
-                Ok(array_type)
-            }
-
-            None => Ok(match s.as_str() {
-                // TODO: not really correct...
-                "SMALLSERIAL" => PhysicalColumnType::Int { bits: IntBits::_16 },
-                "SMALLINT" => PhysicalColumnType::Int { bits: IntBits::_16 },
-                "INT" => PhysicalColumnType::Int { bits: IntBits::_32 },
-                "INTEGER" => PhysicalColumnType::Int { bits: IntBits::_32 },
-                "SERIAL" => PhysicalColumnType::Int { bits: IntBits::_32 },
-                "BIGINT" => PhysicalColumnType::Int { bits: IntBits::_64 },
-                "BIGSERIAL" => PhysicalColumnType::Int { bits: IntBits::_64 },
-
-                "REAL" => PhysicalColumnType::Float {
-                    bits: FloatBits::_24,
-                },
-                "DOUBLE PRECISION" => PhysicalColumnType::Float {
-                    bits: FloatBits::_53,
-                },
-
-                "UUID" => PhysicalColumnType::Uuid,
-                "TEXT" => PhysicalColumnType::String { max_length: None },
-                "BOOLEAN" => PhysicalColumnType::Boolean,
-                "JSONB" => PhysicalColumnType::Json,
-                "BYTEA" => PhysicalColumnType::Blob,
-                s => {
-                    // parse types with arguments
-                    // TODO: more robust parsing
-
-                    let get_num = |s: &str| {
-                        s.chars()
-                            .filter(|c| c.is_numeric())
-                            .collect::<String>()
-                            .parse::<usize>()
-                            .ok()
-                    };
-
-                    if s.starts_with("CHARACTER VARYING")
-                        || s.starts_with("VARCHAR")
-                        || s.starts_with("CHAR")
-                    {
-                        PhysicalColumnType::String {
-                            max_length: get_num(s),
-                        }
-                    } else if s.starts_with("TIMESTAMP") {
-                        PhysicalColumnType::Timestamp {
-                            precision: get_num(s),
-                            timezone: s.contains("WITH TIME ZONE"),
-                        }
-                    } else if s.starts_with("TIME") {
-                        PhysicalColumnType::Time {
-                            precision: get_num(s),
-                        }
-                    } else if s.starts_with("DATE") {
-                        PhysicalColumnType::Date
-                    } else if s.starts_with("NUMERIC") {
-                        if s == "NUMERIC" {
-                            // NUMERIC without precision/scale parameters
-                            PhysicalColumnType::Numeric {
-                                precision: None,
-                                scale: None,
-                            }
-                        } else {
-                            // NUMERIC with precision/scale parameters
-                            let regex =
-                                Regex::new("NUMERIC\\((?P<precision>\\d+),?(?P<scale>\\d+)?\\)")
-                                    .map_err(|_| {
-                                        DatabaseError::Validation(
-                                            "Invalid numeric column spec".into(),
-                                        )
-                                    })?;
-                            let captures = regex.captures(s).ok_or_else(|| {
-                                DatabaseError::Validation(format!(
-                                    "Invalid numeric column spec: {}",
-                                    s
-                                ))
-                            })?;
-
-                            let precision = captures
-                                .name("precision")
-                                .and_then(|s| s.as_str().parse().ok());
-                            let scale =
-                                captures.name("scale").and_then(|s| s.as_str().parse().ok());
-
-                            PhysicalColumnType::Numeric { precision, scale }
-                        }
-                    } else {
-                        return Err(DatabaseError::Validation(format!("unknown type {s}")));
-                    }
-                }
-            }),
-        }
-    }
-
-    pub fn get_pg_type(&self) -> Type {
-        match &self {
-            PhysicalColumnType::Int { bits } => match bits {
-                IntBits::_16 => Type::INT2,
-                IntBits::_32 => Type::INT4,
-                IntBits::_64 => Type::INT8,
-            },
-            PhysicalColumnType::String { max_length } => {
-                if max_length.is_some() {
-                    Type::VARCHAR
-                } else {
-                    Type::TEXT
-                }
-            }
-            PhysicalColumnType::Boolean => Type::BOOL,
-            PhysicalColumnType::Timestamp { timezone, .. } => {
-                if *timezone {
-                    Type::TIMESTAMPTZ
-                } else {
-                    Type::TIMESTAMP
-                }
-            }
-            PhysicalColumnType::Date => Type::DATE,
-            PhysicalColumnType::Time { .. } => Type::TIME,
-            PhysicalColumnType::Json => Type::JSONB,
-            PhysicalColumnType::Blob => Type::BYTEA,
-            PhysicalColumnType::Uuid => Type::UUID,
-            PhysicalColumnType::Array { typ } => to_pg_array_type(&typ.get_pg_type()),
-            PhysicalColumnType::Float { bits } => match bits {
-                FloatBits::_24 => Type::FLOAT4,
-                FloatBits::_53 => Type::FLOAT8,
-            },
-            PhysicalColumnType::Numeric { .. } => Type::NUMERIC,
-            PhysicalColumnType::Vector { .. } => Type::FLOAT4_ARRAY,
-            PhysicalColumnType::Enum { .. } => Type::TEXT,
-        }
-    }
-
-    pub fn to_sql(&self, default_value: Option<&ColumnDefault>) -> SchemaStatement {
-        use std::fmt::Write;
-
-        match self {
-            Self::Int { bits } => SchemaStatement {
-                statement: {
-                    if matches!(
-                        default_value,
-                        Some(ColumnDefault::Autoincrement(ColumnAutoincrement::Serial))
-                    ) {
-                        match bits {
-                            IntBits::_16 => "SMALLSERIAL",
-                            IntBits::_32 => "SERIAL",
-                            IntBits::_64 => "BIGSERIAL",
-                        }
-                    } else {
-                        match bits {
-                            IntBits::_16 => "SMALLINT",
-                            IntBits::_32 => "INT",
-                            IntBits::_64 => "BIGINT",
-                        }
-                    }
-                }
-                .to_owned(),
-                pre_statements: vec![],
-                post_statements: vec![],
-            },
-
-            Self::Float { bits } => SchemaStatement {
-                statement: match bits {
-                    FloatBits::_24 => "REAL",
-                    FloatBits::_53 => "DOUBLE PRECISION",
-                }
-                .to_owned(),
-                pre_statements: vec![],
-                post_statements: vec![],
-            },
-
-            Self::Numeric { precision, scale } => SchemaStatement {
-                statement: {
-                    if let Some(p) = precision {
-                        if let Some(s) = scale {
-                            format!("NUMERIC({p}, {s})")
-                        } else {
-                            format!("NUMERIC({p})")
-                        }
-                    } else {
-                        assert!(scale.is_none()); // can't have a scale and no precision
-                        "NUMERIC".to_owned()
-                    }
-                },
-                pre_statements: vec![],
-                post_statements: vec![],
-            },
-
-            Self::String { max_length } => SchemaStatement {
-                statement: if let Some(max_length) = max_length {
-                    format!("VARCHAR({max_length})")
-                } else {
-                    "TEXT".to_owned()
-                },
-                pre_statements: vec![],
-                post_statements: vec![],
-            },
-
-            Self::Boolean => SchemaStatement {
-                statement: "BOOLEAN".to_owned(),
-                pre_statements: vec![],
-                post_statements: vec![],
-            },
-
-            Self::Timestamp {
-                timezone,
-                precision,
-            } => SchemaStatement {
-                statement: {
-                    let timezone_option = if *timezone {
-                        "WITH TIME ZONE"
-                    } else {
-                        "WITHOUT TIME ZONE"
-                    };
-                    let precision_option = if let Some(p) = precision {
-                        format!("({p})")
-                    } else {
-                        String::default()
-                    };
-
-                    // e.g. "TIMESTAMP(3) WITH TIME ZONE"
-                    format!("TIMESTAMP{precision_option} {timezone_option}")
-                },
-                pre_statements: vec![],
-                post_statements: vec![],
-            },
-
-            Self::Time { precision } => SchemaStatement {
-                statement: if let Some(p) = precision {
-                    format!("TIME({p})")
-                } else {
-                    "TIME".to_owned()
-                },
-                pre_statements: vec![],
-                post_statements: vec![],
-            },
-
-            Self::Date => SchemaStatement {
-                statement: "DATE".to_owned(),
-                pre_statements: vec![],
-                post_statements: vec![],
-            },
-
-            Self::Json => SchemaStatement {
-                statement: "JSONB".to_owned(),
-                pre_statements: vec![],
-                post_statements: vec![],
-            },
-
-            Self::Blob => SchemaStatement {
-                statement: "BYTEA".to_owned(),
-                pre_statements: vec![],
-                post_statements: vec![],
-            },
-
-            Self::Uuid => SchemaStatement {
-                statement: "uuid".to_owned(),
-                pre_statements: vec![],
-                post_statements: vec![],
-            },
-
-            Self::Vector { size, .. } => SchemaStatement {
-                statement: format!("Vector({size})"),
-                pre_statements: vec![],
-                post_statements: vec![],
-            },
-
-            Self::Array { typ } => {
-                // 'unwrap' nested arrays all the way to the underlying primitive type
-
-                let mut underlying_typ = typ;
-                let mut dimensions = 1;
-
-                while let Self::Array { typ } = &**underlying_typ {
-                    underlying_typ = typ;
-                    dimensions += 1;
-                }
-
-                // build dimensions
-
-                let mut dimensions_part = String::new();
-
-                for _ in 0..dimensions {
-                    write!(&mut dimensions_part, "[]").unwrap();
-                }
-
-                let mut sql_statement = underlying_typ.to_sql(default_value);
-                sql_statement.statement += &dimensions_part;
-                sql_statement
-            }
-
-            Self::Enum { enum_name } => SchemaStatement {
-                statement: enum_name.sql_name(),
-                pre_statements: vec![],
-                post_statements: vec![],
-            },
-        }
-    }
-}
-
-pub(crate) fn to_pg_array_type(pg_type: &Type) -> Type {
-    match *pg_type {
-        Type::INT2 => Type::INT2_ARRAY,
-        Type::INT4 => Type::INT4_ARRAY,
-        Type::INT8 => Type::INT8_ARRAY,
-        Type::TEXT => Type::TEXT_ARRAY,
-        Type::JSONB => Type::JSONB_ARRAY,
-        Type::FLOAT4 => Type::FLOAT4_ARRAY,
-        Type::FLOAT8 => Type::FLOAT8_ARRAY,
-        Type::BOOL => Type::BOOL_ARRAY,
-        Type::TIMESTAMPTZ => Type::TIMESTAMPTZ_ARRAY,
-        Type::TEXT_ARRAY => Type::TEXT_ARRAY,
-        Type::VARCHAR => Type::VARCHAR_ARRAY,
-        Type::BYTEA => Type::BYTEA_ARRAY,
-        Type::UUID => Type::UUID_ARRAY,
-        Type::NUMERIC => Type::NUMERIC_ARRAY,
-        _ => unimplemented!("Unsupported array type: {:?}", pg_type),
-    }
-}
+// Re-export types for backward compatibility
+pub use crate::sql::physical_column_type::PhysicalColumnType;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Copy, Hash)]
 pub struct ColumnId {

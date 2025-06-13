@@ -8,7 +8,7 @@ use core_model_builder::{
         annotation::{AnnotationSpec, AnnotationTarget},
     },
 };
-use exo_sql::{DEFAULT_VECTOR_SIZE, PhysicalColumnType, VectorDistanceFunction};
+use exo_sql::{DEFAULT_VECTOR_SIZE, PhysicalColumnType, VectorColumnType, VectorDistanceFunction};
 use postgres_core_model::aggregate::ScalarAggregateFieldKind;
 use serde::{Deserialize, Serialize};
 
@@ -32,24 +32,24 @@ impl ResolvedTypeHint for VectorTypeHint {
 }
 
 impl PrimitiveTypeProvider for primitive_type::VectorType {
-    fn determine_column_type(&self, field: &ResolvedField) -> PhysicalColumnType {
+    fn determine_column_type(&self, field: &ResolvedField) -> Box<dyn PhysicalColumnType> {
         match &field.type_hint {
             Some(hint) => {
                 let hint_ref = hint.0.as_ref() as &dyn std::any::Any;
 
                 if let Some(vector_hint) = hint_ref.downcast_ref::<VectorTypeHint>() {
-                    PhysicalColumnType::Vector {
+                    Box::new(VectorColumnType {
                         size: vector_hint.size.unwrap_or(DEFAULT_VECTOR_SIZE),
-                    }
+                    })
                 } else {
-                    PhysicalColumnType::Vector {
+                    Box::new(VectorColumnType {
                         size: DEFAULT_VECTOR_SIZE,
-                    }
+                    })
                 }
             }
-            None => PhysicalColumnType::Vector {
+            None => Box::new(VectorColumnType {
                 size: DEFAULT_VECTOR_SIZE,
-            },
+            }),
         }
     }
 
