@@ -103,59 +103,51 @@ fn type_annotation(column_type: &ColumnTypeSpec) -> String {
     match column_type {
         ColumnTypeSpec::Direct(physical_type) => {
             let inner_type = physical_type.inner();
-            match inner_type {
-                x if x.as_any().is::<IntColumnType>() => {
-                    let int_type = x.as_any().downcast_ref::<IntColumnType>().unwrap();
-                    match int_type.bits {
-                        IntBits::_16 => "@bits16".to_string(),
-                        IntBits::_32 => "".to_string(),
-                        IntBits::_64 => "@bits64".to_string(),
-                    }
+            if let Some(int_type) = inner_type.as_any().downcast_ref::<IntColumnType>() {
+                match int_type.bits {
+                    IntBits::_16 => "@bits16".to_string(),
+                    IntBits::_32 => "".to_string(),
+                    IntBits::_64 => "@bits64".to_string(),
                 }
-                x if x.as_any().is::<FloatColumnType>() => {
-                    let float_type = x.as_any().downcast_ref::<FloatColumnType>().unwrap();
-                    match float_type.bits {
-                        FloatBits::_24 => "@singlePrecision".to_string(),
-                        FloatBits::_53 => "@doublePrecision".to_string(),
-                    }
+            } else if let Some(float_type) = inner_type.as_any().downcast_ref::<FloatColumnType>() {
+                match float_type.bits {
+                    FloatBits::_24 => "@singlePrecision".to_string(),
+                    FloatBits::_53 => "@doublePrecision".to_string(),
                 }
-                x if x.as_any().is::<NumericColumnType>() => {
-                    let numeric_type = x.as_any().downcast_ref::<NumericColumnType>().unwrap();
-                    let precision_part = numeric_type.precision.map(|p| format!("@precision({p})"));
-                    let scale_part = numeric_type.scale.map(|s| format!("@scale({s})"));
-                    match (precision_part, scale_part) {
-                        (Some(precision), Some(scale)) => format!("{precision} {scale}"),
-                        (Some(precision), None) => precision,
-                        (None, Some(scale)) => scale,
-                        (None, None) => "".to_string(),
-                    }
+            } else if let Some(numeric_type) =
+                inner_type.as_any().downcast_ref::<NumericColumnType>()
+            {
+                let precision_part = numeric_type.precision.map(|p| format!("@precision({p})"));
+                let scale_part = numeric_type.scale.map(|s| format!("@scale({s})"));
+                match (precision_part, scale_part) {
+                    (Some(precision), Some(scale)) => format!("{precision} {scale}"),
+                    (Some(precision), None) => precision,
+                    (None, Some(scale)) => scale,
+                    (None, None) => "".to_string(),
                 }
-                x if x.as_any().is::<StringColumnType>() => {
-                    let string_type = x.as_any().downcast_ref::<StringColumnType>().unwrap();
-                    match string_type.max_length {
-                        Some(max_length) => format!("@maxLength({max_length})"),
-                        None => "".to_string(),
-                    }
+            } else if let Some(string_type) = inner_type.as_any().downcast_ref::<StringColumnType>()
+            {
+                match string_type.max_length {
+                    Some(max_length) => format!("@maxLength({max_length})"),
+                    None => "".to_string(),
                 }
-                x if x.as_any().is::<TimestampColumnType>() => {
-                    let timestamp_type = x.as_any().downcast_ref::<TimestampColumnType>().unwrap();
-                    match timestamp_type.precision {
-                        Some(precision) => format!("@precision({precision})"),
-                        None => "".to_string(),
-                    }
+            } else if let Some(timestamp_type) =
+                inner_type.as_any().downcast_ref::<TimestampColumnType>()
+            {
+                match timestamp_type.precision {
+                    Some(precision) => format!("@precision({precision})"),
+                    None => "".to_string(),
                 }
-                x if x.as_any().is::<TimeColumnType>() => {
-                    let time_type = x.as_any().downcast_ref::<TimeColumnType>().unwrap();
-                    match time_type.precision {
-                        Some(precision) => format!("@precision({precision})"),
-                        None => "".to_string(),
-                    }
+            } else if let Some(time_type) = inner_type.as_any().downcast_ref::<TimeColumnType>() {
+                match time_type.precision {
+                    Some(precision) => format!("@precision({precision})"),
+                    None => "".to_string(),
                 }
-                x if x.as_any().is::<VectorColumnType>() => {
-                    let vector_type = x.as_any().downcast_ref::<VectorColumnType>().unwrap();
-                    format!("@size({})", vector_type.size)
-                }
-                _ => "".to_string(),
+            } else if let Some(vector_type) = inner_type.as_any().downcast_ref::<VectorColumnType>()
+            {
+                format!("@size({})", vector_type.size)
+            } else {
+                "".to_string()
             }
         }
         _ => "".to_string(),

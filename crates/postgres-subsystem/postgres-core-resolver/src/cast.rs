@@ -84,20 +84,20 @@ pub fn cast_value(
         Val::String(v) => cast_string(v, destination_type).map(Some),
         Val::Bool(v) => Ok(Some(SQLParamContainer::bool(*v))),
         Val::Null => Ok(None),
-        Val::Enum(v) => match destination_type {
-            x if x.as_any().is::<EnumColumnType>() => {
-                let enum_type = x.as_any().downcast_ref::<EnumColumnType>().unwrap();
+        Val::Enum(v) => {
+            if let Some(enum_type) = destination_type.as_any().downcast_ref::<EnumColumnType>() {
                 let enum_name = &enum_type.enum_name;
                 Ok(Some(SQLParamContainer::enum_(
                     v.to_string(),
                     enum_name.clone(),
                 )))
+            } else {
+                Err(CastError::Generic(format!(
+                    "Expected enum type, got {}",
+                    destination_type.type_string()
+                )))
             }
-            _ => Err(CastError::Generic(format!(
-                "Expected enum type, got {}",
-                destination_type.type_string()
-            ))),
-        }, // We might need guidance from the database to do a correct translation
+        } // We might need guidance from the database to do a correct translation
         Val::List(elems) => cast_list(elems, destination_type, unnest),
         Val::Object(_) => Ok(Some(cast_object(value, destination_type)?)),
         Val::Binary(bytes) => Ok(Some(SQLParamContainer::bytes(bytes.clone()))),
@@ -109,65 +109,52 @@ pub fn cast_list(
     destination_type: &dyn PhysicalColumnType,
     unnest: bool,
 ) -> Result<Option<SQLParamContainer>, CastError> {
-    match destination_type {
-        #[allow(unused_variables)]
-        x if x.as_any().is::<VectorColumnType>() => {
-            let vector_type = x.as_any().downcast_ref::<VectorColumnType>().unwrap();
-            let size = &vector_type.size;
-            if elems.len() != *size {
-                return Err(CastError::Generic(format!(
-                    "Expected vector size. Expected {size}, got {}",
-                    elems.len()
-                )));
-            }
-
-            let vec_value: Result<Vec<f32>, CastError> = elems
-                .iter()
-                .map(|v| match v {
-                    Val::Number(n) => cast_to_f32(n),
-                    _ => Err(CastError::Generic(
-                        "Invalid vector parameter: element is not of float type".into(),
-                    )),
-                })
-                .collect();
-
-            let vec_value = vec_value?;
-            Ok(Some(SQLParamContainer::f32_array(vec_value)))
+    if let Some(vector_column_type) = destination_type.as_any().downcast_ref::<VectorColumnType>() {
+        let size = &vector_column_type.size;
+        if elems.len() != *size {
+            return Err(CastError::Generic(format!(
+                "Expected vector size. Expected {size}, got {}",
+                elems.len()
+            )));
         }
-        _ => {
-            if unnest {
-                let casted_elems: Vec<_> = elems
-                    .iter()
-                    .map(|e| cast_value(e, destination_type, false))
-                    .collect::<Result<Vec<_>, _>>()?;
 
-                Ok(Some(
-                    SQLParamContainer::new(casted_elems, array_type(destination_type)?)
-                        .with_unnest(),
-                ))
-            } else {
-                fn array_entry(elem: &Val) -> ArrayEntry<Val> {
-                    match elem {
-                        Val::List(elems) => ArrayEntry::List(elems),
-                        _ => ArrayEntry::Single(elem),
-                    }
-                }
+        let vec_value: Result<Vec<f32>, CastError> = elems
+            .iter()
+            .map(|v| match v {
+                Val::Number(n) => cast_to_f32(n),
+                _ => Err(CastError::Generic(
+                    "Invalid vector parameter: element is not of float type".into(),
+                )),
+            })
+            .collect();
 
-                let cast_value_with_error =
-                    |value: &Val| -> Result<Option<SQLParamContainer>, DatabaseError> {
-                        cast_value(value, destination_type, false)
-                            .map_err(|error| DatabaseError::BoxedError(error.into()))
-                    };
+        let vec_value = vec_value?;
+        Ok(Some(SQLParamContainer::f32_array(vec_value)))
+    } else if unnest {
+        let casted_elems: Vec<_> = elems
+            .iter()
+            .map(|e| cast_value(e, destination_type, false))
+            .collect::<Result<Vec<_>, _>>()?;
 
-                array_util::to_sql_param(
-                    elems,
-                    destination_type,
-                    array_entry,
-                    &cast_value_with_error,
-                )
-                .map_err(CastError::Postgres)
+        Ok(Some(
+            SQLParamContainer::new(casted_elems, array_type(destination_type)?).with_unnest(),
+        ))
+    } else {
+        fn array_entry(elem: &Val) -> ArrayEntry<Val> {
+            match elem {
+                Val::List(elems) => ArrayEntry::List(elems),
+                _ => ArrayEntry::Single(elem),
             }
         }
+
+        let cast_value_with_error =
+            |value: &Val| -> Result<Option<SQLParamContainer>, DatabaseError> {
+                cast_value(value, destination_type, false)
+                    .map_err(|error| DatabaseError::BoxedError(error.into()))
+            };
+
+        array_util::to_sql_param(elems, destination_type, array_entry, &cast_value_with_error)
+            .map_err(CastError::Postgres)
     }
 }
 
@@ -175,34 +162,29 @@ fn cast_number(
     number: &ValNumber,
     destination_type: &dyn PhysicalColumnType,
 ) -> Result<SQLParamContainer, CastError> {
-    let result: SQLParamContainer = match destination_type {
-        x if x.as_any().is::<IntColumnType>() => {
-            let int_type = x.as_any().downcast_ref::<IntColumnType>().unwrap();
-            let bits = &int_type.bits;
-            match bits {
-                IntBits::_16 => SQLParamContainer::i16(cast_to_i16(number)?),
-                IntBits::_32 => SQLParamContainer::i32(cast_to_i32(number)?),
-                IntBits::_64 => SQLParamContainer::i64(cast_to_i64(number)?),
-            }
+    let result: SQLParamContainer = if let Some(int_type) =
+        destination_type.as_any().downcast_ref::<IntColumnType>()
+    {
+        let bits = &int_type.bits;
+        match bits {
+            IntBits::_16 => SQLParamContainer::i16(cast_to_i16(number)?),
+            IntBits::_32 => SQLParamContainer::i32(cast_to_i32(number)?),
+            IntBits::_64 => SQLParamContainer::i64(cast_to_i64(number)?),
         }
-        x if x.as_any().is::<FloatColumnType>() => {
-            let float_type = x.as_any().downcast_ref::<FloatColumnType>().unwrap();
-            let bits = &float_type.bits;
-            match bits {
-                FloatBits::_24 => SQLParamContainer::f32(cast_to_f32(number)?),
-                FloatBits::_53 => SQLParamContainer::f64(cast_to_f64(number)?),
-            }
+    } else if let Some(float_type) = destination_type.as_any().downcast_ref::<FloatColumnType>() {
+        let bits = &float_type.bits;
+        match bits {
+            FloatBits::_24 => SQLParamContainer::f32(cast_to_f32(number)?),
+            FloatBits::_53 => SQLParamContainer::f64(cast_to_f64(number)?),
         }
-        x if x.as_any().is::<NumericColumnType>() => {
-            return Err(CastError::Generic(
-                "Number literals cannot be specified for decimal fields".into(),
-            ));
-        }
-        _ => {
-            return Err(CastError::Generic(
-                "Unexpected destination_type for number value".into(),
-            ));
-        }
+    } else if destination_type.as_any().is::<NumericColumnType>() {
+        return Err(CastError::Generic(
+            "Number literals cannot be specified for decimal fields".into(),
+        ));
+    } else {
+        return Err(CastError::Generic(
+            "Unexpected destination_type for number value".into(),
+        ));
     };
 
     Ok(result)
@@ -213,7 +195,7 @@ fn cast_string(
     destination_type: &dyn PhysicalColumnType,
 ) -> Result<SQLParamContainer, CastError> {
     let value: SQLParamContainer = match destination_type {
-        x if x.as_any().is::<NumericColumnType>() => {
+        numeric_type if numeric_type.as_any().is::<NumericColumnType>() => {
             #[cfg(feature = "bigdecimal")]
             {
                 let decimal = match string {
@@ -234,10 +216,12 @@ fn cast_string(
             }
         }
 
-        #[allow(unused_variables)]
-        x if x.as_any().is::<VectorColumnType>() => {
-            let vector_type = x.as_any().downcast_ref::<VectorColumnType>().unwrap();
-            let size = &vector_type.size;
+        vector_type if vector_type.as_any().is::<VectorColumnType>() => {
+            let vector_column_type = vector_type
+                .as_any()
+                .downcast_ref::<VectorColumnType>()
+                .unwrap();
+            let size = &vector_column_type.size;
             let parsed: Vec<f32> = serde_json::from_str(string).map_err(|e| {
                 CastError::Generic(format!("Could not parse {string} as a vector {e}"))
             })?;
@@ -252,9 +236,10 @@ fn cast_string(
             SQLParamContainer::f32_array(parsed)
         }
 
-        x if x.as_any().is::<TimestampColumnType>()
-            || x.as_any().is::<TimeColumnType>()
-            || x.as_any().is::<DateColumnType>() =>
+        datetime_type
+            if datetime_type.as_any().is::<TimestampColumnType>()
+                || datetime_type.as_any().is::<TimeColumnType>()
+                || datetime_type.as_any().is::<DateColumnType>() =>
         {
             let datetime = DateTime::parse_from_rfc3339(string);
             let naive_datetime = NaiveDateTime::parse_from_str(
@@ -265,11 +250,10 @@ fn cast_string(
             // attempt to parse string as either datetime+offset or as a naive datetime
             match (datetime, naive_datetime) {
                 (Ok(datetime), _) => {
-                    if destination_type.as_any().is::<TimestampColumnType>() {
-                        let timestamp_type = destination_type
-                            .as_any()
-                            .downcast_ref::<TimestampColumnType>()
-                            .unwrap();
+                    if let Some(timestamp_type) = destination_type
+                        .as_any()
+                        .downcast_ref::<TimestampColumnType>()
+                    {
                         let timezone = &timestamp_type.timezone;
                         if *timezone {
                             SQLParamContainer::timestamp_tz(datetime)
@@ -289,11 +273,10 @@ fn cast_string(
                 }
 
                 (_, Ok(naive_datetime)) => {
-                    if destination_type.as_any().is::<TimestampColumnType>() {
-                        let timestamp_type = destination_type
-                            .as_any()
-                            .downcast_ref::<TimestampColumnType>()
-                            .unwrap();
+                    if let Some(timestamp_type) = destination_type
+                        .as_any()
+                        .downcast_ref::<TimestampColumnType>()
+                    {
                         let timezone = &timestamp_type.timezone;
                         if *timezone {
                             // default to UTC+0 if this field is a timestamp+timezone field
@@ -350,20 +333,23 @@ fn cast_string(
             }
         }
 
-        x if x.as_any().is::<BlobColumnType>() => {
+        blob_type if blob_type.as_any().is::<BlobColumnType>() => {
             let bytes = base64::engine::general_purpose::STANDARD.decode(string)?;
             SQLParamContainer::bytes_from_vec(bytes)
         }
 
-        x if x.as_any().is::<UuidColumnType>() => {
+        uuid_type if uuid_type.as_any().is::<UuidColumnType>() => {
             let uuid = uuid::Uuid::parse_str(string)?;
             SQLParamContainer::uuid(uuid)
         }
 
-        x if x.as_any().is::<ArrayColumnType>() => {
-            let array_type = x.as_any().downcast_ref::<ArrayColumnType>().unwrap();
-            let typ = array_type.typ.inner();
-            cast_string(string, typ)?
+        array_type if array_type.as_any().is::<ArrayColumnType>() => {
+            if let Some(array_column_type) = array_type.as_any().downcast_ref::<ArrayColumnType>() {
+                let typ = array_column_type.typ.inner();
+                cast_string(string, typ)?
+            } else {
+                unreachable!("Type check succeeded but downcast failed")
+            }
         }
 
         _ => SQLParamContainer::string(string.to_owned()),
@@ -376,17 +362,17 @@ fn cast_object(
     val: &Val,
     destination_type: &dyn PhysicalColumnType,
 ) -> Result<SQLParamContainer, CastError> {
-    match destination_type {
-        x if x.as_any().is::<JsonColumnType>() => {
-            let json_object = val.clone().try_into().map_err(|_| {
-                CastError::Generic(format!("Failed to cast {val} to a JSON object"))
-            })?;
-            Ok(SQLParamContainer::json(json_object))
-        }
-        _ => Err(CastError::Generic(format!(
+    if destination_type.as_any().is::<JsonColumnType>() {
+        let json_object = val
+            .clone()
+            .try_into()
+            .map_err(|_| CastError::Generic(format!("Failed to cast {val} to a JSON object")))?;
+        Ok(SQLParamContainer::json(json_object))
+    } else {
+        Err(CastError::Generic(format!(
             "Unexpected destination type {} for object value",
             destination_type.type_string()
-        ))),
+        )))
     }
 }
 
