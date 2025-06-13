@@ -41,12 +41,6 @@ impl PartialEq for ArrayColumnType {
 
 impl Eq for ArrayColumnType {}
 
-impl std::hash::Hash for ArrayColumnType {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.typ.hash(state);
-    }
-}
-
 impl PhysicalColumnType for ArrayColumnType {
     fn type_string(&self) -> String {
         format!("Array of [{}]", self.typ.type_string())
@@ -92,11 +86,6 @@ impl PhysicalColumnType for ArrayColumnType {
 
     fn equals(&self, other: &dyn PhysicalColumnType) -> bool {
         other.as_any().downcast_ref::<Self>() == Some(self)
-    }
-
-    fn hash_type(&self, state: &mut dyn std::hash::Hasher) {
-        state.write(self.type_name().as_bytes());
-        self.typ.hash_type(state);
     }
 }
 

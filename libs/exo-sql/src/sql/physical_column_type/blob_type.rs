@@ -49,10 +49,6 @@ impl PhysicalColumnType for BlobColumnType {
     fn equals(&self, other: &dyn PhysicalColumnType) -> bool {
         other.as_any().downcast_ref::<Self>().is_some()
     }
-
-    fn hash_type(&self, state: &mut dyn std::hash::Hasher) {
-        state.write(self.type_name().as_bytes());
-    }
 }
 
 pub struct BlobColumnTypeSerializer;

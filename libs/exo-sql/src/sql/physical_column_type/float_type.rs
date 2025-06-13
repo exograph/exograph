@@ -68,14 +68,6 @@ impl PhysicalColumnType for FloatColumnType {
     fn equals(&self, other: &dyn PhysicalColumnType) -> bool {
         other.as_any().downcast_ref::<Self>() == Some(self)
     }
-
-    fn hash_type(&self, state: &mut dyn std::hash::Hasher) {
-        state.write(self.type_name().as_bytes());
-        state.write_u8(match self.bits {
-            FloatBits::_24 => 24,
-            FloatBits::_53 => 53,
-        });
-    }
 }
 
 pub struct FloatColumnTypeSerializer;

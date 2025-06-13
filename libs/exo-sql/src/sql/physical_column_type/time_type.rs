@@ -59,13 +59,6 @@ impl PhysicalColumnType for TimeColumnType {
     fn equals(&self, other: &dyn PhysicalColumnType) -> bool {
         other.as_any().downcast_ref::<Self>() == Some(self)
     }
-
-    fn hash_type(&self, state: &mut dyn std::hash::Hasher) {
-        state.write(self.type_name().as_bytes());
-        if let Some(precision) = &self.precision {
-            state.write_usize(*precision);
-        }
-    }
 }
 
 pub struct TimeColumnTypeSerializer;

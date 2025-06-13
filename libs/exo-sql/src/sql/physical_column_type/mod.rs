@@ -70,9 +70,6 @@ pub trait PhysicalColumnType: Send + Sync + Debug {
 
     /// Check equality with another physical column type
     fn equals(&self, other: &dyn PhysicalColumnType) -> bool;
-
-    /// Compute hash for this type
-    fn hash_type(&self, state: &mut dyn std::hash::Hasher);
 }
 
 // Implement standard traits directly on Box<dyn PhysicalColumnType>
@@ -89,12 +86,6 @@ impl PartialEq for Box<dyn PhysicalColumnType> {
 }
 
 impl Eq for Box<dyn PhysicalColumnType> {}
-
-impl std::hash::Hash for Box<dyn PhysicalColumnType> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.hash_type(state);
-    }
-}
 
 // Extension trait to add helper methods to Box<dyn PhysicalColumnType>
 pub trait PhysicalColumnTypeExt {

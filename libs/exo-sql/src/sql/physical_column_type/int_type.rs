@@ -94,15 +94,6 @@ impl PhysicalColumnType for IntColumnType {
     fn equals(&self, other: &dyn PhysicalColumnType) -> bool {
         other.as_any().downcast_ref::<Self>() == Some(self)
     }
-
-    fn hash_type(&self, state: &mut dyn std::hash::Hasher) {
-        state.write(self.type_name().as_bytes());
-        state.write_u8(match self.bits {
-            IntBits::_16 => 16,
-            IntBits::_32 => 32,
-            IntBits::_64 => 64,
-        });
-    }
 }
 
 pub struct IntColumnTypeSerializer;
