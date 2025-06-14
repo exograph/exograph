@@ -31,6 +31,7 @@ mod tests {
     struct TestSystem {
         system: PostgresGraphQLSubsystem,
         published_column_path: PhysicalColumnPath,
+        published2_column_path: PhysicalColumnPath,
         owner_id_column_path: PhysicalColumnPath,
         dept1_id_column_path: PhysicalColumnPath,
         dept2_id_column_path: PhysicalColumnPath,
@@ -41,6 +42,10 @@ mod tests {
     impl TestSystem {
         fn published_column(&self) -> ColumnPath {
             to_column_path(&self.published_column_path)
+        }
+
+        fn published2_column(&self) -> ColumnPath {
+            to_column_path(&self.published2_column_path)
         }
 
         fn owner_id_column(&self) -> ColumnPath {
@@ -77,6 +82,7 @@ mod tests {
                     type Article {
                         @pk id: Int = autoIncrement()
                         published: Boolean
+                        published2: Boolean
                         @bits64 owner_id: Int 
                         @bits64 dept1_id: Int 
                         @bits64 dept2_id: Int 
@@ -101,11 +107,13 @@ mod tests {
         };
 
         let published_column_id = get_column_id("published");
+        let published2_column_id = get_column_id("published2");
         let owner_id_column_id = get_column_id("owner_id");
         let dept1_id_column_id = get_column_id("dept1_id");
         let dept2_id_column_id = get_column_id("dept2_id");
 
         let published_column_path = PhysicalColumnPath::leaf(published_column_id);
+        let published2_column_path = PhysicalColumnPath::leaf(published2_column_id);
         let owner_id_column_path = PhysicalColumnPath::leaf(owner_id_column_id);
         let dept1_id_column_path = PhysicalColumnPath::leaf(dept1_id_column_id);
         let dept2_id_column_path = PhysicalColumnPath::leaf(dept2_id_column_id);
@@ -117,6 +125,7 @@ mod tests {
         TestSystem {
             system: postgres_subsystem,
             published_column_path,
+            published2_column_path,
             owner_id_column_path,
             dept1_id_column_path,
             dept2_id_column_path,
@@ -455,8 +464,8 @@ mod tests {
     ) {
         let TestSystem {
             system,
-            dept1_id_column_path,
-            dept2_id_column_path,
+            published_column_path,
+            published2_column_path,
             test_system_router,
             ..
         } = &test_system;
@@ -527,21 +536,21 @@ mod tests {
             for (l, predicate_fn) in scenarios.iter() {
                 let test_ae = AccessPredicateExpression::LogicalOp(op(
                     Box::new(AccessPredicateExpression::BooleanLiteral(*l)),
-                    Box::new(boolean_column_selection(dept1_id_column_path.clone())),
+                    Box::new(boolean_column_selection(published_column_path.clone())),
                 ));
 
                 let solved_predicate = solve_access(&test_ae, &context, system).await;
                 assert_eq!(
                     solved_predicate,
                     predicate_fn(AbstractPredicate::Eq(
-                        test_system.dept1_id_column(),
+                        test_system.published_column(),
                         ColumnPath::Param(SQLParamContainer::bool(true))
                     ))
                 );
 
                 // The swapped version
                 let test_ae = AccessPredicateExpression::LogicalOp(op(
-                    Box::new(boolean_column_selection(dept1_id_column_path.clone())),
+                    Box::new(boolean_column_selection(published_column_path.clone())),
                     Box::new(AccessPredicateExpression::BooleanLiteral(*l)),
                 ));
 
@@ -549,7 +558,7 @@ mod tests {
                 assert_eq!(
                     solved_predicate,
                     predicate_fn(AbstractPredicate::Eq(
-                        test_system.dept1_id_column(),
+                        test_system.published_column(),
                         ColumnPath::Param(SQLParamContainer::bool(true))
                     ))
                 );
@@ -559,8 +568,8 @@ mod tests {
         {
             // Two columns
             let test_ae = AccessPredicateExpression::LogicalOp(op(
-                Box::new(boolean_column_selection(dept1_id_column_path.clone())),
-                Box::new(boolean_column_selection(dept2_id_column_path.clone())),
+                Box::new(boolean_column_selection(published_column_path.clone())),
+                Box::new(boolean_column_selection(published2_column_path.clone())),
             ));
 
             let context = test_request_context(Value::Null, test_system_router, env); // context is irrelevant
@@ -569,11 +578,11 @@ mod tests {
                 solved_predicate,
                 both_columns(
                     Box::new(AbstractPredicate::Eq(
-                        test_system.dept1_id_column(),
+                        test_system.published_column(),
                         ColumnPath::Param(SQLParamContainer::bool(true))
                     )),
                     Box::new(AbstractPredicate::Eq(
-                        test_system.dept2_id_column(),
+                        test_system.published2_column(),
                         ColumnPath::Param(SQLParamContainer::bool(true))
                     ))
                 )
@@ -619,7 +628,7 @@ mod tests {
         let test_system = test_system().await;
         let TestSystem {
             system,
-            dept1_id_column_path: dept1_id_column_id,
+            published_column_path,
             test_system_router,
             ..
         } = &test_system;
@@ -672,7 +681,7 @@ mod tests {
         {
             // Two columns
             let test_ae = AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Not(
-                Box::new(boolean_column_selection(dept1_id_column_id.clone())),
+                Box::new(boolean_column_selection(published_column_path.clone())),
             ));
 
             let context = test_request_context(Value::Null, test_system_router, env); // context is irrelevant
@@ -680,7 +689,7 @@ mod tests {
             assert_eq!(
                 solved_predicate,
                 AbstractPredicate::Neq(
-                    test_system.dept1_id_column(),
+                    test_system.published_column(),
                     ColumnPath::Param(SQLParamContainer::bool(true))
                 )
             );
