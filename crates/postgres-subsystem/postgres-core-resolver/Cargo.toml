@@ -24,6 +24,7 @@ serde_json.workspace = true
 uuid.workspace = true
 maybe-owned.workspace = true
 futures.workspace = true
+indexmap.workspace = true
 
 
 exo-sql = { path = "../../../libs/exo-sql" }

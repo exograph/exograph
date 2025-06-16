@@ -6897,6 +6897,7 @@ dependencies = [
  "exo-env",
  "exo-sql",
  "futures",
+ "indexmap 2.9.0",
  "maybe-owned",
  "postgres-core-model",
  "serde_json",
