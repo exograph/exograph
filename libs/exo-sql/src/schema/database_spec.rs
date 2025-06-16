@@ -17,7 +17,7 @@ use crate::{
 };
 
 use super::{
-    column_spec::{ColumnAutoincrement, ColumnDefault, ColumnReferenceSpec, ColumnTypeSpec},
+    column_spec::{ColumnAutoincrement, ColumnDefault, ColumnReferenceSpec},
     enum_spec::EnumSpec,
     function_spec::FunctionSpec,
     index_spec::IndexSpec,
@@ -121,7 +121,7 @@ impl DatabaseSpec {
                 .map(|column_spec| PhysicalColumn {
                     table_id: *table_id,
                     name: column_spec.name.to_owned(),
-                    typ: column_spec.typ.to_database_type(),
+                    typ: column_spec.typ.clone(),
                     is_pk: column_spec.is_pk,
                     is_nullable: column_spec.is_nullable,
                     unique_constraints: column_spec.unique_constraints.to_owned(),
@@ -159,42 +159,40 @@ impl DatabaseSpec {
                         .find(|column_spec| column_spec.name == column.name)
                         .unwrap();
 
-                    match &column_spec.typ {
-                        ColumnTypeSpec::Reference(ColumnReferenceSpec {
-                            foreign_table_name,
-                            foreign_pk_column_name,
-                            ..
-                        }) => {
-                            let foreign_table_id =
-                                database.get_table_id(foreign_table_name).unwrap();
-                            let foreign_pk_column_id = database
-                                .get_column_id(foreign_table_id, foreign_pk_column_name)
-                                .unwrap();
-                            // Roughly match the behavior in type_builder.rs, where we set up the
-                            // alias to the pluralized field name, which in typical setup matches
-                            // the table name.
+                    if let Some(ColumnReferenceSpec {
+                        foreign_table_name,
+                        foreign_pk_column_name,
+                        ..
+                    }) = &column_spec.reference_spec
+                    {
+                        let foreign_table_id = database.get_table_id(foreign_table_name).unwrap();
+                        let foreign_pk_column_id = database
+                            .get_column_id(foreign_table_id, foreign_pk_column_name)
+                            .unwrap();
+                        // Roughly match the behavior in type_builder.rs, where we set up the
+                        // alias to the pluralized field name, which in typical setup matches
+                        // the table name.
 
-                            // TODO: Make unit tests compare statements semantically, not lexically
-                            // so setting up aliases consistently is same as not setting them up in
-                            // case aliases are unnecessary.
-                            let foreign_table_alias = Some(if column.name.ends_with("_id") {
-                                let base_name = &column.name[..column.name.len() - 3];
-                                let plural_suffix =
-                                    if base_name.ends_with('s') { "es" } else { "s" };
-                                format!("{base_name}{plural_suffix}")
-                            } else {
-                                column.name.clone()
-                            });
+                        // TODO: Make unit tests compare statements semantically, not lexically
+                        // so setting up aliases consistently is same as not setting them up in
+                        // case aliases are unnecessary.
+                        let foreign_table_alias = Some(if column.name.ends_with("_id") {
+                            let base_name = &column.name[..column.name.len() - 3];
+                            let plural_suffix = if base_name.ends_with('s') { "es" } else { "s" };
+                            format!("{base_name}{plural_suffix}")
+                        } else {
+                            column.name.clone()
+                        });
 
-                            Some(ManyToOne::new(
-                                vec![RelationColumnPair {
-                                    self_column_id,
-                                    foreign_column_id: foreign_pk_column_id,
-                                }],
-                                foreign_table_alias,
-                            ))
-                        }
-                        _ => None,
+                        Some(ManyToOne::new(
+                            vec![RelationColumnPair {
+                                self_column_id,
+                                foreign_column_id: foreign_pk_column_id,
+                            }],
+                            foreign_table_alias,
+                        ))
+                    } else {
+                        None
                     }
                 })
             })
@@ -472,9 +470,8 @@ mod tests {
                     vec![
                         ColumnSpec {
                             name: "id".into(),
-                            typ: ColumnTypeSpec::Direct(Box::new(IntColumnType {
-                                bits: IntBits::_32,
-                            })),
+                            typ: Box::new(IntColumnType { bits: IntBits::_32 }),
+                            reference_spec: None,
                             is_pk: true,
                             is_nullable: false,
                             unique_constraints: vec![],
@@ -485,9 +482,10 @@ mod tests {
                         },
                         ColumnSpec {
                             name: "name".into(),
-                            typ: ColumnTypeSpec::Direct(Box::new(StringColumnType {
+                            typ: Box::new(StringColumnType {
                                 max_length: Some(255),
-                            })),
+                            }),
+                            reference_spec: None,
                             is_pk: false,
                             is_nullable: true,
                             unique_constraints: vec![],
@@ -496,9 +494,8 @@ mod tests {
                         },
                         ColumnSpec {
                             name: "email".into(),
-                            typ: ColumnTypeSpec::Direct(Box::new(StringColumnType {
-                                max_length: None,
-                            })),
+                            typ: Box::new(StringColumnType { max_length: None }),
+                            reference_spec: None,
                             is_pk: false,
                             is_nullable: true,
                             unique_constraints: vec![],
@@ -529,7 +526,8 @@ mod tests {
                     },
                     vec![ColumnSpec {
                         name: "complete".into(),
-                        typ: ColumnTypeSpec::Direct(Box::new(BooleanColumnType)),
+                        typ: Box::new(BooleanColumnType),
+                        reference_spec: None,
                         is_pk: false,
                         is_nullable: true,
                         unique_constraints: vec![],
@@ -561,10 +559,11 @@ mod tests {
                     vec![
                         ColumnSpec {
                             name: "precision_and_scale".into(),
-                            typ: ColumnTypeSpec::Direct(Box::new(NumericColumnType {
+                            typ: Box::new(NumericColumnType {
                                 precision: Some(10),
                                 scale: Some(2),
-                            })),
+                            }),
+                            reference_spec: None,
                             is_pk: false,
                             is_nullable: true,
                             unique_constraints: vec![],
@@ -573,10 +572,11 @@ mod tests {
                         },
                         ColumnSpec {
                             name: "just_precision".into(),
-                            typ: ColumnTypeSpec::Direct(Box::new(NumericColumnType {
+                            typ: Box::new(NumericColumnType {
                                 precision: Some(20),
                                 scale: Some(0), // Default scale for NUMERIC is 0 (https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-NUMERIC-DECIMAL)
-                            })),
+                            }),
+                            reference_spec: None,
                             is_pk: false,
                             is_nullable: true,
                             unique_constraints: vec![],
@@ -585,10 +585,11 @@ mod tests {
                         },
                         ColumnSpec {
                             name: "no_precision_and_scale".into(),
-                            typ: ColumnTypeSpec::Direct(Box::new(NumericColumnType {
+                            typ: Box::new(NumericColumnType {
                                 precision: None,
                                 scale: None,
-                            })),
+                            }),
+                            reference_spec: None,
                             is_pk: false,
                             is_nullable: true,
                             unique_constraints: vec![],
@@ -673,7 +674,11 @@ mod tests {
 
     fn assert_column_spec_eq(actual: &ColumnSpec, expected: &ColumnSpec) {
         assert_eq!(actual.name, expected.name);
-        assert_eq!(actual.typ, expected.typ);
+        assert!(
+            actual.typ.equals(expected.typ.as_ref()),
+            "Column types don't match"
+        );
+        assert_eq!(actual.reference_spec, expected.reference_spec);
         assert_eq!(actual.is_pk, expected.is_pk);
         assert_eq!(actual.is_nullable, expected.is_nullable);
         assert_eq!(actual.unique_constraints, expected.unique_constraints);

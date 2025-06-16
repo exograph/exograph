@@ -3,14 +3,13 @@
 use crate::SchemaObjectName;
 use crate::sql::physical_column_type::{IntBits, IntColumnType, JsonColumnType, StringColumnType};
 
-use super::column_spec::{
-    ColumnAutoincrement, ColumnDefault, ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec,
-};
+use super::column_spec::{ColumnAutoincrement, ColumnDefault, ColumnReferenceSpec, ColumnSpec};
 
 pub fn pk_column(name: impl Into<String>) -> ColumnSpec {
     ColumnSpec {
         name: name.into(),
-        typ: ColumnTypeSpec::Direct(Box::new(IntColumnType { bits: IntBits::_16 })),
+        typ: Box::new(IntColumnType { bits: IntBits::_16 }),
+        reference_spec: None,
         is_pk: true,
         is_nullable: false,
         unique_constraints: vec![],
@@ -26,7 +25,8 @@ pub fn pk_reference_column(
 ) -> ColumnSpec {
     ColumnSpec {
         name: name.into(),
-        typ: ColumnTypeSpec::Reference(ColumnReferenceSpec {
+        typ: Box::new(IntColumnType { bits: IntBits::_16 }),
+        reference_spec: Some(ColumnReferenceSpec {
             foreign_table_name: SchemaObjectName::new(
                 foreign_table_name,
                 foreign_table_schema_name,
@@ -45,7 +45,8 @@ pub fn pk_reference_column(
 pub fn int_column(name: impl Into<String>) -> ColumnSpec {
     ColumnSpec {
         name: name.into(),
-        typ: ColumnTypeSpec::Direct(Box::new(IntColumnType { bits: IntBits::_16 })),
+        typ: Box::new(IntColumnType { bits: IntBits::_16 }),
+        reference_spec: None,
         is_pk: false,
         is_nullable: false,
         unique_constraints: vec![],
@@ -57,7 +58,8 @@ pub fn int_column(name: impl Into<String>) -> ColumnSpec {
 pub fn string_column(name: impl Into<String>) -> ColumnSpec {
     ColumnSpec {
         name: name.into(),
-        typ: ColumnTypeSpec::Direct(Box::new(StringColumnType { max_length: None })),
+        typ: Box::new(StringColumnType { max_length: None }),
+        reference_spec: None,
         is_pk: false,
         is_nullable: false,
         unique_constraints: vec![],
@@ -69,7 +71,8 @@ pub fn string_column(name: impl Into<String>) -> ColumnSpec {
 pub fn json_column(name: impl Into<String>) -> ColumnSpec {
     ColumnSpec {
         name: name.into(),
-        typ: ColumnTypeSpec::Direct(Box::new(JsonColumnType)),
+        typ: Box::new(JsonColumnType),
+        reference_spec: None,
         is_pk: false,
         is_nullable: false,
         unique_constraints: vec![],
