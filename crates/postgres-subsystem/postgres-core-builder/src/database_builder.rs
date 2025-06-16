@@ -495,12 +495,11 @@ fn determine_column_type<'a>(
     if let Some(hint) = &field.type_hint {
         let hint_ref = hint.0.as_ref() as &dyn std::any::Any;
         if let Some(explicit) = hint_ref.downcast_ref::<ExplicitTypeHint>() {
-            return exo_sql::schema::column_spec::ColumnTypeSpec::from_string(
+            return exo_sql::schema::column_spec::physical_column_type_from_string(
                 &explicit.dbtype,
                 &vec![],
             )
-            .unwrap()
-            .to_database_type();
+            .unwrap();
         }
     }
 

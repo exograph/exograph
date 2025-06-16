@@ -15,7 +15,9 @@ use crate::sql::connect::database_client::DatabaseClient;
 use crate::sql::physical_column_type::PhysicalColumnTypeExt;
 use crate::{PhysicalTable, SchemaObjectName};
 
-use super::column_spec::{ColumnAttribute, ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec};
+use super::column_spec::{
+    ColumnAttribute, ColumnReferenceSpec, ColumnSpec, physical_column_type_from_string,
+};
 use super::constraint::{Constraints, sorted_comma_list};
 use super::enum_spec::EnumSpec;
 use super::index_spec::IndexSpec;
@@ -97,7 +99,9 @@ impl TableSpec {
 
         let constraints = Constraints::from_live_db(client, &table_name).await?;
 
-        let mut column_type_mapping = HashMap::new();
+        // Mapping from column name to (reference spec, group name)
+        let mut column_reference_mapping: HashMap<String, (ColumnReferenceSpec, Option<String>)> =
+            HashMap::new();
 
         for foreign_constraint in constraints.foreign_constraints.into_iter() {
             for column_pair in foreign_constraint.column_pairs.into_iter() {
@@ -120,14 +124,14 @@ impl TableSpec {
                 issues.append(&mut column.issues);
 
                 if let Some(spec) = column.value {
-                    column_type_mapping.insert(
+                    column_reference_mapping.insert(
                         self_column.clone(),
                         (
-                            ColumnTypeSpec::Reference(ColumnReferenceSpec {
+                            ColumnReferenceSpec {
                                 foreign_table_name: foreign_constraint.foreign_table.clone(),
                                 foreign_pk_column_name: foreign_column.clone(),
-                                foreign_pk_type: spec.typ.to_database_type(),
-                            }),
+                                foreign_pk_type: spec.typ,
+                            },
                             spec.group_name.clone(),
                         ),
                     );
@@ -157,11 +161,11 @@ impl TableSpec {
                 })
                 .collect();
 
-            let explicit_column_type = column_type_mapping.get(&name).cloned().map(|(typ, _)| typ);
-            let group_name = column_type_mapping
+            let (reference_spec, group_name) = column_reference_mapping
                 .get(&name)
                 .cloned()
-                .and_then(|(_, group_name)| group_name);
+                .map(|(ref_spec, group)| (Some(ref_spec), group))
+                .unwrap_or((None, None));
 
             let mut column = ColumnSpec::from_live_db(
                 &table_name,
@@ -171,7 +175,7 @@ impl TableSpec {
                     .as_ref()
                     .map(|pk| pk.columns.contains(&name))
                     .unwrap_or(false),
-                explicit_column_type,
+                None,
                 unique_constraint_names,
                 group_name,
                 column_attributes,
@@ -180,7 +184,10 @@ impl TableSpec {
 
             issues.append(&mut column.issues);
 
-            if let Some(spec) = column.value {
+            if let Some(mut spec) = column.value {
+                if let Some(ref_spec) = reference_spec {
+                    spec.reference_spec = Some(ref_spec);
+                }
                 columns.push(spec);
             }
         }
@@ -230,11 +237,12 @@ impl TableSpec {
                 let typ: String = row.get("column_type");
                 let not_null: bool = row.get("not_null");
 
-                let column_type = ColumnTypeSpec::from_string(&typ, enums).unwrap();
+                let typ = physical_column_type_from_string(&typ, enums).unwrap();
 
                 ColumnSpec {
                     name,
-                    typ: column_type,
+                    typ,
+                    reference_spec: None,
                     is_pk: false,
                     is_nullable: !not_null,
                     unique_constraints: vec![],
@@ -255,18 +263,12 @@ impl TableSpec {
         let mut required_extensions = HashSet::new();
 
         for col_spec in self.columns.iter() {
-            match &col_spec.typ {
-                ColumnTypeSpec::Direct(col_type)
-                    if col_type.is::<crate::sql::physical_column_type::UuidColumnType>() =>
-                {
-                    required_extensions.insert("pgcrypto".to_string());
-                }
-                ColumnTypeSpec::Direct(col_type)
-                    if col_type.is::<crate::sql::physical_column_type::VectorColumnType>() =>
-                {
-                    required_extensions.insert("vector".to_string());
-                }
-                _ => {}
+            let typ = &col_spec.typ;
+            if typ.is::<crate::sql::physical_column_type::UuidColumnType>() {
+                required_extensions.insert("pgcrypto".to_string());
+            }
+            if typ.is::<crate::sql::physical_column_type::VectorColumnType>() {
+                required_extensions.insert("vector".to_string());
             }
         }
 
@@ -541,7 +543,7 @@ impl TableSpec {
             HashMap::new();
 
         for column in self.columns.iter() {
-            if let ColumnTypeSpec::Reference(column_reference) = &column.typ {
+            if let Some(column_reference) = &column.reference_spec {
                 let group_name = column
                     .group_name
                     .clone()
