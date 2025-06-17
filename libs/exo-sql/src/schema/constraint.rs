@@ -16,16 +16,19 @@ use crate::{
     SchemaObjectName, database_error::DatabaseError, sql::connect::database_client::DatabaseClient,
 };
 
+#[derive(Debug)]
 pub(super) struct PrimaryKeyConstraint {
     pub(super) _constraint_name: String,
     pub(super) columns: Vec<String>,
 }
 
+#[derive(Debug)]
 pub(super) struct ForeignKeyConstraintColumnPair {
     pub(super) self_column: String,
     pub(super) foreign_column: String,
 }
 
+#[derive(Debug)]
 pub(super) struct ForeignKeyConstraint {
     pub(super) constraint_name: String,
     pub(super) column_pairs: Vec<ForeignKeyConstraintColumnPair>,
@@ -38,6 +41,7 @@ pub(super) struct UniqueConstraint {
     pub(super) columns: Vec<String>,
 }
 
+#[derive(Debug)]
 pub(super) struct Constraints {
     pub(super) primary_key: Option<PrimaryKeyConstraint>,
     pub(super) foreign_constraints: Vec<ForeignKeyConstraint>,

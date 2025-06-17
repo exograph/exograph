@@ -1,0 +1,18 @@
+@postgres
+module Database {
+  @access(query=true, mutation=false)
+  type Address {
+    @pk street: String
+    @pk city: String
+    @pk state: String
+    @pk zip: Int
+    people: Set<Person>?
+  }
+
+  @access(query=true, mutation=false)
+  type Person {
+    @pk name: String
+    age: Int
+    address: Address?
+  }
+}
