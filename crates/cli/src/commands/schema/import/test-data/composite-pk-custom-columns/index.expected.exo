@@ -1,0 +1,20 @@
+@postgres
+module Database {
+  @access(query=true, mutation=false)
+  type Address {
+    @pk street: String
+    @pk city: String
+    @pk state: String
+    @pk zip: Int
+    info: String?
+    people: Set<Person>?
+  }
+
+  @access(query=true, mutation=false)
+  type Person {
+    @pk firstName: String
+    @pk lastName: String
+    age: Int
+    @column(mapping={street: "astreet", city: "acity", state: "astate", zip: "azip"}) address: Address?
+  }
+}
