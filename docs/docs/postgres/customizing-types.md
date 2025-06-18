@@ -227,6 +227,8 @@ module ConcertModule {
 }
 ```
 
+If you use a [composite primary key](#composite-primary-key), you can specify a mapping for the foreign key columns as we will see [later](#customizing-foreign-key-column-names) using a variant of the `@column` annotation.
+
 ### Assigning primary key
 
 The `@pk` annotation designates the primary key of a type. Typically, you will mark one of the fields as the primary key, but Exograph supports composite primary keys as well.
@@ -325,6 +327,43 @@ module PeopleDatabase {
 ```
 
 Other than marking multiple fields with `@pk`, all other aspects of the primary key are the same as for a single primary key.
+
+### Customizing foreign key column names
+
+When you introduce a field of a type with composite primary key (such as the `address` field in the `Person` type in the above example), Exograph automatically generates column names by combining the field name with each primary key field. For example, the generated column names in the `people` table would be `address_street`, `address_city`, `address_state`, and `address_zip`.
+
+You can customize these column names using the `@column(mapping=...)` annotation with an object literal that maps each primary key field to a custom column name. For example, if you want to map the `address` field to the `addr_street`, `addr_city`, `addr_state`, and `addr_zip` columns, you can use the following definition:
+
+```exo
+@postgres
+module PeopleDatabase {
+  type Person {
+    @pk firstName: String
+    @pk lastName: String
+    age: Int
+    @column(mapping={street: "addr_street", city: "addr_city", state: "addr_state", zip: "addr_zip"}) 
+    address: Address?
+  }
+
+  type Address {
+    @pk street: String
+    @pk city: String
+    @pk state: String
+    @pk zip: Int
+    info: String?
+  }
+}
+```
+
+With this setup, the foreign key columns in the `people` table will be named `addr_street`, `addr_city`, `addr_state`, and `addr_zip` instead of the default names.
+
+You can also provide a partial mapping. Any primary key fields not specified in the mapping will use the default naming convention:
+
+```exo
+@column(mapping={zip: "postal_code"}) address: Address?
+```
+
+This would generate columns `address_street`, `address_city`, `address_state`, and `postal_code`.
 
 ### Specifying a default value
 

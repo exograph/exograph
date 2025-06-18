@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use core_model::primitive_type::{self, PrimitiveType};
+use core_model::primitive_type::{self, JsonType, PrimitiveType};
 
 use crate::ast::ast_types::AstExpr;
 
@@ -36,6 +36,7 @@ impl AstExpr<Typed> {
                 PrimitiveType::Plain(primitive_type::STRING_TYPE),
             ))),
             AstExpr::NullLiteral(_) => Type::Null,
+            AstExpr::ObjectLiteral(_, _) => Type::Primitive(PrimitiveType::Plain(&JsonType)),
         }
     }
 

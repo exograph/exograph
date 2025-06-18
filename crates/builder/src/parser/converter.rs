@@ -647,6 +647,30 @@ fn convert_literal(node: Node, source: &[u8], source_span: Span) -> AstExpr<Unty
     }
 }
 
+fn convert_object_literal(node: Node, source: &[u8], source_span: Span) -> AstExpr<Untyped> {
+    assert_eq!(node.kind(), "object_literal");
+    let mut cursor = node.walk();
+    let mut map = HashMap::new();
+
+    for pair_node in node.children(&mut cursor) {
+        if pair_node.kind() == "object_pair" {
+            let key_node = pair_node.child_by_field_name("key").unwrap();
+            let value_node = pair_node.child_by_field_name("value").unwrap();
+
+            let key = match key_node.kind() {
+                "term" => key_node.utf8_text(source).unwrap().to_string(),
+                "literal_str" => text_child(key_node, source, "value"),
+                _ => panic!("Unsupported key type: {}", key_node.kind()),
+            };
+
+            let value = convert_expression(value_node, source, source_span);
+            map.insert(key, value);
+        }
+    }
+
+    AstExpr::ObjectLiteral(map, span_from_node(source_span, node))
+}
+
 fn convert_expression(node: Node, source: &[u8], source_span: Span) -> AstExpr<Untyped> {
     assert_eq!(node.kind(), "expression");
     let first_child = node.child(0).unwrap();
@@ -662,6 +686,7 @@ fn convert_expression(node: Node, source: &[u8], source_span: Span) -> AstExpr<U
             let expression = first_child.child_by_field_name("expression").unwrap();
             convert_expression(expression, source, source_span)
         }
+        "object_literal" => convert_object_literal(first_child, source, source_span),
         o => panic!("unsupported expression kind: {o}"),
     }
 }

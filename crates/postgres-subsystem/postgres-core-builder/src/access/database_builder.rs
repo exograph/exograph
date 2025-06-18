@@ -222,6 +222,9 @@ fn compute_primitive_db_expr(
         AstExpr::StringList(_, _) => Err(ModelBuildingError::Generic(
             "Access expressions do not support lists yet".to_string(),
         )),
+        AstExpr::ObjectLiteral(_, _) => Err(ModelBuildingError::Generic(
+            "Access expressions do not support object literals".to_string(),
+        )),
         AstExpr::LogicalOp(_) => unreachable!(), // Parser ensures that the two sides are primitive expressions
         AstExpr::RelationalOp(_) => unreachable!(), // Parser ensures that the two sides are primitive expressions
     }

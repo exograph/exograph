@@ -32,6 +32,12 @@ impl TypecheckFrom<AstExpr<Untyped>> for AstExpr<Typed> {
             AstExpr::NumberLiteral(v, s) => AstExpr::NumberLiteral(v.clone(), *s),
             AstExpr::StringList(v, s) => AstExpr::StringList(v.clone(), s.clone()),
             AstExpr::NullLiteral(s) => AstExpr::NullLiteral(*s),
+            AstExpr::ObjectLiteral(m, s) => AstExpr::ObjectLiteral(
+                m.iter()
+                    .map(|(k, v)| (k.clone(), AstExpr::shallow(v)))
+                    .collect(),
+                *s,
+            ),
         }
     }
 
@@ -52,7 +58,8 @@ impl TypecheckFrom<AstExpr<Untyped>> for AstExpr<Typed> {
             | AstExpr::StringLiteral(_, _)
             | AstExpr::BooleanLiteral(_, _)
             | AstExpr::NumberLiteral(_, _)
-            | AstExpr::NullLiteral(_) => false,
+            | AstExpr::NullLiteral(_)
+            | AstExpr::ObjectLiteral(_, _) => false,
         }
     }
 }

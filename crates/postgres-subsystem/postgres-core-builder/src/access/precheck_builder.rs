@@ -197,6 +197,9 @@ pub fn compute_precheck_predicate_expression(
         AstExpr::NullLiteral(_) => Err(ModelBuildingError::Generic(
             "Top-level expression cannot be a null literal".to_string(),
         )),
+        AstExpr::ObjectLiteral(_, _) => Err(ModelBuildingError::Generic(
+            "Top-level expression cannot be an object literal".to_string(),
+        )),
     }
 }
 
@@ -306,6 +309,9 @@ fn compute_primitive_precheck_expr(
         )),
         AstExpr::StringList(_, _) => Err(ModelBuildingError::Generic(
             "Access expressions do not support lists yet".to_string(),
+        )),
+        AstExpr::ObjectLiteral(_, _) => Err(ModelBuildingError::Generic(
+            "Access expressions do not support object literals".to_string(),
         )),
         AstExpr::LogicalOp(_) => unreachable!(), // Parser ensures that the two sides are primitive expressions
         AstExpr::RelationalOp(_) => unreachable!(), // Parser ensures that the two sides are primitive expressions
