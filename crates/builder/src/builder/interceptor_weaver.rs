@@ -90,6 +90,9 @@ fn matches(expr: &AstExpr<Typed>, operation_name: &str, operation_kind: Operatio
             panic!("List not supported in interceptor expression")
         }
         AstExpr::NullLiteral(_) => panic!("NullLiteral not supported in interceptor expression"),
+        AstExpr::ObjectLiteral(_, _) => {
+            panic!("ObjectLiteral not supported in interceptor expression")
+        }
     }
 }
 

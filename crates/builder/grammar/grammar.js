@@ -177,6 +177,7 @@ module.exports = grammar({
       prec(relational_level, $.relational_op),
       $.selection,
       $.literal,
+      $.object_literal,
     ),
     parenthetical: $ => seq("(", field("expression", $.expression), ")"),
     selection: $ => choice(
@@ -275,6 +276,16 @@ module.exports = grammar({
       $.literal_number,
       $.literal_boolean,
       $.literal_null
+    ),
+    object_literal: $ => seq(
+      "{",
+      optional(commaSep($.object_pair)),
+      "}"
+    ),
+    object_pair: $ => seq(
+      field("key", choice($.term, $.literal_str)),
+      ":",
+      field("value", $.expression)
     ),
     comment: $ => choice(
       seq('//', /.*/),

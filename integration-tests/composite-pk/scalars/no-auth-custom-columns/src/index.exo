@@ -1,0 +1,20 @@
+@postgres
+module PeopleDatabase {
+  @access(true)
+  type Person {
+    @pk firstName: String
+    @pk lastName: String
+    age: Int
+    @column(mapping={zip: "azip", city: "acity", state: "astate", street: "astreet"}) address: Address?
+  }
+
+  @access(true)
+  type Address {
+    @pk street: String
+    @pk city: String
+    @pk state: String
+    @pk zip: Int
+    info: String?
+    people: Set<Person>?
+  }
+}

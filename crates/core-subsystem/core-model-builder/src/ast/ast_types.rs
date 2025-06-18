@@ -349,6 +349,13 @@ pub enum AstExpr<T: NodeTypedness> {
         #[serde(default = "default_span")]
         Span,
     ),
+    ObjectLiteral(
+        HashMap<String, AstExpr<T>>,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+    ),
 }
 
 impl<T: NodeTypedness> AstExpr<T> {
@@ -372,6 +379,7 @@ impl<T: NodeTypedness> AstExpr<T> {
                 }
                 span
             }
+            AstExpr::ObjectLiteral(_, s) => *s,
         }
     }
 }

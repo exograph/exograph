@@ -130,6 +130,9 @@ fn compute_primitive_expr(
         AstExpr::StringList(_, _) => Err(ModelBuildingError::Generic(
             "Module access expressions do not support lists yet".to_string(),
         )),
+        AstExpr::ObjectLiteral(_, _) => Err(ModelBuildingError::Generic(
+            "Module access expressions do not support object literals".to_string(),
+        )),
         AstExpr::LogicalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
         AstExpr::RelationalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
     }

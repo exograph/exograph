@@ -13,6 +13,8 @@
 //! column name, here that information is encoded into an attribute of `ResolvedType`.
 //! If no @column is provided, the encoded information is set to an appropriate default value.
 
+use std::collections::HashMap;
+
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use postgres_core_model::types::EntityRepresentation;
 use serde::{Deserialize, Serialize};
@@ -52,6 +54,15 @@ use heck::ToSnakeCase;
 const DEFAULT_FN_AUTO_INCREMENT: &str = "autoIncrement";
 const DEFAULT_FN_CURRENT_TIME: &str = "now";
 const DEFAULT_FN_GENERATE_UUID: &str = "generate_uuid";
+
+/// Represents the different ways a field's column name(s) can be configured
+#[derive(Debug, Clone, PartialEq)]
+pub enum ColumnMapping {
+    /// Single column name for simple fields: @column("custom_name")
+    Single(String),
+    /// Mapping for composite types: @column(mapping={field1: "col1", field2: "col2"})
+    Map(HashMap<String, String>),
+}
 
 /// Consume typed-checked types and build resolved types
 pub fn build(
@@ -622,19 +633,19 @@ fn compute_column_info(
         });
     }
 
-    let user_supplied_column_name = column_annotation_name(field);
+    let user_supplied_column_mapping = column_annotation_mapping(field);
 
-    let compute_column_name = |field_name: &str| {
-        user_supplied_column_name
-            .clone()
-            .unwrap_or_else(|| field_name.to_snake_case())
+    let compute_column_name = |field_name: &str| match &user_supplied_column_mapping {
+        Some(ColumnMapping::Single(name)) => name.clone(),
+        _ => field_name.to_snake_case(),
     };
 
     let id_column_names = |field: &AstField<Typed>| {
-        let user_supplied_column_name = column_annotation_name(field);
+        let user_supplied_column_mapping = column_annotation_mapping(field);
 
-        if let Some(user_supplied_column_name) = user_supplied_column_name {
-            return vec![user_supplied_column_name];
+        // Handle simple column name for non-composite types
+        if let Some(ColumnMapping::Single(name)) = user_supplied_column_mapping {
+            return vec![name];
         }
 
         let field_base_type = match &field.typ {
@@ -650,7 +661,16 @@ fn compute_column_info(
                 .iter()
                 .filter_map(|f| {
                     if f.annotations.contains("pk") {
-                        Some(format!("{}_{}", base_name, f.name))
+                        match &user_supplied_column_mapping {
+                            Some(ColumnMapping::Map(mapping)) => {
+                                // Use the mapping if provided
+                                mapping.get(&f.name).cloned()
+                            }
+                            _ => {
+                                // Use the default naming convention
+                                Some(format!("{}_{}", base_name, f.name))
+                            }
+                        }
                     } else {
                         None
                     }
@@ -748,7 +768,7 @@ fn compute_column_info(
                                     }],
                                 }),
                                 Cardinality::One => {
-                                    if user_supplied_column_name.is_some() {
+                                    if user_supplied_column_mapping.is_some() {
                                         Err(Diagnostic {
                                                     level: Level::Error,
                                                     message: "Cannot specify @column with the optional side of a one-to-one relationship"
@@ -834,7 +854,7 @@ fn compute_column_info(
                                     label: None,
                                 }],
                             })
-                        } else if user_supplied_column_name.is_some() {
+                        } else if user_supplied_column_mapping.is_some() {
                             return Err(Diagnostic {
                                 level: Level::Error,
                                 message: "Cannot specify @column with a collection field"
@@ -909,11 +929,34 @@ fn compute_column_info(
     }
 }
 
-fn column_annotation_name(field: &AstField<Typed>) -> Option<String> {
-    field
-        .annotations
-        .get("column")
-        .map(|p| p.as_single().as_string())
+fn column_annotation_mapping(field: &AstField<Typed>) -> Option<ColumnMapping> {
+    field.annotations.get("column").and_then(|annotation| {
+        match annotation {
+            // Handle the object literal syntax: @column(mapping={zip: "azip", city: "acity"})
+            AstAnnotationParams::Map(map, _) => {
+                if let Some(AstExpr::ObjectLiteral(object_map, _)) = map.get("mapping") {
+                    // Extract string values from the object literal
+                    let mut result = HashMap::new();
+                    for (key, value) in object_map {
+                        if let AstExpr::StringLiteral(string_value, _) = value {
+                            result.insert(key.clone(), string_value.clone());
+                        }
+                    }
+                    if result.is_empty() {
+                        None
+                    } else {
+                        Some(ColumnMapping::Map(result))
+                    }
+                } else {
+                    None
+                }
+            }
+            AstAnnotationParams::Single(AstExpr::StringLiteral(s, _), _) => {
+                Some(ColumnMapping::Single(s.clone()))
+            }
+            _ => None,
+        }
+    })
 }
 
 fn get_matching_field<'a>(
