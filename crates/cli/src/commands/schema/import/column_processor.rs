@@ -68,10 +68,10 @@ impl ModelProcessor<TableSpec> for ColumnSpec {
             }
         }
 
-        let (standard_field_name, needs_column_annotation) = context.standard_field_naming(self);
+        let (standard_field_name, column_annotation) = context.get_column_annotation(parent, self);
 
-        if needs_column_annotation {
-            write!(writer, "@column(\"{}\") ", self.name)?;
+        if let Some(annotation) = column_annotation {
+            write!(writer, "{} ", annotation)?;
         }
 
         write!(writer, "{}: ", standard_field_name)?;
