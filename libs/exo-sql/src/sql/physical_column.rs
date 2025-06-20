@@ -36,8 +36,8 @@ pub struct PhysicalColumn {
     pub default_value: Option<ColumnDefault>,
     pub update_sync: bool,
 
-    /// A name that can be used to group columns together (for example to generate a foreign key constraint name for composite primary keys)
-    pub group_name: Option<String>,
+    /// Names that can be used to group columns together (for example to generate a foreign key constraint name for composite primary keys)
+    pub group_names: Vec<String>,
 }
 
 impl Clone for PhysicalColumn {
@@ -51,7 +51,7 @@ impl Clone for PhysicalColumn {
             unique_constraints: self.unique_constraints.clone(),
             default_value: self.default_value.clone(),
             update_sync: self.update_sync,
-            group_name: self.group_name.clone(),
+            group_names: self.group_names.clone(),
         }
     }
 }
@@ -66,7 +66,7 @@ impl PartialEq for PhysicalColumn {
             && self.unique_constraints == other.unique_constraints
             && self.default_value == other.default_value
             && self.update_sync == other.update_sync
-            && self.group_name == other.group_name
+            && self.group_names == other.group_names
     }
 }
 

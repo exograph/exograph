@@ -31,7 +31,7 @@ impl ModelProcessor<TableSpec> for ColumnSpec {
             if !is_column_type_name_reference {
                 writeln!(
                     writer,
-                    "{INDENT}// NOTE: The table `{}` referenced by this column is not in the provided scope",
+                    "{INDENT}// NOTE: The table `{}` referenced by this column is not in the provided schema scope",
                     reference.foreign_table_name.fully_qualified_name()
                 )?;
             }

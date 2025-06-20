@@ -120,7 +120,7 @@ fn expand_database_info(
     let table_id = building.database.insert_table(table);
 
     {
-        let columns = resolved_type
+        let columns: Vec<PhysicalColumn> = resolved_type
             .fields
             .iter()
             .map(|field| create_columns(field, table_id, resolved_type, resolved_env))
@@ -128,7 +128,25 @@ fn expand_database_info(
             .into_iter()
             .flatten()
             .collect();
-        building.database.get_table_mut(table_id).columns = columns;
+
+        // Column names may be duplicated if a column name is part of multiple field's foreign key constraints
+        // So we need to deduplicate them, but merge the group_names of the columns with the same name so that
+        // foreign key constraints are preserved
+        let mut deduplicated_columns: Vec<PhysicalColumn> = vec![];
+        for column in columns {
+            if !deduplicated_columns.iter().any(|c| c.name == column.name) {
+                deduplicated_columns.push(column);
+            } else {
+                deduplicated_columns
+                    .iter_mut()
+                    .find(|c| c.name == column.name)
+                    .unwrap()
+                    .group_names
+                    .extend(column.group_names);
+            }
+        }
+
+        building.database.get_table_mut(table_id).columns = deduplicated_columns;
     }
 
     {
@@ -335,7 +353,7 @@ fn create_columns(
                         unique_constraints: unique_constraint_name.clone(),
                         default_value: default_value.clone(),
                         update_sync,
-                        group_name: Some(field.name.to_string()),
+                        group_names: vec![field.name.to_string()],
                     })
                     .collect()),
                 ResolvedType::Composite(composite) => {
@@ -361,7 +379,7 @@ fn create_columns(
                                 unique_constraints: unique_constraint_name.clone(),
                                 default_value: default_value.clone(),
                                 update_sync,
-                                group_name: Some(field.name.to_string()),
+                                group_names: vec![field.name.to_string()],
                             }
                         })
                         .collect())
@@ -380,7 +398,7 @@ fn create_columns(
                         unique_constraints: unique_constraint_name.clone(),
                         default_value: default_value.clone(),
                         update_sync,
-                        group_name: Some(field.name.to_string()),
+                        group_names: vec![field.name.to_string()],
                     })
                     .collect()),
             }
@@ -430,7 +448,7 @@ fn create_columns(
                         unique_constraints: unique_constraint_name.clone(),
                         default_value: default_value.clone(),
                         update_sync,
-                        group_name: Some(field.name.to_string()),
+                        group_names: vec![field.name.to_string()],
                     })
                     .collect())
             } else {

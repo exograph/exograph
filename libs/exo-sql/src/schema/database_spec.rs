@@ -128,7 +128,7 @@ impl DatabaseSpec {
                     unique_constraints: column_spec.unique_constraints.to_owned(),
                     default_value: column_spec.default_value.to_owned(),
                     update_sync: false, // There is no good way to know from the database spec if a column should be updated on sync
-                    group_name: column_spec.group_name.to_owned(),
+                    group_names: column_spec.group_names.to_owned(),
                 })
                 .collect();
 
@@ -513,7 +513,7 @@ mod tests {
                             default_value: Some(ColumnDefault::Autoincrement(
                                 ColumnAutoincrement::Serial,
                             )),
-                            group_name: None,
+                            group_names: vec![],
                         },
                         ColumnSpec {
                             name: "name".into(),
@@ -525,7 +525,7 @@ mod tests {
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
-                            group_name: None,
+                            group_names: vec![],
                         },
                         ColumnSpec {
                             name: "email".into(),
@@ -535,7 +535,7 @@ mod tests {
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
-                            group_name: None,
+                            group_names: vec![],
                         },
                     ],
                     vec![],
@@ -567,7 +567,7 @@ mod tests {
                         is_nullable: true,
                         unique_constraints: vec![],
                         default_value: None,
-                        group_name: None,
+                        group_names: vec![],
                     }],
                     vec![],
                     vec![],
@@ -603,7 +603,7 @@ mod tests {
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
-                            group_name: None,
+                            group_names: vec![],
                         },
                         ColumnSpec {
                             name: "just_precision".into(),
@@ -616,7 +616,7 @@ mod tests {
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
-                            group_name: None,
+                            group_names: vec![],
                         },
                         ColumnSpec {
                             name: "no_precision_and_scale".into(),
@@ -629,7 +629,7 @@ mod tests {
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
-                            group_name: None,
+                            group_names: vec![],
                         },
                     ],
                     vec![],

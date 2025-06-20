@@ -101,7 +101,7 @@ impl TableSpec {
         let constraints = Constraints::from_live_db(client, &table_name).await?;
 
         // Mapping from column name to (reference spec, group name)
-        let mut column_reference_mapping: HashMap<String, (ColumnReferenceSpec, Option<String>)> =
+        let mut column_reference_mapping: HashMap<String, (ColumnReferenceSpec, Vec<String>)> =
             HashMap::new();
 
         for foreign_constraint in constraints.foreign_constraints.into_iter() {
@@ -117,7 +117,7 @@ impl TableSpec {
                     true,
                     None,
                     vec![],
-                    Some(foreign_constraint.constraint_name.clone()),
+                    vec![foreign_constraint.constraint_name.clone()],
                     column_attributes,
                 )
                 .await?;
@@ -133,7 +133,7 @@ impl TableSpec {
                                 foreign_pk_column_name: foreign_column.clone(),
                                 foreign_pk_type: spec.typ,
                             },
-                            spec.group_name.clone(),
+                            spec.group_names.clone(),
                         ),
                     );
                 }
@@ -166,7 +166,7 @@ impl TableSpec {
                 .get(&name)
                 .cloned()
                 .map(|(ref_spec, group)| (Some(ref_spec), group))
-                .unwrap_or((None, None));
+                .unwrap_or((None, vec![]));
 
             let mut column = ColumnSpec::from_live_db(
                 &table_name,
@@ -248,7 +248,7 @@ impl TableSpec {
                     is_nullable: !not_null,
                     unique_constraints: vec![],
                     default_value: None,
-                    group_name: None,
+                    group_names: vec![],
                 }
             })
             .collect();
@@ -437,7 +437,7 @@ impl TableSpec {
                 if column_map_by_columns.is_none() {
                     changes.push(SchemaOp::CreateForeignKeyReference {
                         table: new,
-                        name: column_group_name.clone(),
+                        name: column_group_name.join("_"),
                         reference_columns: column_map,
                     });
                 }
@@ -495,7 +495,7 @@ impl TableSpec {
             for (column_group_name, column_map) in foreign_key_references.into_iter() {
                 let op = SchemaOp::CreateForeignKeyReference {
                     table: self,
-                    name: column_group_name,
+                    name: column_group_name.join("_"),
                     reference_columns: column_map,
                 };
 
@@ -536,21 +536,18 @@ impl TableSpec {
         }
     }
 
+    #[allow(clippy::type_complexity)]
     pub(super) fn foreign_key_references(
         &self,
-    ) -> Vec<(String, Vec<(&ColumnSpec, &ColumnReferenceSpec)>)> {
+    ) -> Vec<(Vec<String>, Vec<(&ColumnSpec, &ColumnReferenceSpec)>)> {
         // (column group name ->  (referring column, foreign column))
-        let mut foreign_key_map: HashMap<String, Vec<(&ColumnSpec, &ColumnReferenceSpec)>> =
+        let mut foreign_key_map: HashMap<Vec<String>, Vec<(&ColumnSpec, &ColumnReferenceSpec)>> =
             HashMap::new();
 
         for column in self.columns.iter() {
             if let Some(column_reference) = &column.reference_spec {
-                let group_name = column
-                    .group_name
-                    .clone()
-                    .unwrap_or_else(|| panic!("Column {} has no group name", column.name.as_str()));
                 foreign_key_map
-                    .entry(group_name)
+                    .entry(column.group_names.clone())
                     .or_default()
                     .push((column, column_reference));
             }

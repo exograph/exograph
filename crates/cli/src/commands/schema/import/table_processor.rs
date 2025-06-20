@@ -49,13 +49,11 @@ impl ModelProcessor<DatabaseSpec> for TableSpec {
         writeln!(writer, "{INDENT}{keyword} {type_name} {{")?;
 
         // We should only process one column per group (for example, if we have composite primary key)
-        let mut processed_groups: HashSet<&str> = HashSet::new();
+        let mut processed_groups: HashSet<&Vec<String>> = HashSet::new();
 
         for column in &self.columns {
-            if let Some(group_name) = &column.group_name {
-                if !processed_groups.insert(group_name) {
-                    continue;
-                }
+            if !column.group_names.is_empty() && !processed_groups.insert(&column.group_names) {
+                continue;
             }
 
             column.process(self, context, writer)?;
@@ -75,13 +73,11 @@ fn write_references(
     table_name: &SchemaObjectName,
 ) -> Result<()> {
     // We should only process one column per group (for example, if we have composite primary key)
-    let mut processed_groups: HashSet<&str> = HashSet::new();
+    let mut processed_groups: HashSet<&Vec<String>> = HashSet::new();
 
     for (table_name, column, _) in context.referenced_columns(table_name) {
-        if let Some(group_name) = &column.group_name {
-            if !processed_groups.insert(group_name) {
-                continue;
-            }
+        if !column.group_names.is_empty() && !processed_groups.insert(&column.group_names) {
+            continue;
         }
 
         let model_name = context.model_name(&table_name);

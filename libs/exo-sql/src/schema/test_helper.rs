@@ -14,7 +14,7 @@ pub fn pk_column(name: impl Into<String>) -> ColumnSpec {
         is_nullable: false,
         unique_constraints: vec![],
         default_value: Some(ColumnDefault::Autoincrement(ColumnAutoincrement::Serial)),
-        group_name: None,
+        group_names: vec![],
     }
 }
 
@@ -38,7 +38,7 @@ pub fn pk_reference_column(
         is_nullable: false,
         unique_constraints: vec![],
         default_value: None,
-        group_name: None,
+        group_names: vec![],
     }
 }
 
@@ -51,7 +51,7 @@ pub fn int_column(name: impl Into<String>) -> ColumnSpec {
         is_nullable: false,
         unique_constraints: vec![],
         default_value: None,
-        group_name: None,
+        group_names: vec![],
     }
 }
 
@@ -64,7 +64,7 @@ pub fn string_column(name: impl Into<String>) -> ColumnSpec {
         is_nullable: false,
         unique_constraints: vec![],
         default_value: None,
-        group_name: None,
+        group_names: vec![],
     }
 }
 
@@ -77,6 +77,6 @@ pub fn json_column(name: impl Into<String>) -> ColumnSpec {
         is_nullable: false,
         unique_constraints: vec![],
         default_value: None,
-        group_name: None,
+        group_names: vec![],
     }
 }

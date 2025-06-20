@@ -35,8 +35,8 @@ pub struct ColumnSpec {
     pub is_nullable: bool,
     pub unique_constraints: Vec<String>,
     pub default_value: Option<ColumnDefault>,
-    // A name that can be used to group columns together (for example to generate a foreign key constraint name for composite primary keys)
-    pub group_name: Option<String>,
+    // Names that can be used to group columns together (for example to generate a foreign key constraint name for composite primary keys)
+    pub group_names: Vec<String>,
 }
 
 impl PartialEq for ColumnSpec {
@@ -48,7 +48,7 @@ impl PartialEq for ColumnSpec {
             && self.is_nullable == other.is_nullable
             && self.unique_constraints == other.unique_constraints
             && self.default_value == other.default_value
-            && self.group_name == other.group_name
+            && self.group_names == other.group_names
     }
 }
 
@@ -373,7 +373,7 @@ impl ColumnSpec {
         is_pk: bool,
         explicit_type: Option<Box<dyn PhysicalColumnType>>,
         unique_constraints: Vec<String>,
-        group_name: Option<String>,
+        group_names: Vec<String>,
         column_attributes: &HashMap<SchemaObjectName, HashMap<String, ColumnAttribute>>,
     ) -> Result<WithIssues<Option<ColumnSpec>>, DatabaseError> {
         let table_attributes = column_attributes
@@ -406,7 +406,7 @@ impl ColumnSpec {
                 is_nullable: !not_null,
                 unique_constraints,
                 default_value: default_value.clone(),
-                group_name,
+                group_names,
             }),
             issues: vec![],
         })
@@ -555,7 +555,7 @@ impl ColumnSpec {
             is_nullable: column.is_nullable,
             unique_constraints: column.unique_constraints,
             default_value: column.default_value,
-            group_name: column.group_name,
+            group_names: column.group_names,
         }
     }
 
@@ -566,12 +566,12 @@ impl ColumnSpec {
                     Self {
                         typ: Box::new(IntColumnType { bits: IntBits::_16 }),
                         reference_spec: None,
-                        group_name: None,
+                        group_names: vec![],
                         ..self.clone()
                     } == Self {
                         typ: Box::new(IntColumnType { bits: IntBits::_16 }),
                         reference_spec: None,
-                        group_name: None,
+                        group_names: vec![],
                         ..new.clone()
                     }
                 }

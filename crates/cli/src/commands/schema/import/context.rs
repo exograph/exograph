@@ -97,7 +97,7 @@ impl<'a> ImportContext<'a> {
                     .filter(|col| {
                         if let Some(col_ref) = &col.reference_spec {
                             col_ref.foreign_table_name == reference.foreign_table_name
-                                && col.group_name == column.group_name
+                                && col.group_names == column.group_names
                         } else {
                             false
                         }
