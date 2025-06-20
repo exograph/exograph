@@ -9,11 +9,12 @@ use super::{ImportContext, ModelProcessor, processor::INDENT};
 
 use heck::ToLowerCamelCase;
 
-impl ModelProcessor<DatabaseSpec> for TableSpec {
+impl ModelProcessor<DatabaseSpec, ()> for TableSpec {
     fn process(
         &self,
         _parent: &DatabaseSpec,
         context: &ImportContext,
+        _parent_context: &mut (),
         writer: &mut (dyn std::io::Write + Send),
     ) -> Result<()> {
         if !context.generate_fragments {
@@ -48,18 +49,14 @@ impl ModelProcessor<DatabaseSpec> for TableSpec {
 
         writeln!(writer, "{INDENT}{keyword} {type_name} {{")?;
 
-        // We should only process one column per group (for example, if we have composite primary key)
-        let mut processed_groups: HashSet<&Vec<String>> = HashSet::new();
+        // Fields that have already been added to the model
+        let mut processed_fields: HashSet<String> = HashSet::new();
 
         for column in &self.columns {
-            if !column.group_names.is_empty() && !processed_groups.insert(&column.group_names) {
-                continue;
-            }
-
-            column.process(self, context, writer)?;
+            column.process(self, context, &mut processed_fields, writer)?;
         }
 
-        write_references(writer, context, &self.name)?;
+        write_references(writer, context, &mut processed_fields, &self.name)?;
 
         writeln!(writer, "{INDENT}}}")?;
 
@@ -70,16 +67,10 @@ impl ModelProcessor<DatabaseSpec> for TableSpec {
 fn write_references(
     writer: &mut (dyn std::io::Write + Send),
     context: &ImportContext,
+    processed_fields: &mut HashSet<String>,
     table_name: &SchemaObjectName,
 ) -> Result<()> {
-    // We should only process one column per group (for example, if we have composite primary key)
-    let mut processed_groups: HashSet<&Vec<String>> = HashSet::new();
-
     for (table_name, column, _) in context.referenced_columns(table_name) {
-        if !column.group_names.is_empty() && !processed_groups.insert(&column.group_names) {
-            continue;
-        }
-
         let model_name = context.model_name(&table_name);
 
         if let Some(model_name) = model_name {
@@ -90,6 +81,11 @@ fn write_references(
                 pluralizer::pluralize(model_name, 1, false)
             }
             .to_lower_camel_case();
+
+            if !processed_fields.insert(field_name.clone()) {
+                // Skip fields that have already been added to the model
+                continue;
+            }
 
             write!(writer, "{INDENT}{INDENT}{field_name}: ")?;
 

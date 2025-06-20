@@ -97,7 +97,11 @@ impl<'a> ImportContext<'a> {
                     .filter(|col| {
                         if let Some(col_ref) = &col.reference_spec {
                             col_ref.foreign_table_name == reference.foreign_table_name
-                                && col.group_names == column.group_names
+                                && column.group_names.iter().any(|group_name| {
+                                    col.group_names
+                                        .iter()
+                                        .any(|col_group_name| col_group_name == group_name)
+                                })
                         } else {
                             false
                         }
@@ -130,7 +134,8 @@ impl<'a> ImportContext<'a> {
                             if let Some(col_ref) = &col.reference_spec {
                                 mapping_pairs.push(format!(
                                     "{}: \"{}\"",
-                                    col_ref.foreign_pk_column_name, col.name
+                                    self.standard_field_name(&col_ref.foreign_pk_column_name),
+                                    col.name
                                 ));
                             }
                         }

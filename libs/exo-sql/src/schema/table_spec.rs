@@ -124,18 +124,26 @@ impl TableSpec {
 
                 issues.append(&mut column.issues);
 
-                if let Some(spec) = column.value {
-                    column_reference_mapping.insert(
-                        self_column.clone(),
-                        (
-                            ColumnReferenceSpec {
-                                foreign_table_name: foreign_constraint.foreign_table.clone(),
-                                foreign_pk_column_name: foreign_column.clone(),
-                                foreign_pk_type: spec.typ,
-                            },
-                            spec.group_names.clone(),
-                        ),
-                    );
+                if let Some(column_spec) = column.value {
+                    let ref_spec = ColumnReferenceSpec {
+                        foreign_table_name: foreign_constraint.foreign_table.clone(),
+                        foreign_pk_column_name: foreign_column.clone(),
+                        foreign_pk_type: column_spec.typ,
+                    };
+
+                    let existing_entry = column_reference_mapping.get_mut(&self_column);
+
+                    match existing_entry {
+                        Some(entry) => {
+                            entry.1.extend(column_spec.group_names.clone());
+                        }
+                        None => {
+                            column_reference_mapping.insert(
+                                self_column.clone(),
+                                (ref_spec, column_spec.group_names.clone()),
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -162,7 +170,7 @@ impl TableSpec {
                 })
                 .collect();
 
-            let (reference_spec, group_name) = column_reference_mapping
+            let (reference_spec, group_names) = column_reference_mapping
                 .get(&name)
                 .cloned()
                 .map(|(ref_spec, group)| (Some(ref_spec), group))
@@ -178,7 +186,7 @@ impl TableSpec {
                     .unwrap_or(false),
                 None,
                 unique_constraint_names,
-                group_name,
+                group_names,
                 column_attributes,
             )
             .await?;

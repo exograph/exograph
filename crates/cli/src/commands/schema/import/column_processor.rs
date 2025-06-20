@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use anyhow::Result;
 
 use exo_sql::schema::column_spec::ColumnSpec;
@@ -12,16 +14,21 @@ use super::{ImportContext, ModelProcessor};
 
 const INDENT: &str = "    ";
 
-impl ModelProcessor<TableSpec> for ColumnSpec {
+impl ModelProcessor<TableSpec, HashSet<String>> for ColumnSpec {
     /// Converts the column specification to a exograph model.
     fn process(
         &self,
         parent: &TableSpec,
         context: &ImportContext,
+        parent_context: &mut HashSet<String>,
         writer: &mut (dyn std::io::Write + Send),
     ) -> Result<()> {
-        // [@pk] [type-annotations] [name]: [data-type] = [default-value]
+        let (standard_field_name, column_annotation) = context.get_column_annotation(parent, self);
 
+        if !parent_context.insert(standard_field_name.clone()) {
+            return Ok(());
+        }
+        // [@pk] [type-annotations] [name]: [data-type] = [default-value]
         let column_type_name = context.column_type_name(self);
         let is_column_type_name_reference =
             matches!(column_type_name, ColumnTypeName::ReferenceType(_));
@@ -67,8 +74,6 @@ impl ModelProcessor<TableSpec> for ColumnSpec {
                 write!(writer, "{} ", annots)?;
             }
         }
-
-        let (standard_field_name, column_annotation) = context.get_column_annotation(parent, self);
 
         if let Some(annotation) = column_annotation {
             write!(writer, "{} ", annotation)?;
