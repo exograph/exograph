@@ -17,6 +17,7 @@ use crate::sql::physical_column_type::{
 };
 use crate::{Database, ManyToOne, PhysicalColumn, SchemaObjectName};
 
+use super::DebugPrintTo;
 use super::enum_spec::EnumSpec;
 use super::issue::{Issue, WithIssues};
 use super::op::SchemaOp;
@@ -51,13 +52,8 @@ impl PartialEq for ColumnSpec {
     }
 }
 
-impl ColumnSpec {
-    pub fn debug_print(&self, indent: usize) {
-        self.debug_print_to(&mut std::io::stdout(), indent)
-            .expect("Failed to write debug output to stdout");
-    }
-
-    pub fn debug_print_to<W: std::io::Write>(
+impl DebugPrintTo for ColumnSpec {
+    fn debug_print_to<W: std::io::Write>(
         &self,
         writer: &mut W,
         indent: usize,
@@ -283,13 +279,8 @@ impl PartialEq for ColumnReferenceSpec {
 
 impl Eq for ColumnReferenceSpec {}
 
-impl ColumnReferenceSpec {
-    pub fn debug_print(&self, indent: usize) {
-        self.debug_print_to(&mut std::io::stdout(), indent)
-            .expect("Failed to write debug output to stdout");
-    }
-
-    pub fn debug_print_to<W: std::io::Write>(
+impl DebugPrintTo for ColumnReferenceSpec {
+    fn debug_print_to<W: std::io::Write>(
         &self,
         writer: &mut W,
         indent: usize,

@@ -2,7 +2,7 @@ use std::vec;
 
 use crate::{database_error::DatabaseError, sql::connect::database_client::DatabaseClient};
 
-use super::{issue::WithIssues, op::SchemaOp};
+use super::{DebugPrintTo, issue::WithIssues, op::SchemaOp};
 
 #[derive(Debug, Clone)]
 pub struct FunctionSpec {
@@ -22,39 +22,6 @@ impl FunctionSpec {
             body,
             language,
         }
-    }
-
-    pub fn debug_print(&self, indent: usize) {
-        self.debug_print_to(&mut std::io::stdout(), indent)
-            .expect("Failed to write debug output to stdout");
-    }
-
-    pub fn debug_print_to<W: std::io::Write>(
-        &self,
-        writer: &mut W,
-        indent: usize,
-    ) -> std::io::Result<()> {
-        let indent_str = " ".repeat(indent);
-        writeln!(writer, "{}- Function:", indent_str)?;
-        writeln!(writer, "{}  - Name: {}", indent_str, self.name)?;
-        writeln!(writer, "{}  - Language: {}", indent_str, self.language)?;
-        // Optionally show body preview
-        let body_preview = if self.body.len() > 50 {
-            // Safe UTF-8 truncation - find the last valid character boundary
-            let mut truncate_at = 50;
-            while !self.body.is_char_boundary(truncate_at) && truncate_at > 0 {
-                truncate_at -= 1;
-            }
-            format!("{}...", &self.body[..truncate_at])
-        } else {
-            self.body.clone()
-        };
-        writeln!(
-            writer,
-            "{}  - Body: {}",
-            indent_str,
-            body_preview.replace('\n', " ")
-        )
     }
 
     pub async fn from_live_db(
@@ -105,6 +72,36 @@ impl FunctionSpec {
             self.name,
             self.body,
             self.language
+        )
+    }
+}
+
+impl DebugPrintTo for FunctionSpec {
+    fn debug_print_to<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        indent: usize,
+    ) -> std::io::Result<()> {
+        let indent_str = " ".repeat(indent);
+        writeln!(writer, "{}- Function:", indent_str)?;
+        writeln!(writer, "{}  - Name: {}", indent_str, self.name)?;
+        writeln!(writer, "{}  - Language: {}", indent_str, self.language)?;
+        // Optionally show body preview
+        let body_preview = if self.body.len() > 50 {
+            // Safe UTF-8 truncation - find the last valid character boundary
+            let mut truncate_at = 50;
+            while !self.body.is_char_boundary(truncate_at) && truncate_at > 0 {
+                truncate_at -= 1;
+            }
+            format!("{}...", &self.body[..truncate_at])
+        } else {
+            self.body.clone()
+        };
+        writeln!(
+            writer,
+            "{}  - Body: {}",
+            indent_str,
+            body_preview.replace('\n', " ")
         )
     }
 }

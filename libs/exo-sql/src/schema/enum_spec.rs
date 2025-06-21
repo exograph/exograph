@@ -11,6 +11,7 @@ use crate::SchemaObjectName;
 use crate::database_error::DatabaseError;
 use crate::sql::connect::database_client::DatabaseClient;
 
+use super::DebugPrintTo;
 use super::issue::WithIssues;
 use super::op::SchemaOp;
 use super::statement::SchemaStatement;
@@ -27,32 +28,6 @@ pub struct EnumSpec {
 impl EnumSpec {
     pub fn new(name: SchemaObjectName, variants: Vec<String>) -> Self {
         Self { name, variants }
-    }
-
-    pub fn debug_print(&self, indent: usize) {
-        self.debug_print_to(&mut std::io::stdout(), indent)
-            .expect("Failed to write debug output to stdout");
-    }
-
-    pub fn debug_print_to<W: std::io::Write>(
-        &self,
-        writer: &mut W,
-        indent: usize,
-    ) -> std::io::Result<()> {
-        let indent_str = " ".repeat(indent);
-        writeln!(writer, "{}- Enum:", indent_str)?;
-        writeln!(
-            writer,
-            "{}  - Name: {}",
-            indent_str,
-            self.name.fully_qualified_name()
-        )?;
-        writeln!(
-            writer,
-            "{}  - Variants: [{}]",
-            indent_str,
-            self.variants.join(", ")
-        )
     }
 
     pub fn sql_name(&self) -> String {
@@ -117,5 +92,28 @@ impl EnumSpec {
             pre_statements: vec![],
             post_statements: vec![format!("DROP TYPE {} CASCADE;", self.sql_name())],
         }
+    }
+}
+
+impl DebugPrintTo for EnumSpec {
+    fn debug_print_to<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        indent: usize,
+    ) -> std::io::Result<()> {
+        let indent_str = " ".repeat(indent);
+        writeln!(writer, "{}- Enum:", indent_str)?;
+        writeln!(
+            writer,
+            "{}  - Name: {}",
+            indent_str,
+            self.name.fully_qualified_name()
+        )?;
+        writeln!(
+            writer,
+            "{}  - Variants: [{}]",
+            indent_str,
+            self.variants.join(", ")
+        )
     }
 }
