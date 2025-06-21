@@ -138,6 +138,14 @@ impl TriggerSpec {
     }
 
     pub fn debug_print(&self, indent: usize) {
+        self.debug_print_to(&mut std::io::stdout(), indent).unwrap();
+    }
+
+    pub fn debug_print_to<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        indent: usize,
+    ) -> std::io::Result<()> {
         let indent_str = " ".repeat(indent);
         let trigger_type = format!(
             "{} {} {}",
@@ -145,10 +153,11 @@ impl TriggerSpec {
             self.event.as_str(),
             self.orientation.as_str()
         );
-        println!(
+        writeln!(
+            writer,
             "{}- ({}, {}, function: {})",
             indent_str, self.name, trigger_type, self.function
-        );
+        )
     }
 
     pub async fn from_live_db(

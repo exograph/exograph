@@ -53,6 +53,14 @@ impl PartialEq for ColumnSpec {
 
 impl ColumnSpec {
     pub fn debug_print(&self, indent: usize) {
+        self.debug_print_to(&mut std::io::stdout(), indent).unwrap();
+    }
+
+    pub fn debug_print_to<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        indent: usize,
+    ) -> std::io::Result<()> {
         let indent_str = " ".repeat(indent);
 
         let groups = if let Some(group) = &self.group_name {
@@ -91,7 +99,8 @@ impl ColumnSpec {
             format!(" [{}]", attributes.join(", "))
         };
 
-        println!(
+        writeln!(
+            writer,
             "{}- {}: {} (references: {}, group: {}){}",
             indent_str,
             self.name,
@@ -99,7 +108,7 @@ impl ColumnSpec {
             references,
             groups,
             attr_str
-        );
+        )
     }
 }
 
@@ -279,14 +288,23 @@ impl Eq for ColumnReferenceSpec {}
 
 impl ColumnReferenceSpec {
     pub fn debug_print(&self, indent: usize) {
+        self.debug_print_to(&mut std::io::stdout(), indent).unwrap();
+    }
+
+    pub fn debug_print_to<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        indent: usize,
+    ) -> std::io::Result<()> {
         let indent_str = " ".repeat(indent);
-        println!(
+        writeln!(
+            writer,
             "{}ColumnReference: FK -> {}.{} (type: {})",
             indent_str,
             self.foreign_table_name.fully_qualified_name(),
             self.foreign_pk_column_name,
             self.foreign_pk_type.type_string()
-        );
+        )
     }
 }
 

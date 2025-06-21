@@ -60,38 +60,47 @@ impl TableSpec {
     }
 
     pub fn debug_print(&self, indent: usize) {
+        self.debug_print_to(&mut std::io::stdout(), indent).unwrap();
+    }
+
+    pub fn debug_print_to<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        indent: usize,
+    ) -> std::io::Result<()> {
         let indent_str = " ".repeat(indent);
-        println!("{}- Table:", indent_str);
-        println!(
+        writeln!(writer, "{}- Table:", indent_str)?;
+        writeln!(
+            writer,
             "{}  - Name: {}",
             indent_str,
             self.name.fully_qualified_name()
-        );
+        )?;
 
         if !self.columns.is_empty() {
-            println!("{}  - Columns:", indent_str);
+            writeln!(writer, "{}  - Columns:", indent_str)?;
             for column in &self.columns {
-                column.debug_print(indent + 6);
+                column.debug_print_to(writer, indent + 4)?;
             }
         }
 
         if !self.indices.is_empty() {
-            println!("{}  - Indices:", indent_str);
+            writeln!(writer, "{}  - Indices:", indent_str)?;
             for index in &self.indices {
-                index.debug_print(indent + 6);
+                index.debug_print_to(writer, indent + 4)?;
             }
         }
 
         if !self.triggers.is_empty() {
-            println!("{}  - Triggers:", indent_str);
+            writeln!(writer, "{}  - Triggers:", indent_str)?;
             for trigger in &self.triggers {
-                trigger.debug_print(indent + 6);
+                trigger.debug_print_to(writer, indent + 4)?;
             }
         }
 
         let foreign_keys = self.foreign_key_references();
         if !foreign_keys.is_empty() {
-            println!("{}  - Foreign Keys:", indent_str);
+            writeln!(writer, "{}  - Foreign Keys:", indent_str)?;
             for (fk_name, columns) in foreign_keys {
                 let fk_info = columns
                     .iter()
@@ -105,9 +114,11 @@ impl TableSpec {
                     })
                     .collect::<Vec<_>>()
                     .join(", ");
-                println!("{}    - ({}, [{}])", indent_str, fk_name, fk_info);
+                writeln!(writer, "{}    - ({}, [{}])", indent_str, fk_name, fk_info)?;
             }
         }
+
+        Ok(())
     }
 
     pub fn has_single_pk(&self) -> bool {

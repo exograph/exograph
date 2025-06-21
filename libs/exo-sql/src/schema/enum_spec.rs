@@ -30,14 +30,28 @@ impl EnumSpec {
     }
 
     pub fn debug_print(&self, indent: usize) {
+        self.debug_print_to(&mut std::io::stdout(), indent).unwrap();
+    }
+
+    pub fn debug_print_to<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        indent: usize,
+    ) -> std::io::Result<()> {
         let indent_str = " ".repeat(indent);
-        println!("{}- Enum:", indent_str);
-        println!(
+        writeln!(writer, "{}- Enum:", indent_str)?;
+        writeln!(
+            writer,
             "{}  - Name: {}",
             indent_str,
             self.name.fully_qualified_name()
-        );
-        println!("{}  - Variants: [{}]", indent_str, self.variants.join(", "));
+        )?;
+        writeln!(
+            writer,
+            "{}  - Variants: [{}]",
+            indent_str,
+            self.variants.join(", ")
+        )
     }
 
     pub fn sql_name(&self) -> String {

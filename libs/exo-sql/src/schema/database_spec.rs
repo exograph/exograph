@@ -58,29 +58,39 @@ impl DatabaseSpec {
     }
 
     pub fn debug_print(&self, indent: usize) {
+        self.debug_print_to(&mut std::io::stdout(), indent).unwrap();
+    }
+
+    pub fn debug_print_to<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        indent: usize,
+    ) -> std::io::Result<()> {
         let indent_str = " ".repeat(indent);
-        println!("{}Database:", indent_str);
+        writeln!(writer, "{}Database:", indent_str)?;
 
         if !self.tables.is_empty() {
-            println!("{}  Tables:", indent_str);
+            writeln!(writer, "{}  Tables:", indent_str)?;
             for table in &self.tables {
-                table.debug_print(indent + 4);
+                table.debug_print_to(writer, indent + 4)?;
             }
         }
 
         if !self.enums.is_empty() {
-            println!("{}  Enums:", indent_str);
+            writeln!(writer, "{}  Enums:", indent_str)?;
             for enum_ in &self.enums {
-                enum_.debug_print(indent + 4);
+                enum_.debug_print_to(writer, indent + 4)?;
             }
         }
 
         if !self.functions.is_empty() {
-            println!("{}  Functions:", indent_str);
+            writeln!(writer, "{}  Functions:", indent_str)?;
             for function in &self.functions {
-                function.debug_print(indent + 4);
+                function.debug_print_to(writer, indent + 4)?;
             }
         }
+
+        Ok(())
     }
 
     /// Non-public schemas required by this database spec.

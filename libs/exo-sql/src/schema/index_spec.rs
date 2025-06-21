@@ -89,6 +89,14 @@ impl IndexSpec {
     }
 
     pub fn debug_print(&self, indent: usize) {
+        self.debug_print_to(&mut std::io::stdout(), indent).unwrap();
+    }
+
+    pub fn debug_print_to<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        indent: usize,
+    ) -> std::io::Result<()> {
         let indent_str = " ".repeat(indent);
         let mut columns_sorted: Vec<_> = self.columns.iter().collect();
         columns_sorted.sort();
@@ -105,10 +113,11 @@ impl IndexSpec {
             IndexKind::DatabaseDefault => "DEFAULT".to_string(),
         };
 
-        println!(
+        writeln!(
+            writer,
             "{}- ({}, {}, [{}])",
             indent_str, self.name, index_type, columns_str
-        );
+        )
     }
 
     pub async fn from_live_db(
