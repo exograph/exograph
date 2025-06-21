@@ -22,3 +22,18 @@ pub mod trigger_spec;
 
 mod constraint;
 pub mod statement;
+
+/// Trait for types that can print debug information to a writer
+pub trait DebugPrintTo {
+    fn debug_print_to<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        indent: usize,
+    ) -> std::io::Result<()>;
+
+    /// Default implementation that writes to stdout
+    fn debug_print(&self, indent: usize) {
+        self.debug_print_to(&mut std::io::stdout(), indent)
+            .expect("Failed to write debug output to stdout");
+    }
+}

@@ -17,6 +17,7 @@ use crate::sql::physical_column_type::{
 };
 use crate::{Database, ManyToOne, PhysicalColumn, SchemaObjectName};
 
+use super::DebugPrintTo;
 use super::enum_spec::EnumSpec;
 use super::issue::{Issue, WithIssues};
 use super::op::SchemaOp;
@@ -48,6 +49,59 @@ impl PartialEq for ColumnSpec {
             && self.unique_constraints == other.unique_constraints
             && self.default_value == other.default_value
             && self.group_name == other.group_name
+    }
+}
+
+impl DebugPrintTo for ColumnSpec {
+    fn debug_print_to<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        indent: usize,
+    ) -> std::io::Result<()> {
+        let indent_str = " ".repeat(indent);
+
+        let groups = format!("[{}]", self.group_name.as_deref().unwrap_or(""));
+
+        let references = if let Some(ref_spec) = &self.reference_spec {
+            format!(
+                "[{}.{}]",
+                ref_spec.foreign_table_name.fully_qualified_name(),
+                ref_spec.foreign_pk_column_name
+            )
+        } else {
+            "[]".to_string()
+        };
+
+        let mut attributes = Vec::new();
+        if self.is_pk {
+            attributes.push("PK");
+        }
+        if !self.is_nullable {
+            attributes.push("NOT NULL");
+        }
+        if !self.unique_constraints.is_empty() {
+            attributes.push("UNIQUE");
+        }
+        if self.default_value.is_some() {
+            attributes.push("DEFAULT");
+        }
+
+        let attr_str = if attributes.is_empty() {
+            "".to_string()
+        } else {
+            format!(" [{}]", attributes.join(", "))
+        };
+
+        writeln!(
+            writer,
+            "{}- {}: {} (references: {}, group: {}){}",
+            indent_str,
+            self.name,
+            self.typ.type_string(),
+            references,
+            groups,
+            attr_str
+        )
     }
 }
 
@@ -224,6 +278,24 @@ impl PartialEq for ColumnReferenceSpec {
 }
 
 impl Eq for ColumnReferenceSpec {}
+
+impl DebugPrintTo for ColumnReferenceSpec {
+    fn debug_print_to<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        indent: usize,
+    ) -> std::io::Result<()> {
+        let indent_str = " ".repeat(indent);
+        writeln!(
+            writer,
+            "{}ColumnReference: FK -> {}.{} (type: {})",
+            indent_str,
+            self.foreign_table_name.fully_qualified_name(),
+            self.foreign_pk_column_name,
+            self.foreign_pk_type.type_string()
+        )
+    }
+}
 
 const COLUMNS_TYPE_QUERY: &str = "
   SELECT pg_class.relname as table_name, attname as column_name, format_type(atttypid, atttypmod), attndims, attnotnull FROM pg_attribute 

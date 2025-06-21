@@ -17,6 +17,7 @@ use crate::{
 };
 
 use super::{
+    DebugPrintTo,
     column_spec::{ColumnAutoincrement, ColumnDefault, ColumnReferenceSpec},
     enum_spec::EnumSpec,
     function_spec::FunctionSpec,
@@ -441,6 +442,40 @@ impl DatabaseSpec {
         });
 
         ops
+    }
+}
+
+impl DebugPrintTo for DatabaseSpec {
+    fn debug_print_to<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        indent: usize,
+    ) -> std::io::Result<()> {
+        let indent_str = " ".repeat(indent);
+        writeln!(writer, "{}Database:", indent_str)?;
+
+        if !self.tables.is_empty() {
+            writeln!(writer, "{}  Tables:", indent_str)?;
+            for table in &self.tables {
+                table.debug_print_to(writer, indent + 4)?;
+            }
+        }
+
+        if !self.enums.is_empty() {
+            writeln!(writer, "{}  Enums:", indent_str)?;
+            for enum_ in &self.enums {
+                enum_.debug_print_to(writer, indent + 4)?;
+            }
+        }
+
+        if !self.functions.is_empty() {
+            writeln!(writer, "{}  Functions:", indent_str)?;
+            for function in &self.functions {
+                function.debug_print_to(writer, indent + 4)?;
+            }
+        }
+
+        Ok(())
     }
 }
 

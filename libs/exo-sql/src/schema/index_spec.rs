@@ -16,7 +16,9 @@ use crate::{
     sql::connect::database_client::DatabaseClient,
 };
 
-use super::{column_spec::ColumnSpec, issue::WithIssues, op::SchemaOp, table_spec::TableSpec};
+use super::{
+    DebugPrintTo, column_spec::ColumnSpec, issue::WithIssues, op::SchemaOp, table_spec::TableSpec,
+};
 
 #[derive(Debug, Clone)]
 pub struct IndexSpec {
@@ -213,6 +215,32 @@ impl IndexSpec {
             "CREATE INDEX \"{index_name}\" ON {table_name} {index_spec_str};",
             index_name = self.name,
             table_name = table_name.sql_name(),
+        )
+    }
+}
+
+impl DebugPrintTo for IndexSpec {
+    fn debug_print_to<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        indent: usize,
+    ) -> std::io::Result<()> {
+        let indent_str = " ".repeat(indent);
+        let mut columns_sorted: Vec<_> = self.columns.iter().map(String::as_str).collect();
+        columns_sorted.sort_unstable();
+        let columns_str = columns_sorted.join(", ");
+
+        let index_type = match &self.index_kind {
+            IndexKind::HNWS {
+                distance_function, ..
+            } => format!("HNWS({:?})", distance_function),
+            IndexKind::DatabaseDefault => "DEFAULT".to_string(),
+        };
+
+        writeln!(
+            writer,
+            "{}- ({}, {}, [{}])",
+            indent_str, self.name, index_type, columns_str
         )
     }
 }

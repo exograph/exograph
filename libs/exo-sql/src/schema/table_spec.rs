@@ -15,6 +15,7 @@ use crate::sql::connect::database_client::DatabaseClient;
 use crate::sql::physical_column_type::PhysicalColumnTypeExt;
 use crate::{PhysicalTable, SchemaObjectName};
 
+use super::DebugPrintTo;
 use super::column_spec::{
     ColumnAttribute, ColumnReferenceSpec, ColumnSpec, physical_column_type_from_string,
 };
@@ -565,5 +566,65 @@ impl TableSpec {
                 (group_name, column_map)
             })
             .collect()
+    }
+}
+
+impl DebugPrintTo for TableSpec {
+    fn debug_print_to<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        indent: usize,
+    ) -> std::io::Result<()> {
+        let indent_str = " ".repeat(indent);
+        writeln!(writer, "{}- Table:", indent_str)?;
+        writeln!(
+            writer,
+            "{}  - Name: {}",
+            indent_str,
+            self.name.fully_qualified_name()
+        )?;
+
+        if !self.columns.is_empty() {
+            writeln!(writer, "{}  - Columns:", indent_str)?;
+            for column in &self.columns {
+                column.debug_print_to(writer, indent + 4)?;
+            }
+        }
+
+        if !self.indices.is_empty() {
+            writeln!(writer, "{}  - Indices:", indent_str)?;
+            for index in &self.indices {
+                index.debug_print_to(writer, indent + 4)?;
+            }
+        }
+
+        if !self.triggers.is_empty() {
+            writeln!(writer, "{}  - Triggers:", indent_str)?;
+            for trigger in &self.triggers {
+                trigger.debug_print_to(writer, indent + 4)?;
+            }
+        }
+
+        let foreign_keys = self.foreign_key_references();
+        if !foreign_keys.is_empty() {
+            writeln!(writer, "{}  - Foreign Keys:", indent_str)?;
+            for (fk_name, columns) in foreign_keys {
+                let fk_info = columns
+                    .iter()
+                    .map(|(col, ref_spec)| {
+                        format!(
+                            "{} -> {}.{}",
+                            col.name,
+                            ref_spec.foreign_table_name.fully_qualified_name(),
+                            ref_spec.foreign_pk_column_name
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                writeln!(writer, "{}    - ({}, [{}])", indent_str, fk_name, fk_info)?;
+            }
+        }
+
+        Ok(())
     }
 }

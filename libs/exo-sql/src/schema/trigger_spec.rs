@@ -4,7 +4,7 @@ use crate::{
     SchemaObjectName, database_error::DatabaseError, sql::connect::database_client::DatabaseClient,
 };
 
-use super::{issue::WithIssues, op::SchemaOp};
+use super::{DebugPrintTo, issue::WithIssues, op::SchemaOp};
 
 const TRIGGERS_QUERY: &str = r#"
     SELECT trigger_name, event_manipulation, event_object_schema, event_object_table, action_condition, action_orientation, action_timing, action_statement 
@@ -207,6 +207,26 @@ impl TriggerSpec {
             orientation = self.orientation.as_str(),
             table_name = table_name.fully_qualified_name(),
             function = self.function
+        )
+    }
+}
+
+impl DebugPrintTo for TriggerSpec {
+    fn debug_print_to<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        indent: usize,
+    ) -> std::io::Result<()> {
+        let indent_str = " ".repeat(indent);
+        writeln!(
+            writer,
+            "{}- ({}, {} {} {}, function: {})",
+            indent_str,
+            self.name,
+            self.timing.as_str(),
+            self.event.as_str(),
+            self.orientation.as_str(),
+            self.function
         )
     }
 }
