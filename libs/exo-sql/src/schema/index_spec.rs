@@ -98,13 +98,9 @@ impl IndexSpec {
         indent: usize,
     ) -> std::io::Result<()> {
         let indent_str = " ".repeat(indent);
-        let mut columns_sorted: Vec<_> = self.columns.iter().collect();
-        columns_sorted.sort();
-        let columns_str = columns_sorted
-            .iter()
-            .map(|c| c.as_str())
-            .collect::<Vec<_>>()
-            .join(", ");
+        let mut columns_sorted: Vec<_> = self.columns.iter().map(String::as_str).collect();
+        columns_sorted.sort_unstable();
+        let columns_str = columns_sorted.join(", ");
 
         let index_type = match &self.index_kind {
             IndexKind::HNWS {

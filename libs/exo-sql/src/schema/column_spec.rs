@@ -63,11 +63,7 @@ impl ColumnSpec {
     ) -> std::io::Result<()> {
         let indent_str = " ".repeat(indent);
 
-        let groups = if let Some(group) = &self.group_name {
-            format!("[{}]", group)
-        } else {
-            "[]".to_string()
-        };
+        let groups = format!("[{}]", self.group_name.as_deref().unwrap_or(""));
 
         let references = if let Some(ref_spec) = &self.reference_spec {
             format!(
@@ -89,7 +85,7 @@ impl ColumnSpec {
         if !self.unique_constraints.is_empty() {
             attributes.push("UNIQUE");
         }
-        if let Some(_default) = &self.default_value {
+        if self.default_value.is_some() {
             attributes.push("DEFAULT");
         }
 
