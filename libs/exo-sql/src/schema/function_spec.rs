@@ -24,6 +24,24 @@ impl FunctionSpec {
         }
     }
 
+    pub fn debug_print(&self, indent: usize) {
+        let indent_str = " ".repeat(indent);
+        println!("{}- Function:", indent_str);
+        println!("{}  - Name: {}", indent_str, self.name);
+        println!("{}  - Language: {}", indent_str, self.language);
+        // Optionally show body preview
+        let body_preview = if self.body.len() > 50 {
+            format!("{}...", &self.body[..50])
+        } else {
+            self.body.clone()
+        };
+        println!(
+            "{}  - Body: {}",
+            indent_str,
+            body_preview.replace('\n', " ")
+        );
+    }
+
     pub async fn from_live_db(
         client: &DatabaseClient,
     ) -> Result<WithIssues<Vec<FunctionSpec>>, DatabaseError> {

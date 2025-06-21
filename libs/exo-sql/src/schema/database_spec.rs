@@ -57,6 +57,32 @@ impl DatabaseSpec {
         }
     }
 
+    pub fn debug_print(&self, indent: usize) {
+        let indent_str = " ".repeat(indent);
+        println!("{}Database:", indent_str);
+
+        if !self.tables.is_empty() {
+            println!("{}  Tables:", indent_str);
+            for table in &self.tables {
+                table.debug_print(indent + 4);
+            }
+        }
+
+        if !self.enums.is_empty() {
+            println!("{}  Enums:", indent_str);
+            for enum_ in &self.enums {
+                enum_.debug_print(indent + 4);
+            }
+        }
+
+        if !self.functions.is_empty() {
+            println!("{}  Functions:", indent_str);
+            for function in &self.functions {
+                function.debug_print(indent + 4);
+            }
+        }
+    }
+
     /// Non-public schemas required by this database spec.
     pub fn required_schemas(&self, scope: &MigrationScopeMatches) -> HashSet<String> {
         self.tables

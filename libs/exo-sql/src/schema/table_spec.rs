@@ -59,6 +59,57 @@ impl TableSpec {
         }
     }
 
+    pub fn debug_print(&self, indent: usize) {
+        let indent_str = " ".repeat(indent);
+        println!("{}- Table:", indent_str);
+        println!(
+            "{}  - Name: {}",
+            indent_str,
+            self.name.fully_qualified_name()
+        );
+
+        if !self.columns.is_empty() {
+            println!("{}  - Columns:", indent_str);
+            for column in &self.columns {
+                column.debug_print(indent + 6);
+            }
+        }
+
+        if !self.indices.is_empty() {
+            println!("{}  - Indices:", indent_str);
+            for index in &self.indices {
+                index.debug_print(indent + 6);
+            }
+        }
+
+        if !self.triggers.is_empty() {
+            println!("{}  - Triggers:", indent_str);
+            for trigger in &self.triggers {
+                trigger.debug_print(indent + 6);
+            }
+        }
+
+        let foreign_keys = self.foreign_key_references();
+        if !foreign_keys.is_empty() {
+            println!("{}  - Foreign Keys:", indent_str);
+            for (fk_name, columns) in foreign_keys {
+                let fk_info = columns
+                    .iter()
+                    .map(|(col, ref_spec)| {
+                        format!(
+                            "{} -> {}.{}",
+                            col.name,
+                            ref_spec.foreign_table_name.fully_qualified_name(),
+                            ref_spec.foreign_pk_column_name
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                println!("{}    - ({}, [{}])", indent_str, fk_name, fk_info);
+            }
+        }
+    }
+
     pub fn has_single_pk(&self) -> bool {
         self.columns.iter().filter(|c| c.is_pk).count() == 1
     }

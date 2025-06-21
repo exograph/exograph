@@ -29,6 +29,17 @@ impl EnumSpec {
         Self { name, variants }
     }
 
+    pub fn debug_print(&self, indent: usize) {
+        let indent_str = " ".repeat(indent);
+        println!("{}- Enum:", indent_str);
+        println!(
+            "{}  - Name: {}",
+            indent_str,
+            self.name.fully_qualified_name()
+        );
+        println!("{}  - Variants: [{}]", indent_str, self.variants.join(", "));
+    }
+
     pub fn sql_name(&self) -> String {
         self.name.sql_name()
     }

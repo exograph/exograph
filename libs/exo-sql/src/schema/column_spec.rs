@@ -51,6 +51,58 @@ impl PartialEq for ColumnSpec {
     }
 }
 
+impl ColumnSpec {
+    pub fn debug_print(&self, indent: usize) {
+        let indent_str = " ".repeat(indent);
+
+        let groups = if let Some(group) = &self.group_name {
+            format!("[{}]", group)
+        } else {
+            "[]".to_string()
+        };
+
+        let references = if let Some(ref_spec) = &self.reference_spec {
+            format!(
+                "[{}.{}]",
+                ref_spec.foreign_table_name.fully_qualified_name(),
+                ref_spec.foreign_pk_column_name
+            )
+        } else {
+            "[]".to_string()
+        };
+
+        let mut attributes = Vec::new();
+        if self.is_pk {
+            attributes.push("PK");
+        }
+        if !self.is_nullable {
+            attributes.push("NOT NULL");
+        }
+        if !self.unique_constraints.is_empty() {
+            attributes.push("UNIQUE");
+        }
+        if let Some(_default) = &self.default_value {
+            attributes.push("DEFAULT");
+        }
+
+        let attr_str = if attributes.is_empty() {
+            "".to_string()
+        } else {
+            format!(" [{}]", attributes.join(", "))
+        };
+
+        println!(
+            "{}- {}: {} (references: {}, group: {}){}",
+            indent_str,
+            self.name,
+            self.typ.type_string(),
+            references,
+            groups,
+            attr_str
+        );
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ColumnDefault {
     Uuid,
@@ -224,6 +276,19 @@ impl PartialEq for ColumnReferenceSpec {
 }
 
 impl Eq for ColumnReferenceSpec {}
+
+impl ColumnReferenceSpec {
+    pub fn debug_print(&self, indent: usize) {
+        let indent_str = " ".repeat(indent);
+        println!(
+            "{}ColumnReference: FK -> {}.{} (type: {})",
+            indent_str,
+            self.foreign_table_name.fully_qualified_name(),
+            self.foreign_pk_column_name,
+            self.foreign_pk_type.type_string()
+        );
+    }
+}
 
 const COLUMNS_TYPE_QUERY: &str = "
   SELECT pg_class.relname as table_name, attname as column_name, format_type(atttypid, atttypmod), attndims, attnotnull FROM pg_attribute 

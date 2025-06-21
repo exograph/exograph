@@ -88,6 +88,29 @@ impl IndexSpec {
         }
     }
 
+    pub fn debug_print(&self, indent: usize) {
+        let indent_str = " ".repeat(indent);
+        let mut columns_sorted: Vec<_> = self.columns.iter().collect();
+        columns_sorted.sort();
+        let columns_str = columns_sorted
+            .iter()
+            .map(|c| c.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        let index_type = match &self.index_kind {
+            IndexKind::HNWS {
+                distance_function, ..
+            } => format!("HNWS({:?})", distance_function),
+            IndexKind::DatabaseDefault => "DEFAULT".to_string(),
+        };
+
+        println!(
+            "{}- ({}, {}, [{}])",
+            indent_str, self.name, index_type, columns_str
+        );
+    }
+
     pub async fn from_live_db(
         client: &DatabaseClient,
         table_name: &SchemaObjectName,

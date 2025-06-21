@@ -137,6 +137,20 @@ impl TriggerSpec {
         }
     }
 
+    pub fn debug_print(&self, indent: usize) {
+        let indent_str = " ".repeat(indent);
+        let trigger_type = format!(
+            "{} {} {}",
+            self.timing.as_str(),
+            self.event.as_str(),
+            self.orientation.as_str()
+        );
+        println!(
+            "{}- ({}, {}, function: {})",
+            indent_str, self.name, trigger_type, self.function
+        );
+    }
+
     pub async fn from_live_db(
         client: &DatabaseClient,
         table_name: &SchemaObjectName,
