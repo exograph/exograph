@@ -138,7 +138,8 @@ impl TriggerSpec {
     }
 
     pub fn debug_print(&self, indent: usize) {
-        self.debug_print_to(&mut std::io::stdout(), indent).unwrap();
+        self.debug_print_to(&mut std::io::stdout(), indent)
+            .expect("Failed to write debug output to stdout");
     }
 
     pub fn debug_print_to<W: std::io::Write>(
@@ -147,16 +148,15 @@ impl TriggerSpec {
         indent: usize,
     ) -> std::io::Result<()> {
         let indent_str = " ".repeat(indent);
-        let trigger_type = format!(
-            "{} {} {}",
-            self.timing.as_str(),
-            self.event.as_str(),
-            self.orientation.as_str()
-        );
         writeln!(
             writer,
-            "{}- ({}, {}, function: {})",
-            indent_str, self.name, trigger_type, self.function
+            "{}- ({}, {} {} {}, function: {})",
+            indent_str,
+            self.name,
+            self.timing.as_str(),
+            self.event.as_str(),
+            self.orientation.as_str(),
+            self.function
         )
     }
 

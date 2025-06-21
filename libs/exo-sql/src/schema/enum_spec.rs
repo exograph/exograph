@@ -30,7 +30,8 @@ impl EnumSpec {
     }
 
     pub fn debug_print(&self, indent: usize) {
-        self.debug_print_to(&mut std::io::stdout(), indent).unwrap();
+        self.debug_print_to(&mut std::io::stdout(), indent)
+            .expect("Failed to write debug output to stdout");
     }
 
     pub fn debug_print_to<W: std::io::Write>(
