@@ -33,7 +33,7 @@ use exo_sql::{
     PhysicalColumn, PhysicalColumnType, PhysicalIndex, PhysicalTable, TableId,
     schema::index_spec::IndexKind,
 };
-use exo_sql::{Database, PhysicalEnum, RelationColumnPair};
+use exo_sql::{ColumnReference, Database, PhysicalEnum, RelationColumnPair};
 
 use heck::ToSnakeCase;
 use postgres_core_model::types::EntityRepresentation;
@@ -129,24 +129,7 @@ fn expand_database_info(
             .flatten()
             .collect();
 
-        // Column names may be duplicated if a column name is part of multiple field's foreign key constraints
-        // So we need to deduplicate them, but merge the group_names of the columns with the same name so that
-        // foreign key constraints are preserved
-        let mut deduplicated_columns: Vec<PhysicalColumn> = vec![];
-        for column in columns {
-            if !deduplicated_columns.iter().any(|c| c.name == column.name) {
-                deduplicated_columns.push(column);
-            } else {
-                deduplicated_columns
-                    .iter_mut()
-                    .find(|c| c.name == column.name)
-                    .unwrap()
-                    .group_names
-                    .extend(column.group_names);
-            }
-        }
-
-        building.database.get_table_mut(table_id).columns = deduplicated_columns;
+        building.database.get_table_mut(table_id).columns = columns;
     }
 
     {
@@ -242,10 +225,26 @@ fn expand_type_relations(
                     foreign_column_id,
                 } in relation.column_pairs.iter()
                 {
-                    let foreign_column_typ = &foreign_column_id.get_column(&building.database).typ;
+                    let foreign_column_typ =
+                        foreign_column_id.get_column(&building.database).typ.clone();
 
-                    building.database.get_column_mut(*self_column_id).typ =
-                        foreign_column_typ.clone();
+                    building.database.get_column_mut(*self_column_id).typ = foreign_column_typ;
+
+                    let self_column = building.database.get_column_mut(*self_column_id);
+
+                    let column_reference = ColumnReference {
+                        foreign_column_id: *foreign_column_id,
+                        group_name: field.name.to_string(),
+                    };
+
+                    match self_column.column_references {
+                        Some(ref mut column_references) => {
+                            column_references.push(column_reference);
+                        }
+                        None => {
+                            self_column.column_references = Some(vec![column_reference]);
+                        }
+                    }
                 }
 
                 building.database.relations.push(relation);
@@ -353,7 +352,7 @@ fn create_columns(
                         unique_constraints: unique_constraint_name.clone(),
                         default_value: default_value.clone(),
                         update_sync,
-                        group_names: vec![field.name.to_string()],
+                        column_references: None,
                     })
                     .collect()),
                 ResolvedType::Composite(composite) => {
@@ -379,7 +378,7 @@ fn create_columns(
                                 unique_constraints: unique_constraint_name.clone(),
                                 default_value: default_value.clone(),
                                 update_sync,
-                                group_names: vec![field.name.to_string()],
+                                column_references: None,
                             }
                         })
                         .collect())
@@ -398,7 +397,7 @@ fn create_columns(
                         unique_constraints: unique_constraint_name.clone(),
                         default_value: default_value.clone(),
                         update_sync,
-                        group_names: vec![field.name.to_string()],
+                        column_references: None,
                     })
                     .collect()),
             }
@@ -448,7 +447,7 @@ fn create_columns(
                         unique_constraints: unique_constraint_name.clone(),
                         default_value: default_value.clone(),
                         update_sync,
-                        group_names: vec![field.name.to_string()],
+                        column_references: None,
                     })
                     .collect())
             } else {

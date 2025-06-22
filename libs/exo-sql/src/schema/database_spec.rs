@@ -13,7 +13,10 @@ use crate::{
     Database, ManyToOne, PhysicalColumn, PhysicalIndex, PhysicalTable, SchemaObjectName, TableId,
     database_error::DatabaseError,
     schema::column_spec::ColumnSpec,
-    sql::{connect::database_client::DatabaseClient, relation::RelationColumnPair},
+    sql::{
+        connect::database_client::DatabaseClient, physical_column::ColumnReference,
+        relation::RelationColumnPair,
+    },
 };
 
 use super::{
@@ -119,16 +122,39 @@ impl DatabaseSpec {
         for (table_id, column_specs, index_specs) in tables.iter() {
             let columns = column_specs
                 .iter()
-                .map(|column_spec| PhysicalColumn {
-                    table_id: *table_id,
-                    name: column_spec.name.to_owned(),
-                    typ: column_spec.typ.clone(),
-                    is_pk: column_spec.is_pk,
-                    is_nullable: column_spec.is_nullable,
-                    unique_constraints: column_spec.unique_constraints.to_owned(),
-                    default_value: column_spec.default_value.to_owned(),
-                    update_sync: false, // There is no good way to know from the database spec if a column should be updated on sync
-                    group_names: column_spec.group_names.to_owned(),
+                .map(|column_spec| {
+                    let column_references = column_spec.reference_specs.as_ref().map(|ref_specs| {
+                        ref_specs
+                            .iter()
+                            .map(|ref_spec| {
+                                let foreign_table_id =
+                                    database.get_table_id(&ref_spec.foreign_table_name).unwrap();
+                                let foreign_column_id = database
+                                    .get_column_id(
+                                        foreign_table_id,
+                                        &ref_spec.foreign_pk_column_name,
+                                    )
+                                    .unwrap();
+
+                                ColumnReference {
+                                    foreign_column_id,
+                                    group_name: ref_spec.group_name.clone(),
+                                }
+                            })
+                            .collect()
+                    });
+
+                    PhysicalColumn {
+                        table_id: *table_id,
+                        name: column_spec.name.to_owned(),
+                        typ: column_spec.typ.clone(),
+                        is_pk: column_spec.is_pk,
+                        is_nullable: column_spec.is_nullable,
+                        unique_constraints: column_spec.unique_constraints.to_owned(),
+                        default_value: column_spec.default_value.to_owned(),
+                        update_sync: false, // There is no good way to know from the database spec if a column should be updated on sync
+                        column_references,
+                    }
                 })
                 .collect();
 
@@ -153,49 +179,67 @@ impl DatabaseSpec {
 
                 let column_ids = database.get_column_ids(*table_id);
 
-                column_ids.into_iter().flat_map(|self_column_id| {
-                    let column = &table.columns[self_column_id.column_index];
-                    let column_spec = column_specs
-                        .iter()
-                        .find(|column_spec| column_spec.name == column.name)
-                        .unwrap();
-
-                    if let Some(ColumnReferenceSpec {
-                        foreign_table_name,
-                        foreign_pk_column_name,
-                        ..
-                    }) = &column_spec.reference_spec
-                    {
-                        let foreign_table_id = database.get_table_id(foreign_table_name).unwrap();
-                        let foreign_pk_column_id = database
-                            .get_column_id(foreign_table_id, foreign_pk_column_name)
+                column_ids
+                    .into_iter()
+                    .flat_map(|self_column_id| {
+                        let column = &table.columns[self_column_id.column_index];
+                        let column_spec = column_specs
+                            .iter()
+                            .find(|column_spec| column_spec.name == column.name)
                             .unwrap();
-                        // Roughly match the behavior in type_builder.rs, where we set up the
-                        // alias to the pluralized field name, which in typical setup matches
-                        // the table name.
 
-                        // TODO: Make unit tests compare statements semantically, not lexically
-                        // so setting up aliases consistently is same as not setting them up in
-                        // case aliases are unnecessary.
-                        let foreign_table_alias = Some(if column.name.ends_with("_id") {
-                            let base_name = &column.name[..column.name.len() - 3];
-                            let plural_suffix = if base_name.ends_with('s') { "es" } else { "s" };
-                            format!("{base_name}{plural_suffix}")
-                        } else {
-                            column.name.clone()
-                        });
+                        column_spec
+                            .reference_specs
+                            .iter()
+                            .flat_map(|reference_specs| {
+                                reference_specs
+                                    .iter()
+                                    .map(|reference_spec| {
+                                        let ColumnReferenceSpec {
+                                            foreign_table_name,
+                                            foreign_pk_column_name,
+                                            ..
+                                        } = reference_spec;
 
-                        Some(ManyToOne::new(
-                            vec![RelationColumnPair {
-                                self_column_id,
-                                foreign_column_id: foreign_pk_column_id,
-                            }],
-                            foreign_table_alias,
-                        ))
-                    } else {
-                        None
-                    }
-                })
+                                        let foreign_table_id =
+                                            database.get_table_id(foreign_table_name).unwrap();
+                                        let foreign_pk_column_id = database
+                                            .get_column_id(foreign_table_id, foreign_pk_column_name)
+                                            .unwrap();
+                                        // Roughly match the behavior in type_builder.rs, where we set up the
+                                        // alias to the pluralized field name, which in typical setup matches
+                                        // the table name.
+
+                                        // TODO: Make unit tests compare statements semantically, not lexically
+                                        // so setting up aliases consistently is same as not setting them up in
+                                        // case aliases are unnecessary.
+                                        let foreign_table_alias =
+                                            Some(if column.name.ends_with("_id") {
+                                                let base_name =
+                                                    &column.name[..column.name.len() - 3];
+                                                let plural_suffix = if base_name.ends_with('s') {
+                                                    "es"
+                                                } else {
+                                                    "s"
+                                                };
+                                                format!("{base_name}{plural_suffix}")
+                                            } else {
+                                                column.name.clone()
+                                            });
+
+                                        ManyToOne::new(
+                                            vec![RelationColumnPair {
+                                                self_column_id,
+                                                foreign_column_id: foreign_pk_column_id,
+                                            }],
+                                            foreign_table_alias,
+                                        )
+                                    })
+                                    .collect::<Vec<_>>()
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>()
             })
             .collect();
 
@@ -506,36 +550,33 @@ mod tests {
                         ColumnSpec {
                             name: "id".into(),
                             typ: Box::new(IntColumnType { bits: IntBits::_32 }),
-                            reference_spec: None,
+                            reference_specs: None,
                             is_pk: true,
                             is_nullable: false,
                             unique_constraints: vec![],
                             default_value: Some(ColumnDefault::Autoincrement(
                                 ColumnAutoincrement::Serial,
                             )),
-                            group_names: vec![],
                         },
                         ColumnSpec {
                             name: "name".into(),
                             typ: Box::new(StringColumnType {
                                 max_length: Some(255),
                             }),
-                            reference_spec: None,
+                            reference_specs: None,
                             is_pk: false,
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
-                            group_names: vec![],
                         },
                         ColumnSpec {
                             name: "email".into(),
                             typ: Box::new(StringColumnType { max_length: None }),
-                            reference_spec: None,
+                            reference_specs: None,
                             is_pk: false,
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
-                            group_names: vec![],
                         },
                     ],
                     vec![],
@@ -562,12 +603,11 @@ mod tests {
                     vec![ColumnSpec {
                         name: "complete".into(),
                         typ: Box::new(BooleanColumnType),
-                        reference_spec: None,
+                        reference_specs: None,
                         is_pk: false,
                         is_nullable: true,
                         unique_constraints: vec![],
                         default_value: None,
-                        group_names: vec![],
                     }],
                     vec![],
                     vec![],
@@ -598,12 +638,11 @@ mod tests {
                                 precision: Some(10),
                                 scale: Some(2),
                             }),
-                            reference_spec: None,
+                            reference_specs: None,
                             is_pk: false,
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
-                            group_names: vec![],
                         },
                         ColumnSpec {
                             name: "just_precision".into(),
@@ -611,12 +650,11 @@ mod tests {
                                 precision: Some(20),
                                 scale: Some(0), // Default scale for NUMERIC is 0 (https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-NUMERIC-DECIMAL)
                             }),
-                            reference_spec: None,
+                            reference_specs: None,
                             is_pk: false,
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
-                            group_names: vec![],
                         },
                         ColumnSpec {
                             name: "no_precision_and_scale".into(),
@@ -624,12 +662,11 @@ mod tests {
                                 precision: None,
                                 scale: None,
                             }),
-                            reference_spec: None,
+                            reference_specs: None,
                             is_pk: false,
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
-                            group_names: vec![],
                         },
                     ],
                     vec![],
@@ -713,7 +750,7 @@ mod tests {
             actual.typ.equals(expected.typ.as_ref()),
             "Column types don't match"
         );
-        assert_eq!(actual.reference_spec, expected.reference_spec);
+        assert_eq!(actual.reference_specs, expected.reference_specs);
         assert_eq!(actual.is_pk, expected.is_pk);
         assert_eq!(actual.is_nullable, expected.is_nullable);
         assert_eq!(actual.unique_constraints, expected.unique_constraints);

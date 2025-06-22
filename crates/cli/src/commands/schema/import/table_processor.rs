@@ -5,7 +5,9 @@ use exo_sql::{
 };
 use std::collections::HashSet;
 
-use super::{ImportContext, ModelProcessor, processor::INDENT};
+use super::{
+    ImportContext, ModelProcessor, column_processor::write_foreign_key_reference, processor::INDENT,
+};
 
 use heck::ToLowerCamelCase;
 
@@ -55,6 +57,8 @@ impl ModelProcessor<DatabaseSpec, ()> for TableSpec {
         for column in &self.columns {
             column.process(self, context, &mut processed_fields, writer)?;
         }
+
+        write_foreign_key_reference(writer, context, self)?;
 
         write_references(writer, context, &mut processed_fields, &self.name)?;
 

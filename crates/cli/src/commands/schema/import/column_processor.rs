@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use anyhow::Result;
 
-use exo_sql::schema::column_spec::ColumnSpec;
+use exo_sql::schema::column_spec::{ColumnReferenceSpec, ColumnSpec};
 
 use exo_sql::schema::table_spec::TableSpec;
 use exo_sql::{
@@ -18,31 +18,23 @@ impl ModelProcessor<TableSpec, HashSet<String>> for ColumnSpec {
     /// Converts the column specification to a exograph model.
     fn process(
         &self,
-        parent: &TableSpec,
+        _parent: &TableSpec,
         context: &ImportContext,
         parent_context: &mut HashSet<String>,
         writer: &mut (dyn std::io::Write + Send),
     ) -> Result<()> {
-        let (standard_field_name, column_annotation) = context.get_column_annotation(parent, self);
+        if self.reference_specs.is_some() {
+            return Ok(());
+        }
+
+        let (standard_field_name, column_annotation) =
+            context.get_field_name_and_column_annotation(self);
 
         if !parent_context.insert(standard_field_name.clone()) {
             return Ok(());
         }
         // [@pk] [type-annotations] [name]: [data-type] = [default-value]
-        let column_type_name = context.column_type_name(self);
-        let is_column_type_name_reference =
-            matches!(column_type_name, ColumnTypeName::ReferenceType(_));
-
-        if let Some(reference) = &self.reference_spec {
-            // The column was referring to a table, but that table is not in the context
-            if !is_column_type_name_reference {
-                writeln!(
-                    writer,
-                    "{INDENT}// NOTE: The table `{}` referenced by this column is not in the provided schema scope",
-                    reference.foreign_table_name.fully_qualified_name()
-                )?;
-            }
-        }
+        let column_type_name = context.column_type_name(self, None);
 
         write!(writer, "{INDENT}")?;
 
@@ -50,24 +42,12 @@ impl ModelProcessor<TableSpec, HashSet<String>> for ColumnSpec {
             write!(writer, "@pk ")?;
         }
 
-        if let Some(reference) = &self.reference_spec {
-            if parent.name == reference.foreign_table_name {
-                let cardinality_annotation =
-                    if self.unique_constraints.is_empty() || self.is_nullable {
-                        "@manyToOne"
-                    } else {
-                        "@oneToOne"
-                    };
-                write!(writer, "{cardinality_annotation} ")?;
-            }
-        }
-
         if !self.unique_constraints.is_empty() {
             write!(writer, "@unique ")?;
         }
 
         // Only add type annotations for non-reference columns
-        if self.reference_spec.is_none() {
+        if self.reference_specs.is_none() {
             let annots = type_annotation(self.typ.as_ref());
 
             if !annots.is_empty() {
@@ -148,5 +128,84 @@ fn type_annotation(physical_type: &dyn exo_sql::PhysicalColumnType) -> String {
         format!("@size({})", vector_type.size)
     } else {
         "".to_string()
+    }
+}
+
+pub fn write_foreign_key_reference(
+    writer: &mut (dyn std::io::Write + Send),
+    context: &ImportContext,
+    table_spec: &TableSpec,
+) -> Result<()> {
+    for (_, references) in table_spec.foreign_key_references() {
+        let reference = references[0].1; // All references point to the same table
+        let foreign_table_name = &reference.foreign_table_name;
+        let field_name = context.get_composite_foreign_key_field_name(foreign_table_name);
+        let column_type_name = {
+            let model_name = context.model_name(foreign_table_name);
+            match model_name {
+                Some(model_name) => ColumnTypeName::ReferenceType(model_name.to_string()),
+                None => ImportContext::physical_type_name(reference.foreign_pk_type.as_ref()),
+            }
+        };
+        let data_type = match column_type_name {
+            ColumnTypeName::SelfType(data_type) => data_type,
+            ColumnTypeName::ReferenceType(data_type) => data_type,
+        };
+
+        let mapping_annotation = reference_mapping_annotation(&field_name, &references, context);
+
+        if let Some(mapping_annotation) = mapping_annotation {
+            write!(
+                writer,
+                "{INDENT}{mapping_annotation} {field_name}: {data_type}"
+            )?;
+        } else {
+            write!(writer, "{INDENT}{field_name}: {data_type}")?;
+        }
+
+        if references[0].0.is_nullable {
+            writeln!(writer, "?")?;
+        } else {
+            writeln!(writer)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn reference_mapping_annotation(
+    field_name: &str,
+    references: &Vec<(&ColumnSpec, &ColumnReferenceSpec)>,
+    context: &ImportContext,
+) -> Option<String> {
+    let mut mapping_pairs = Vec::new();
+
+    for (col, reference) in references {
+        let reference_field_name = context.standard_field_name(&reference.foreign_pk_column_name);
+
+        let standard_field_name = format!("{field_name}_{}", reference.foreign_pk_column_name);
+
+        if standard_field_name != col.name || references.len() > 1 {
+            mapping_pairs.push((reference_field_name, col.name.clone()));
+        }
+    }
+
+    match &mapping_pairs[..] {
+        [] => None,
+        [mapping_pair] => {
+            let mapping_annotation = format!("@column(\"{}\")", mapping_pair.1);
+            Some(mapping_annotation)
+        }
+        _ => {
+            let mapping_annotation = format!(
+                "@column(mapping={{{}}})",
+                mapping_pairs
+                    .iter()
+                    .map(|(k, v)| format!("{}: \"{}\"", k, v))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            );
+            Some(mapping_annotation)
+        }
     }
 }

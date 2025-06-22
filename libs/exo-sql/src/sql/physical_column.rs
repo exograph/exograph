@@ -36,8 +36,8 @@ pub struct PhysicalColumn {
     pub default_value: Option<ColumnDefault>,
     pub update_sync: bool,
 
-    /// Names that can be used to group columns together (for example to generate a foreign key constraint name for composite primary keys)
-    pub group_names: Vec<String>,
+    /// references to other foreign columns. A column can have multiple references if it point to multiple tables.
+    pub column_references: Option<Vec<ColumnReference>>,
 }
 
 impl Clone for PhysicalColumn {
@@ -51,7 +51,7 @@ impl Clone for PhysicalColumn {
             unique_constraints: self.unique_constraints.clone(),
             default_value: self.default_value.clone(),
             update_sync: self.update_sync,
-            group_names: self.group_names.clone(),
+            column_references: self.column_references.clone(),
         }
     }
 }
@@ -66,7 +66,7 @@ impl PartialEq for PhysicalColumn {
             && self.unique_constraints == other.unique_constraints
             && self.default_value == other.default_value
             && self.update_sync == other.update_sync
-            && self.group_names == other.group_names
+            && self.column_references == other.column_references
     }
 }
 
@@ -159,4 +159,10 @@ impl Ord for ColumnId {
         }
         tupled(self).cmp(&tupled(other))
     }
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct ColumnReference {
+    pub foreign_column_id: ColumnId,
+    pub group_name: String,
 }
