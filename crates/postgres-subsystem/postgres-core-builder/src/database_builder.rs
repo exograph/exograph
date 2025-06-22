@@ -120,10 +120,19 @@ fn expand_database_info(
     let table_id = building.database.insert_table(table);
 
     {
+        let mut created_columns = HashSet::new();
         let columns: Vec<PhysicalColumn> = resolved_type
             .fields
             .iter()
-            .map(|field| create_columns(field, table_id, resolved_type, resolved_env))
+            .map(|field| {
+                create_columns(
+                    field,
+                    table_id,
+                    resolved_type,
+                    resolved_env,
+                    &mut created_columns,
+                )
+            })
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()
             .flatten()
@@ -311,6 +320,7 @@ fn create_columns(
     table_id: TableId,
     resolved_type: &ResolvedCompositeType,
     env: &ResolvedTypeEnv,
+    created_columns: &mut HashSet<String>,
 ) -> Result<Vec<PhysicalColumn>, ModelBuildingError> {
     // If the field doesn't have a column in the same table (for example, the `concerts` field in the `Venue` type), skip it
     if !field.self_column {
@@ -343,16 +353,22 @@ fn create_columns(
                 ResolvedType::Primitive(pt) => Ok(field
                     .column_names
                     .iter()
-                    .map(|name| PhysicalColumn {
-                        table_id,
-                        name: name.to_string(),
-                        typ: determine_column_type(pt, field),
-                        is_pk: field.is_pk,
-                        is_nullable: optional,
-                        unique_constraints: unique_constraint_name.clone(),
-                        default_value: default_value.clone(),
-                        update_sync,
-                        column_references: None,
+                    .flat_map(|column_name| {
+                        if created_columns.insert(column_name.to_string()) {
+                            Some(PhysicalColumn {
+                                table_id,
+                                name: column_name.to_string(),
+                                typ: determine_column_type(pt, field),
+                                is_pk: field.is_pk,
+                                is_nullable: optional,
+                                unique_constraints: unique_constraint_name.clone(),
+                                default_value: default_value.clone(),
+                                update_sync,
+                                column_references: None,
+                            })
+                        } else {
+                            None
+                        }
                     })
                     .collect()),
                 ResolvedType::Composite(composite) => {
@@ -363,22 +379,26 @@ fn create_columns(
                     Ok(field
                         .column_names
                         .iter()
-                        .map(|name| {
-                            PhysicalColumn {
-                                table_id,
-                                name: name.to_string(),
-                                typ: if composite.representation == EntityRepresentation::Json {
-                                    Box::new(JsonColumnType)
-                                } else {
-                                    // A placeholder value. Will be resolved in the next phase (see expand_type_relations)
-                                    Box::new(BooleanColumnType)
-                                },
-                                is_pk: field.is_pk,
-                                is_nullable: optional,
-                                unique_constraints: unique_constraint_name.clone(),
-                                default_value: default_value.clone(),
-                                update_sync,
-                                column_references: None,
+                        .flat_map(|column_name| {
+                            if created_columns.insert(column_name.to_string()) {
+                                Some(PhysicalColumn {
+                                    table_id,
+                                    name: column_name.to_string(),
+                                    typ: if composite.representation == EntityRepresentation::Json {
+                                        Box::new(JsonColumnType)
+                                    } else {
+                                        // A placeholder value. Will be resolved in the next phase (see expand_type_relations)
+                                        Box::new(BooleanColumnType)
+                                    },
+                                    is_pk: field.is_pk,
+                                    is_nullable: optional,
+                                    unique_constraints: unique_constraint_name.clone(),
+                                    default_value: default_value.clone(),
+                                    update_sync,
+                                    column_references: None,
+                                })
+                            } else {
+                                None
                             }
                         })
                         .collect())
