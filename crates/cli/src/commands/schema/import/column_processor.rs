@@ -154,13 +154,16 @@ pub fn write_foreign_key_reference(
 
         let mapping_annotation = reference_mapping_annotation(&field_name, &references, context);
 
+        write!(writer, "{INDENT}")?;
+
+        if references[0].0.is_pk {
+            write!(writer, "@pk ")?;
+        }
+
         if let Some(mapping_annotation) = mapping_annotation {
-            write!(
-                writer,
-                "{INDENT}{mapping_annotation} {field_name}: {data_type}"
-            )?;
+            write!(writer, "{mapping_annotation} {field_name}: {data_type}")?;
         } else {
-            write!(writer, "{INDENT}{field_name}: {data_type}")?;
+            write!(writer, "{field_name}: {data_type}")?;
         }
 
         if references[0].0.is_nullable {
