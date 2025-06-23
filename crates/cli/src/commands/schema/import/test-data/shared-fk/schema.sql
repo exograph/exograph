@@ -10,10 +10,11 @@ CREATE TABLE members (
 );
 
 CREATE TABLE memberships (
-	membership_id TEXT PRIMARY KEY,
+	membership_id TEXT,
 	membership_tenant_id TEXT,
 	membership_member_id TEXT,
-	membership_name TEXT
+	membership_name TEXT,
+	PRIMARY KEY (membership_tenant_id, membership_id)
 );
 
 CREATE TABLE tenants (
@@ -24,3 +25,5 @@ CREATE TABLE tenants (
 ALTER TABLE memberships ADD CONSTRAINT fk_memberships_members FOREIGN KEY (membership_tenant_id, membership_member_id) REFERENCES members(member_tenant_id, member_id);
 
 ALTER TABLE memberships ADD CONSTRAINT fk_memberships_tenants FOREIGN KEY (membership_tenant_id) REFERENCES tenants(tenant_id);
+
+ALTER TABLE members ADD CONSTRAINT fk_members_tenants FOREIGN KEY (member_tenant_id) REFERENCES tenants(tenant_id);

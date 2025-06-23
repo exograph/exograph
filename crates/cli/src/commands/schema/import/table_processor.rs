@@ -1,7 +1,7 @@
 use anyhow::Result;
 use exo_sql::{
     SchemaObjectName,
-    schema::{database_spec::DatabaseSpec, table_spec::TableSpec},
+    schema::{column_spec::ColumnSpec, database_spec::DatabaseSpec, table_spec::TableSpec},
 };
 use std::collections::HashSet;
 
@@ -14,7 +14,7 @@ use heck::ToLowerCamelCase;
 impl ModelProcessor<DatabaseSpec, ()> for TableSpec {
     fn process(
         &self,
-        _parent: &DatabaseSpec,
+        parent: &DatabaseSpec,
         context: &ImportContext,
         _parent_context: &mut (),
         writer: &mut (dyn std::io::Write + Send),
@@ -54,18 +54,40 @@ impl ModelProcessor<DatabaseSpec, ()> for TableSpec {
         // Fields that have already been added to the model
         let mut processed_fields: HashSet<String> = HashSet::new();
 
-        for column in &self.columns {
-            column.process(self, context, &mut processed_fields, writer)?;
-        }
+        let is_pk = |column_spec: &ColumnSpec| column_spec.is_pk;
+        let is_not_pk = |column_spec: &ColumnSpec| !column_spec.is_pk;
 
-        write_foreign_key_reference(writer, context, self)?;
+        // First write the primary key fields
+        write_scalar_fields(writer, self, context, &mut processed_fields, &is_pk)?;
+        write_foreign_key_reference(writer, context, parent, self, &is_pk)?;
 
+        // Then write the non-primary key fields
+        write_scalar_fields(writer, self, context, &mut processed_fields, &is_not_pk)?;
+        write_foreign_key_reference(writer, context, parent, self, &is_not_pk)?;
+
+        // Finally write the references
         write_references(writer, context, &mut processed_fields, &self.name)?;
 
         writeln!(writer, "{INDENT}}}")?;
 
         Ok(())
     }
+}
+
+fn write_scalar_fields(
+    writer: &mut (dyn std::io::Write + Send),
+    table_spec: &TableSpec,
+    context: &ImportContext,
+    processed_fields: &mut HashSet<String>,
+    filter: &dyn Fn(&ColumnSpec) -> bool,
+) -> Result<()> {
+    for column in &table_spec.columns {
+        if filter(column) {
+            column.process(table_spec, context, processed_fields, writer)?;
+        }
+    }
+
+    Ok(())
 }
 
 fn write_references(

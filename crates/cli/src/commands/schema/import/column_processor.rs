@@ -4,6 +4,7 @@ use anyhow::Result;
 
 use exo_sql::schema::column_spec::{ColumnReferenceSpec, ColumnSpec};
 
+use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::table_spec::TableSpec;
 use exo_sql::{
     FloatBits, FloatColumnType, IntBits, IntColumnType, NumericColumnType, StringColumnType,
@@ -134,25 +135,27 @@ fn type_annotation(physical_type: &dyn exo_sql::PhysicalColumnType) -> String {
 pub fn write_foreign_key_reference(
     writer: &mut (dyn std::io::Write + Send),
     context: &ImportContext,
+    database_spec: &DatabaseSpec,
     table_spec: &TableSpec,
+    filter: &dyn Fn(&ColumnSpec) -> bool,
 ) -> Result<()> {
     for (_, references) in table_spec.foreign_key_references() {
+        if !filter(references[0].0) {
+            continue;
+        }
+
         let reference = references[0].1; // All references point to the same table
         let foreign_table_name = &reference.foreign_table_name;
         let field_name = context.get_composite_foreign_key_field_name(foreign_table_name);
-        let column_type_name = {
-            let model_name = context.model_name(foreign_table_name);
-            match model_name {
-                Some(model_name) => ColumnTypeName::ReferenceType(model_name.to_string()),
-                None => ImportContext::physical_type_name(reference.foreign_pk_type.as_ref()),
-            }
-        };
-        let data_type = match column_type_name {
-            ColumnTypeName::SelfType(data_type) => data_type,
-            ColumnTypeName::ReferenceType(data_type) => data_type,
-        };
+        let data_type = context
+            .model_name(foreign_table_name)
+            .ok_or(anyhow::anyhow!(
+                "No model name found for foreign table name: {:?}",
+                foreign_table_name
+            ))?;
 
-        let mapping_annotation = reference_mapping_annotation(&field_name, &references, context);
+        let mapping_annotation =
+            reference_mapping_annotation(&field_name, &references, database_spec, context);
 
         write!(writer, "{INDENT}")?;
 
@@ -179,17 +182,43 @@ pub fn write_foreign_key_reference(
 fn reference_mapping_annotation(
     field_name: &str,
     references: &Vec<(&ColumnSpec, &ColumnReferenceSpec)>,
+    database_spec: &DatabaseSpec,
     context: &ImportContext,
 ) -> Option<String> {
     let mut mapping_pairs = Vec::new();
 
     for (col, reference) in references {
-        let reference_field_name = context.standard_field_name(&reference.foreign_pk_column_name);
+        let foreign_table = database_spec
+            .tables
+            .iter()
+            .find(|t| t.name == reference.foreign_table_name)
+            .unwrap();
+        let foreign_column_spec = foreign_table
+            .columns
+            .iter()
+            .find(|c| c.name == reference.foreign_pk_column_name)
+            .unwrap();
 
-        let standard_field_name = format!("{field_name}_{}", reference.foreign_pk_column_name);
+        let (foreign_field_name, needs_mapping) = match &foreign_column_spec.reference_specs {
+            Some(foreign_reference_specs) => {
+                let name = context.get_composite_foreign_key_field_name(
+                    &foreign_reference_specs[0].foreign_table_name,
+                );
+                let needs_mapping = name != col.name;
+                (name, needs_mapping)
+            }
+            None => {
+                let name = context.standard_field_name(&reference.foreign_pk_column_name);
+                let default_field_name =
+                    format!("{field_name}_{}", reference.foreign_pk_column_name);
 
-        if standard_field_name != col.name || references.len() > 1 {
-            mapping_pairs.push((reference_field_name, col.name.clone()));
+                let needs_mapping = default_field_name != col.name;
+                (name, needs_mapping)
+            }
+        };
+
+        if needs_mapping {
+            mapping_pairs.push((foreign_field_name, col.name.clone()));
         }
     }
 
