@@ -17,6 +17,8 @@ const INDENT: &str = "    ";
 
 impl ModelProcessor<TableSpec, HashSet<String>> for ColumnSpec {
     /// Converts the column specification to a exograph model.
+    /// The HashSet<String> parameter tracks written field names to prevent duplicates
+    /// when multiple foreign keys share the same column.
     fn process(
         &self,
         _parent: &TableSpec,
@@ -31,53 +33,57 @@ impl ModelProcessor<TableSpec, HashSet<String>> for ColumnSpec {
         let (standard_field_name, column_annotation) =
             context.get_field_name_and_column_annotation(self);
 
+        // Skip if we've already written this field (prevents duplicates when
+        // multiple foreign keys share the same column)
         if !parent_context.insert(standard_field_name.clone()) {
             return Ok(());
         }
         // [@pk] [type-annotations] [name]: [data-type] = [default-value]
-        let column_type_name = context.column_type_name(self, None);
-
-        write!(writer, "{INDENT}")?;
-
-        if self.is_pk {
-            write!(writer, "@pk ")?;
-        }
-
-        if !self.unique_constraints.is_empty() {
-            write!(writer, "@unique ")?;
-        }
-
-        // Only add type annotations for non-reference columns
-        if self.reference_specs.is_none() {
-            let annots = type_annotation(self.typ.as_ref());
-
-            if !annots.is_empty() {
-                write!(writer, "{} ", annots)?;
-            }
-        }
-
-        if let Some(annotation) = column_annotation {
-            write!(writer, "{} ", annotation)?;
-        }
-
-        write!(writer, "{}: ", standard_field_name)?;
+        let column_type_name = context.column_type_name(
+            self,
+            self.reference_specs
+                .as_deref()
+                .and_then(|specs| specs.first()),
+        );
 
         let data_type = match column_type_name {
             ColumnTypeName::SelfType(data_type) => data_type,
             ColumnTypeName::ReferenceType(data_type) => data_type,
         };
 
-        write!(writer, "{}", data_type)?;
+        // Combine type annotations and column annotations
+        let mut all_annotations = Vec::new();
 
-        if self.is_nullable {
-            write!(writer, "?")?;
+        // Only add type annotations for non-reference columns
+        if self.reference_specs.is_none() {
+            let type_annots = type_annotation(self.typ.as_ref());
+            if !type_annots.is_empty() {
+                all_annotations.push(type_annots);
+            }
         }
 
-        if let Some(default_value) = self.default_value.as_ref().and_then(|v| v.to_model()) {
-            write!(writer, " = {default_value}")?;
+        if let Some(col_annot) = column_annotation {
+            all_annotations.push(col_annot);
         }
 
-        writeln!(writer)?;
+        let combined_annotations = if all_annotations.is_empty() {
+            None
+        } else {
+            Some(all_annotations.join(" "))
+        };
+
+        // Write the field
+        let default_value = self.default_value.as_ref().and_then(|v| v.to_model());
+        let field_spec = FieldSpec {
+            is_pk: self.is_pk,
+            is_unique: !self.unique_constraints.is_empty(),
+            field_name: &standard_field_name,
+            data_type: &data_type,
+            is_nullable: self.is_nullable,
+            annotations: combined_annotations.as_deref(),
+            default_value: default_value.as_deref(),
+        };
+        write_field_common(writer, &field_spec)?;
 
         Ok(())
     }
@@ -132,6 +138,45 @@ fn type_annotation(physical_type: &dyn exo_sql::PhysicalColumnType) -> String {
     }
 }
 
+struct FieldSpec<'a> {
+    field_name: &'a str,
+    data_type: &'a str,
+    is_pk: bool,
+    is_unique: bool,
+    is_nullable: bool,
+    annotations: Option<&'a str>,
+    default_value: Option<&'a str>,
+}
+
+fn write_field_common(writer: &mut (dyn std::io::Write + Send), spec: &FieldSpec) -> Result<()> {
+    write!(writer, "{INDENT}")?;
+
+    if spec.is_pk {
+        write!(writer, "@pk ")?;
+    }
+
+    if spec.is_unique {
+        write!(writer, "@unique ")?;
+    }
+
+    if let Some(annots) = spec.annotations {
+        write!(writer, "{annots} ")?;
+    }
+
+    write!(writer, "{}: {}", spec.field_name, spec.data_type)?;
+
+    if spec.is_nullable {
+        write!(writer, "?")?;
+    }
+
+    if let Some(default) = spec.default_value {
+        write!(writer, " = {default}")?;
+    }
+
+    writeln!(writer)?;
+    Ok(())
+}
+
 pub fn write_foreign_key_reference(
     writer: &mut (dyn std::io::Write + Send),
     context: &ImportContext,
@@ -140,6 +185,10 @@ pub fn write_foreign_key_reference(
     filter: &dyn Fn(&ColumnSpec) -> bool,
 ) -> Result<()> {
     for (_, references) in table_spec.foreign_key_references() {
+        if references.is_empty() {
+            continue;
+        }
+
         if !filter(references[0].0) {
             continue;
         }
@@ -157,30 +206,22 @@ pub fn write_foreign_key_reference(
         let mapping_annotation =
             reference_mapping_annotation(&field_name, &references, database_spec, context);
 
-        write!(writer, "{INDENT}")?;
-
-        if references.iter().all(|(col, _)| col.is_pk) {
-            write!(writer, "@pk ")?;
-        }
-
-        if references
+        let is_pk = references.iter().all(|(col, _)| col.is_pk);
+        let is_unique = references
             .iter()
-            .all(|(col, _)| !col.unique_constraints.is_empty())
-        {
-            write!(writer, "@unique ")?;
-        }
+            .all(|(col, _)| !col.unique_constraints.is_empty());
+        let is_nullable = references.iter().any(|(col, _)| col.is_nullable);
 
-        if let Some(mapping_annotation) = mapping_annotation {
-            write!(writer, "{mapping_annotation} {field_name}: {data_type}")?;
-        } else {
-            write!(writer, "{field_name}: {data_type}")?;
-        }
-
-        if references.iter().any(|(col, _)| col.is_nullable) {
-            writeln!(writer, "?")?;
-        } else {
-            writeln!(writer)?;
-        }
+        let field_spec = FieldSpec {
+            is_pk,
+            is_unique,
+            field_name: &field_name,
+            data_type,
+            is_nullable,
+            annotations: mapping_annotation.as_deref(),
+            default_value: None, // Foreign key references don't have default values
+        };
+        write_field_common(writer, &field_spec)?;
     }
 
     Ok(())
