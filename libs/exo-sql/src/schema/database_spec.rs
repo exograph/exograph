@@ -108,7 +108,7 @@ impl DatabaseSpec {
         let mut database = Database::default();
 
         // Step 1: Create tables (without columns)
-        let tables: Vec<(TableId, Vec<ColumnSpec>, Vec<IndexSpec>)> = self
+        let mut tables: Vec<(TableId, Vec<ColumnSpec>, Vec<IndexSpec>)> = self
             .tables
             .into_iter()
             .filter(|table_spec| table_spec.managed)
@@ -123,27 +123,6 @@ impl DatabaseSpec {
             let columns = column_specs
                 .iter()
                 .map(|column_spec| {
-                    let column_references = column_spec.reference_specs.as_ref().map(|ref_specs| {
-                        ref_specs
-                            .iter()
-                            .map(|ref_spec| {
-                                let foreign_table_id =
-                                    database.get_table_id(&ref_spec.foreign_table_name).unwrap();
-                                let foreign_column_id = database
-                                    .get_column_id(
-                                        foreign_table_id,
-                                        &ref_spec.foreign_pk_column_name,
-                                    )
-                                    .unwrap();
-
-                                ColumnReference {
-                                    foreign_column_id,
-                                    group_name: ref_spec.group_name.clone(),
-                                }
-                            })
-                            .collect()
-                    });
-
                     PhysicalColumn {
                         table_id: *table_id,
                         name: column_spec.name.to_owned(),
@@ -153,7 +132,7 @@ impl DatabaseSpec {
                         unique_constraints: column_spec.unique_constraints.to_owned(),
                         default_value: column_spec.default_value.to_owned(),
                         update_sync: false, // There is no good way to know from the database spec if a column should be updated on sync
-                        column_references,
+                        column_references: None,
                     }
                 })
                 .collect();
@@ -171,7 +150,39 @@ impl DatabaseSpec {
                 .collect();
         }
 
-        // Step 3: Add relations to the database
+        // Step 3: Add column references to tables
+        for (table_id, column_specs, _) in tables.iter_mut() {
+            for column_spec in column_specs {
+                let column_references = column_spec.reference_specs.as_ref().map(|ref_specs| {
+                    ref_specs
+                        .iter()
+                        .map(|ref_spec| {
+                            let foreign_table_id =
+                                database.get_table_id(&ref_spec.foreign_table_name).unwrap();
+                            let foreign_column_id = database
+                                .get_column_id(foreign_table_id, &ref_spec.foreign_pk_column_name)
+                                .unwrap();
+
+                            ColumnReference {
+                                foreign_column_id,
+                                group_name: ref_spec.group_name.clone(),
+                            }
+                        })
+                        .collect()
+                });
+
+                let table = database.get_table_mut(*table_id);
+
+                let column_index = table
+                    .columns
+                    .iter()
+                    .position(|column| column.name == column_spec.name)
+                    .unwrap();
+
+                table.columns[column_index].column_references = column_references;
+            }
+        }
+        // Step 4: Add relations to the database
         let relations: Vec<ManyToOne> = tables
             .iter()
             .flat_map(|(table_id, column_specs, _)| {

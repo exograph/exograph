@@ -159,8 +159,15 @@ pub fn write_foreign_key_reference(
 
         write!(writer, "{INDENT}")?;
 
-        if references[0].0.is_pk {
+        if references.iter().all(|(col, _)| col.is_pk) {
             write!(writer, "@pk ")?;
+        }
+
+        if references
+            .iter()
+            .all(|(col, _)| !col.unique_constraints.is_empty())
+        {
+            write!(writer, "@unique ")?;
         }
 
         if let Some(mapping_annotation) = mapping_annotation {
@@ -169,7 +176,7 @@ pub fn write_foreign_key_reference(
             write!(writer, "{field_name}: {data_type}")?;
         }
 
-        if references[0].0.is_nullable {
+        if references.iter().any(|(col, _)| col.is_nullable) {
             writeln!(writer, "?")?;
         } else {
             writeln!(writer)?;

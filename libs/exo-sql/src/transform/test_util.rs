@@ -55,7 +55,7 @@ impl TestSetup {
                     SchemaObjectName::new("concerts", None),
                     vec![
                         pk_column("id"),
-                        pk_reference_column("venue_id", "venues", None),
+                        pk_reference_column("venue_id", "venues", None, "venue_fk"),
                         string_column("name"),
                     ],
                     vec![],
@@ -67,7 +67,7 @@ impl TestSetup {
                     vec![
                         pk_column("id"),
                         string_column("name"),
-                        pk_reference_column("parent_venue_id", "venues", None),
+                        pk_reference_column("parent_venue_id", "venues", None, "venue_fk"),
                     ],
                     vec![],
                     vec![],
@@ -77,8 +77,8 @@ impl TestSetup {
                     SchemaObjectName::new("concert_artists", None),
                     vec![
                         pk_column("id"),
-                        pk_reference_column("concert_id", "concerts", None),
-                        pk_reference_column("artist_id", "artists", None),
+                        pk_reference_column("concert_id", "concerts", None, "concert_fk"),
+                        pk_reference_column("artist_id", "artists", None, "artist_fk"),
                     ],
                     vec![],
                     vec![],
@@ -89,7 +89,7 @@ impl TestSetup {
                     vec![
                         pk_column("id"),
                         string_column("name"),
-                        pk_reference_column("address_id", "addresses", None),
+                        pk_reference_column("address_id", "addresses", None, "address_fk"),
                     ],
                     vec![],
                     vec![],

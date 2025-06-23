@@ -18,12 +18,13 @@ pub fn pk_column(name: impl Into<String>) -> ColumnSpec {
 }
 
 pub fn pk_reference_column(
-    name: impl Into<String>,
+    column_name: impl Into<String>,
     foreign_table_name: impl Into<String>,
     foreign_table_schema_name: Option<&str>,
+    group_name: impl Into<String>,
 ) -> ColumnSpec {
     ColumnSpec {
-        name: name.into(),
+        name: column_name.into(),
         typ: Box::new(IntColumnType { bits: IntBits::_16 }),
         reference_specs: Some(vec![ColumnReferenceSpec {
             foreign_table_name: SchemaObjectName::new(
@@ -32,7 +33,7 @@ pub fn pk_reference_column(
             ),
             foreign_pk_column_name: "id".to_string(),
             foreign_pk_type: Box::new(IntColumnType { bits: IntBits::_16 }),
-            group_name: "fk_group".to_string(),
+            group_name: group_name.into(),
         }]),
         is_pk: false,
         is_nullable: false,

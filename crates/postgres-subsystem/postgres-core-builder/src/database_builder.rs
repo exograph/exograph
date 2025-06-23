@@ -249,9 +249,6 @@ fn expand_type_relations(
                     // We may have skipped creating a column if there was a field ahead that referred to the same column
                     // In that case, we need to set the property on the column that we already created
                     self_column.is_pk |= field.is_pk;
-                    self_column
-                        .unique_constraints
-                        .extend(field.unique_constraints.clone());
                     self_column.update_sync |= field.update_sync;
                     if !matches!(field.typ, FieldType::Optional(_)) {
                         self_column.is_nullable = false;
