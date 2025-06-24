@@ -195,13 +195,14 @@ fn insert_self_row<'a>(
                 .collect::<Vec<_>>();
 
             // Only add parent columns that are not already present in the row
-            let existing_column_names: Vec<_> = columns.iter().map(|col| &col.name).collect();
+            let existing_column_names: std::collections::HashSet<_> =
+                columns.iter().map(|col| &col.name).collect();
 
             for (col_index, parent_column_id) in parent_column_ids.iter().enumerate() {
                 let parent_column = parent_column_id.get_column(database);
 
                 // Check if this column is already present in the row by name
-                if !existing_column_names.contains(&&parent_column.name) {
+                if !existing_column_names.contains(&parent_column.name) {
                     columns.push(parent_column);
                     proxy_values.push(ProxyColumn::Template {
                         col_index,

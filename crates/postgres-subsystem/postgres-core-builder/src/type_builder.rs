@@ -919,7 +919,7 @@ fn compute_many_to_one(
                 .get_column_id(foreign_table_id, column_name)
                 .ok_or(ModelBuildingError::Generic(format!(
                     "Column `{}` not found",
-                    field.column_names[0]
+                    column_name
                 )))
         })
         .collect();
@@ -977,7 +977,14 @@ fn compute_one_to_many_relation(
     )?;
 
     let relation = relation_id.deref(&building.database);
-    assert_eq!(relation.column_pairs.len(), foreign_pk_field_ids.len());
+    if relation.column_pairs.len() != foreign_pk_field_ids.len() {
+        return Err(ModelBuildingError::Generic(format!(
+            "Mismatch between number of columns in relation ({}) and number of foreign PK fields ({}) for field '{}'",
+            relation.column_pairs.len(),
+            foreign_pk_field_ids.len(),
+            field.name
+        )));
+    }
 
     Ok(PostgresRelation::ManyToOne {
         relation: ManyToOneRelation {

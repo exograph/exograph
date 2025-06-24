@@ -84,7 +84,7 @@ pub fn build(resolved_env: &ResolvedTypeEnv) -> Result<Database, ModelBuildingEr
 
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
-            expand_type_relations(c, resolved_env, &mut building);
+            expand_type_relations(c, resolved_env, &mut building)?;
         }
     }
 
@@ -202,72 +202,82 @@ fn expand_type_relations(
     resolved_type: &ResolvedCompositeType,
     resolved_env: &ResolvedTypeEnv,
     building: &mut DatabaseBuilding,
-) {
+) -> Result<(), ModelBuildingError> {
     if resolved_type.representation == EntityRepresentation::Json {
-        return;
+        return Ok(());
     }
 
     let table_name = &resolved_type.table_name;
     let table_id = building.database.get_table_id(table_name).unwrap();
 
-    resolved_type.fields.iter().for_each(|field| {
-        let field_type = resolved_env
-            .get_by_key(&field.typ.innermost().type_name)
-            .unwrap();
-        if let ResolvedType::Composite(ct) = field_type {
-            if ct.representation == EntityRepresentation::Json {
-                return;
-            }
-        }
-
-        if field.self_column {
-            let self_column_ids = building
-                .database
-                .get_column_ids_from_names(table_id, &field.column_names);
-            if let Some(relation) =
-                compute_many_to_one_relation(field, self_column_ids.clone(), resolved_env, building)
-            {
-                // In the earlier phase, we set the type of a many-to-one column to a placeholder value
-                // Now that we have the foreign type, we can set the type of the column to the foreign type's PK
-                for RelationColumnPair {
-                    self_column_id,
-                    foreign_column_id,
-                } in relation.column_pairs.iter()
-                {
-                    let foreign_column_typ =
-                        foreign_column_id.get_column(&building.database).typ.clone();
-
-                    building.database.get_column_mut(*self_column_id).typ = foreign_column_typ;
-
-                    let self_column = building.database.get_column_mut(*self_column_id);
-
-                    let column_reference = ColumnReference {
-                        foreign_column_id: *foreign_column_id,
-                        group_name: field.name.to_string(),
-                    };
-
-                    // We may have skipped creating a column if there was a field ahead that referred to the same column
-                    // In that case, we need to set the property on the column that we already created
-                    self_column.is_pk |= field.is_pk;
-                    self_column.update_sync |= field.update_sync;
-                    if !matches!(field.typ, FieldType::Optional(_)) {
-                        self_column.is_nullable = false;
-                    }
-
-                    match self_column.column_references {
-                        Some(ref mut column_references) => {
-                            column_references.push(column_reference);
-                        }
-                        None => {
-                            self_column.column_references = Some(vec![column_reference]);
-                        }
-                    }
+    resolved_type
+        .fields
+        .iter()
+        .map(|field| -> Result<(), ModelBuildingError> {
+            let field_type = resolved_env
+                .get_by_key(&field.typ.innermost().type_name)
+                .unwrap();
+            if let ResolvedType::Composite(ct) = field_type {
+                if ct.representation == EntityRepresentation::Json {
+                    return Ok(());
                 }
-
-                building.database.relations.push(relation);
             }
-        }
-    });
+
+            if field.self_column {
+                let self_column_ids = building
+                    .database
+                    .get_column_ids_from_names(table_id, &field.column_names);
+                if let Some(relation) = compute_many_to_one_relation(
+                    field,
+                    self_column_ids.clone(),
+                    resolved_env,
+                    building,
+                )? {
+                    // In the earlier phase, we set the type of a many-to-one column to a placeholder value
+                    // Now that we have the foreign type, we can set the type of the column to the foreign type's PK
+                    for RelationColumnPair {
+                        self_column_id,
+                        foreign_column_id,
+                    } in relation.column_pairs.iter()
+                    {
+                        let foreign_column_typ =
+                            foreign_column_id.get_column(&building.database).typ.clone();
+
+                        building.database.get_column_mut(*self_column_id).typ = foreign_column_typ;
+
+                        let self_column = building.database.get_column_mut(*self_column_id);
+
+                        let column_reference = ColumnReference {
+                            foreign_column_id: *foreign_column_id,
+                            group_name: field.name.to_string(),
+                        };
+
+                        // We may have skipped creating a column if there was a field ahead that referred to the same column
+                        // In that case, we need to set the property on the column that we already created
+                        self_column.is_pk |= field.is_pk;
+                        self_column.update_sync |= field.update_sync;
+                        if !matches!(field.typ, FieldType::Optional(_)) {
+                            self_column.is_nullable = false;
+                        }
+
+                        match self_column.column_references {
+                            Some(ref mut column_references) => {
+                                column_references.push(column_reference);
+                            }
+                            None => {
+                                self_column.column_references = Some(vec![column_reference]);
+                            }
+                        }
+                    }
+
+                    building.database.relations.push(relation);
+                }
+            }
+            Ok(())
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(())
 }
 
 fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
@@ -494,7 +504,7 @@ fn compute_many_to_one_relation(
     self_column_ids: Vec<ColumnId>,
     env: &ResolvedTypeEnv,
     building: &mut DatabaseBuilding,
-) -> Option<ManyToOne> {
+) -> Result<Option<ManyToOne>, ModelBuildingError> {
     let typ = match &field.typ {
         FieldType::Optional(inner_typ) => inner_typ.as_ref(),
         _ => &field.typ,
@@ -513,9 +523,16 @@ fn compute_many_to_one_relation(
 
                     let field_alias = field.name.to_snake_case().to_plural();
 
-                    assert_eq!(self_column_ids.len(), foreign_pk_column_ids.len());
+                    if self_column_ids.len() != foreign_pk_column_ids.len() {
+                        return Err(ModelBuildingError::Generic(format!(
+                            "Mismatch between number of self columns ({}) and foreign primary key columns ({}) for field '{}'",
+                            self_column_ids.len(),
+                            foreign_pk_column_ids.len(),
+                            field.name
+                        )));
+                    }
 
-                    Some(ManyToOne::new(
+                    Ok(Some(ManyToOne::new(
                         self_column_ids
                             .into_iter()
                             .zip(foreign_pk_column_ids)
@@ -525,12 +542,12 @@ fn compute_many_to_one_relation(
                             })
                             .collect(),
                         Some(field_alias),
-                    ))
+                    )))
                 }
-                _ => None,
+                _ => Ok(None),
             }
         }
-        _ => None,
+        _ => Ok(None),
     }
 }
 
