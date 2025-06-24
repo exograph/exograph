@@ -217,6 +217,14 @@ async fn map_self_column<'a>(
             let ManyToOne { column_pairs, .. } =
                 relation_id.deref(&subsystem.core_subsystem.database);
 
+            if column_pairs.len() != foreign_pk_field_ids.len() {
+                return Err(PostgresExecutionError::Generic(format!(
+                    "Mismatch between number of columns in relation ({}) and number of foreign PK fields ({})",
+                    column_pairs.len(),
+                    foreign_pk_field_ids.len()
+                )));
+            }
+
             let foreign_type_pk_field_name = column_pairs
                 .iter()
                 .zip(foreign_pk_field_ids)

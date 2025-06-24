@@ -1,0 +1,121 @@
+operation: |
+  fragment tenantInfo on Tenant {
+    tenantId
+    tenantName
+    memberships {
+      membershipId
+      membershipName
+      tenant {
+        tenantId
+        tenantName
+      }
+      member {
+        memberId
+        memberTenantId
+        memberName
+      }
+    }
+  }
+  query {
+    tenant1: tenants(where: {tenantId: {eq: "tenant1"}}, orderBy: {tenantId: ASC}) {
+      ...tenantInfo
+    }
+    tenant2: tenants(where: {tenantId: {eq: "tenant2"}}) {
+      ...tenantInfo
+    }
+    singleTenant: tenant(tenantId: "tenant1") {
+      ...tenantInfo
+    }
+  }
+response: |
+  {
+    "data": {
+      "tenant1": [
+        {
+          "tenantId": "tenant1",
+          "tenantName": "Tech Corp",
+          "memberships": [
+            {
+              "membershipId": "tenant1-membership1",
+              "membershipName": "Premium",
+              "tenant": {
+                "tenantId": "tenant1",
+                "tenantName": "Tech Corp"
+              },
+              "member": {
+                "memberId": "tenant1-member1",
+                "memberTenantId": "tenant1",
+                "memberName": "Alice Smith"
+              }
+            },
+            {
+              "membershipId": "tenant1-membership2",
+              "membershipName": "Basic",
+              "tenant": {
+                "tenantId": "tenant1",
+                "tenantName": "Tech Corp"
+              },
+              "member": {
+                "memberId": "tenant1-member2",
+                "memberTenantId": "tenant1",
+                "memberName": "Bob Johnson"
+              }
+            }
+          ]
+        }
+      ],
+      "tenant2": [
+        {
+          "tenantId": "tenant2",
+          "tenantName": "Finance Ltd",
+          "memberships": [
+            {
+              "membershipId": "tenant2-membership1",
+              "membershipName": "Enterprise",
+              "tenant": {
+                "tenantId": "tenant2",
+                "tenantName": "Finance Ltd"
+              },
+              "member": {
+                "memberId": "tenant2-member1",
+                "memberTenantId": "tenant2",
+                "memberName": "Carol Davis"
+              }
+            }
+          ]
+        }
+      ],
+      "singleTenant": {
+        "tenantId": "tenant1",
+        "tenantName": "Tech Corp",
+        "memberships": [
+          {
+            "membershipId": "tenant1-membership1",
+            "membershipName": "Premium",
+            "tenant": {
+              "tenantId": "tenant1",
+              "tenantName": "Tech Corp"
+            },
+            "member": {
+              "memberId": "tenant1-member1",
+              "memberTenantId": "tenant1",
+              "memberName": "Alice Smith"
+            }
+          },
+          {
+            "membershipId": "tenant1-membership2",
+            "membershipName": "Basic",
+            "tenant": {
+              "tenantId": "tenant1",
+              "tenantName": "Tech Corp"
+            },
+            "member": {
+              "memberId": "tenant1-member2",
+              "memberTenantId": "tenant1",
+              "memberName": "Bob Johnson"
+            }
+          }
+        ]
+      }
+    }
+  }

@@ -1,0 +1,55 @@
+operation: |
+    mutation {
+        tenant1: createTenant(data: {tenantId: "tenant1", tenantName: "Tech Corp", memberships: []}) {
+            tenantId
+        }
+        tenant2: createTenant(data: {tenantId: "tenant2", tenantName: "Finance Ltd", memberships: []}) {
+            tenantId
+        }
+        
+        member1: createMember(data: {
+            memberId: "tenant1-member1", 
+            memberTenantId: "tenant1", 
+            memberName: "Alice Smith",
+            memberships: [
+                {
+                    membershipId: "tenant1-membership1",
+                    tenant: {tenantId: "tenant1"},
+                    membershipName: "Premium"
+                }
+            ]
+        }) {
+            memberId
+            memberTenantId
+        }
+        member2: createMember(data: {
+            memberId: "tenant1-member2", 
+            memberTenantId: "tenant1", 
+            memberName: "Bob Johnson",
+            memberships: [
+                {
+                    membershipId: "tenant1-membership2",
+                    tenant: {tenantId: "tenant1"},
+                    membershipName: "Basic"
+                }
+            ]
+        }) {
+            memberId
+            memberTenantId
+        }
+        member3: createMember(data: {
+            memberId: "tenant2-member1", 
+            memberTenantId: "tenant2", 
+            memberName: "Carol Davis",
+            memberships: [
+                {
+                    membershipId: "tenant2-membership1",
+                    tenant: {tenantId: "tenant2"},
+                    membershipName: "Enterprise"
+                }
+            ]
+        }) {
+            memberId
+            memberTenantId
+        }
+    }

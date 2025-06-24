@@ -1,0 +1,193 @@
+operation: |
+  fragment memberInfo on Member {
+    memberId
+    memberTenantId
+    memberName
+    memberships {
+      membershipId
+      tenant {
+        tenantId
+      }
+      membershipName
+    }
+  }
+  query {
+    allMembers: members(orderBy: {memberId: ASC}) {
+      ...memberInfo
+    }
+    byTenant: members(where: {memberTenantId: {eq: "tenant1"}}, orderBy: {memberId: ASC}) {
+      ...memberInfo
+    }
+    byName: members(where: {memberName: {like: "%Smith%"}}) {
+      ...memberInfo
+    }
+    byMembershipType: members(where: {memberships: {membershipName: {eq: "Premium"}}}) {
+      ...memberInfo
+    }
+    byMembershipTenant: members(where: {memberships: {tenant: {tenantId: {eq: "tenant2"}}}}) {
+      ...memberInfo
+    }
+    tenant1MembersStartingWithA: members(where: {and: [{memberTenantId: {eq: "tenant1"}}, {memberName: {startsWith: "A"}}]}) {
+      ...memberInfo
+    }
+    singleMember: member(memberId: "tenant1-member1", memberTenantId: "tenant1") {
+      ...memberInfo
+    }
+  }
+response: |
+  {
+    "data": {
+      "allMembers": [
+        {
+          "memberId": "tenant1-member1",
+          "memberTenantId": "tenant1",
+          "memberName": "Alice Smith",
+          "memberships": [
+            {
+              "membershipId": "tenant1-membership1",
+              "tenant": {
+                "tenantId": "tenant1"
+              },
+              "membershipName": "Premium"
+            }
+          ]
+        },
+        {
+          "memberId": "tenant1-member2",
+          "memberTenantId": "tenant1",
+          "memberName": "Bob Johnson",
+          "memberships": [
+            {
+              "membershipId": "tenant1-membership2",
+              "tenant": {
+                "tenantId": "tenant1"
+              },
+              "membershipName": "Basic"
+            }
+          ]
+        },
+        {
+          "memberId": "tenant2-member1",
+          "memberTenantId": "tenant2",
+          "memberName": "Carol Davis",
+          "memberships": [
+            {
+              "membershipId": "tenant2-membership1",
+              "tenant": {
+                "tenantId": "tenant2"
+              },
+              "membershipName": "Enterprise"
+            }
+          ]
+        }
+      ],
+      "byTenant": [
+        {
+          "memberId": "tenant1-member1",
+          "memberTenantId": "tenant1",
+          "memberName": "Alice Smith",
+          "memberships": [
+            {
+              "membershipId": "tenant1-membership1",
+              "tenant": {
+                "tenantId": "tenant1"
+              },
+              "membershipName": "Premium"
+            }
+          ]
+        },
+        {
+          "memberId": "tenant1-member2",
+          "memberTenantId": "tenant1",
+          "memberName": "Bob Johnson",
+          "memberships": [
+            {
+              "membershipId": "tenant1-membership2",
+              "tenant": {
+                "tenantId": "tenant1"
+              },
+              "membershipName": "Basic"
+            }
+          ]
+        }
+      ],
+      "byName": [
+        {
+          "memberId": "tenant1-member1",
+          "memberTenantId": "tenant1",
+          "memberName": "Alice Smith",
+          "memberships": [
+            {
+              "membershipId": "tenant1-membership1",
+              "tenant": {
+                "tenantId": "tenant1"
+              },
+              "membershipName": "Premium"
+            }
+          ]
+        }
+      ],
+      "byMembershipType": [
+        {
+          "memberId": "tenant1-member1",
+          "memberTenantId": "tenant1",
+          "memberName": "Alice Smith",
+          "memberships": [
+            {
+              "membershipId": "tenant1-membership1",
+              "tenant": {
+                "tenantId": "tenant1"
+              },
+              "membershipName": "Premium"
+            }
+          ]
+        }
+      ],
+      "byMembershipTenant": [
+        {
+          "memberId": "tenant2-member1",
+          "memberTenantId": "tenant2",
+          "memberName": "Carol Davis",
+          "memberships": [
+            {
+              "membershipId": "tenant2-membership1",
+              "tenant": {
+                "tenantId": "tenant2"
+              },
+              "membershipName": "Enterprise"
+            }
+          ]
+        }
+      ],
+      "tenant1MembersStartingWithA": [
+        {
+          "memberId": "tenant1-member1",
+          "memberTenantId": "tenant1",
+          "memberName": "Alice Smith",
+          "memberships": [
+            {
+              "membershipId": "tenant1-membership1",
+              "tenant": {
+                "tenantId": "tenant1"
+              },
+              "membershipName": "Premium"
+            }
+          ]
+        }
+      ],
+      "singleMember": {
+        "memberId": "tenant1-member1",
+        "memberTenantId": "tenant1",
+        "memberName": "Alice Smith",
+        "memberships": [
+          {
+            "membershipId": "tenant1-membership1",
+            "tenant": {
+              "tenantId": "tenant1"
+            },
+            "membershipName": "Premium"
+          }
+        ]
+      }
+    }
+  }

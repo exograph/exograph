@@ -1,0 +1,27 @@
+@postgres
+module Database {
+  @access(query=true, mutation=true)
+  type Member {
+    @pk memberId: String
+    @pk @column("member_tenant_id") tenant: Tenant
+    memberName: String?
+    memberships: Set<Membership>
+  }
+
+  @access(query=true, mutation=true)
+  type Membership {
+    @pk membershipId: String
+    @column(mapping={memberId: "membership_member_id", tenant: "membership_tenant_id"}) member: Member?
+    membershipName: String?
+    // Keeping this after the member field to test that the relation is found correctly
+    @pk @column("membership_tenant_id") tenant: Tenant
+  }
+
+  @access(query=true, mutation=true)
+  type Tenant {
+    @pk tenantId: String
+    tenantName: String?
+    memberships: Set<Membership>
+    members: Set<Member>
+  }
+}

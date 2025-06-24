@@ -73,7 +73,10 @@ pub use sql::{
     limit::Limit,
     offset::Offset,
     order::Ordering,
-    physical_column::{ColumnId, ColumnReference, PhysicalColumn},
+    physical_column::{
+        ColumnId, ColumnReference, PhysicalColumn, get_mto_relation_for_columns,
+        get_otm_relation_for_columns,
+    },
     physical_column_type::{
         ArrayColumnType, BlobColumnType, BooleanColumnType, DateColumnType, EnumColumnType,
         FloatBits, FloatColumnType, IntBits, IntColumnType, JsonColumnType, NumericColumnType,

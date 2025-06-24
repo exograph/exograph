@@ -1,0 +1,37 @@
+operation: |
+  fragment tenantInfo on Tenant {
+    tenantId
+    tenantName
+  }
+  query {
+    tenant1: tenants(where: {tenantId: {eq: "tenant1"}}, orderBy: {tenantId: ASC}) {
+      ...tenantInfo
+    }
+    tenant2: tenants(where: {tenantId: {eq: "tenant2"}}, orderBy: {tenantId: ASC}) {
+      ...tenantInfo
+    }
+    singleTenant: tenant(tenantId: "tenant1") {
+      ...tenantInfo
+    }
+  }
+response: |
+  {
+    "data": {
+      "tenant1": [
+        {
+          "tenantId": "tenant1",
+          "tenantName": "Tech Corp"
+        }
+      ],
+      "tenant2": [
+        {
+          "tenantId": "tenant2",
+          "tenantName": "Finance Ltd"
+        }
+      ],
+      "singleTenant": {
+        "tenantId": "tenant1",
+        "tenantName": "Tech Corp"
+      }
+    }
+  }

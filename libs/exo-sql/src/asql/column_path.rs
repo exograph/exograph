@@ -303,6 +303,8 @@ impl PhysicalColumnPath {
 
     #[cfg(test)]
     pub fn from_columns(columns: Vec<ColumnId>, database: &Database) -> Self {
+        use crate::{get_mto_relation_for_columns, get_otm_relation_for_columns};
+
         assert!(
             !columns.is_empty(),
             "Cannot create a column path from an empty list of columns"
@@ -318,14 +320,12 @@ impl PhysicalColumnPath {
                     let next_table = next_column_id.table_id;
 
                     if next_table == column_id.table_id {
-                        column_id
-                            .get_otm_relation(database)
+                        get_otm_relation_for_columns(&[*column_id], database)
                             .unwrap()
                             .deref(database)
                             .column_path_link()
                     } else {
-                        column_id
-                            .get_mto_relation(database)
+                        get_mto_relation_for_columns(&[*column_id], database)
                             .unwrap()
                             .deref(database)
                             .column_path_link()

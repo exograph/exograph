@@ -188,19 +188,27 @@ fn insert_self_row<'a>(
 
     match parent_step {
         Some((parent_step_id, parent_column_ids)) => {
-            for parent_column_id in parent_column_ids.iter() {
-                columns.push(parent_column_id.get_column(database));
-            }
+            // Convert values to proxy values before adding parent columns
             let mut proxy_values = values
                 .into_iter()
                 .map(ProxyColumn::Concrete)
                 .collect::<Vec<_>>();
 
-            for col_index in 0..parent_column_ids.len() {
-                proxy_values.push(ProxyColumn::Template {
-                    col_index,
-                    step_id: parent_step_id,
-                });
+            // Only add parent columns that are not already present in the row
+            let existing_column_names: std::collections::HashSet<_> =
+                columns.iter().map(|col| &col.name).collect();
+
+            for (col_index, parent_column_id) in parent_column_ids.iter().enumerate() {
+                let parent_column = parent_column_id.get_column(database);
+
+                // Check if this column is already present in the row by name
+                if !existing_column_names.contains(&parent_column.name) {
+                    columns.push(parent_column);
+                    proxy_values.push(ProxyColumn::Template {
+                        col_index,
+                        step_id: parent_step_id,
+                    });
+                }
             }
 
             let insert = TemplateSQLOperation::Insert(TemplateInsert {

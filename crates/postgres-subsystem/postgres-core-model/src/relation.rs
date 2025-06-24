@@ -52,7 +52,7 @@ pub struct ManyToOneRelation {
     // - cardinality: Unbounded
     // - foreign_pk_field_ids: [Venue.id]
     // - relation_id.self_column_id: concerts.venue_id
-    // - relation_id.foreign_pk_column_id: venues.id
+    // - relation_id.foreign_pk_column_ids: [venues.id]
     pub cardinality: RelationCardinality,
     pub foreign_entity_id: SerializableSlabIndex<EntityType>,
     pub foreign_pk_field_ids: Vec<EntityFieldId>,

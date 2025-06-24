@@ -1,0 +1,374 @@
+operation: |
+  fragment memberInfo on Member {
+    memberId
+    tenant {
+      tenantId
+      tenantName
+    }
+    memberName
+    memberships {
+      membershipId
+      tenant {
+        tenantId
+        tenantName
+      }
+      membershipName
+      member {
+        memberId
+        tenant {
+          tenantId
+        }
+        memberName
+      }
+    }
+  }
+  query {
+    allMembers: members(orderBy: {memberId: ASC}) {
+      ...memberInfo
+    }
+    byTenant: members(where: {tenant: {tenantId: {eq: "tenant1"}}}, orderBy: {memberId: ASC}) {
+      ...memberInfo
+    }
+    byName: members(where: {memberName: {like: "%Smith%"}}) {
+      ...memberInfo
+    }
+    byMembershipType: members(where: {memberships: {membershipName: {eq: "Premium"}}}) {
+      ...memberInfo
+    }
+    byMembershipTenant: members(where: {memberships: {tenant: {tenantId: {eq: "tenant2"}}}}) {
+      ...memberInfo
+    }
+    tenant1MembersStartingWithA: members(where: {and: [{tenant: {tenantId: {eq: "tenant1"}}}, {memberName: {startsWith: "A"}}]}) {
+      ...memberInfo
+    }
+    tenant1Member1: member(memberId: "tenant1-member1", tenant: {tenantId: "tenant1"}) {
+      ...memberInfo
+    }
+    tenant1Member2: member(memberId: "tenant1-member2", tenant: {tenantId: "tenant1"}) {
+      ...memberInfo
+    }
+    tenant2Member1: member(memberId: "tenant2-member1", tenant: {tenantId: "tenant2"}) {
+      ...memberInfo
+    }
+    nonExisting: member(memberId: "tenant1-member1", tenant: {tenantId: "tenant2"}) {
+      ...memberInfo
+    }
+  }
+response: |
+  {
+    "data": {
+      "allMembers": [
+        {
+          "memberId": "tenant1-member1",
+          "tenant": {
+            "tenantId": "tenant1",
+            "tenantName": "Tech Corp"
+          },
+          "memberName": "Alice Smith",
+          "memberships": [
+            {
+              "membershipId": "tenant1-membership1",
+              "tenant": {
+                "tenantId": "tenant1",
+                "tenantName": "Tech Corp"
+              },
+              "membershipName": "Premium",
+              "member": {
+                "memberId": "tenant1-member1",
+                "tenant": {
+                  "tenantId": "tenant1"
+                },
+                "memberName": "Alice Smith"
+              }
+            }
+          ]
+        },
+        {
+          "memberId": "tenant1-member2",
+          "tenant": {
+            "tenantId": "tenant1",
+            "tenantName": "Tech Corp"
+          },
+          "memberName": "Bob Johnson",
+          "memberships": [
+            {
+              "membershipId": "tenant1-membership2",
+              "tenant": {
+                "tenantId": "tenant1",
+                "tenantName": "Tech Corp"
+              },
+              "membershipName": "Basic",
+              "member": {
+                "memberId": "tenant1-member2",
+                "tenant": {
+                  "tenantId": "tenant1"
+                },
+                "memberName": "Bob Johnson"
+              }
+            }
+          ]
+        },
+        {
+          "memberId": "tenant2-member1",
+          "tenant": {
+            "tenantId": "tenant2",
+            "tenantName": "Finance Ltd"
+          },
+          "memberName": "Carol Davis",
+          "memberships": [
+            {
+              "membershipId": "tenant2-membership1",
+              "tenant": {
+                "tenantId": "tenant2",
+                "tenantName": "Finance Ltd"
+              },
+              "membershipName": "Enterprise",
+              "member": {
+                "memberId": "tenant2-member1",
+                "tenant": {
+                  "tenantId": "tenant2"
+                },
+                "memberName": "Carol Davis"
+              }
+            }
+          ]
+        }
+      ],
+      "byTenant": [
+        {
+          "memberId": "tenant1-member1",
+          "tenant": {
+            "tenantId": "tenant1",
+            "tenantName": "Tech Corp"
+          },
+          "memberName": "Alice Smith",
+          "memberships": [
+            {
+              "membershipId": "tenant1-membership1",
+              "tenant": {
+                "tenantId": "tenant1",
+                "tenantName": "Tech Corp"
+              },
+              "membershipName": "Premium",
+              "member": {
+                "memberId": "tenant1-member1",
+                "tenant": {
+                  "tenantId": "tenant1"
+                },
+                "memberName": "Alice Smith"
+              }
+            }
+          ]
+        },
+        {
+          "memberId": "tenant1-member2",
+          "tenant": {
+            "tenantId": "tenant1",
+            "tenantName": "Tech Corp"
+          },
+          "memberName": "Bob Johnson",
+          "memberships": [
+            {
+              "membershipId": "tenant1-membership2",
+              "tenant": {
+                "tenantId": "tenant1",
+                "tenantName": "Tech Corp"
+              },
+              "membershipName": "Basic",
+              "member": {
+                "memberId": "tenant1-member2",
+                "tenant": {
+                  "tenantId": "tenant1"
+                },
+                "memberName": "Bob Johnson"
+              }
+            }
+          ]
+        }
+      ],
+      "byName": [
+        {
+          "memberId": "tenant1-member1",
+          "tenant": {
+            "tenantId": "tenant1",
+            "tenantName": "Tech Corp"
+          },
+          "memberName": "Alice Smith",
+          "memberships": [
+            {
+              "membershipId": "tenant1-membership1",
+              "tenant": {
+                "tenantId": "tenant1",
+                "tenantName": "Tech Corp"
+              },
+              "membershipName": "Premium",
+              "member": {
+                "memberId": "tenant1-member1",
+                "tenant": {
+                  "tenantId": "tenant1"
+                },
+                "memberName": "Alice Smith"
+              }
+            }
+          ]
+        }
+      ],
+      "byMembershipType": [
+        {
+          "memberId": "tenant1-member1",
+          "tenant": {
+            "tenantId": "tenant1",
+            "tenantName": "Tech Corp"
+          },
+          "memberName": "Alice Smith",
+          "memberships": [
+            {
+              "membershipId": "tenant1-membership1",
+              "tenant": {
+                "tenantId": "tenant1",
+                "tenantName": "Tech Corp"
+              },
+              "membershipName": "Premium",
+              "member": {
+                "memberId": "tenant1-member1",
+                "tenant": {
+                  "tenantId": "tenant1"
+                },
+                "memberName": "Alice Smith"
+              }
+            }
+          ]
+        }
+      ],
+      "byMembershipTenant": [
+        {
+          "memberId": "tenant2-member1",
+          "tenant": {
+            "tenantId": "tenant2",
+            "tenantName": "Finance Ltd"
+          },
+          "memberName": "Carol Davis",
+          "memberships": [
+            {
+              "membershipId": "tenant2-membership1",
+              "tenant": {
+                "tenantId": "tenant2",
+                "tenantName": "Finance Ltd"
+              },
+              "membershipName": "Enterprise",
+              "member": {
+                "memberId": "tenant2-member1",
+                "tenant": {
+                  "tenantId": "tenant2"
+                },
+                "memberName": "Carol Davis"
+              }
+            }
+          ]
+        }
+      ],
+      "tenant1MembersStartingWithA": [
+        {
+          "memberId": "tenant1-member1",
+          "tenant": {
+            "tenantId": "tenant1",
+            "tenantName": "Tech Corp"
+          },
+          "memberName": "Alice Smith",
+          "memberships": [
+            {
+              "membershipId": "tenant1-membership1",
+              "tenant": {
+                "tenantId": "tenant1",
+                "tenantName": "Tech Corp"
+              },
+              "membershipName": "Premium",
+              "member": {
+                "memberId": "tenant1-member1",
+                "tenant": {
+                  "tenantId": "tenant1"
+                },
+                "memberName": "Alice Smith"
+              }
+            }
+          ]
+        }
+      ],
+      "tenant1Member1": {
+        "memberId": "tenant1-member1",
+        "tenant": {
+          "tenantId": "tenant1",
+          "tenantName": "Tech Corp"
+        },
+        "memberName": "Alice Smith",
+        "memberships": [
+          {
+            "membershipId": "tenant1-membership1",
+            "tenant": {
+              "tenantId": "tenant1",
+              "tenantName": "Tech Corp"
+            },
+            "membershipName": "Premium",
+            "member": {
+              "memberId": "tenant1-member1",
+              "tenant": {
+                "tenantId": "tenant1"
+              },
+              "memberName": "Alice Smith"
+            }
+          }
+        ]
+      },
+      "tenant1Member2": {
+        "memberId": "tenant1-member2",
+        "tenant": {
+          "tenantId": "tenant1",
+          "tenantName": "Tech Corp"
+        },
+        "memberName": "Bob Johnson",
+        "memberships": [
+          {
+            "membershipId": "tenant1-membership2",
+            "tenant": {
+              "tenantId": "tenant1",
+              "tenantName": "Tech Corp"
+            },
+            "membershipName": "Basic",
+            "member": {
+              "memberId": "tenant1-member2",
+              "tenant": {
+                "tenantId": "tenant1"
+              },
+              "memberName": "Bob Johnson"
+            }
+          }
+        ]
+      },
+      "tenant2Member1": {
+        "memberId": "tenant2-member1",
+        "tenant": {
+          "tenantId": "tenant2",
+          "tenantName": "Finance Ltd"
+        },
+        "memberName": "Carol Davis",
+        "memberships": [
+          {
+            "membershipId": "tenant2-membership1",
+            "tenant": {
+              "tenantId": "tenant2",
+              "tenantName": "Finance Ltd"
+            },
+            "membershipName": "Enterprise",
+            "member": {
+              "memberId": "tenant2-member1",
+              "tenant": {
+                "tenantId": "tenant2"
+              },
+              "memberName": "Carol Davis"
+            }
+          }
+        ]
+      },
+      "nonExisting": null
+    }
+  }

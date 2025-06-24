@@ -123,27 +123,37 @@ impl ColumnId {
     pub fn get_column<'a>(&self, database: &'a Database) -> &'a PhysicalColumn {
         &database.get_table(self.table_id).columns[self.column_index]
     }
+}
 
-    /// Find the many-to-one relation for the given column. The given column must be a foreign key
-    /// column. For example, it could be the `concerts.venue_id` column (assuming [Concert] -> Venue).
-    pub fn get_mto_relation(&self, database: &Database) -> Option<ManyToOneId> {
-        database
-            .relations
-            .iter()
-            .position(|relation| {
-                relation
-                    .column_pairs
-                    .iter()
-                    .any(|pair| &pair.self_column_id == self)
-            })
-            .map(ManyToOneId)
-    }
+/// Find the many-to-one relation for the given column. The given column must be a foreign key
+/// column. For example, it could be the `concerts.venue_id` column (assuming [Concert] -> Venue).
+pub fn get_mto_relation_for_columns(
+    column_ids: &[ColumnId],
+    database: &Database,
+) -> Option<ManyToOneId> {
+    // Find the relation that has all the given columns as self columns
+    database
+        .relations
+        .iter()
+        .position(|relation| {
+            let relation_column_ids = relation
+                .column_pairs
+                .iter()
+                .map(|pair| pair.self_column_id)
+                .collect::<Vec<_>>();
+            relation_column_ids.len() == column_ids.len()
+                && relation_column_ids.iter().all(|id| column_ids.contains(id))
+        })
+        .map(ManyToOneId)
+}
 
-    /// Find the one-to-many relation for the given column. The given column must be a foreign key
-    /// column. For example, it could be the `concerts.venue_id` column (assuming [Concert] -> Venue).
-    pub fn get_otm_relation(&self, database: &Database) -> Option<OneToManyId> {
-        self.get_mto_relation(database).map(OneToManyId)
-    }
+/// Find the one-to-many relation for the given column. The given column must be a foreign key
+/// column. For example, it could be the `concerts.venue_id` column (assuming [Concert] -> Venue).
+pub fn get_otm_relation_for_columns(
+    column_ids: &[ColumnId],
+    database: &Database,
+) -> Option<OneToManyId> {
+    get_mto_relation_for_columns(column_ids, database).map(OneToManyId)
 }
 
 impl PartialOrd for ColumnId {
@@ -161,7 +171,7 @@ impl Ord for ColumnId {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub struct ColumnReference {
     pub foreign_column_id: ColumnId,
     pub group_name: String,

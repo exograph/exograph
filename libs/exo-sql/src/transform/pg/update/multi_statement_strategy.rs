@@ -334,6 +334,7 @@ mod tests {
             selection::{AliasedSelectionElement, Selection, SelectionElement},
             update::NestedAbstractUpdate,
         },
+        get_otm_relation_for_columns,
         sql::{SQLParamContainer, column::Column, predicate::Predicate},
         transform::{test_util::TestSetup, transformer::UpdateTransformer},
     };
@@ -416,10 +417,12 @@ mod tests {
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let nested_abs_update = NestedAbstractUpdate {
-                    nesting_relation: concerts_venue_id_column
-                        .get_otm_relation(&database)
-                        .unwrap()
-                        .deref(&database),
+                    nesting_relation: get_otm_relation_for_columns(
+                        &[concerts_venue_id_column],
+                        &database,
+                    )
+                    .unwrap()
+                    .deref(&database),
                     update: AbstractUpdate {
                         table_id: concerts_table,
                         predicate: Predicate::True,
