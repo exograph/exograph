@@ -54,6 +54,7 @@ use heck::ToSnakeCase;
 const DEFAULT_FN_AUTO_INCREMENT: &str = "autoIncrement";
 const DEFAULT_FN_CURRENT_TIME: &str = "now";
 const DEFAULT_FN_GENERATE_UUID: &str = "generate_uuid";
+const DEFAULT_FN_UUID_GENERATE_V4: &str = "uuidGenerateV4";
 
 /// Represents the different ways a field's column name(s) can be configured
 #[derive(Debug, Clone, PartialEq)]
@@ -464,6 +465,24 @@ fn resolve_field_default_type(
                 }
 
                 ResolvedFieldDefault::PostgresFunction("gen_random_uuid()".to_string())
+            }
+            DEFAULT_FN_UUID_GENERATE_V4 => {
+                if field_underlying_type != primitive_type::UuidType::NAME {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: format!(
+                            "{DEFAULT_FN_UUID_GENERATE_V4}() can only be used on Uuids"
+                        ),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: default_value.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    });
+                }
+
+                ResolvedFieldDefault::PostgresFunction("uuid_generate_v4()".to_string())
             }
             _ => {
                 errors.push(Diagnostic {

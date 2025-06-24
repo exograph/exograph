@@ -17,7 +17,8 @@ use crate::{PhysicalTable, SchemaObjectName};
 
 use super::DebugPrintTo;
 use super::column_spec::{
-    ColumnAttribute, ColumnReferenceSpec, ColumnSpec, physical_column_type_from_string,
+    ColumnAttribute, ColumnDefault, ColumnReferenceSpec, ColumnSpec, UuidGenerationMethod,
+    physical_column_type_from_string,
 };
 use super::constraint::{Constraints, sorted_comma_list};
 use super::enum_spec::EnumSpec;
@@ -261,7 +262,20 @@ impl TableSpec {
         for col_spec in self.columns.iter() {
             let typ = &col_spec.typ;
             if typ.is::<crate::sql::physical_column_type::UuidColumnType>() {
-                required_extensions.insert("pgcrypto".to_string());
+                // Check which UUID generation method is used
+                if let Some(ColumnDefault::Uuid(method)) = &col_spec.default_value {
+                    match method {
+                        UuidGenerationMethod::GenRandomUuid => {
+                            required_extensions.insert("pgcrypto".to_string());
+                        }
+                        UuidGenerationMethod::UuidGenerateV4 => {
+                            required_extensions.insert("uuid-ossp".to_string());
+                        }
+                    }
+                } else {
+                    // Default to pgcrypto for UUID columns without explicit default
+                    required_extensions.insert("pgcrypto".to_string());
+                }
             }
             if typ.is::<crate::sql::physical_column_type::VectorColumnType>() {
                 required_extensions.insert("vector".to_string());

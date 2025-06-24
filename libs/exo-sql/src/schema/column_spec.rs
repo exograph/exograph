@@ -108,7 +108,7 @@ impl DebugPrintTo for ColumnSpec {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ColumnDefault {
-    Uuid,
+    Uuid(UuidGenerationMethod),
     CurrentTimestamp,
     CurrentDate,
     Text(String),
@@ -118,6 +118,12 @@ pub enum ColumnDefault {
     Function(String),
     Enum(String),
     Autoincrement(ColumnAutoincrement),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum UuidGenerationMethod {
+    GenRandomUuid,
+    UuidGenerateV4,
 }
 
 impl ColumnDefault {
@@ -173,7 +179,9 @@ impl ColumnDefault {
                     .is::<crate::sql::physical_column_type::UuidColumnType>()
                 {
                     if default_value == "gen_random_uuid()" {
-                        Ok(ColumnDefault::Uuid)
+                        Ok(ColumnDefault::Uuid(UuidGenerationMethod::GenRandomUuid))
+                    } else if default_value == "uuid_generate_v4()" {
+                        Ok(ColumnDefault::Uuid(UuidGenerationMethod::UuidGenerateV4))
                     } else {
                         Err(DatabaseError::Generic(format!(
                             "Invalid default value for uuid column: {}",
@@ -216,7 +224,10 @@ impl ColumnDefault {
 
     pub fn to_sql(&self) -> Option<String> {
         match self {
-            ColumnDefault::Uuid => Some("gen_random_uuid()".to_string()),
+            ColumnDefault::Uuid(method) => match method {
+                UuidGenerationMethod::GenRandomUuid => Some("gen_random_uuid()".to_string()),
+                UuidGenerationMethod::UuidGenerateV4 => Some("uuid_generate_v4()".to_string()),
+            },
             ColumnDefault::CurrentTimestamp => Some("now()".to_string()),
             ColumnDefault::CurrentDate => Some("now()".to_string()),
             ColumnDefault::Text(value) => Some(format!("'{value}'::text")),
@@ -237,7 +248,10 @@ impl ColumnDefault {
 
     pub fn to_model(&self) -> Option<String> {
         match self {
-            ColumnDefault::Uuid => Some("generate_uuid()".to_string()),
+            ColumnDefault::Uuid(method) => match method {
+                UuidGenerationMethod::GenRandomUuid => Some("generate_uuid()".to_string()),
+                UuidGenerationMethod::UuidGenerateV4 => Some("uuidGenerateV4()".to_string()),
+            },
             ColumnDefault::CurrentTimestamp | ColumnDefault::CurrentDate => {
                 Some("now()".to_string())
             }
