@@ -31,8 +31,8 @@ pub(super) struct ForeignKeyConstraintColumnPair {
 #[derive(Debug)]
 pub(super) struct ForeignKeyConstraint {
     pub(super) constraint_name: String,
-    pub(super) column_pairs: Vec<ForeignKeyConstraintColumnPair>,
     pub(super) foreign_table: SchemaObjectName,
+    pub(super) column_pairs: Vec<ForeignKeyConstraintColumnPair>,
 }
 
 #[derive(Debug)]

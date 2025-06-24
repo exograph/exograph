@@ -7,7 +7,6 @@ use exo_sql::{
     schema::{
         column_spec::{ColumnReferenceSpec, ColumnSpec},
         database_spec::DatabaseSpec,
-        table_spec::TableSpec,
     },
 };
 
@@ -73,86 +72,20 @@ impl<'a> ImportContext<'a> {
         }
     }
 
-    fn standard_field_name(&self, column_name: &str) -> String {
+    pub fn standard_field_name(&self, column_name: &str) -> String {
         column_name.to_lower_camel_case()
     }
 
-    pub(super) fn get_column_annotation(
+    pub(super) fn get_field_name_and_column_annotation(
         &self,
-        table: &TableSpec,
         column: &ColumnSpec,
     ) -> (String, Option<String>) {
-        // Check if this column is part of a composite foreign key
-        if let Some(reference) = &column.reference_spec {
-            let is_reference_type = matches!(
-                self.column_type_name(column),
-                ColumnTypeName::ReferenceType(_)
-            );
-
-            if is_reference_type {
-                // Get all columns that are part of the same foreign key group
-                let group_columns: Vec<&ColumnSpec> = table
-                    .columns
-                    .iter()
-                    .filter(|col| {
-                        if let Some(col_ref) = &col.reference_spec {
-                            col_ref.foreign_table_name == reference.foreign_table_name
-                                && col.group_name == column.group_name
-                        } else {
-                            false
-                        }
-                    })
-                    .collect();
-
-                if group_columns.len() > 1 {
-                    // This is a composite foreign key
-                    let field_name =
-                        self.get_composite_foreign_key_field_name(&reference.foreign_table_name);
-
-                    // Check if any column names deviate from the standard convention
-                    let needs_mapping = group_columns.iter().any(|col| {
-                        if let Some(col_ref) = &col.reference_spec {
-                            let expected_column_name = format!(
-                                "{}_{}",
-                                field_name.to_snake_case(),
-                                col_ref.foreign_pk_column_name
-                            );
-                            col.name != expected_column_name
-                        } else {
-                            false
-                        }
-                    });
-
-                    if needs_mapping {
-                        // Build the mapping annotation
-                        let mut mapping_pairs = Vec::new();
-                        for col in &group_columns {
-                            if let Some(col_ref) = &col.reference_spec {
-                                mapping_pairs.push(format!(
-                                    "{}: \"{}\"",
-                                    col_ref.foreign_pk_column_name, col.name
-                                ));
-                            }
-                        }
-
-                        let mapping_annotation =
-                            format!("@column(mapping={{{}}})", mapping_pairs.join(", "));
-                        return (field_name, Some(mapping_annotation));
-                    } else {
-                        // Standard naming, no annotation needed
-                        return (field_name, None);
-                    }
-                }
-            }
-        }
-
-        // Fall back to the standard field naming logic
-        let (field_name, needs_annotation) = self.standard_field_naming(column);
+        let (field_name, needs_annotation) = self.standard_field_naming(column, None);
         let annotation = needs_annotation.then(|| format!("@column(\"{}\")", column.name));
         (field_name, annotation)
     }
 
-    fn get_composite_foreign_key_field_name(
+    pub fn get_composite_foreign_key_field_name(
         &self,
         foreign_table_name: &SchemaObjectName,
     ) -> String {
@@ -163,14 +96,18 @@ impl<'a> ImportContext<'a> {
         }
     }
 
-    pub(super) fn standard_field_naming(&self, column: &ColumnSpec) -> (String, bool) {
-        let column_type_name = self.column_type_name(column);
+    pub(super) fn standard_field_naming(
+        &self,
+        column: &ColumnSpec,
+        reference_spec: Option<&ColumnReferenceSpec>,
+    ) -> (String, bool) {
+        let column_type_name = self.column_type_name(column, reference_spec);
         let is_column_type_name_reference =
             matches!(column_type_name, ColumnTypeName::ReferenceType(_));
 
         let (field_name, column_name_from_field_name, field_name_from_column_name) =
-            match column.reference_spec {
-                Some(ref reference) if is_column_type_name_reference => {
+            match reference_spec {
+                Some(reference) if is_column_type_name_reference => {
                     let field_name = reference_field_name(&column.name, reference); // For example, `sales_region_id` -> `salesRegion`
                     let column_name_from_field_name = format!(
                         "{}_{}",
@@ -263,7 +200,7 @@ impl<'a> ImportContext<'a> {
     pub(super) fn referenced_columns(
         &self,
         table_name: &SchemaObjectName,
-    ) -> Vec<(SchemaObjectName, &ColumnSpec, &ColumnReferenceSpec)> {
+    ) -> Vec<(SchemaObjectName, &ColumnSpec, &Vec<ColumnReferenceSpec>)> {
         let other_tables = self
             .database_spec
             .tables
@@ -275,10 +212,16 @@ impl<'a> ImportContext<'a> {
             .flat_map(|(other_table_name, other_table_columns)| {
                 other_table_columns
                     .iter()
-                    .filter_map(move |other_table_column| {
-                        if let Some(foreign_key) = &other_table_column.reference_spec {
-                            if &foreign_key.foreign_table_name == table_name {
-                                Some((other_table_name.clone(), other_table_column, foreign_key))
+                    .flat_map(move |other_table_column| {
+                        if let Some(reference_specs) = &other_table_column.reference_specs {
+                            if reference_specs.iter().any(|reference_spec| {
+                                &reference_spec.foreign_table_name == table_name
+                            }) {
+                                Some((
+                                    other_table_name.clone(),
+                                    other_table_column,
+                                    reference_specs,
+                                ))
                             } else {
                                 None
                             }
@@ -290,12 +233,16 @@ impl<'a> ImportContext<'a> {
             .collect()
     }
 
-    pub(super) fn column_type_name(&self, column: &ColumnSpec) -> ColumnTypeName {
+    pub(super) fn column_type_name(
+        &self,
+        column: &ColumnSpec,
+        reference_spec: Option<&ColumnReferenceSpec>,
+    ) -> ColumnTypeName {
         if let Some(ColumnReferenceSpec {
             foreign_table_name,
             foreign_pk_type,
             ..
-        }) = &column.reference_spec
+        }) = &reference_spec
         {
             let model_name = self.model_name(foreign_table_name);
             match model_name {
@@ -307,7 +254,9 @@ impl<'a> ImportContext<'a> {
         }
     }
 
-    fn physical_type_name(physical_type: &dyn exo_sql::PhysicalColumnType) -> ColumnTypeName {
+    pub(super) fn physical_type_name(
+        physical_type: &dyn exo_sql::PhysicalColumnType,
+    ) -> ColumnTypeName {
         let inner_type = physical_type;
         if inner_type.as_any().is::<IntColumnType>() {
             ColumnTypeName::SelfType("Int".to_string())

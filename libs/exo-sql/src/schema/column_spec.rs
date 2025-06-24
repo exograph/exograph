@@ -15,7 +15,7 @@ use crate::sql::physical_column_type::{
     ArrayColumnType, BooleanColumnType, DateColumnType, EnumColumnType, IntBits, IntColumnType,
     PhysicalColumnType, StringColumnType, TimestampColumnType, VectorColumnType,
 };
-use crate::{Database, ManyToOne, PhysicalColumn, SchemaObjectName};
+use crate::{Database, PhysicalColumn, SchemaObjectName};
 
 use super::DebugPrintTo;
 use super::enum_spec::EnumSpec;
@@ -30,25 +30,22 @@ use serde::{Deserialize, Serialize};
 pub struct ColumnSpec {
     pub name: String,
     pub typ: Box<dyn PhysicalColumnType>,
-    pub reference_spec: Option<ColumnReferenceSpec>,
+    pub reference_specs: Option<Vec<ColumnReferenceSpec>>,
     pub is_pk: bool,
     pub is_nullable: bool,
     pub unique_constraints: Vec<String>,
     pub default_value: Option<ColumnDefault>,
-    // A name that can be used to group columns together (for example to generate a foreign key constraint name for composite primary keys)
-    pub group_name: Option<String>,
 }
 
 impl PartialEq for ColumnSpec {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
             && self.typ.equals(other.typ.as_ref())
-            && self.reference_spec == other.reference_spec
+            && self.reference_specs == other.reference_specs
             && self.is_pk == other.is_pk
             && self.is_nullable == other.is_nullable
             && self.unique_constraints == other.unique_constraints
             && self.default_value == other.default_value
-            && self.group_name == other.group_name
     }
 }
 
@@ -60,14 +57,19 @@ impl DebugPrintTo for ColumnSpec {
     ) -> std::io::Result<()> {
         let indent_str = " ".repeat(indent);
 
-        let groups = format!("[{}]", self.group_name.as_deref().unwrap_or(""));
-
-        let references = if let Some(ref_spec) = &self.reference_spec {
-            format!(
-                "[{}.{}]",
-                ref_spec.foreign_table_name.fully_qualified_name(),
-                ref_spec.foreign_pk_column_name
-            )
+        let references = if let Some(ref_specs) = &self.reference_specs {
+            ref_specs
+                .iter()
+                .map(|ref_spec| {
+                    format!(
+                        "[{}.{}, ({})]",
+                        ref_spec.foreign_table_name.fully_qualified_name(),
+                        ref_spec.foreign_pk_column_name,
+                        ref_spec.group_name
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(", ")
         } else {
             "[]".to_string()
         };
@@ -94,12 +96,11 @@ impl DebugPrintTo for ColumnSpec {
 
         writeln!(
             writer,
-            "{}- {}: {} (references: {}, group: {}){}",
+            "{}- {}: {} (references: {}){}",
             indent_str,
             self.name,
             self.typ.type_string(),
             references,
-            groups,
             attr_str
         )
     }
@@ -267,6 +268,7 @@ pub struct ColumnReferenceSpec {
     pub foreign_table_name: SchemaObjectName,
     pub foreign_pk_column_name: String,
     pub foreign_pk_type: Box<dyn PhysicalColumnType>,
+    pub group_name: String,
 }
 
 impl PartialEq for ColumnReferenceSpec {
@@ -274,6 +276,7 @@ impl PartialEq for ColumnReferenceSpec {
         self.foreign_table_name == other.foreign_table_name
             && self.foreign_pk_column_name == other.foreign_pk_column_name
             && self.foreign_pk_type.equals(other.foreign_pk_type.as_ref())
+            && self.group_name == other.group_name
     }
 }
 
@@ -373,7 +376,6 @@ impl ColumnSpec {
         is_pk: bool,
         explicit_type: Option<Box<dyn PhysicalColumnType>>,
         unique_constraints: Vec<String>,
-        group_name: Option<String>,
         column_attributes: &HashMap<SchemaObjectName, HashMap<String, ColumnAttribute>>,
     ) -> Result<WithIssues<Option<ColumnSpec>>, DatabaseError> {
         let table_attributes = column_attributes
@@ -401,12 +403,11 @@ impl ColumnSpec {
             value: db_type.map(|typ| ColumnSpec {
                 name: column_name.to_owned(),
                 typ,
-                reference_spec: None,
+                reference_specs: None,
                 is_pk,
                 is_nullable: !not_null,
                 unique_constraints,
                 default_value: default_value.clone(),
-                group_name,
             }),
             issues: vec![],
         })
@@ -456,7 +457,7 @@ impl ColumnSpec {
         let table_name_same = self_table.sql_name() == new_table.sql_name();
         let column_name_same = self.name == new.name;
         let type_same = self.typ.equals(new.typ.as_ref());
-        let reference_spec_same = self.reference_spec == new.reference_spec;
+        let reference_specs_same = self.reference_specs == new.reference_specs;
         let is_pk_same = self.is_pk == new.is_pk;
         let is_nullable_same = self.is_nullable == new.is_nullable;
         let default_value_same = self.default_value == new.default_value;
@@ -467,7 +468,7 @@ impl ColumnSpec {
 
         // If the column type differs only in reference type, that is taken care by table-level migration
         if (!type_same && !self.differs_only_in_reference_column(new))
-            || (!reference_spec_same && !self.differs_only_in_reference_column(new))
+            || (!reference_specs_same && !self.differs_only_in_reference_column(new))
             || !is_pk_same
         {
             changes.push(SchemaOp::DeleteColumn {
@@ -518,60 +519,50 @@ impl ColumnSpec {
     }
 
     pub(crate) fn from_physical(column: PhysicalColumn, database: &Database) -> ColumnSpec {
-        let (typ, reference_spec) = {
-            let column_id = database
-                .get_column_id(column.table_id, &column.name)
-                .unwrap();
-            let relation = column_id
-                .get_mto_relation(database)
-                .map(|relation_id| relation_id.deref(database));
+        let (typ, reference_specs) = {
+            let reference_specs = column.column_references.map(|column_references| {
+                column_references
+                    .iter()
+                    .map(|column_reference| {
+                        let foreign_column_id = column_reference.foreign_column_id;
+                        let foreign_column = foreign_column_id.get_column(database);
+                        let foreign_table = database.get_table(foreign_column.table_id);
 
-            match relation {
-                Some(ManyToOne { column_pairs, .. }) => {
-                    let foreign_pk_column = column_pairs
-                        .iter()
-                        .find(|cp| cp.self_column_id == column_id)
-                        .unwrap()
-                        .foreign_column_id
-                        .get_column(database);
-                    let foreign_table = database.get_table(foreign_pk_column.table_id);
+                        ColumnReferenceSpec {
+                            foreign_table_name: foreign_table.name.clone(),
+                            foreign_pk_column_name: foreign_column.name.clone(),
+                            foreign_pk_type: foreign_column.typ.clone(),
+                            group_name: column_reference.group_name.clone(),
+                        }
+                    })
+                    .collect()
+            });
 
-                    let reference_spec = ColumnReferenceSpec {
-                        foreign_table_name: foreign_table.name.clone(),
-                        foreign_pk_column_name: foreign_pk_column.name.clone(),
-                        foreign_pk_type: foreign_pk_column.typ.clone(),
-                    };
-                    (reference_spec.foreign_pk_type.clone(), Some(reference_spec))
-                }
-                None => (column.typ, None),
-            }
+            (column.typ, reference_specs)
         };
 
         ColumnSpec {
             name: column.name,
             typ,
-            reference_spec,
             is_pk: column.is_pk,
             is_nullable: column.is_nullable,
             unique_constraints: column.unique_constraints,
             default_value: column.default_value,
-            group_name: column.group_name,
+            reference_specs,
         }
     }
 
     fn differs_only_in_reference_column(&self, new: &Self) -> bool {
-        match (&self.reference_spec, &new.reference_spec) {
+        match (&self.reference_specs, &new.reference_specs) {
             (Some(_), Some(_)) => {
-                (self.reference_spec != new.reference_spec) && {
+                (self.reference_specs != new.reference_specs) && {
                     Self {
                         typ: Box::new(IntColumnType { bits: IntBits::_16 }),
-                        reference_spec: None,
-                        group_name: None,
+                        reference_specs: None,
                         ..self.clone()
                     } == Self {
                         typ: Box::new(IntColumnType { bits: IntBits::_16 }),
-                        reference_spec: None,
-                        group_name: None,
+                        reference_specs: None,
                         ..new.clone()
                     }
                 }
@@ -585,12 +576,11 @@ impl ColumnSpec {
         old_name: &SchemaObjectName,
         new_name: &SchemaObjectName,
     ) -> Self {
-        if let Some(ColumnReferenceSpec {
-            foreign_table_name, ..
-        }) = &mut self.reference_spec
-        {
-            if foreign_table_name == old_name {
-                *foreign_table_name = new_name.clone();
+        if let Some(reference_specs) = &mut self.reference_specs {
+            for reference_spec in reference_specs {
+                if reference_spec.foreign_table_name == *old_name {
+                    reference_spec.foreign_table_name = new_name.clone();
+                }
             }
         }
 

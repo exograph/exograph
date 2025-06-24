@@ -33,7 +33,7 @@ use exo_sql::{
     PhysicalColumn, PhysicalColumnType, PhysicalIndex, PhysicalTable, TableId,
     schema::index_spec::IndexKind,
 };
-use exo_sql::{Database, PhysicalEnum, RelationColumnPair};
+use exo_sql::{ColumnReference, Database, PhysicalEnum, RelationColumnPair};
 
 use heck::ToSnakeCase;
 use postgres_core_model::types::EntityRepresentation;
@@ -120,14 +120,24 @@ fn expand_database_info(
     let table_id = building.database.insert_table(table);
 
     {
-        let columns = resolved_type
+        let mut created_columns = HashSet::new();
+        let columns: Vec<PhysicalColumn> = resolved_type
             .fields
             .iter()
-            .map(|field| create_columns(field, table_id, resolved_type, resolved_env))
+            .map(|field| {
+                create_columns(
+                    field,
+                    table_id,
+                    resolved_type,
+                    resolved_env,
+                    &mut created_columns,
+                )
+            })
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()
             .flatten()
             .collect();
+
         building.database.get_table_mut(table_id).columns = columns;
     }
 
@@ -224,10 +234,34 @@ fn expand_type_relations(
                     foreign_column_id,
                 } in relation.column_pairs.iter()
                 {
-                    let foreign_column_typ = &foreign_column_id.get_column(&building.database).typ;
+                    let foreign_column_typ =
+                        foreign_column_id.get_column(&building.database).typ.clone();
 
-                    building.database.get_column_mut(*self_column_id).typ =
-                        foreign_column_typ.clone();
+                    building.database.get_column_mut(*self_column_id).typ = foreign_column_typ;
+
+                    let self_column = building.database.get_column_mut(*self_column_id);
+
+                    let column_reference = ColumnReference {
+                        foreign_column_id: *foreign_column_id,
+                        group_name: field.name.to_string(),
+                    };
+
+                    // We may have skipped creating a column if there was a field ahead that referred to the same column
+                    // In that case, we need to set the property on the column that we already created
+                    self_column.is_pk |= field.is_pk;
+                    self_column.update_sync |= field.update_sync;
+                    if !matches!(field.typ, FieldType::Optional(_)) {
+                        self_column.is_nullable = false;
+                    }
+
+                    match self_column.column_references {
+                        Some(ref mut column_references) => {
+                            column_references.push(column_reference);
+                        }
+                        None => {
+                            self_column.column_references = Some(vec![column_reference]);
+                        }
+                    }
                 }
 
                 building.database.relations.push(relation);
@@ -294,6 +328,7 @@ fn create_columns(
     table_id: TableId,
     resolved_type: &ResolvedCompositeType,
     env: &ResolvedTypeEnv,
+    created_columns: &mut HashSet<String>,
 ) -> Result<Vec<PhysicalColumn>, ModelBuildingError> {
     // If the field doesn't have a column in the same table (for example, the `concerts` field in the `Venue` type), skip it
     if !field.self_column {
@@ -326,16 +361,22 @@ fn create_columns(
                 ResolvedType::Primitive(pt) => Ok(field
                     .column_names
                     .iter()
-                    .map(|name| PhysicalColumn {
-                        table_id,
-                        name: name.to_string(),
-                        typ: determine_column_type(pt, field),
-                        is_pk: field.is_pk,
-                        is_nullable: optional,
-                        unique_constraints: unique_constraint_name.clone(),
-                        default_value: default_value.clone(),
-                        update_sync,
-                        group_name: Some(field.name.to_string()),
+                    .flat_map(|column_name| {
+                        if created_columns.insert(column_name.to_string()) {
+                            Some(PhysicalColumn {
+                                table_id,
+                                name: column_name.to_string(),
+                                typ: determine_column_type(pt, field),
+                                is_pk: field.is_pk,
+                                is_nullable: optional,
+                                unique_constraints: unique_constraint_name.clone(),
+                                default_value: default_value.clone(),
+                                update_sync,
+                                column_references: None,
+                            })
+                        } else {
+                            None
+                        }
                     })
                     .collect()),
                 ResolvedType::Composite(composite) => {
@@ -346,22 +387,26 @@ fn create_columns(
                     Ok(field
                         .column_names
                         .iter()
-                        .map(|name| {
-                            PhysicalColumn {
-                                table_id,
-                                name: name.to_string(),
-                                typ: if composite.representation == EntityRepresentation::Json {
-                                    Box::new(JsonColumnType)
-                                } else {
-                                    // A placeholder value. Will be resolved in the next phase (see expand_type_relations)
-                                    Box::new(BooleanColumnType)
-                                },
-                                is_pk: field.is_pk,
-                                is_nullable: optional,
-                                unique_constraints: unique_constraint_name.clone(),
-                                default_value: default_value.clone(),
-                                update_sync,
-                                group_name: Some(field.name.to_string()),
+                        .flat_map(|column_name| {
+                            if created_columns.insert(column_name.to_string()) {
+                                Some(PhysicalColumn {
+                                    table_id,
+                                    name: column_name.to_string(),
+                                    typ: if composite.representation == EntityRepresentation::Json {
+                                        Box::new(JsonColumnType)
+                                    } else {
+                                        // A placeholder value. Will be resolved in the next phase (see expand_type_relations)
+                                        Box::new(BooleanColumnType)
+                                    },
+                                    is_pk: field.is_pk,
+                                    is_nullable: optional,
+                                    unique_constraints: unique_constraint_name.clone(),
+                                    default_value: default_value.clone(),
+                                    update_sync,
+                                    column_references: None,
+                                })
+                            } else {
+                                None
                             }
                         })
                         .collect())
@@ -380,7 +425,7 @@ fn create_columns(
                         unique_constraints: unique_constraint_name.clone(),
                         default_value: default_value.clone(),
                         update_sync,
-                        group_name: Some(field.name.to_string()),
+                        column_references: None,
                     })
                     .collect()),
             }
@@ -430,7 +475,7 @@ fn create_columns(
                         unique_constraints: unique_constraint_name.clone(),
                         default_value: default_value.clone(),
                         update_sync,
-                        group_name: Some(field.name.to_string()),
+                        column_references: None,
                     })
                     .collect())
             } else {

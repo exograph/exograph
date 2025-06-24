@@ -15,6 +15,6 @@ module Database {
     @pk firstName: String
     @pk lastName: String
     age: Int
-    @column(mapping={street: "astreet", city: "acity", state: "astate", zip: "azip"}) address: Address?
+    @column(mapping={city: "acity", state: "astate", street: "astreet", zip: "azip"}) address: Address?
   }
 }

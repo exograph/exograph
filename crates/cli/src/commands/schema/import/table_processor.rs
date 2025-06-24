@@ -1,19 +1,22 @@
 use anyhow::Result;
 use exo_sql::{
     SchemaObjectName,
-    schema::{database_spec::DatabaseSpec, table_spec::TableSpec},
+    schema::{column_spec::ColumnSpec, database_spec::DatabaseSpec, table_spec::TableSpec},
 };
 use std::collections::HashSet;
 
-use super::{ImportContext, ModelProcessor, processor::INDENT};
+use super::{
+    ImportContext, ModelProcessor, column_processor::write_foreign_key_reference, processor::INDENT,
+};
 
 use heck::ToLowerCamelCase;
 
-impl ModelProcessor<DatabaseSpec> for TableSpec {
+impl ModelProcessor<DatabaseSpec, ()> for TableSpec {
     fn process(
         &self,
-        _parent: &DatabaseSpec,
+        parent: &DatabaseSpec,
         context: &ImportContext,
+        _parent_context: &mut (),
         writer: &mut (dyn std::io::Write + Send),
     ) -> Result<()> {
         if !context.generate_fragments {
@@ -48,20 +51,22 @@ impl ModelProcessor<DatabaseSpec> for TableSpec {
 
         writeln!(writer, "{INDENT}{keyword} {type_name} {{")?;
 
-        // We should only process one column per group (for example, if we have composite primary key)
-        let mut processed_groups: HashSet<&str> = HashSet::new();
+        // Fields that have already been added to the model
+        let mut processed_fields: HashSet<String> = HashSet::new();
 
-        for column in &self.columns {
-            if let Some(group_name) = &column.group_name {
-                if !processed_groups.insert(group_name) {
-                    continue;
-                }
-            }
+        let is_pk = |column_spec: &ColumnSpec| column_spec.is_pk;
+        let is_not_pk = |column_spec: &ColumnSpec| !column_spec.is_pk;
 
-            column.process(self, context, writer)?;
-        }
+        // First write the primary key fields
+        write_scalar_fields(writer, self, context, &mut processed_fields, &is_pk)?;
+        write_foreign_key_reference(writer, context, parent, self, &is_pk)?;
 
-        write_references(writer, context, &self.name)?;
+        // Then write the non-primary key fields
+        write_scalar_fields(writer, self, context, &mut processed_fields, &is_not_pk)?;
+        write_foreign_key_reference(writer, context, parent, self, &is_not_pk)?;
+
+        // Finally write the references
+        write_references(writer, context, &mut processed_fields, &self.name)?;
 
         writeln!(writer, "{INDENT}}}")?;
 
@@ -69,21 +74,29 @@ impl ModelProcessor<DatabaseSpec> for TableSpec {
     }
 }
 
+fn write_scalar_fields(
+    writer: &mut (dyn std::io::Write + Send),
+    table_spec: &TableSpec,
+    context: &ImportContext,
+    processed_fields: &mut HashSet<String>,
+    filter: &dyn Fn(&ColumnSpec) -> bool,
+) -> Result<()> {
+    for column in &table_spec.columns {
+        if filter(column) {
+            column.process(table_spec, context, processed_fields, writer)?;
+        }
+    }
+
+    Ok(())
+}
+
 fn write_references(
     writer: &mut (dyn std::io::Write + Send),
     context: &ImportContext,
+    processed_fields: &mut HashSet<String>,
     table_name: &SchemaObjectName,
 ) -> Result<()> {
-    // We should only process one column per group (for example, if we have composite primary key)
-    let mut processed_groups: HashSet<&str> = HashSet::new();
-
     for (table_name, column, _) in context.referenced_columns(table_name) {
-        if let Some(group_name) = &column.group_name {
-            if !processed_groups.insert(group_name) {
-                continue;
-            }
-        }
-
         let model_name = context.model_name(&table_name);
 
         if let Some(model_name) = model_name {
@@ -94,6 +107,11 @@ fn write_references(
                 pluralizer::pluralize(model_name, 1, false)
             }
             .to_lower_camel_case();
+
+            if !processed_fields.insert(field_name.clone()) {
+                // Skip fields that have already been added to the model
+                continue;
+            }
 
             write!(writer, "{INDENT}{INDENT}{field_name}: ")?;
 

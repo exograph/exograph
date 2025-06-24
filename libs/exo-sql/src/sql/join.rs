@@ -67,7 +67,7 @@ mod tests {
                     SchemaObjectName::new("concerts", None),
                     vec![
                         pk_column("id"),
-                        pk_reference_column("venue_id", "venues", None),
+                        pk_reference_column("venue_id", "venues", None, "venue_fk"),
                     ],
                     vec![],
                     vec![],
