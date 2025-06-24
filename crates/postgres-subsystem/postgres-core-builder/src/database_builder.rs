@@ -513,6 +513,8 @@ fn compute_many_to_one_relation(
 
                     let field_alias = field.name.to_snake_case().to_plural();
 
+                    assert_eq!(self_column_ids.len(), foreign_pk_column_ids.len());
+
                     Some(ManyToOne::new(
                         self_column_ids
                             .into_iter()

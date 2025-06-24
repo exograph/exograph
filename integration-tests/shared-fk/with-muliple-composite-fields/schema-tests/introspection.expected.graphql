@@ -73,29 +73,29 @@ input MemberUpdateInputFromTenantNested {
 
 type Membership {
   membershipId: String!
-  tenant: Tenant!
   member: Member
   membershipName: String
+  tenant: Tenant!
 }
 
 """An aggregate for the `Membership` type."""
 type MembershipAgg {
   membershipId: StringAgg
-  tenant: TenantAgg
   membershipName: StringAgg
+  tenant: TenantAgg
 }
 
 input MembershipCreationInput {
   membershipId: String!
-  tenant: TenantReferenceInput!
   member: MemberReferenceInput
   membershipName: String
+  tenant: TenantReferenceInput!
 }
 
 input MembershipCreationInputFromMember {
   membershipId: String!
-  tenant: TenantReferenceInput!
   membershipName: String
+  tenant: TenantReferenceInput!
 }
 
 input MembershipCreationInputFromTenant {
@@ -111,9 +111,9 @@ To check a field against null, use a `<field name>: null` filter
 """
 input MembershipFilter {
   membershipId: StringFilter
-  tenant: TenantFilter
   member: MemberFilter
   membershipName: StringFilter
+  tenant: TenantFilter
   and: [MembershipFilter!]
   or: [MembershipFilter!]
   not: MembershipFilter
@@ -121,9 +121,9 @@ input MembershipFilter {
 
 input MembershipOrdering {
   membershipId: Ordering
-  tenant: [TenantOrdering!]
   member: [MemberOrdering!]
   membershipName: Ordering
+  tenant: [TenantOrdering!]
 }
 
 input MembershipReferenceInput {
@@ -133,9 +133,9 @@ input MembershipReferenceInput {
 
 input MembershipUpdateInput {
   membershipId: String
-  tenant: TenantReferenceInput
   member: MemberReferenceInput
   membershipName: String
+  tenant: TenantReferenceInput
 }
 
 input MembershipUpdateInputFromMember {
@@ -146,8 +146,8 @@ input MembershipUpdateInputFromMember {
 
 input MembershipUpdateInputFromMemberNested {
   membershipId: String!
-  tenant: TenantUpdateInput!
   membershipName: String
+  tenant: TenantUpdateInput!
 }
 
 input MembershipUpdateInputFromTenant {

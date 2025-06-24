@@ -163,6 +163,7 @@ mod tests {
                 AliasedSelectionElement, Selection, SelectionCardinality, SelectionElement,
             },
         },
+        get_mto_relation_for_columns, get_otm_relation_for_columns,
         sql::{SQLParamContainer, predicate::Predicate},
         transform::{pg::Postgres, test_util::TestSetup, transformer::SelectTransformer},
     };
@@ -301,9 +302,11 @@ mod tests {
                                 "venue".to_string(),
                                 SelectionElement::SubSelect(
                                     RelationId::OneToMany(
-                                        concerts_venue_id_column
-                                            .get_otm_relation(&database)
-                                            .unwrap(),
+                                        get_otm_relation_for_columns(
+                                            &[concerts_venue_id_column],
+                                            &database,
+                                        )
+                                        .unwrap(),
                                     ),
                                     Box::new(AbstractSelect {
                                         table_id: venues_table,
@@ -363,9 +366,11 @@ mod tests {
                                 "concerts".to_string(),
                                 SelectionElement::SubSelect(
                                     RelationId::OneToMany(
-                                        concerts_venue_id_column
-                                            .get_otm_relation(&database)
-                                            .unwrap(),
+                                        get_otm_relation_for_columns(
+                                            &[concerts_venue_id_column],
+                                            &database,
+                                        )
+                                        .unwrap(),
                                     ),
                                     Box::new(AbstractSelect {
                                         table_id: concerts_table,
@@ -426,9 +431,11 @@ mod tests {
                                 "concerts".to_string(),
                                 SelectionElement::SubSelect(
                                     RelationId::OneToMany(
-                                        concerts_venue_id_column
-                                            .get_otm_relation(&database)
-                                            .unwrap(),
+                                        get_otm_relation_for_columns(
+                                            &[concerts_venue_id_column],
+                                            &database,
+                                        )
+                                        .unwrap(),
                                     ),
                                     Box::new(AbstractSelect {
                                         table_id: concerts_table,
@@ -658,9 +665,11 @@ mod tests {
                                 "parent_venue".to_string(),
                                 SelectionElement::SubSelect(
                                     RelationId::ManyToOne(
-                                        venues_parent_venue_id_column
-                                            .get_mto_relation(&database)
-                                            .unwrap(),
+                                        get_mto_relation_for_columns(
+                                            &[venues_parent_venue_id_column],
+                                            &database,
+                                        )
+                                        .unwrap(),
                                     ),
                                     Box::new(AbstractSelect {
                                         table_id: venues_table,

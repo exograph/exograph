@@ -37,7 +37,10 @@ use core_model::{
 };
 use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError, typechecker::Typed};
 
-use exo_sql::{ColumnId, DEFAULT_VECTOR_SIZE, VectorDistanceFunction};
+use exo_sql::{
+    ColumnId, DEFAULT_VECTOR_SIZE, VectorDistanceFunction, get_mto_relation_for_columns,
+    get_otm_relation_for_columns,
+};
 
 use postgres_core_model::{
     access::{Access, DatabaseAccessPrimitiveExpression, UpdateAccessExpression},
@@ -907,22 +910,27 @@ fn compute_many_to_one(
     let foreign_type = &building.entity_types[foreign_entity_id];
     let foreign_table_id = foreign_type.table_id;
 
-    // It is okay to get the first (or any) column, since `get_otm_relation` will look for a relation
-    // matching that column (and the relations have all the columns related to the composite pk)
-    let foreign_column_id = building
-        .database
-        .get_column_id(foreign_table_id, &field.column_names[0])
-        .ok_or(ModelBuildingError::Generic(format!(
-            "Column `{}` not found",
-            field.column_names[0]
-        )))?;
+    let foreign_column_ids: Result<Vec<ColumnId>, ModelBuildingError> = field
+        .column_names
+        .iter()
+        .map(|column_name| {
+            building
+                .database
+                .get_column_id(foreign_table_id, column_name)
+                .ok_or(ModelBuildingError::Generic(format!(
+                    "Column `{}` not found",
+                    field.column_names[0]
+                )))
+        })
+        .collect();
+    let foreign_column_ids = foreign_column_ids?;
 
-    let relation_id = foreign_column_id
-        .get_otm_relation(&building.database)
-        .ok_or(ModelBuildingError::Generic(format!(
-            "Relation not found for column `{}`",
-            field.column_names[0]
-        )))?;
+    let relation_id = get_otm_relation_for_columns(&foreign_column_ids, &building.database).ok_or(
+        ModelBuildingError::Generic(format!(
+            "Relation not found for columns `{:?}`",
+            field.column_names
+        )),
+    )?;
 
     Ok(PostgresRelation::OneToMany(OneToManyRelation {
         foreign_entity_id,
@@ -948,24 +956,28 @@ fn compute_one_to_many_relation(
         )))?;
     let foreign_type = &building.entity_types[foreign_entity_id];
 
-    // It is okay to get the first (or any) column, since `get_mto_relation` will look for a relation
-    // matching that column (and the relations have all the columns related to the composite pk)
-    let self_column_id = building
-        .database
-        .get_column_id(*self_table_id, &field.column_names[0])
-        .ok_or(ModelBuildingError::Generic(format!(
-            "Column `{}` not found",
-            field.column_names[0]
-        )))?;
+    let self_column_ids: Result<Vec<ColumnId>, ModelBuildingError> = field
+        .column_names
+        .iter()
+        .map(|name| {
+            building.database.get_column_id(*self_table_id, name).ok_or(
+                ModelBuildingError::Generic(format!("Column `{}` not found", name)),
+            )
+        })
+        .collect();
+    let self_column_ids = self_column_ids?;
+
     let foreign_pk_field_ids = foreign_type.pk_field_ids(foreign_entity_id);
 
-    let relation_id =
-        self_column_id
-            .get_mto_relation(&building.database)
-            .ok_or(ModelBuildingError::Generic(format!(
-                "Relation not found for column `{}`",
-                field.column_names[0]
-            )))?;
+    let relation_id = get_mto_relation_for_columns(&self_column_ids, &building.database).ok_or(
+        ModelBuildingError::Generic(format!(
+            "Relation not found for columns `{:?}`",
+            field.column_names
+        )),
+    )?;
+
+    let relation = relation_id.deref(&building.database);
+    assert_eq!(relation.column_pairs.len(), foreign_pk_field_ids.len());
 
     Ok(PostgresRelation::ManyToOne {
         relation: ManyToOneRelation {

@@ -11,9 +11,10 @@ module Database {
   @access(query=true, mutation=true)
   type Membership {
     @pk membershipId: String
-    @pk @column("membership_tenant_id") tenant: Tenant
     @column(mapping={memberId: "membership_member_id", tenant: "membership_tenant_id"}) member: Member?
     membershipName: String?
+    // Keeping this after the member field to test that the relation is found correctly
+    @pk @column("membership_tenant_id") tenant: Tenant
   }
 
   @access(query=true, mutation=true)

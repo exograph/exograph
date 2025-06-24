@@ -217,6 +217,8 @@ async fn map_self_column<'a>(
             let ManyToOne { column_pairs, .. } =
                 relation_id.deref(&subsystem.core_subsystem.database);
 
+            assert_eq!(column_pairs.len(), foreign_pk_field_ids.len());
+
             let foreign_type_pk_field_name = column_pairs
                 .iter()
                 .zip(foreign_pk_field_ids)
