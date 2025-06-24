@@ -1,15 +1,15 @@
 operation: |
   fragment membershipInfo on Membership {
     membershipId
-      tenant {
-        tenantId
-      }
-      membershipName
-      member {
-        memberId
-        memberTenantId
-        memberName
-      }
+    tenant {
+      tenantId
+    }
+    membershipName
+    member {
+      memberId
+      memberTenantId
+      memberName
+    }
   }
   query {
     allMemberships: memberships(orderBy: {membershipId: ASC}) @unordered {
