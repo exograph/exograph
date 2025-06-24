@@ -27,7 +27,7 @@ use core_model::{
 use core_model_builder::ast::ast_types::{FieldSelection, FieldSelectionElement};
 use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError};
 
-use exo_sql::schema::column_spec::{ColumnAutoincrement, ColumnDefault};
+use exo_sql::schema::column_spec::{ColumnAutoincrement, ColumnDefault, UuidGenerationMethod};
 use exo_sql::{
     ArrayColumnType, BooleanColumnType, ColumnId, EnumColumnType, JsonColumnType, ManyToOne,
     PhysicalColumn, PhysicalColumnType, PhysicalIndex, PhysicalTable, TableId,
@@ -317,7 +317,9 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
                         Some(ColumnDefault::CurrentTimestamp)
                     }
                 } else if string == "gen_random_uuid()" {
-                    Some(ColumnDefault::Uuid)
+                    Some(ColumnDefault::Uuid(UuidGenerationMethod::GenRandomUuid))
+                } else if string == "uuid_generate_v4()" {
+                    Some(ColumnDefault::Uuid(UuidGenerationMethod::UuidGenerateV4))
                 } else {
                     Some(ColumnDefault::Function(string.to_string()))
                 }

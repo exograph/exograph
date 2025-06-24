@@ -278,14 +278,21 @@ In either case, both the `Concert` and `Venue` types will use the the specified 
 
 #### Auto-generated Uuid key
 
-To use the primary key of Uuid type, specify the field's type to be `Uuid` type with the default value of `generate_uuid()`. In the following example, the `id` field is the primary key, and it will be automatically assigned a value when you create a new concert. Behind the scenes, Exograph will use the `UUID` type in PostgreSQL.
+To use the primary key of Uuid type, specify the field's type to be `Uuid` type with a default value. Exograph supports two UUID generation methods:
+
+- `generate_uuid()` - uses PostgreSQL's `gen_random_uuid()` function (requires `pgcrypto` extension)
+- `uuidGenerateV4()` - uses PostgreSQL's `uuid_generate_v4()` function (requires `uuid-ossp` extension)
 
 ```exo
 type Concert {
   @pk id: Uuid = generate_uuid()
+  // OR
+  @pk id: Uuid = uuidGenerateV4()
   ...
 }
 ```
+
+In both cases, the `id` field will be automatically assigned a UUID value when you create a new concert. Exograph automatically adds the required PostgreSQL extension.
 
 #### User-assignable primary key
 
@@ -367,7 +374,7 @@ This would generate columns `address_street`, `address_city`, `address_state`, a
 
 ### Specifying a default value
 
-The default value of a column is specified using an assignment in the field definition. For example, as we have seen in the [previous section](#assigning-primary-key), you can set the default value of an `Int` field to `autoIncrement()` to make it auto-incrementing and the default value of a `Uuid` field to `generate_uuid()` to make it auto-generated.
+The default value of a column is specified using an assignment in the field definition. For example, as we have seen in the [previous section](#assigning-primary-key), you can set the default value of an `Int` field to `autoIncrement()` to make it auto-incrementing and the default value of a `Uuid` field to `generate_uuid()` or `uuidGenerateV4()` to make it auto-generated.
 
 Similarly, you can set the default value of a scalar column to a constant value. For example, if you want to set the default value of the `price` field to `50`, you can use the following definition:
 
@@ -429,6 +436,8 @@ You may use the `@update` annotation to track other aspects. For example, if you
 type Concert {
   ...
   @update modificationVersion: Uuid = generate_uuid()
+  // OR
+  @update modificationVersion: Uuid = uuidGenerateV4()
 }
 ```
 
