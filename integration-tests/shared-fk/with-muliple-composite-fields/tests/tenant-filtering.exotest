@@ -1,0 +1,116 @@
+operation: |
+  query {
+    tenant1Members: members(where: {tenant: {tenantId: {eq: "tenant1"}}}, orderBy: {memberId: ASC}) {
+      memberId
+      tenant {
+        tenantId
+      }
+      memberName
+      memberships {
+        membershipId
+        membershipName
+      }
+    }
+    tenant2Members: members(where: {tenant: {tenantId: {eq: "tenant2"}}}) {
+      memberId
+      tenant {
+        tenantId
+      }
+      memberName
+      memberships {
+        membershipId
+        membershipName
+      }
+    }
+    tenant1Memberships: memberships(where: {tenant: {tenantId: {eq: "tenant1"}}}, orderBy: {membershipId: ASC}) {
+      membershipId
+      tenant {
+        tenantId
+      }
+      membershipName
+      member {
+        memberId
+        memberName
+      }
+    }
+    singleTenant: tenant(tenantId: "tenant1") {
+      tenantId
+      tenantName
+    }
+  }
+response: |
+  {
+    "data": {
+      "tenant1Members": [
+        {
+          "memberId": "tenant1-member1",
+          "tenant": {
+            "tenantId": "tenant1"
+          },
+          "memberName": "Alice Smith",
+          "memberships": [
+            {
+              "membershipId": "tenant1-membership1",
+              "membershipName": "Premium"
+            }
+          ]
+        },
+        {
+          "memberId": "tenant1-member2",
+          "tenant": {
+            "tenantId": "tenant1"
+          },
+          "memberName": "Bob Johnson",
+          "memberships": [
+            {
+              "membershipId": "tenant1-membership2",
+              "membershipName": "Basic"
+            }
+          ]
+        }
+      ],
+      "tenant2Members": [
+        {
+          "memberId": "tenant2-member1",
+          "tenant": {
+            "tenantId": "tenant2"
+          },
+          "memberName": "Carol Davis",
+          "memberships": [
+            {
+              "membershipId": "tenant2-membership1",
+              "membershipName": "Enterprise"
+            }
+          ]
+        }
+      ],
+      "tenant1Memberships": [
+        {
+          "membershipId": "tenant1-membership1",
+          "tenant": {
+            "tenantId": "tenant1"
+          },
+          "membershipName": "Premium",
+          "member": {
+            "memberId": "tenant1-member1",
+            "memberName": "Alice Smith"
+          }
+        },
+        {
+          "membershipId": "tenant1-membership2",
+          "tenant": {
+            "tenantId": "tenant1"
+          },
+          "membershipName": "Basic",
+          "member": {
+            "memberId": "tenant1-member2",
+            "memberName": "Bob Johnson"
+          }
+        }
+      ],
+      "singleTenant": {
+        "tenantId": "tenant1",
+        "tenantName": "Tech Corp"
+      }
+    }
+  }

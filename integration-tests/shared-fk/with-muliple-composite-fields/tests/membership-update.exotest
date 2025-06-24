@@ -1,0 +1,34 @@
+operation: |
+  mutation {
+    updateMembership1: updateMembership(
+      membershipId: "tenant1-membership1", 
+      tenant: {tenantId: "tenant1"},
+      data: {membershipId: "tenant1-membership1", tenant: {tenantId: "tenant1"}, membershipName: "Premium Plus"}
+    ) {
+      membershipId
+      tenant {
+        tenantId
+      }
+      membershipName
+      member {
+        memberId
+        memberName
+      }
+    }
+  }
+response: |
+  {
+    "data": {
+      "updateMembership1": {
+        "membershipId": "tenant1-membership1",
+        "tenant": {
+          "tenantId": "tenant1"
+        },
+        "membershipName": "Premium Plus",
+        "member": {
+          "memberId": "tenant1-member1",
+          "memberName": "Alice Smith"
+        }
+      }
+    }
+  }

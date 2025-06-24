@@ -1,0 +1,366 @@
+type Member {
+  memberId: String!
+  tenant: Tenant!
+  memberName: String
+  memberships(where: MembershipFilter, orderBy: [MembershipOrdering!], limit: Int, offset: Int): [Membership!]!
+  membershipsAgg(where: MembershipFilter): MembershipAgg
+}
+
+"""An aggregate for the `Member` type."""
+type MemberAgg {
+  memberId: StringAgg
+  tenant: TenantAgg
+  memberName: StringAgg
+}
+
+input MemberCreationInput {
+  memberId: String!
+  tenant: TenantReferenceInput!
+  memberName: String
+  memberships: [MembershipCreationInputFromMember!]!
+}
+
+input MemberCreationInputFromTenant {
+  memberId: String!
+  memberName: String
+  memberships: [MembershipCreationInputFromMember!]!
+}
+
+"""
+Predicate for the `Member` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input MemberFilter {
+  memberId: StringFilter
+  tenant: TenantFilter
+  memberName: StringFilter
+  memberships: MembershipFilter
+  and: [MemberFilter!]
+  or: [MemberFilter!]
+  not: MemberFilter
+}
+
+input MemberOrdering {
+  memberId: Ordering
+  tenant: [TenantOrdering!]
+  memberName: Ordering
+}
+
+input MemberReferenceInput {
+  memberId: String!
+  tenant: TenantReferenceInput!
+}
+
+input MemberUpdateInput {
+  memberId: String
+  tenant: TenantReferenceInput
+  memberName: String
+  memberships: MembershipUpdateInputFromMember
+}
+
+input MemberUpdateInputFromTenant {
+  create: [MemberCreationInputFromTenant!]
+  update: [MemberUpdateInputFromTenantNested!]
+  delete: [MemberReferenceInput!]
+}
+
+input MemberUpdateInputFromTenantNested {
+  memberId: String!
+  memberName: String
+  memberships: MembershipUpdateInputFromMember
+}
+
+type Membership {
+  membershipId: String!
+  tenant: Tenant!
+  member: Member
+  membershipName: String
+}
+
+"""An aggregate for the `Membership` type."""
+type MembershipAgg {
+  membershipId: StringAgg
+  tenant: TenantAgg
+  membershipName: StringAgg
+}
+
+input MembershipCreationInput {
+  membershipId: String!
+  tenant: TenantReferenceInput!
+  member: MemberReferenceInput
+  membershipName: String
+}
+
+input MembershipCreationInputFromMember {
+  membershipId: String!
+  tenant: TenantReferenceInput!
+  membershipName: String
+}
+
+input MembershipCreationInputFromTenant {
+  membershipId: String!
+  member: MemberReferenceInput
+  membershipName: String
+}
+
+"""
+Predicate for the `Membership` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input MembershipFilter {
+  membershipId: StringFilter
+  tenant: TenantFilter
+  member: MemberFilter
+  membershipName: StringFilter
+  and: [MembershipFilter!]
+  or: [MembershipFilter!]
+  not: MembershipFilter
+}
+
+input MembershipOrdering {
+  membershipId: Ordering
+  tenant: [TenantOrdering!]
+  member: [MemberOrdering!]
+  membershipName: Ordering
+}
+
+input MembershipReferenceInput {
+  membershipId: String!
+  tenant: TenantReferenceInput!
+}
+
+input MembershipUpdateInput {
+  membershipId: String
+  tenant: TenantReferenceInput
+  member: MemberReferenceInput
+  membershipName: String
+}
+
+input MembershipUpdateInputFromMember {
+  create: [MembershipCreationInputFromMember!]
+  update: [MembershipUpdateInputFromMemberNested!]
+  delete: [MembershipReferenceInput!]
+}
+
+input MembershipUpdateInputFromMemberNested {
+  membershipId: String!
+  tenant: TenantUpdateInput!
+  membershipName: String
+}
+
+input MembershipUpdateInputFromTenant {
+  create: [MembershipCreationInputFromTenant!]
+  update: [MembershipUpdateInputFromTenantNested!]
+  delete: [MembershipReferenceInput!]
+}
+
+input MembershipUpdateInputFromTenantNested {
+  membershipId: String!
+  member: MemberReferenceInput
+  membershipName: String
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Tenant {
+  tenantId: String!
+  tenantName: String
+  memberships(where: MembershipFilter, orderBy: [MembershipOrdering!], limit: Int, offset: Int): [Membership!]!
+  members(where: MemberFilter, orderBy: [MemberOrdering!], limit: Int, offset: Int): [Member!]!
+  membershipsAgg(where: MembershipFilter): MembershipAgg
+  membersAgg(where: MemberFilter): MemberAgg
+}
+
+"""An aggregate for the `Tenant` type."""
+type TenantAgg {
+  tenantId: StringAgg
+  tenantName: StringAgg
+}
+
+input TenantCreationInput {
+  tenantId: String!
+  tenantName: String
+  memberships: [MembershipCreationInputFromTenant!]!
+  members: [MemberCreationInputFromTenant!]!
+}
+
+"""
+Predicate for the `Tenant` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input TenantFilter {
+  tenantId: StringFilter
+  tenantName: StringFilter
+  memberships: MembershipFilter
+  members: MemberFilter
+  and: [TenantFilter!]
+  or: [TenantFilter!]
+  not: TenantFilter
+}
+
+input TenantOrdering {
+  tenantId: Ordering
+  tenantName: Ordering
+}
+
+input TenantReferenceInput {
+  tenantId: String!
+}
+
+"""A predicate to filter the results for a `Tenant` type parameter."""
+input TenantUniqueFilter {
+  tenantId: String!
+}
+
+input TenantUpdateInput {
+  tenantId: String
+  tenantName: String
+  memberships: MembershipUpdateInputFromTenant
+  members: MemberUpdateInputFromTenant
+}
+
+type Query {
+  """Get a single `Member` given primary key fields"""
+  member(memberId: String!, tenant: TenantUniqueFilter!): Member
+
+  """
+  Get multiple `Member`s given the provided `where` filter, order by, limit, and offset
+  """
+  members(where: MemberFilter, orderBy: [MemberOrdering!], limit: Int, offset: Int): [Member!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Member`s given the provided `where` filter
+  """
+  membersAgg(where: MemberFilter): MemberAgg!
+
+  """Get a single `Membership` given primary key fields"""
+  membership(membershipId: String!, tenant: TenantUniqueFilter!): Membership
+
+  """
+  Get multiple `Membership`s given the provided `where` filter, order by, limit, and offset
+  """
+  memberships(where: MembershipFilter, orderBy: [MembershipOrdering!], limit: Int, offset: Int): [Membership!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Membership`s given the provided `where` filter
+  """
+  membershipsAgg(where: MembershipFilter): MembershipAgg!
+
+  """Get a single `Tenant` given primary key fields"""
+  tenant(tenantId: String!): Tenant
+
+  """
+  Get multiple `Tenant`s given the provided `where` filter, order by, limit, and offset
+  """
+  tenants(where: TenantFilter, orderBy: [TenantOrdering!], limit: Int, offset: Int): [Tenant!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Tenant`s given the provided `where` filter
+  """
+  tenantsAgg(where: TenantFilter): TenantAgg!
+}
+
+type Mutation {
+  """
+  Create a new Member. Check the `MemberCreationInput` type for the expected shape of the data.
+  """
+  createMember(data: MemberCreationInput!): Member!
+
+  """
+  Create multiple Members. Check the `MemberCreationInput` type for the expected shape of the data.
+  """
+  createMembers(data: [MemberCreationInput!]!): [Member!]!
+
+  """
+  Create a new Membership. Check the `MembershipCreationInput` type for the expected shape of the data.
+  """
+  createMembership(data: MembershipCreationInput!): Membership!
+
+  """
+  Create multiple Memberships. Check the `MembershipCreationInput` type for the expected shape of the data.
+  """
+  createMemberships(data: [MembershipCreationInput!]!): [Membership!]!
+
+  """
+  Create a new Tenant. Check the `TenantCreationInput` type for the expected shape of the data.
+  """
+  createTenant(data: TenantCreationInput!): Tenant!
+
+  """
+  Create multiple Tenants. Check the `TenantCreationInput` type for the expected shape of the data.
+  """
+  createTenants(data: [TenantCreationInput!]!): [Tenant!]!
+
+  """Delete the Member with the provided primary key."""
+  deleteMember(memberId: String!, tenant: TenantUniqueFilter!): Member
+
+  """Delete multiple Members matching the provided `where` filter."""
+  deleteMembers(where: MemberFilter): [Member!]!
+
+  """Delete the Membership with the provided primary key."""
+  deleteMembership(membershipId: String!, tenant: TenantUniqueFilter!): Membership
+
+  """Delete multiple Memberships matching the provided `where` filter."""
+  deleteMemberships(where: MembershipFilter): [Membership!]!
+
+  """Delete the Tenant with the provided primary key."""
+  deleteTenant(tenantId: String!): Tenant
+
+  """Delete multiple Tenants matching the provided `where` filter."""
+  deleteTenants(where: TenantFilter): [Tenant!]!
+
+  """
+  Update the Member with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateMember(memberId: String!, tenant: TenantUniqueFilter!, data: MemberUpdateInput!): Member
+
+  """
+  Update multiple Members matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateMembers(where: MemberFilter, data: MemberUpdateInput!): [Member!]!
+
+  """
+  Update the Membership with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateMembership(membershipId: String!, tenant: TenantUniqueFilter!, data: MembershipUpdateInput!): Membership
+
+  """
+  Update multiple Memberships matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateMemberships(where: MembershipFilter, data: MembershipUpdateInput!): [Membership!]!
+
+  """
+  Update the Tenant with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateTenant(tenantId: String!, data: TenantUpdateInput!): Tenant
+
+  """
+  Update multiple Tenants matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateTenants(where: TenantFilter, data: TenantUpdateInput!): [Tenant!]!
+}
