@@ -1,0 +1,144 @@
+operation: |
+  fragment membershipInfo on Membership {
+    membershipId
+      tenant {
+        tenantId
+      }
+      membershipName
+      member {
+        memberId
+        memberTenantId
+        memberName
+      }
+  }
+  query {
+    allMemberships: memberships(orderBy: {membershipId: ASC}) @unordered {
+      ...membershipInfo
+    }
+    byMemberAndTenantMatching: memberships(where: {member: {memberId: {eq: "tenant1-member1"}, memberTenantId: {eq: "tenant1"}}, tenant: {tenantId: {eq: "tenant1"}}}) @unordered {
+      ...membershipInfo
+    }
+    byMemberAndTenantNotMatching: memberships(where: {member: {memberId: {eq: "tenant1-member1"}, memberTenantId: {eq: "tenant1"}}, tenant: {tenantId: {eq: "tenant2"}}}) @unordered {
+      ...membershipInfo
+    }
+    byMember: memberships(where: {member: {memberId: {eq: "tenant1-member1"}}}) @unordered {
+      ...membershipInfo
+    }
+    byTenant: memberships(where: {tenant: {tenantId: {eq: "tenant1"}}}) @unordered {
+      ...membershipInfo
+    }
+    singleMembership: membership(membershipId: "tenant1-membership1", tenant: {tenantId: "tenant1"}) {
+      ...membershipInfo
+    }
+  }
+response: |
+  {
+    "data": {
+      "allMemberships": [
+        {
+          "membershipId": "tenant1-membership1",
+          "tenant": {
+            "tenantId": "tenant1"
+          },
+          "membershipName": "Premium",
+          "member": {
+            "memberId": "tenant1-member1",
+            "memberTenantId": "tenant1",
+            "memberName": "Alice Smith"
+          }
+        },
+        {
+          "membershipId": "tenant1-membership2",
+          "tenant": {
+            "tenantId": "tenant1"
+          },
+          "membershipName": "Basic",
+          "member": {
+            "memberId": "tenant1-member2",
+            "memberTenantId": "tenant1",
+            "memberName": "Bob Johnson"
+          }
+        },
+        {
+          "membershipId": "tenant2-membership1",
+          "tenant": {
+            "tenantId": "tenant2"
+          },
+          "membershipName": "Enterprise",
+          "member": {
+            "memberId": "tenant2-member1",
+            "memberTenantId": "tenant2",
+            "memberName": "Carol Davis"
+          }
+        }
+      ],
+      "byMemberAndTenantMatching": [
+        {
+          "membershipId": "tenant1-membership1",
+          "tenant": {
+            "tenantId": "tenant1"
+          },
+          "membershipName": "Premium",
+          "member": {
+            "memberId": "tenant1-member1",
+            "memberTenantId": "tenant1",
+            "memberName": "Alice Smith"
+          }
+        }
+      ],
+      "byMemberAndTenantNotMatching": [
+      ],
+      "byMember": [
+        {
+          "membershipId": "tenant1-membership1",
+          "tenant": {
+            "tenantId": "tenant1"
+          },
+          "membershipName": "Premium",
+          "member": {
+            "memberId": "tenant1-member1",
+            "memberTenantId": "tenant1",
+            "memberName": "Alice Smith"
+          }
+        }
+      ],
+      "byTenant": [
+        {
+          "membershipId": "tenant1-membership1",
+          "tenant": {
+            "tenantId": "tenant1"
+          },
+          "membershipName": "Premium",
+          "member": {
+            "memberId": "tenant1-member1",
+            "memberTenantId": "tenant1",
+            "memberName": "Alice Smith"
+          }
+        },
+        {
+          "membershipId": "tenant1-membership2",
+          "tenant": {
+            "tenantId": "tenant1"
+          },
+          "membershipName": "Basic",
+          "member": {
+            "memberId": "tenant1-member2",
+            "memberTenantId": "tenant1",
+            "memberName": "Bob Johnson"
+          }
+        }
+      ],
+      "singleMembership": {
+        "membershipId": "tenant1-membership1",
+        "tenant": {
+          "tenantId": "tenant1"
+        },
+        "membershipName": "Premium",
+        "member": {
+          "memberId": "tenant1-member1",
+          "memberTenantId": "tenant1",
+          "memberName": "Alice Smith"
+        }
+      }
+    }
+  }

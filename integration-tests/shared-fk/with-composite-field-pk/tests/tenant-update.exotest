@@ -1,0 +1,19 @@
+operation: |
+  mutation {
+    updateTenant1: updateTenant(
+      tenantId: "tenant1", 
+      data: {tenantId: "tenant1", tenantName: "Tech Corp Updated"}
+    ) {
+      tenantId
+      tenantName
+    }
+  }
+response: |
+  {
+    "data": {
+      "updateTenant1": {
+        "tenantId": "tenant1",
+        "tenantName": "Tech Corp Updated"
+      }
+    }
+  }
