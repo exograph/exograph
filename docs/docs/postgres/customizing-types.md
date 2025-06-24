@@ -280,7 +280,7 @@ In either case, both the `Concert` and `Venue` types will use the the specified 
 
 To use the primary key of Uuid type, specify the field's type to be `Uuid` type with a default value. Exograph supports two UUID generation methods:
 
-- `generate_uuid()` - uses PostgreSQL's `gen_random_uuid()` function (requires `pgcrypto` extension)
+- `generate_uuid()` - uses PostgreSQL's `gen_random_uuid()` function (built into PostgreSQL 13+)
 - `uuidGenerateV4()` - uses PostgreSQL's `uuid_generate_v4()` function (requires `uuid-ossp` extension)
 
 ```exo
@@ -292,7 +292,7 @@ type Concert {
 }
 ```
 
-In both cases, the `id` field will be automatically assigned a UUID value when you create a new concert. Exograph automatically adds the required PostgreSQL extension.
+In both cases, the `id` field will be automatically assigned a UUID value when you create a new concert. Exograph automatically adds the required PostgreSQL extension as needed.
 
 #### User-assignable primary key
 

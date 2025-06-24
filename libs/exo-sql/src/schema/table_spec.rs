@@ -262,19 +262,12 @@ impl TableSpec {
         for col_spec in self.columns.iter() {
             let typ = &col_spec.typ;
             if typ.is::<crate::sql::physical_column_type::UuidColumnType>() {
-                // Check which UUID generation method is used
-                if let Some(ColumnDefault::Uuid(method)) = &col_spec.default_value {
-                    match method {
-                        UuidGenerationMethod::GenRandomUuid => {
-                            required_extensions.insert("pgcrypto".to_string());
-                        }
-                        UuidGenerationMethod::UuidGenerateV4 => {
-                            required_extensions.insert("uuid-ossp".to_string());
-                        }
-                    }
-                } else {
-                    // Default to pgcrypto for UUID columns without explicit default
-                    required_extensions.insert("pgcrypto".to_string());
+                // Only uuid_generate_v4() requires an extension (uuid-ossp)
+                // gen_random_uuid() is built into PostgreSQL 13+
+                if let Some(ColumnDefault::Uuid(UuidGenerationMethod::UuidGenerateV4)) =
+                    &col_spec.default_value
+                {
+                    required_extensions.insert("uuid-ossp".to_string());
                 }
             }
             if typ.is::<crate::sql::physical_column_type::VectorColumnType>() {
