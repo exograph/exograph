@@ -124,7 +124,6 @@ pub enum ColumnDefault {
     DateTime(String),
     Json(String),
     UuidLiteral(String),
-    Blob(String),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -247,31 +246,6 @@ impl ColumnDefault {
         Ok(ColumnDefault::Json(value.to_string()))
     }
 
-    fn handle_blob_default(default_value: &str) -> Result<ColumnDefault, DatabaseError> {
-        let value = if let Some(stripped) = default_value.strip_prefix("'") {
-            if let Some(quote_end) = stripped.find("'") {
-                let bytea_str = &default_value[1..quote_end + 1];
-                if let Some(hex_str) = bytea_str.strip_prefix("\\x") {
-                    let bytes: Result<Vec<u8>, _> = (0..hex_str.len())
-                        .step_by(2)
-                        .map(|i| u8::from_str_radix(&hex_str[i..i + 2], 16))
-                        .collect();
-                    match bytes {
-                        Ok(bytes) => String::from_utf8_lossy(&bytes).to_string(),
-                        Err(_) => bytea_str.to_string(),
-                    }
-                } else {
-                    bytea_str.to_string()
-                }
-            } else {
-                stripped.to_string()
-            }
-        } else {
-            default_value.to_string()
-        };
-        Ok(ColumnDefault::Blob(value))
-    }
-
     fn handle_enum_default(
         default_value: &str,
         enum_type: &EnumColumnType,
@@ -321,7 +295,7 @@ impl ColumnDefault {
                 } else if physical_type.as_any().is::<JsonColumnType>() {
                     Self::handle_json_default(&default_value)
                 } else if physical_type.as_any().is::<BlobColumnType>() {
-                    Self::handle_blob_default(&default_value)
+                    Ok(ColumnDefault::Function(default_value))
                 } else if let Some(enum_type) =
                     physical_type.as_any().downcast_ref::<EnumColumnType>()
                 {
@@ -360,7 +334,6 @@ impl ColumnDefault {
             ColumnDefault::DateTime(value) => Some(format!("'{value}'::timestamp")),
             ColumnDefault::Json(value) => Some(format!("'{value}'::json")),
             ColumnDefault::UuidLiteral(value) => Some(format!("'{value}'::uuid")),
-            ColumnDefault::Blob(value) => Some(format!("'{value}'::bytea")),
         }
     }
 
@@ -396,7 +369,6 @@ impl ColumnDefault {
             ColumnDefault::DateTime(value) => Some(format!("\"{value}\"")),
             ColumnDefault::Json(value) => Some(format!("\"{value}\"")),
             ColumnDefault::UuidLiteral(value) => Some(format!("\"{value}\"")),
-            ColumnDefault::Blob(value) => Some(format!("\"{value}\"")),
         }
     }
 }

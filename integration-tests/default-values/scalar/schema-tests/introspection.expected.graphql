@@ -1,12 +1,3 @@
-scalar Blob
-
-type BlobAgg {
-  count: Int
-}
-
-"""A single value to match against using the equal operator."""
-scalar BlobFilter
-
 type BooleanAgg {
   count: Int
 }
@@ -51,7 +42,6 @@ type Event {
   eventDateTime: LocalDateTime!
   metadata: Json!
   eventId: Uuid!
-  payload: Blob!
 }
 
 """An aggregate for the `Event` type."""
@@ -71,7 +61,6 @@ type EventAgg {
   eventDateTime: LocalDateTimeAgg
   metadata: JsonAgg
   eventId: UuidAgg
-  payload: BlobAgg
 }
 
 input EventCreationInput {
@@ -89,7 +78,6 @@ input EventCreationInput {
   eventDateTime: LocalDateTime
   metadata: Json
   eventId: Uuid
-  payload: Blob
 }
 
 """
@@ -113,7 +101,6 @@ input EventFilter {
   eventDateTime: LocalDateTimeFilter
   metadata: JsonFilter
   eventId: UuidFilter
-  payload: BlobFilter
   and: [EventFilter!]
   or: [EventFilter!]
   not: EventFilter
@@ -135,7 +122,6 @@ input EventOrdering {
   eventDateTime: Ordering
   metadata: Ordering
   eventId: Ordering
-  payload: Ordering
 }
 
 input EventUpdateInput {
@@ -154,7 +140,6 @@ input EventUpdateInput {
   eventDateTime: LocalDateTime
   metadata: Json
   eventId: Uuid
-  payload: Blob
 }
 
 type FloatAgg {

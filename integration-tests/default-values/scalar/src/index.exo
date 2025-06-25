@@ -23,7 +23,6 @@ module EventModule {
         eventDateTime: LocalDateTime = "2024-01-01T14:30:00"
         metadata: Json = "{}"
         eventId: Uuid = "550e8400-e29b-41d4-a716-446655440000"
-        payload: Blob = "default_payload"
     }
 
     @access(self.purchasePrice > 0.0)

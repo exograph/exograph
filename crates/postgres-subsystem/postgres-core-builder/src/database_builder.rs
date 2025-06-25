@@ -303,7 +303,7 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
                     } else if type_name == primitive_type::UuidType::NAME {
                         Some(ColumnDefault::UuidLiteral(string.clone()))
                     } else if type_name == primitive_type::BlobType::NAME {
-                        Some(ColumnDefault::Blob(string.clone()))
+                        Some(ColumnDefault::Function(string.clone()))
                     } else {
                         let value = match field.type_hint {
                             None => ColumnDefault::Text(string.clone()),
