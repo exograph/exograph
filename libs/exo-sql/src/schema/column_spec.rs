@@ -116,6 +116,9 @@ pub enum ColumnDefault {
     VarChar(String),
     Boolean(bool),
     Number(String),
+    Int(String),
+    Float(String),
+    Decimal(String),
     Function(String),
     Enum(String),
     Autoincrement(ColumnAutoincrement),
@@ -172,11 +175,22 @@ impl ColumnDefault {
         }
     }
 
-    fn handle_numeric_default(default_value: &str) -> Result<ColumnDefault, DatabaseError> {
-        match default_value.parse() {
-            Ok(value) => Ok(ColumnDefault::Number(value)),
+    fn handle_int_default(default_value: &str) -> Result<ColumnDefault, DatabaseError> {
+        match default_value.parse::<i64>() {
+            Ok(_) => Ok(ColumnDefault::Int(default_value.to_string())),
             Err(_) => Ok(ColumnDefault::Function(default_value.to_string())),
         }
+    }
+
+    fn handle_float_default(default_value: &str) -> Result<ColumnDefault, DatabaseError> {
+        match default_value.parse::<f64>() {
+            Ok(_) => Ok(ColumnDefault::Float(default_value.to_string())),
+            Err(_) => Ok(ColumnDefault::Function(default_value.to_string())),
+        }
+    }
+
+    fn handle_decimal_default(default_value: &str) -> Result<ColumnDefault, DatabaseError> {
+        Ok(ColumnDefault::Decimal(default_value.to_string()))
     }
 
     fn handle_boolean_default(default_value: &str) -> Result<ColumnDefault, DatabaseError> {
@@ -284,11 +298,12 @@ impl ColumnDefault {
             Self::handle_string_default(default_value)
         } else if any_type.is::<crate::sql::physical_column_type::UuidColumnType>() {
             Self::handle_uuid_default(default_value)
-        } else if any_type.is::<IntColumnType>()
-            || any_type.is::<crate::sql::physical_column_type::FloatColumnType>()
-            || any_type.is::<NumericColumnType>()
-        {
-            Self::handle_numeric_default(default_value)
+        } else if any_type.is::<IntColumnType>() {
+            Self::handle_int_default(default_value)
+        } else if any_type.is::<crate::sql::physical_column_type::FloatColumnType>() {
+            Self::handle_float_default(default_value)
+        } else if any_type.is::<NumericColumnType>() {
+            Self::handle_decimal_default(default_value)
         } else if any_type.is::<BooleanColumnType>() {
             Self::handle_boolean_default(default_value)
         } else if any_type.is::<DateColumnType>() {
@@ -320,6 +335,9 @@ impl ColumnDefault {
             ColumnDefault::VarChar(value) => Some(format!("'{value}'::character varying")),
             ColumnDefault::Boolean(value) => Some(format!("{value}")),
             ColumnDefault::Number(value) => Some(value.to_string()),
+            ColumnDefault::Int(value) => Some(value.to_string()),
+            ColumnDefault::Float(value) => Some(value.to_string()),
+            ColumnDefault::Decimal(value) => Some(value.to_string()),
             ColumnDefault::Function(value) => Some(value.clone()),
             ColumnDefault::Enum(value) => Some(format!("'{value}'")),
             ColumnDefault::Autoincrement(autoincrement) => match autoincrement {
@@ -350,7 +368,10 @@ impl ColumnDefault {
                 Some(format!("\"{value}\""))
             }
             ColumnDefault::Boolean(value) => Some(format!("{value}")),
-            ColumnDefault::Number(value) => Some(value.to_string()),
+            ColumnDefault::Number(value) => Some(format!("\"{value}\"")),
+            ColumnDefault::Int(value) => Some(value.to_string()),
+            ColumnDefault::Float(value) => Some(value.to_string()),
+            ColumnDefault::Decimal(value) => Some(format!("\"{value}\"")),
             ColumnDefault::Function(value) => Some(value.clone()),
             ColumnDefault::Enum(value) => Some(value.to_string()),
             ColumnDefault::Autoincrement(autoincrement) => match autoincrement {
