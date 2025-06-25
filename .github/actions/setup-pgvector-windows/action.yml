@@ -19,7 +19,7 @@ runs:
         path: |
           C:\Program Files\PostgreSQL\${{ inputs.pg-version }}\lib\vector.dll
           C:\Program Files\PostgreSQL\${{ inputs.pg-version }}\share\extension\vector.control
-          C:\Program Files\PostgreSQL\${{ inputs.pg-version }}\share\extension\vector--*.sql
+          C:\Program Files\PostgreSQL\${{ inputs.pg-version }}\share\extension\vector.sql
         key: pgvector-${{ runner.os }}-v${{ inputs.pgvector-version }}-pg${{ inputs.pg-version }}
     - name: Install pgvector
       if: steps.cache-pgvector.outputs.cache-hit != 'true'
