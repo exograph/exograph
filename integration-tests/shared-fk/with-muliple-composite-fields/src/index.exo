@@ -1,13 +1,7 @@
 @postgres
 module Database {
-  @access(query=true, mutation=true)
-  type Member {
-    @pk memberId: String
-    @pk @column("member_tenant_id") tenant: Tenant
-    memberName: String?
-    memberships: Set<Membership>
-  }
-
+  // Keep this type before the Member type to test that the relation is created even when the
+  // `Member` type is defined after it. Especially important, since we want to treat Member.tenant as PK
   @access(query=true, mutation=true)
   type Membership {
     @pk membershipId: String
@@ -15,6 +9,14 @@ module Database {
     membershipName: String?
     // Keeping this after the member field to test that the relation is found correctly
     @pk @column("membership_tenant_id") tenant: Tenant
+  }
+
+  @access(query=true, mutation=true)
+  type Member {
+    @pk memberId: String
+    @pk @column("member_tenant_id") tenant: Tenant
+    memberName: String?
+    memberships: Set<Membership>
   }
 
   @access(query=true, mutation=true)
