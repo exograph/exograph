@@ -3,6 +3,9 @@ operation: |
     string_test: createFoo(data: { verylong: $verylong_string }) {
       verylong
     }
+    default_test: createFoo(data: {}) {
+      verylong
+    }
   }
 variable: |
   {
@@ -15,5 +18,8 @@ response: |
         // @scale is 30, so we should round off at 30 digits
         "verylong": "1.000000000000000000000000123457" 
       },
+      "default_test": {
+        "verylong": "1.200000000000000000000000000000"
+      }
     }
   }

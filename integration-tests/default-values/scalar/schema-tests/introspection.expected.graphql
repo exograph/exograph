@@ -7,12 +7,32 @@ input BooleanFilter {
   neq: Boolean
 }
 
+scalar Decimal
+
+type DecimalAgg {
+  min: Decimal
+  max: Decimal
+  sum: Decimal
+  avg: Decimal
+  count: Int
+}
+
+input DecimalFilter {
+  eq: Decimal
+  neq: Decimal
+  lt: Decimal
+  lte: Decimal
+  gt: Decimal
+  gte: Decimal
+}
+
 type Event {
   id: Int!
   timestamp: Instant!
   category: String!
   priority: Int!
   price: Float!
+  decimalPrice: Decimal!
   message: String!
   is_system: Boolean!
   clientId: String!
@@ -26,6 +46,7 @@ type EventAgg {
   category: StringAgg
   priority: IntAgg
   price: FloatAgg
+  decimalPrice: DecimalAgg
   message: StringAgg
   is_system: BooleanAgg
   clientId: StringAgg
@@ -37,6 +58,7 @@ input EventCreationInput {
   category: String
   priority: Int
   price: Float
+  decimalPrice: Decimal
   message: String!
   is_system: Boolean
   clientId: String
@@ -54,6 +76,7 @@ input EventFilter {
   category: StringFilter
   priority: IntFilter
   price: FloatFilter
+  decimalPrice: DecimalFilter
   message: StringFilter
   is_system: BooleanFilter
   clientId: StringFilter
@@ -69,6 +92,7 @@ input EventOrdering {
   category: Ordering
   priority: Ordering
   price: Ordering
+  decimalPrice: Ordering
   message: Ordering
   is_system: Ordering
   clientId: Ordering
@@ -81,6 +105,7 @@ input EventUpdateInput {
   category: String
   priority: Int
   price: Float
+  decimalPrice: Decimal
   message: String
   is_system: Boolean
   clientId: String

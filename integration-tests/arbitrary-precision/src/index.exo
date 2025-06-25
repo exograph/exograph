@@ -6,6 +6,6 @@ module FooModule {
     @pk id: Int = autoIncrement();
     
     @precision(40) @scale(30)
-    verylong: Decimal
+    verylong: Decimal = "1.20"
   }
 }

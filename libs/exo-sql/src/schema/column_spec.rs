@@ -13,7 +13,7 @@ use crate::database_error::DatabaseError;
 use crate::sql::connect::database_client::DatabaseClient;
 use crate::sql::physical_column_type::{
     ArrayColumnType, BooleanColumnType, DateColumnType, EnumColumnType, IntBits, IntColumnType,
-    PhysicalColumnType, StringColumnType, TimestampColumnType, VectorColumnType,
+    NumericColumnType, PhysicalColumnType, StringColumnType, TimestampColumnType, VectorColumnType,
 };
 use crate::{Database, PhysicalColumn, SchemaObjectName};
 
@@ -192,6 +192,7 @@ impl ColumnDefault {
                     || physical_type
                         .as_any()
                         .is::<crate::sql::physical_column_type::FloatColumnType>()
+                    || physical_type.as_any().is::<NumericColumnType>()
                 {
                     match default_value.parse() {
                         Ok(value) => Ok(ColumnDefault::Number(value)),

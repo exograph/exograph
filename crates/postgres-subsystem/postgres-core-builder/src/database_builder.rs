@@ -287,11 +287,17 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
         .and_then(|default_value| match default_value {
             ResolvedFieldDefault::Value(val) => match &**val {
                 AstExpr::StringLiteral(string, _) => {
-                    let value = match field.type_hint {
-                        None => ColumnDefault::Text(string.clone()),
-                        Some(_) => ColumnDefault::VarChar(string.clone()),
-                    };
-                    Some(value)
+                    // For Decimal fields, use ColumnDefault::Number to allow proper casting
+                    if field.typ.innermost().type_name.as_str() == primitive_type::DecimalType::NAME
+                    {
+                        Some(ColumnDefault::Number(string.clone()))
+                    } else {
+                        let value = match field.type_hint {
+                            None => ColumnDefault::Text(string.clone()),
+                            Some(_) => ColumnDefault::VarChar(string.clone()),
+                        };
+                        Some(value)
+                    }
                 }
                 AstExpr::BooleanLiteral(boolean, _) => Some(ColumnDefault::Boolean(*boolean)),
                 AstExpr::NumberLiteral(val, _) => Some(ColumnDefault::Number(val.clone())),
