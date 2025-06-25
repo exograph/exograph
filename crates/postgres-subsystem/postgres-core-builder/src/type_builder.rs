@@ -736,14 +736,14 @@ fn create_relation(
     resolved_env: &ResolvedTypeEnv,
     expand_foreign_relations: bool,
 ) -> Result<PostgresRelation, ModelBuildingError> {
-    fn placeholder_relation() -> Result<PostgresRelation, ModelBuildingError> {
+    fn placeholder_relation(is_pk: bool) -> Result<PostgresRelation, ModelBuildingError> {
         // Create an impossible value (will be filled later when expanding relations)
         Ok(PostgresRelation::Scalar {
             column_id: ColumnId {
                 table_id: SerializableSlabIndex::from_idx(usize::MAX),
                 column_index: usize::MAX,
             },
-            is_pk: false,
+            is_pk,
         })
     }
 
@@ -789,7 +789,7 @@ fn create_relation(
                                 building,
                             )
                         } else {
-                            placeholder_relation()
+                            placeholder_relation(field.is_pk)
                         }
                     }
                 }
@@ -836,7 +836,7 @@ fn create_relation(
                                         building,
                                     )
                                 } else {
-                                    placeholder_relation()
+                                    placeholder_relation(field.is_pk)
                                 }
                             }
                             (FieldType::Plain(_), Some(Cardinality::ZeroOrOne)) => {
@@ -849,7 +849,7 @@ fn create_relation(
                                         building,
                                     )
                                 } else {
-                                    placeholder_relation()
+                                    placeholder_relation(field.is_pk)
                                 }
                             }
                             (
@@ -865,7 +865,7 @@ fn create_relation(
                                         building,
                                     )
                                 } else {
-                                    placeholder_relation()
+                                    placeholder_relation(field.is_pk)
                                 }
                             }
                             (FieldType::Plain(_), Some(Cardinality::One)) => {
