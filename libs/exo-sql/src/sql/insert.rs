@@ -18,6 +18,7 @@ use super::{
     transaction::{TransactionContext, TransactionStepId},
 };
 
+// TODO: Add a check to ensure that columns and each row of values_seq have the same length.
 /// An insert operation.
 #[derive(Debug)]
 pub struct Insert<'a> {
