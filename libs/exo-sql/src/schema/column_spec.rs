@@ -201,7 +201,7 @@ impl ColumnDefault {
     fn handle_time_default(default_value: &str) -> Result<ColumnDefault, DatabaseError> {
         let value = if let Some(stripped) = default_value.strip_prefix("'") {
             if let Some(quote_end) = stripped.find("'") {
-                &default_value[1..quote_end + 1]
+                &stripped[..quote_end]
             } else {
                 stripped
             }
@@ -217,7 +217,7 @@ impl ColumnDefault {
         } else {
             let value = if let Some(stripped) = default_value.strip_prefix("'") {
                 if let Some(quote_end) = stripped.find("'") {
-                    let timestamp_str = &default_value[1..quote_end + 1];
+                    let timestamp_str = &stripped[..quote_end];
                     timestamp_str.replace(" ", "T")
                 } else {
                     stripped.to_string()
@@ -269,42 +269,42 @@ impl ColumnDefault {
         db_type: Option<&dyn PhysicalColumnType>,
     ) -> Result<ColumnDefault, DatabaseError> {
         match db_type {
-            Some(physical_type) => {
-                if physical_type.as_any().is::<StringColumnType>() {
-                    Self::handle_string_default(&default_value)
-                } else if physical_type
-                    .as_any()
-                    .is::<crate::sql::physical_column_type::UuidColumnType>()
-                {
-                    Self::handle_uuid_default(&default_value)
-                } else if physical_type.as_any().is::<IntColumnType>()
-                    || physical_type
-                        .as_any()
-                        .is::<crate::sql::physical_column_type::FloatColumnType>()
-                    || physical_type.as_any().is::<NumericColumnType>()
-                {
-                    Self::handle_numeric_default(&default_value)
-                } else if physical_type.as_any().is::<BooleanColumnType>() {
-                    Self::handle_boolean_default(&default_value)
-                } else if physical_type.as_any().is::<DateColumnType>() {
-                    Self::handle_date_default(&default_value)
-                } else if physical_type.as_any().is::<TimeColumnType>() {
-                    Self::handle_time_default(&default_value)
-                } else if physical_type.as_any().is::<TimestampColumnType>() {
-                    Self::handle_timestamp_default(&default_value)
-                } else if physical_type.as_any().is::<JsonColumnType>() {
-                    Self::handle_json_default(&default_value)
-                } else if physical_type.as_any().is::<BlobColumnType>() {
-                    Ok(ColumnDefault::Function(default_value))
-                } else if let Some(enum_type) =
-                    physical_type.as_any().downcast_ref::<EnumColumnType>()
-                {
-                    Self::handle_enum_default(&default_value, enum_type)
-                } else {
-                    Ok(ColumnDefault::Function(default_value))
-                }
-            }
+            Some(physical_type) => Self::handle_typed_default(&default_value, physical_type),
             None => Ok(ColumnDefault::Function(default_value)),
+        }
+    }
+
+    fn handle_typed_default(
+        default_value: &str,
+        physical_type: &dyn PhysicalColumnType,
+    ) -> Result<ColumnDefault, DatabaseError> {
+        let any_type = physical_type.as_any();
+
+        if any_type.is::<StringColumnType>() {
+            Self::handle_string_default(default_value)
+        } else if any_type.is::<crate::sql::physical_column_type::UuidColumnType>() {
+            Self::handle_uuid_default(default_value)
+        } else if any_type.is::<IntColumnType>()
+            || any_type.is::<crate::sql::physical_column_type::FloatColumnType>()
+            || any_type.is::<NumericColumnType>()
+        {
+            Self::handle_numeric_default(default_value)
+        } else if any_type.is::<BooleanColumnType>() {
+            Self::handle_boolean_default(default_value)
+        } else if any_type.is::<DateColumnType>() {
+            Self::handle_date_default(default_value)
+        } else if any_type.is::<TimeColumnType>() {
+            Self::handle_time_default(default_value)
+        } else if any_type.is::<TimestampColumnType>() {
+            Self::handle_timestamp_default(default_value)
+        } else if any_type.is::<JsonColumnType>() {
+            Self::handle_json_default(default_value)
+        } else if any_type.is::<BlobColumnType>() {
+            Ok(ColumnDefault::Function(default_value.to_string()))
+        } else if let Some(enum_type) = any_type.downcast_ref::<EnumColumnType>() {
+            Self::handle_enum_default(default_value, enum_type)
+        } else {
+            Ok(ColumnDefault::Function(default_value.to_string()))
         }
     }
 
