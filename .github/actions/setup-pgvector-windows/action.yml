@@ -23,5 +23,5 @@ runs:
         key: pgvector-${{ runner.os }}-v${{ inputs.pgvector-version }}-pg${{ inputs.pg-version }}
     - name: Install pgvector
       if: steps.cache-pgvector.outputs.cache-hit != 'true'
-      run: Start-Process -FilePath $env:GITHUB_WORKSPACE\.github\workflows\install-pgvector.bat -Wait
+      run: Start-Process -FilePath '${{ github.action_path }}\install-pgvector.bat' -ArgumentList "${{ inputs.pg-version }}", "${{ inputs.pgvector-version }}" -Wait
       shell: powershell
