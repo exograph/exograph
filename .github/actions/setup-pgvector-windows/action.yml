@@ -1,0 +1,16 @@
+name: 'Setup pgvector for Windows'
+description: 'Cache and install pgvector extension for PostgreSQL on Windows'
+runs:
+  using: 'composite'
+  steps:
+    - name: Cache pgvector (Windows)
+      uses: actions/cache@v4
+      with:
+        path: |
+          C:\Program Files\PostgreSQL\14\lib\pgvector.dll
+          C:\Program Files\PostgreSQL\14\share\extension\vector.control
+          C:\Program Files\PostgreSQL\14\share\extension\vector--*.sql
+        key: pgvector-${{ runner.os }}-v0.6.2-pg14
+    - name: Install pgvector
+      run: Start-Process -FilePath $env:GITHUB_WORKSPACE\.github\workflows\install-pgvector.bat -Wait
+      shell: powershell

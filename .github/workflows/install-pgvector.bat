@@ -1,5 +1,13 @@
 set "PGROOT=C:\Program Files\PostgreSQL\14"
-cd $RUNNER_TEMP
+
+REM Check if pgvector is already installed (cache hit)
+if exist "%PGROOT%\lib\pgvector.dll" (
+    echo pgvector already installed, skipping compilation
+    exit /b 0
+)
+
+echo pgvector not found, compiling from source...
+cd %RUNNER_TEMP%
 git clone --branch v0.6.2 https://github.com/pgvector/pgvector.git
 cd pgvector
 
