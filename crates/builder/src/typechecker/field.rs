@@ -85,7 +85,16 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
             };
 
             match *expr {
-                AstExpr::StringLiteral(_, _) => assert_type(&["String", "Decimal"]),
+                AstExpr::StringLiteral(_, _) => assert_type(&[
+                    "String",
+                    "Decimal",
+                    "LocalDate",
+                    "LocalTime",
+                    "LocalDateTime",
+                    "Json",
+                    "Uuid",
+                    "Blob",
+                ]),
                 AstExpr::BooleanLiteral(_, _) => assert_type(&["Boolean"]),
                 AstExpr::NumberLiteral(_, _) => assert_type(&["Int", "Float"]),
                 AstExpr::FieldSelection(_) => {

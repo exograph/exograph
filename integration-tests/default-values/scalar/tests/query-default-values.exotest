@@ -11,6 +11,11 @@ operation: |
             is_system
             clientId
             orgId
+            eventDate
+            eventTime
+            eventDateTime
+            metadata
+            eventId
         }
     }
 variable: |
@@ -43,7 +48,12 @@ response: |
           "message": "Corrected error, no actions required.",
           "is_system": true,
           "clientId": "test-client1",
-          "orgId": "test-org1"
+          "orgId": "test-org1",
+          "eventDate": "2024-01-01",
+          "eventTime": "14:30:00",
+          "eventDateTime": "2024-01-01T14:30:00",
+          "metadata": {},
+          "eventId": "550e8400-e29b-41d4-a716-446655440000"
         }
       }
     }

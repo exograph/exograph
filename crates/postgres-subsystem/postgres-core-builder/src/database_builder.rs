@@ -287,10 +287,23 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
         .and_then(|default_value| match default_value {
             ResolvedFieldDefault::Value(val) => match &**val {
                 AstExpr::StringLiteral(string, _) => {
+                    let type_name = field.typ.innermost().type_name.as_str();
+
                     // For Decimal fields, use ColumnDefault::Number to allow proper casting
-                    if field.typ.innermost().type_name.as_str() == primitive_type::DecimalType::NAME
-                    {
+                    if type_name == primitive_type::DecimalType::NAME {
                         Some(ColumnDefault::Number(string.clone()))
+                    } else if type_name == primitive_type::LocalDateType::NAME {
+                        Some(ColumnDefault::Date(string.clone()))
+                    } else if type_name == primitive_type::LocalTimeType::NAME {
+                        Some(ColumnDefault::Time(string.clone()))
+                    } else if type_name == primitive_type::LocalDateTimeType::NAME {
+                        Some(ColumnDefault::DateTime(string.clone()))
+                    } else if type_name == primitive_type::JsonType::NAME {
+                        Some(ColumnDefault::Json(string.clone()))
+                    } else if type_name == primitive_type::UuidType::NAME {
+                        Some(ColumnDefault::UuidLiteral(string.clone()))
+                    } else if type_name == primitive_type::BlobType::NAME {
+                        Some(ColumnDefault::Function(string.clone()))
                     } else {
                         let value = match field.type_hint {
                             None => ColumnDefault::Text(string.clone()),

@@ -37,6 +37,11 @@ type Event {
   is_system: Boolean!
   clientId: String!
   orgId: String
+  eventDate: LocalDate!
+  eventTime: LocalTime!
+  eventDateTime: LocalDateTime!
+  metadata: Json!
+  eventId: Uuid!
 }
 
 """An aggregate for the `Event` type."""
@@ -51,6 +56,11 @@ type EventAgg {
   is_system: BooleanAgg
   clientId: StringAgg
   orgId: StringAgg
+  eventDate: LocalDateAgg
+  eventTime: LocalTimeAgg
+  eventDateTime: LocalDateTimeAgg
+  metadata: JsonAgg
+  eventId: UuidAgg
 }
 
 input EventCreationInput {
@@ -63,6 +73,11 @@ input EventCreationInput {
   is_system: Boolean
   clientId: String
   orgId: String
+  eventDate: LocalDate
+  eventTime: LocalTime
+  eventDateTime: LocalDateTime
+  metadata: Json
+  eventId: Uuid
 }
 
 """
@@ -81,6 +96,11 @@ input EventFilter {
   is_system: BooleanFilter
   clientId: StringFilter
   orgId: StringFilter
+  eventDate: LocalDateFilter
+  eventTime: LocalTimeFilter
+  eventDateTime: LocalDateTimeFilter
+  metadata: JsonFilter
+  eventId: UuidFilter
   and: [EventFilter!]
   or: [EventFilter!]
   not: EventFilter
@@ -97,6 +117,11 @@ input EventOrdering {
   is_system: Ordering
   clientId: Ordering
   orgId: Ordering
+  eventDate: Ordering
+  eventTime: Ordering
+  eventDateTime: Ordering
+  metadata: Ordering
+  eventId: Ordering
 }
 
 input EventUpdateInput {
@@ -110,6 +135,11 @@ input EventUpdateInput {
   is_system: Boolean
   clientId: String
   orgId: String
+  eventDate: LocalDate
+  eventTime: LocalTime
+  eventDateTime: LocalDateTime
+  metadata: Json
+  eventId: Uuid
 }
 
 type FloatAgg {
@@ -205,6 +235,65 @@ input ItemUpdateInput {
   purchasePrice: Float
 }
 
+scalar Json
+
+type JsonAgg {
+  count: Int
+}
+
+input JsonFilter {
+  contains: Json
+  containedBy: Json
+  matchKey: Json
+  matchAllKeys: Json
+  matchAnyKey: Json
+}
+
+scalar LocalDate
+
+type LocalDateAgg {
+  count: Int
+}
+
+input LocalDateFilter {
+  eq: LocalDate
+  neq: LocalDate
+  lt: LocalDate
+  lte: LocalDate
+  gt: LocalDate
+  gte: LocalDate
+}
+
+scalar LocalDateTime
+
+type LocalDateTimeAgg {
+  count: Int
+}
+
+input LocalDateTimeFilter {
+  eq: LocalDateTime
+  neq: LocalDateTime
+  lt: LocalDateTime
+  lte: LocalDateTime
+  gt: LocalDateTime
+  gte: LocalDateTime
+}
+
+scalar LocalTime
+
+type LocalTimeAgg {
+  count: Int
+}
+
+input LocalTimeFilter {
+  eq: LocalTime
+  neq: LocalTime
+  lt: LocalTime
+  lte: LocalTime
+  gt: LocalTime
+  gte: LocalTime
+}
+
 enum Ordering {
   ASC
   DESC
@@ -227,6 +316,17 @@ input StringFilter {
   ilike: String
   startsWith: String
   endsWith: String
+}
+
+scalar Uuid
+
+type UuidAgg {
+  count: Int
+}
+
+input UuidFilter {
+  eq: Uuid
+  neq: Uuid
 }
 
 type Query {

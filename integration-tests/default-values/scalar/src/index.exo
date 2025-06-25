@@ -18,6 +18,11 @@ module EventModule {
         is_system: Boolean = true
         clientId: String = ClientContext.id
         orgId: String? = ClientContext.org
+        eventDate: LocalDate = "2024-01-01"
+        eventTime: LocalTime = "14:30:00"
+        eventDateTime: LocalDateTime = "2024-01-01T14:30:00"
+        metadata: Json = "{}"
+        eventId: Uuid = "550e8400-e29b-41d4-a716-446655440000"
     }
 
     @access(self.purchasePrice > 0.0)

@@ -12,8 +12,9 @@ use std::collections::HashMap;
 use crate::database_error::DatabaseError;
 use crate::sql::connect::database_client::DatabaseClient;
 use crate::sql::physical_column_type::{
-    ArrayColumnType, BooleanColumnType, DateColumnType, EnumColumnType, IntBits, IntColumnType,
-    NumericColumnType, PhysicalColumnType, StringColumnType, TimestampColumnType, VectorColumnType,
+    ArrayColumnType, BlobColumnType, BooleanColumnType, DateColumnType, EnumColumnType, IntBits,
+    IntColumnType, JsonColumnType, NumericColumnType, PhysicalColumnType, StringColumnType,
+    TimeColumnType, TimestampColumnType, VectorColumnType,
 };
 use crate::{Database, PhysicalColumn, SchemaObjectName};
 
@@ -118,6 +119,11 @@ pub enum ColumnDefault {
     Function(String),
     Enum(String),
     Autoincrement(ColumnAutoincrement),
+    Date(String),
+    Time(String),
+    DateTime(String),
+    Json(String),
+    UuidLiteral(String),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -131,95 +137,174 @@ impl ColumnDefault {
         matches!(self, ColumnDefault::Autoincrement(_))
     }
 
+    fn handle_string_default(default_value: &str) -> Result<ColumnDefault, DatabaseError> {
+        if default_value.ends_with(TEXT_TYPE_CAST_PREFIX) {
+            let text_value =
+                default_value[1..default_value.len() - TEXT_TYPE_CAST_PREFIX.len()].to_string();
+            Ok(ColumnDefault::Text(text_value))
+        } else if default_value.ends_with(CHARACTER_VARYING_TYPE_CAST_PREFIX) {
+            let var_char_value = default_value
+                [1..default_value.len() - CHARACTER_VARYING_TYPE_CAST_PREFIX.len()]
+                .to_string();
+            Ok(ColumnDefault::VarChar(var_char_value))
+        } else {
+            Err(DatabaseError::Generic(format!(
+                "Invalid default value for string column: {}",
+                default_value
+            )))
+        }
+    }
+
+    fn handle_uuid_default(default_value: &str) -> Result<ColumnDefault, DatabaseError> {
+        if default_value == "gen_random_uuid()" {
+            Ok(ColumnDefault::Uuid(UuidGenerationMethod::GenRandomUuid))
+        } else if default_value == "uuid_generate_v4()" {
+            Ok(ColumnDefault::Uuid(UuidGenerationMethod::UuidGenerateV4))
+        } else {
+            let value = if default_value.starts_with("'") && default_value.ends_with("'::uuid") {
+                &default_value[1..default_value.len() - 7]
+            } else if default_value.starts_with("'") && default_value.ends_with("'") {
+                &default_value[1..default_value.len() - 1]
+            } else {
+                default_value
+            };
+            Ok(ColumnDefault::UuidLiteral(value.to_string()))
+        }
+    }
+
+    fn handle_numeric_default(default_value: &str) -> Result<ColumnDefault, DatabaseError> {
+        match default_value.parse() {
+            Ok(value) => Ok(ColumnDefault::Number(value)),
+            Err(_) => Ok(ColumnDefault::Function(default_value.to_string())),
+        }
+    }
+
+    fn handle_boolean_default(default_value: &str) -> Result<ColumnDefault, DatabaseError> {
+        Ok(ColumnDefault::Boolean(default_value == "true"))
+    }
+
+    fn handle_date_default(default_value: &str) -> Result<ColumnDefault, DatabaseError> {
+        if default_value == "now()" || default_value == "CURRENT_DATE" {
+            Ok(ColumnDefault::CurrentDate)
+        } else {
+            let value = if default_value.starts_with("'") && default_value.ends_with("'::date") {
+                &default_value[1..default_value.len() - 7]
+            } else if default_value.starts_with("'") && default_value.ends_with("'") {
+                &default_value[1..default_value.len() - 1]
+            } else {
+                default_value
+            };
+            Ok(ColumnDefault::Date(value.to_string()))
+        }
+    }
+
+    fn handle_time_default(default_value: &str) -> Result<ColumnDefault, DatabaseError> {
+        let value = if let Some(stripped) = default_value.strip_prefix("'") {
+            if let Some(quote_end) = stripped.find("'") {
+                &stripped[..quote_end]
+            } else {
+                stripped
+            }
+        } else {
+            default_value
+        };
+        Ok(ColumnDefault::Time(value.to_string()))
+    }
+
+    fn handle_timestamp_default(default_value: &str) -> Result<ColumnDefault, DatabaseError> {
+        if default_value == "now()" || default_value == "CURRENT_TIMESTAMP" {
+            Ok(ColumnDefault::CurrentTimestamp)
+        } else {
+            let value = if let Some(stripped) = default_value.strip_prefix("'") {
+                if let Some(quote_end) = stripped.find("'") {
+                    let timestamp_str = &stripped[..quote_end];
+                    timestamp_str.replace(" ", "T")
+                } else {
+                    stripped.to_string()
+                }
+            } else {
+                default_value.to_string()
+            };
+            Ok(ColumnDefault::DateTime(value))
+        }
+    }
+
+    fn handle_json_default(default_value: &str) -> Result<ColumnDefault, DatabaseError> {
+        let value = if default_value.len() >= 8
+            && default_value.starts_with("'")
+            && default_value.ends_with("'::json")
+        {
+            &default_value[1..default_value.len() - 7]
+        } else if default_value.len() >= 2
+            && default_value.starts_with("'")
+            && default_value.ends_with("'")
+        {
+            &default_value[1..default_value.len() - 1]
+        } else {
+            default_value
+        };
+        Ok(ColumnDefault::Json(value.to_string()))
+    }
+
+    fn handle_enum_default(
+        default_value: &str,
+        enum_type: &EnumColumnType,
+    ) -> Result<ColumnDefault, DatabaseError> {
+        let enum_name = &enum_type.enum_name;
+        let enum_name_str = match &enum_name.schema {
+            Some(schema) => format!("{}.{}", schema, enum_name.name),
+            None => enum_name.name.clone(),
+        };
+        let default_value = default_value
+            .strip_prefix("'")
+            .and_then(|s| s.strip_suffix(format!("'::{}", enum_name_str).as_str()))
+            .unwrap_or(default_value);
+
+        Ok(ColumnDefault::Enum(default_value.to_string()))
+    }
+
     /// Converts a value read by the `COLUMNS_DEFAULT_QUERY` to a `ColumnDefault`.
     pub fn from_sql(
         default_value: String,
         db_type: Option<&dyn PhysicalColumnType>,
     ) -> Result<ColumnDefault, DatabaseError> {
         match db_type {
-            Some(physical_type) => {
-                if physical_type.as_any().is::<StringColumnType>() {
-                    // The default value from the database is a string with a type cast to text.
-                    if default_value.ends_with(TEXT_TYPE_CAST_PREFIX) {
-                        let text_value = default_value
-                            [1..default_value.len() - TEXT_TYPE_CAST_PREFIX.len()]
-                            .to_string();
-                        Ok(ColumnDefault::Text(text_value))
-                    } else if default_value.ends_with(CHARACTER_VARYING_TYPE_CAST_PREFIX) {
-                        let var_char_value = default_value
-                            [1..default_value.len() - CHARACTER_VARYING_TYPE_CAST_PREFIX.len()]
-                            .to_string();
-                        Ok(ColumnDefault::VarChar(var_char_value))
-                    } else {
-                        Err(DatabaseError::Generic(format!(
-                            "Invalid default value for string column: {}",
-                            default_value
-                        )))
-                    }
-                } else if physical_type.as_any().is::<TimestampColumnType>() {
-                    if default_value == CURRENT_TIMESTAMP_VALUE || default_value == NOW_VALUE {
-                        Ok(ColumnDefault::CurrentTimestamp)
-                    } else {
-                        Err(DatabaseError::Generic(format!(
-                            "Invalid default value for timestamp column: {}",
-                            default_value
-                        )))
-                    }
-                } else if physical_type.as_any().is::<DateColumnType>() {
-                    if default_value == CURRENT_DATE_VALUE || default_value == NOW_VALUE {
-                        Ok(ColumnDefault::CurrentDate)
-                    } else {
-                        Err(DatabaseError::Generic(format!(
-                            "Invalid default value for date column: {}",
-                            default_value
-                        )))
-                    }
-                } else if physical_type
-                    .as_any()
-                    .is::<crate::sql::physical_column_type::UuidColumnType>()
-                {
-                    if default_value == "gen_random_uuid()" {
-                        Ok(ColumnDefault::Uuid(UuidGenerationMethod::GenRandomUuid))
-                    } else if default_value == "uuid_generate_v4()" {
-                        Ok(ColumnDefault::Uuid(UuidGenerationMethod::UuidGenerateV4))
-                    } else {
-                        Err(DatabaseError::Generic(format!(
-                            "Invalid default value for uuid column: {}",
-                            default_value
-                        )))
-                    }
-                } else if physical_type.as_any().is::<IntColumnType>()
-                    || physical_type
-                        .as_any()
-                        .is::<crate::sql::physical_column_type::FloatColumnType>()
-                    || physical_type.as_any().is::<NumericColumnType>()
-                {
-                    match default_value.parse() {
-                        Ok(value) => Ok(ColumnDefault::Number(value)),
-                        Err(_) => Ok(ColumnDefault::Function(default_value)),
-                    }
-                } else if physical_type.as_any().is::<BooleanColumnType>() {
-                    Ok(ColumnDefault::Boolean(default_value == "true"))
-                } else if let Some(enum_type) =
-                    physical_type.as_any().downcast_ref::<EnumColumnType>()
-                {
-                    let enum_name = &enum_type.enum_name;
-                    // Remove the type cast from the default value
-                    let enum_name_str = match &enum_name.schema {
-                        Some(schema) => format!("{}.{}", schema, enum_name.name),
-                        None => enum_name.name.clone(),
-                    };
-                    let default_value = default_value
-                        .strip_prefix("'")
-                        .and_then(|s| s.strip_suffix(format!("'::{}", enum_name_str).as_str()))
-                        .unwrap_or(&default_value);
-
-                    Ok(ColumnDefault::Enum(default_value.to_string()))
-                } else {
-                    Ok(ColumnDefault::Function(default_value))
-                }
-            }
+            Some(physical_type) => Self::handle_typed_default(&default_value, physical_type),
             None => Ok(ColumnDefault::Function(default_value)),
+        }
+    }
+
+    fn handle_typed_default(
+        default_value: &str,
+        physical_type: &dyn PhysicalColumnType,
+    ) -> Result<ColumnDefault, DatabaseError> {
+        let any_type = physical_type.as_any();
+
+        if any_type.is::<StringColumnType>() {
+            Self::handle_string_default(default_value)
+        } else if any_type.is::<crate::sql::physical_column_type::UuidColumnType>() {
+            Self::handle_uuid_default(default_value)
+        } else if any_type.is::<IntColumnType>()
+            || any_type.is::<crate::sql::physical_column_type::FloatColumnType>()
+            || any_type.is::<NumericColumnType>()
+        {
+            Self::handle_numeric_default(default_value)
+        } else if any_type.is::<BooleanColumnType>() {
+            Self::handle_boolean_default(default_value)
+        } else if any_type.is::<DateColumnType>() {
+            Self::handle_date_default(default_value)
+        } else if any_type.is::<TimeColumnType>() {
+            Self::handle_time_default(default_value)
+        } else if any_type.is::<TimestampColumnType>() {
+            Self::handle_timestamp_default(default_value)
+        } else if any_type.is::<JsonColumnType>() {
+            Self::handle_json_default(default_value)
+        } else if any_type.is::<BlobColumnType>() {
+            Ok(ColumnDefault::Function(default_value.to_string()))
+        } else if let Some(enum_type) = any_type.downcast_ref::<EnumColumnType>() {
+            Self::handle_enum_default(default_value, enum_type)
+        } else {
+            Ok(ColumnDefault::Function(default_value.to_string()))
         }
     }
 
@@ -244,6 +329,11 @@ impl ColumnDefault {
                 }
                 ColumnAutoincrement::Identity { .. } => None,
             },
+            ColumnDefault::Date(value) => Some(format!("'{value}'::date")),
+            ColumnDefault::Time(value) => Some(format!("'{value}'::time")),
+            ColumnDefault::DateTime(value) => Some(format!("'{value}'::timestamp")),
+            ColumnDefault::Json(value) => Some(format!("'{value}'::json")),
+            ColumnDefault::UuidLiteral(value) => Some(format!("'{value}'::uuid")),
         }
     }
 
@@ -274,6 +364,11 @@ impl ColumnDefault {
                     todo!()
                 }
             },
+            ColumnDefault::Date(value) => Some(format!("\"{value}\"")),
+            ColumnDefault::Time(value) => Some(format!("\"{value}\"")),
+            ColumnDefault::DateTime(value) => Some(format!("\"{value}\"")),
+            ColumnDefault::Json(value) => Some(format!("\"{value}\"")),
+            ColumnDefault::UuidLiteral(value) => Some(format!("\"{value}\"")),
         }
     }
 }
@@ -376,9 +471,6 @@ const COLUMNS_DEFAULT_QUERY: &str = r#"
 
 const TEXT_TYPE_CAST_PREFIX: &str = "'::text";
 const CHARACTER_VARYING_TYPE_CAST_PREFIX: &str = "'::character varying";
-const CURRENT_TIMESTAMP_VALUE: &str = "CURRENT_TIMESTAMP";
-const CURRENT_DATE_VALUE: &str = "CURRENT_DATE";
-const NOW_VALUE: &str = "now()";
 
 impl ColumnSpec {
     /// Creates a new column specification from an SQL column.
