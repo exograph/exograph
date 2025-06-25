@@ -85,7 +85,7 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
             };
 
             match *expr {
-                AstExpr::StringLiteral(_, _) => assert_type(&["String"]),
+                AstExpr::StringLiteral(_, _) => assert_type(&["String", "Decimal"]),
                 AstExpr::BooleanLiteral(_, _) => assert_type(&["Boolean"]),
                 AstExpr::NumberLiteral(_, _) => assert_type(&["Int", "Float"]),
                 AstExpr::FieldSelection(_) => {

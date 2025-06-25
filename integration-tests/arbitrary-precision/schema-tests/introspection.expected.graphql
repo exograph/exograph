@@ -29,7 +29,7 @@ type FooAgg {
 }
 
 input FooCreationInput {
-  verylong: Decimal!
+  verylong: Decimal
 }
 
 """

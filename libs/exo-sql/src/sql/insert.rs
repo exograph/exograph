@@ -18,6 +18,7 @@ use super::{
     transaction::{TransactionContext, TransactionStepId},
 };
 
+// TODO: Add a check to ensure that columns and each row of values_seq have the same length.
 /// An insert operation.
 #[derive(Debug)]
 pub struct Insert<'a> {
@@ -39,17 +40,23 @@ impl ExpressionBuilder for Insert<'_> {
         builder.push_str("INSERT INTO ");
         self.table.build(database, builder);
 
-        builder.push_str(" (");
-        builder.without_fully_qualified_column_names(|builder| {
-            builder.push_elems(database, &self.columns, ", ");
-        });
+        if self.columns.is_empty() {
+            // If none of the columns have been provided, we can use DEFAULT VALUES.
+            // This can happen if all fields of a type have a default value and no explicit values are provided.
+            builder.push_str(" DEFAULT VALUES");
+        } else {
+            builder.push_str(" (");
+            builder.without_fully_qualified_column_names(|builder| {
+                builder.push_elems(database, &self.columns, ", ");
+            });
 
-        builder.push_str(") VALUES (");
+            builder.push_str(") VALUES (");
 
-        builder.push_iter(self.values_seq.iter(), "), (", |builder, values| {
-            builder.push_elems(database, values, ", ");
-        });
-        builder.push(')');
+            builder.push_iter(self.values_seq.iter(), "), (", |builder, values| {
+                builder.push_elems(database, values, ", ");
+            });
+            builder.push(')');
+        }
 
         if !self.returning.is_empty() {
             builder.push_str(" RETURNING ");

@@ -13,6 +13,7 @@ module EventModule {
         category: String = "INFO"
         priority: Int = 0
         price: Float = 10.0
+        decimalPrice: Decimal = "10.00"
         message: String
         is_system: Boolean = true
         clientId: String = ClientContext.id

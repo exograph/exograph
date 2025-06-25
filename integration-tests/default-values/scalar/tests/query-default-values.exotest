@@ -5,6 +5,8 @@ operation: |
             timestamp
             category
             priority
+            price
+            decimalPrice
             message
             is_system
             clientId
@@ -36,6 +38,8 @@ response: |
           },
           "category": "INFO",
           "priority": 0,
+          "price": 10.0,
+          "decimalPrice": "10.00",
           "message": "Corrected error, no actions required.",
           "is_system": true,
           "clientId": "test-client1",
