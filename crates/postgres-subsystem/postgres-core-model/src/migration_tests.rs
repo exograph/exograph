@@ -398,10 +398,14 @@ fn assert_sql_eq(
         actual.write(&mut buffer, false).unwrap();
         let actual_sql = String::from_utf8(buffer.into_inner()).unwrap();
 
-        if actual_sql.lines().count() == expected.lines().count()
+        // Remove trailing newlines to normalize the output (for Windows compatibility)
+        let actual_sql = actual_sql.trim();
+        let expected_sql = expected.trim();
+
+        if actual_sql.lines().count() == expected_sql.lines().count()
             && actual_sql
                 .lines()
-                .zip(expected.lines())
+                .zip(expected_sql.lines())
                 .all(|(a, e)| a.trim() == e.trim())
         {
             remove_previous_file();
@@ -443,7 +447,11 @@ fn assert_sql_eq(
     };
 
     let (expected_sql, expected_destructive_indices) = {
-        let expected_sql = expected.split(";\n").map(|s| s.trim()).collect::<Vec<_>>();
+        let expected_sql = expected
+            .trim()
+            .split(";\n")
+            .map(|s| s.trim())
+            .collect::<Vec<_>>();
         let expected_sql_destructive_indices = expected_sql
             .iter()
             .enumerate()
@@ -503,6 +511,9 @@ fn dump_migration_path(folder: &Path, kind: TestKind) -> Result<PathBuf, std::io
 }
 
 fn assert_sql_str_eq(actual: &str, expected: &str, message: &str) -> Result<(), String> {
+    let actual = actual.trim();
+    let expected = expected.trim();
+
     // Line-ending insensitive comparison (for Windows compatibility)
     if actual.lines().count() == expected.lines().count()
         && (actual.lines().zip(expected.lines())).all(|(a, e)| a.trim() == e.trim())
@@ -520,9 +531,7 @@ fn assert_sql_str_eq(actual: &str, expected: &str, message: &str) -> Result<(), 
         if actual_sql.len() != expected_sql.len() {
             return Err(format!(
                 "{}: Actual SQL length {} is different from expected SQL length {}",
-                message,
-                actual_sql.len(),
-                expected_sql.len(),
+                message, actual, expected,
             ));
         }
 
