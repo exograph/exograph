@@ -54,9 +54,7 @@ jobs:
             deps-script: brew install protobuf postgresql@14 pgvector
             target: aarch64-apple-darwin
           - os: windows-2022
-            deps-script: |
-              choco install protoc
-              Start-Process -FilePath $env:GITHUB_WORKSPACE\.github\workflows\install-pgvector.bat -Wait
+            deps-script: choco install protoc
             target: x86_64-pc-windows-msvc
 
     runs-on: ${{ matrix.os }}
@@ -66,6 +64,9 @@ jobs:
         if: ${{ runner.os != 'Windows' }}
         run: |
           bash ${PWD}/.github/workflows/clear-disk-space.sh
+      - name: Setup pgvector (Windows)
+        if: runner.os == 'Windows'
+        uses: ./.github/actions/setup-pgvector-windows
       - name: Install deps
         run: ${{ matrix.deps-script }}
       - name: Setup Node
