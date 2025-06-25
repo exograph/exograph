@@ -17,13 +17,11 @@ runs:
       uses: actions/cache@v4
       with:
         path: |
-          C:\Program Files\PostgreSQL\${{ inputs.pg-version }}\lib\pgvector.dll
+          C:\Program Files\PostgreSQL\${{ inputs.pg-version }}\lib\vector.dll
           C:\Program Files\PostgreSQL\${{ inputs.pg-version }}\share\extension\vector.control
           C:\Program Files\PostgreSQL\${{ inputs.pg-version }}\share\extension\vector--*.sql
         key: pgvector-${{ runner.os }}-v${{ inputs.pgvector-version }}-pg${{ inputs.pg-version }}
     - name: Install pgvector
-      run: |
-        $cacheHit = "${{ steps.cache-pgvector.outputs.cache-hit }}"
-        Write-Output "Cache hit: $cacheHit"
-        Start-Process -FilePath '${{ github.action_path }}\install-pgvector.bat' -ArgumentList "${{ inputs.pg-version }}", "${{ inputs.pgvector-version }}", "$cacheHit" -Wait
+      if: steps.cache-pgvector.outputs.cache-hit != 'true'
+      run: Start-Process -FilePath '${{ github.action_path }}\install-pgvector.bat' -ArgumentList "${{ inputs.pg-version }}", "${{ inputs.pgvector-version }}" -Wait
       shell: powershell
