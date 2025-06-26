@@ -289,9 +289,8 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
                 AstExpr::StringLiteral(string, _) => {
                     let type_name = field.typ.innermost().type_name.as_str();
 
-                    // For Decimal fields, use ColumnDefault::Number to allow proper casting
                     if type_name == primitive_type::DecimalType::NAME {
-                        Some(ColumnDefault::Number(string.clone()))
+                        Some(ColumnDefault::Decimal(string.clone()))
                     } else if type_name == primitive_type::LocalDateType::NAME {
                         Some(ColumnDefault::Date(string.clone()))
                     } else if type_name == primitive_type::LocalTimeType::NAME {
@@ -313,7 +312,19 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
                     }
                 }
                 AstExpr::BooleanLiteral(boolean, _) => Some(ColumnDefault::Boolean(*boolean)),
-                AstExpr::NumberLiteral(val, _) => Some(ColumnDefault::Number(val.clone())),
+                AstExpr::NumberLiteral(val, _) => {
+                    let type_name = field.typ.innermost().type_name.as_str();
+
+                    Some(match type_name {
+                        primitive_type::IntType::NAME => ColumnDefault::Int(val.clone()),
+                        primitive_type::FloatType::NAME => ColumnDefault::Float(val.clone()),
+                        primitive_type::DecimalType::NAME => ColumnDefault::Decimal(val.clone()),
+                        _ => {
+                            // Fallback for unknown numeric types or future extensibility
+                            ColumnDefault::Number(val.clone())
+                        }
+                    })
+                }
                 AstExpr::FieldSelection(selection) => match selection {
                     FieldSelection::Single(element, _) => match element {
                         FieldSelectionElement::Identifier(value, _, _) => {
