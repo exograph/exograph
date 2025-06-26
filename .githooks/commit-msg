@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Commit message validation hook
 # Based on .commitlintrc.json configuration
