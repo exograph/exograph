@@ -6853,6 +6853,7 @@ dependencies = [
  "deno-builder",
  "exo-sql",
  "heck 0.5.0",
+ "indexmap 2.9.0",
  "insta",
  "multiplatform_test",
  "pluralizer",
