@@ -432,9 +432,11 @@ fn create_columns(
                                 if !matches!(field.typ, FieldType::Optional(_)) {
                                     column.is_nullable = false;
                                 }
-                                column
-                                    .unique_constraints
-                                    .extend(unique_constraint_name.clone());
+                                // Use HashSet to avoid duplicates when extending unique constraints
+                                let mut unique_set: HashSet<String> =
+                                    column.unique_constraints.drain(..).collect();
+                                unique_set.extend(unique_constraint_name.clone());
+                                column.unique_constraints = unique_set.into_iter().collect();
                             }
                             None => {
                                 created_columns.insert(
