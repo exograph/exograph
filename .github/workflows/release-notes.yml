@@ -1,0 +1,88 @@
+name: Generate Release Notes
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  update-release-notes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update release with enhanced notes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const release = context.payload.release;
+            
+            // Get the current release
+            const { data: currentRelease } = await github.rest.repos.getRelease({
+              owner,
+              repo,
+              release_id: release.id
+            });
+            
+            // Parse the auto-generated release notes
+            let body = currentRelease.body || '';
+            
+            // Get list of contributors for this release
+            const { data: comparison } = await github.rest.repos.compareCommits({
+              owner,
+              repo,
+              base: release.target_commitish === 'main' ? (currentRelease.tag_name.replace(/^v/, '') === '0.0.1' ? 'HEAD~50' : `${currentRelease.tag_name}~1`) : release.target_commitish,
+              head: currentRelease.tag_name
+            });
+            
+            // Get all contributors
+            const contributorSet = new Set();
+            const firstTimeContributors = new Set();
+            
+            for (const commit of comparison.commits) {
+              if (commit.author && commit.author.login) {
+                const login = commit.author.login;
+                if (!login.includes('[bot]') && login !== 'dependabot') {
+                  contributorSet.add(login);
+                  
+                  // Check if this is a first-time contributor
+                  try {
+                    const { data: allCommits } = await github.rest.repos.listCommits({
+                      owner,
+                      repo,
+                      author: login,
+                      per_page: 2
+                    });
+                    
+                    if (allCommits.length === 1) {
+                      firstTimeContributors.add(login);
+                    }
+                  } catch (e) {
+                    console.log(`Could not check commits for ${login}`);
+                  }
+                }
+              }
+            }
+            
+            // Add first-time contributors section
+            if (firstTimeContributors.size > 0) {
+              const contributorsList = Array.from(firstTimeContributors)
+                .map(login => `@${login}`)
+                .join(', ');
+              
+              body += `\n\n## 🎊 New Contributors\nWelcome to our first-time contributors! Thank you for your contributions! 🙏\n${contributorsList}`;
+            }
+            
+            // Update the release
+            await github.rest.repos.updateRelease({
+              owner,
+              repo,
+              release_id: release.id,
+              body: body
+            });
