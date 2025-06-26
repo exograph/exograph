@@ -190,12 +190,20 @@ impl ColumnDefault {
     }
 
     fn handle_decimal_default(default_value: &str) -> Result<ColumnDefault, DatabaseError> {
+        #[cfg(feature = "bigdecimal")]
         use pg_bigdecimal::BigDecimal;
         use std::str::FromStr;
 
+        #[cfg(feature = "bigdecimal")]
         match BigDecimal::from_str(default_value) {
             Ok(_) => Ok(ColumnDefault::Decimal(default_value.to_string())),
             Err(_) => Ok(ColumnDefault::Function(default_value.to_string())),
+        }
+        #[cfg(not(feature = "bigdecimal"))]
+        {
+            Err(DatabaseError::Generic(format!(
+                "BigDecimal is not supported in this build. Please enable the `bigdecimal` feature."
+            )))
         }
     }
 
