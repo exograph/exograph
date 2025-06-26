@@ -289,7 +289,6 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
                 AstExpr::StringLiteral(string, _) => {
                     let type_name = field.typ.innermost().type_name.as_str();
 
-                    // For Decimal fields, use ColumnDefault::Decimal
                     if type_name == primitive_type::DecimalType::NAME {
                         Some(ColumnDefault::Decimal(string.clone()))
                     } else if type_name == primitive_type::LocalDateType::NAME {
@@ -316,16 +315,15 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
                 AstExpr::NumberLiteral(val, _) => {
                     let type_name = field.typ.innermost().type_name.as_str();
 
-                    if type_name == primitive_type::IntType::NAME {
-                        Some(ColumnDefault::Int(val.clone()))
-                    } else if type_name == primitive_type::FloatType::NAME {
-                        Some(ColumnDefault::Float(val.clone()))
-                    } else if type_name == primitive_type::DecimalType::NAME {
-                        Some(ColumnDefault::Decimal(val.clone()))
-                    } else {
-                        // Fallback for unknown numeric types or future extensibility
-                        Some(ColumnDefault::Number(val.clone()))
-                    }
+                    Some(match type_name {
+                        primitive_type::IntType::NAME => ColumnDefault::Int(val.clone()),
+                        primitive_type::FloatType::NAME => ColumnDefault::Float(val.clone()),
+                        primitive_type::DecimalType::NAME => ColumnDefault::Decimal(val.clone()),
+                        _ => {
+                            // Fallback for unknown numeric types or future extensibility
+                            ColumnDefault::Number(val.clone())
+                        }
+                    })
                 }
                 AstExpr::FieldSelection(selection) => match selection {
                     FieldSelection::Single(element, _) => match element {
