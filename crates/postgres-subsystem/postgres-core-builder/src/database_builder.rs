@@ -323,6 +323,7 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
                     } else if type_name == primitive_type::DecimalType::NAME {
                         Some(ColumnDefault::Decimal(val.clone()))
                     } else {
+                        // Fallback for unknown numeric types or future extensibility
                         Some(ColumnDefault::Number(val.clone()))
                     }
                 }
