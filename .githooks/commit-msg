@@ -1,0 +1,60 @@
+#!/bin/sh
+
+# Commit message validation hook
+# Based on .commitlintrc.json configuration
+
+# Get the commit message
+commit_regex='^(feat|fix|security|release|breaking|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+$'
+merge_regex='^Merge '
+
+# Read the commit message from the file
+commit_message=$(cat "$1")
+
+# Allow merge commits
+if echo "$commit_message" | grep -qE "$merge_regex"; then
+    exit 0
+fi
+
+# Check if the commit message matches the pattern
+if ! echo "$commit_message" | grep -qE "$commit_regex"; then
+    echo "❌ Invalid commit message format!"
+    echo ""
+    echo "Your commit message:"
+    echo "  $commit_message"
+    echo ""
+    echo "Expected format: <type>(<scope>): <subject>"
+    echo "  or: <type>: <subject>"
+    echo ""
+    echo "Valid types are:"
+    echo "  - feat:     A new feature"
+    echo "  - fix:      A bug fix"
+    echo "  - security: Security-related changes"
+    echo "  - release:  Release-related changes"
+    echo "  - breaking: Breaking changes"
+    echo "  - docs:     Documentation only changes"
+    echo "  - style:    Changes that do not affect the meaning of the code"
+    echo "  - refactor: A code change that neither fixes a bug nor adds a feature"
+    echo "  - perf:     A code change that improves performance"
+    echo "  - test:     Adding missing tests or correcting existing tests"
+    echo "  - build:    Changes that affect the build system or external dependencies"
+    echo "  - ci:       Changes to CI configuration files and scripts"
+    echo "  - chore:    Other changes that don't modify src or test files"
+    echo "  - revert:   Reverts a previous commit"
+    echo ""
+    echo "Examples:"
+    echo "  feat: add user authentication"
+    echo "  fix(auth): resolve login timeout issue"
+    echo "  docs: update installation guide"
+    echo ""
+    exit 1
+fi
+
+# Optional: Check commit message length
+first_line=$(echo "$commit_message" | head -n1)
+if [ ${#first_line} -gt 100 ]; then
+    echo "⚠️  Warning: First line of commit message is ${#first_line} characters long."
+    echo "Consider keeping it under 100 characters for better readability."
+    echo ""
+fi
+
+exit 0

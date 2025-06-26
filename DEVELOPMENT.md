@@ -14,6 +14,18 @@ Nice to have:
 
 - cargo-watch (`cargo install cargo-watch`)
 
+# Setting up Git Hooks
+
+To ensure code quality and consistent commit messages, set up the git hooks:
+
+```sh
+./.githooks/setup.sh
+```
+
+This will install:
+- **pre-commit**: Runs `cargo clippy` and `cargo fmt` on staged Rust files
+- **commit-msg**: Validates commit messages according to `.commitlintrc.json`
+
 # Installing the vscode extension
 
 Follow the instructions in [Exograph VSCode Extension repo](https://github.com/exograph/vscode-extension).
