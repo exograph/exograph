@@ -20,34 +20,39 @@ fi
 # Get the current branch name
 current_branch=$(git rev-parse --abbrev-ref HEAD)
 
-# Skip validation if we're on main/master (direct commits to main)
-if [ "$current_branch" = "main" ] || [ "$current_branch" = "master" ]; then
-    echo "ℹ️  Skipping commit message validation for direct commits to $current_branch"
+# Skip validation if we're on main (direct commits to main)
+if [ "$current_branch" = "main" ]; then
+    echo "ℹ️  Skipping commit message validation for direct commits to main"
     exit 0
 fi
 
-# Get the base branch (assume main, fallback to master)
+# Use main as the base branch
 base_branch="main"
-if ! git show-ref --verify --quiet refs/heads/main && git show-ref --verify --quiet refs/heads/master; then
-    base_branch="master"
-fi
 
 # Only validate the first commit in the branch
 if git merge-base "$base_branch" HEAD >/dev/null 2>&1; then
     merge_base=$(git merge-base "$base_branch" HEAD)
     
-    # Check if HEAD~1 exists and is not the merge base
+    # Check if HEAD~1 exists
     if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
         head_parent=$(git rev-parse HEAD~1)
+        
+        # If HEAD~1 is not the merge base, this is not the first commit
         if [ "$head_parent" != "$merge_base" ]; then
             echo "ℹ️  Skipping commit message validation - not the first commit in branch"
             exit 0
         fi
+        
+        echo "🔍 Validating first commit message on branch $current_branch..."
+    else
+        # HEAD~1 doesn't exist, this could be:
+        # 1. The very first commit in the repository
+        # 2. A single commit branch created from base branch
+        echo "🔍 Validating commit message (single commit)..."
     fi
-    
-    echo "🔍 Validating first commit message on branch $current_branch..."
 else
-    echo "🔍 Validating commit message..."
+    # No merge base found - this might be an orphan branch or first commit in repo
+    echo "🔍 Validating commit message (no merge base found)..."
 fi
 
 # Check if the commit message matches the pattern
@@ -89,6 +94,15 @@ first_line=$(echo "$commit_message" | head -n1)
 if [ ${#first_line} -gt 100 ]; then
     echo "⚠️  Warning: First line of commit message is ${#first_line} characters long."
     echo "Consider keeping it under 100 characters for better readability."
+    echo ""
+    echo "Tips for shortening your commit message:"
+    echo "  - Focus on the 'what' and 'why', not the 'how'"
+    echo "  - Use present tense: 'add feature' not 'added feature'"
+    echo "  - Remove unnecessary words like 'this', 'that', 'some'"
+    echo "  - Put detailed explanations in the commit body (after a blank line)"
+    echo ""
+    echo "Example of a good short message:"
+    echo "  fix(auth): resolve login timeout issue"
     echo ""
 fi
 
