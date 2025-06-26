@@ -1,0 +1,45 @@
+# Label configuration for PR labeler
+# This helps categorize PRs for release notes
+# Based on .commitlintrc.json types
+
+feat:
+  - title: '^feat(\(.+\))?:'
+
+fix:
+  - title: '^fix(\(.+\))?:'
+
+security:
+  - title: '^security(\(.+\))?:'
+
+release:
+  - title: '^release(\(.+\))?:'
+
+breaking:
+  - title: '^breaking(\(.+\))?:'
+
+docs:
+  - title: '^docs(\(.+\))?:'
+
+style:
+  - title: '^style(\(.+\))?:'
+
+refactor:
+  - title: '^refactor(\(.+\))?:'
+
+perf:
+  - title: '^perf(\(.+\))?:'
+
+test:
+  - title: '^test(\(.+\))?:'
+
+build:
+  - title: '^build(\(.+\))?:'
+
+ci:
+  - title: '^ci(\(.+\))?:'
+
+chore:
+  - title: '^chore(\(.+\))?:'
+
+revert:
+  - title: '^revert(\(.+\))?:'

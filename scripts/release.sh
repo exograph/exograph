@@ -60,7 +60,7 @@ sed -i '' "s/^version = .*/version = \"$NEW_VERSION\"/" Cargo.toml
 
 cargo build
 
-git commit -am "Bump version to $NEW_VERSION"
+git commit -am "release: bump version to $NEW_VERSION"
 
 git tag $NEW_TAG
 git push --atomic origin "$NEW_BRANCH" $NEW_TAG
