@@ -59,11 +59,18 @@ impl ModelProcessor<DatabaseSpec, ()> for TableSpec {
 
         // First write the primary key fields
         write_scalar_fields(writer, self, context, &mut processed_fields, &is_pk)?;
-        write_foreign_key_reference(writer, context, parent, self, &is_pk)?;
+        write_foreign_key_reference(writer, context, parent, self, &mut processed_fields, &is_pk)?;
 
         // Then write the non-primary key fields
         write_scalar_fields(writer, self, context, &mut processed_fields, &is_not_pk)?;
-        write_foreign_key_reference(writer, context, parent, self, &is_not_pk)?;
+        write_foreign_key_reference(
+            writer,
+            context,
+            parent,
+            self,
+            &mut processed_fields,
+            &is_not_pk,
+        )?;
 
         // Finally write the references
         write_references(writer, context, &mut processed_fields, &self.name)?;

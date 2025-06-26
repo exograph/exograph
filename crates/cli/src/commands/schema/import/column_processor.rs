@@ -182,6 +182,7 @@ pub fn write_foreign_key_reference(
     context: &ImportContext,
     database_spec: &DatabaseSpec,
     table_spec: &TableSpec,
+    processed_fields: &mut HashSet<String>,
     filter: &dyn Fn(&ColumnSpec) -> bool,
 ) -> Result<()> {
     for (_, references) in table_spec.foreign_key_references() {
@@ -190,6 +191,10 @@ pub fn write_foreign_key_reference(
         }
 
         if !filter(references[0].0) {
+            continue;
+        }
+
+        if !processed_fields.insert(references[0].0.name.clone()) {
             continue;
         }
 
