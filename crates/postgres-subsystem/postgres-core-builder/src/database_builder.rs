@@ -9,6 +9,8 @@
 
 use std::collections::HashSet;
 
+use indexmap::IndexMap;
+
 use crate::naming::ToPlural;
 use crate::type_provider::PRIMITIVE_TYPE_PROVIDER_REGISTRY;
 use crate::{
@@ -120,25 +122,19 @@ fn expand_database_info(
     let table_id = building.database.insert_table(table);
 
     {
-        let mut created_columns = HashSet::new();
-        let columns: Vec<PhysicalColumn> = resolved_type
-            .fields
-            .iter()
-            .map(|field| {
-                create_columns(
-                    field,
-                    table_id,
-                    resolved_type,
-                    resolved_env,
-                    &mut created_columns,
-                )
-            })
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .flatten()
-            .collect();
+        let mut created_columns: IndexMap<String, PhysicalColumn> = IndexMap::new(); // column name -> column
 
-        building.database.get_table_mut(table_id).columns = columns;
+        for field in resolved_type.fields.iter() {
+            create_columns(
+                field,
+                table_id,
+                resolved_type,
+                resolved_env,
+                &mut created_columns,
+            )?;
+        }
+
+        building.database.get_table_mut(table_id).columns = created_columns.into_values().collect();
     }
 
     {
@@ -252,14 +248,6 @@ fn expand_type_relations(
                             group_name: field.name.to_string(),
                         };
 
-                        // We may have skipped creating a column if there was a field ahead that referred to the same column
-                        // In that case, we need to set the property on the column that we already created
-                        self_column.is_pk |= field.is_pk;
-                        self_column.update_sync |= field.update_sync;
-                        if !matches!(field.typ, FieldType::Optional(_)) {
-                            self_column.is_nullable = false;
-                        }
-
                         match self_column.column_references {
                             Some(ref mut column_references) => {
                                 column_references.push(column_reference);
@@ -370,11 +358,11 @@ fn create_columns(
     table_id: TableId,
     resolved_type: &ResolvedCompositeType,
     env: &ResolvedTypeEnv,
-    created_columns: &mut HashSet<String>,
-) -> Result<Vec<PhysicalColumn>, ModelBuildingError> {
+    created_columns: &mut IndexMap<String, PhysicalColumn>,
+) -> Result<(), ModelBuildingError> {
     // If the field doesn't have a column in the same table (for example, the `concerts` field in the `Venue` type), skip it
     if !field.self_column {
-        return Ok(vec![]);
+        return Ok(());
     }
 
     let unique_constraint_name: Vec<String> = field
@@ -400,76 +388,110 @@ fn create_columns(
             let field_type = env.get_by_key(type_name).unwrap();
 
             match field_type {
-                ResolvedType::Primitive(pt) => Ok(field
-                    .column_names
-                    .iter()
-                    .flat_map(|column_name| {
-                        if created_columns.insert(column_name.to_string()) {
-                            Some(PhysicalColumn {
-                                table_id,
-                                name: column_name.to_string(),
-                                typ: determine_column_type(pt, field),
-                                is_pk: field.is_pk,
-                                is_nullable: optional,
-                                unique_constraints: unique_constraint_name.clone(),
-                                default_value: default_value.clone(),
-                                update_sync,
-                                column_references: None,
-                            })
-                        } else {
-                            None
+                ResolvedType::Primitive(pt) => {
+                    for column_name in field.column_names.iter() {
+                        match created_columns.get_mut(column_name) {
+                            Some(_) => {
+                                return Err(ModelBuildingError::Generic(format!(
+                                    "Column `{}` for field '{}' already exists in type '{}'",
+                                    column_name, field.name, resolved_type.name
+                                )));
+                            }
+                            None => {
+                                created_columns.insert(
+                                    column_name.to_string(),
+                                    PhysicalColumn {
+                                        table_id,
+                                        name: column_name.to_string(),
+                                        typ: determine_column_type(pt, field),
+                                        is_pk: field.is_pk,
+                                        is_nullable: optional,
+                                        unique_constraints: unique_constraint_name.clone(),
+                                        default_value: default_value.clone(),
+                                        update_sync,
+                                        column_references: None,
+                                    },
+                                );
+                            }
                         }
-                    })
-                    .collect()),
+                    }
+                }
                 ResolvedType::Composite(composite) => {
                     // Many-to-one:
                     // Column from the current table (but of the type of the pk column of the other table)
                     // and it refers to the pk column in the other table.
 
-                    Ok(field
-                        .column_names
-                        .iter()
-                        .flat_map(|column_name| {
-                            if created_columns.insert(column_name.to_string()) {
-                                Some(PhysicalColumn {
-                                    table_id,
-                                    name: column_name.to_string(),
-                                    typ: if composite.representation == EntityRepresentation::Json {
-                                        Box::new(JsonColumnType)
-                                    } else {
-                                        // A placeholder value. Will be resolved in the next phase (see expand_type_relations)
-                                        Box::new(BooleanColumnType)
-                                    },
-                                    is_pk: field.is_pk,
-                                    is_nullable: optional,
-                                    unique_constraints: unique_constraint_name.clone(),
-                                    default_value: default_value.clone(),
-                                    update_sync,
-                                    column_references: None,
-                                })
-                            } else {
-                                None
+                    for column_name in field.column_names.iter() {
+                        match created_columns.get_mut(column_name) {
+                            Some(column) => {
+                                // If we already have a column, this must be from a field that refers to the same column
+                                // We need to set the properties on the existing column to match the current field
+                                // See shared-fk tests for an example
+                                column.is_pk |= field.is_pk;
+                                column.update_sync |= field.update_sync;
+                                if !matches!(field.typ, FieldType::Optional(_)) {
+                                    column.is_nullable = false;
+                                }
+                                column
+                                    .unique_constraints
+                                    .extend(unique_constraint_name.clone());
                             }
-                        })
-                        .collect())
+                            None => {
+                                created_columns.insert(
+                                    column_name.to_string(),
+                                    PhysicalColumn {
+                                        table_id,
+                                        name: column_name.to_string(),
+                                        typ: if composite.representation
+                                            == EntityRepresentation::Json
+                                        {
+                                            Box::new(JsonColumnType)
+                                        } else {
+                                            // A placeholder value. Will be resolved in the next phase (see expand_type_relations)
+                                            Box::new(BooleanColumnType)
+                                        },
+                                        is_pk: field.is_pk,
+                                        is_nullable: optional,
+                                        unique_constraints: unique_constraint_name.clone(),
+                                        default_value: default_value.clone(),
+                                        update_sync,
+                                        column_references: None,
+                                    },
+                                );
+                            }
+                        }
+                    }
                 }
-                ResolvedType::Enum(enum_type) => Ok(field
-                    .column_names
-                    .iter()
-                    .map(|name| PhysicalColumn {
-                        table_id,
-                        name: name.to_string(),
-                        typ: Box::new(EnumColumnType {
-                            enum_name: enum_type.enum_name.clone(),
-                        }),
-                        is_pk: field.is_pk,
-                        is_nullable: optional,
-                        unique_constraints: unique_constraint_name.clone(),
-                        default_value: default_value.clone(),
-                        update_sync,
-                        column_references: None,
-                    })
-                    .collect()),
+                ResolvedType::Enum(enum_type) => {
+                    for column_name in field.column_names.iter() {
+                        match created_columns.get_mut(column_name) {
+                            Some(_) => {
+                                return Err(ModelBuildingError::Generic(format!(
+                                    "Column `{}` for field '{}' already exists in type '{}'",
+                                    column_name, field.name, resolved_type.name
+                                )));
+                            }
+                            None => {
+                                created_columns.insert(
+                                    column_name.to_string(),
+                                    PhysicalColumn {
+                                        table_id,
+                                        name: column_name.to_string(),
+                                        typ: Box::new(EnumColumnType {
+                                            enum_name: enum_type.enum_name.clone(),
+                                        }),
+                                        is_pk: field.is_pk,
+                                        is_nullable: optional,
+                                        unique_constraints: unique_constraint_name.clone(),
+                                        default_value: default_value.clone(),
+                                        update_sync,
+                                        column_references: None,
+                                    },
+                                );
+                            }
+                        }
+                    }
+                }
             }
         }
         FieldType::List(typ) => {
@@ -505,30 +527,42 @@ fn create_columns(
                     pt = PrimitiveType::Array(Box::new(pt))
                 }
 
-                Ok(field
-                    .column_names
-                    .iter()
-                    .map(|name| PhysicalColumn {
-                        table_id,
-                        name: name.to_string(),
-                        typ: determine_column_type(&pt, field),
-                        is_pk: false,
-                        is_nullable: optional,
-                        unique_constraints: unique_constraint_name.clone(),
-                        default_value: default_value.clone(),
-                        update_sync,
-                        column_references: None,
-                    })
-                    .collect())
-            } else {
-                // this is a OneToMany relation, so the other side has the associated column
-                Ok(vec![])
+                for column_name in field.column_names.iter() {
+                    match created_columns.get_mut(column_name) {
+                        Some(_) => {
+                            return Err(ModelBuildingError::Generic(format!(
+                                "Column `{}` for field '{}' already exists in type '{}'",
+                                column_name, field.name, resolved_type.name
+                            )));
+                        }
+                        None => {
+                            created_columns.insert(
+                                column_name.to_string(),
+                                PhysicalColumn {
+                                    table_id,
+                                    name: column_name.to_string(),
+                                    typ: determine_column_type(&pt, field),
+                                    is_pk: false,
+                                    is_nullable: optional,
+                                    unique_constraints: unique_constraint_name.clone(),
+                                    default_value: default_value.clone(),
+                                    update_sync,
+                                    column_references: None,
+                                },
+                            );
+                        }
+                    }
+                }
             }
         }
-        FieldType::Optional(_) => Err(ModelBuildingError::Generic(
-            "Optional in an Optional? is not supported".to_string(),
-        )),
+        FieldType::Optional(_) => {
+            return Err(ModelBuildingError::Generic(
+                "Optional in an Optional? is not supported".to_string(),
+            ));
+        }
     }
+
+    Ok(())
 }
 
 fn compute_many_to_one_relation(

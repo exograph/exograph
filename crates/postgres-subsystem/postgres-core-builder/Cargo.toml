@@ -11,6 +11,7 @@ serde_json.workspace = true
 codemap-diagnostic.workspace = true
 codemap.workspace = true
 pluralizer.workspace = true
+indexmap.workspace = true
 
 core-model = { path = "../../core-subsystem/core-model" }
 core-model-builder = { path = "../../core-subsystem/core-model-builder" }
