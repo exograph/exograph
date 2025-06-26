@@ -1,0 +1,111 @@
+#!/bin/bash
+
+# Commit message validation hook
+# Based on .commitlintrc.json configuration
+# Only validates the first commit in a branch
+
+# Get the commit message
+commit_regex='^(feat|fix|security|release|breaking|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+$'
+merge_regex='^Merge '
+
+# Read the commit message from the file
+commit_message=$(cat "$1")
+
+# Allow merge commits
+if echo "$commit_message" | grep -qE "$merge_regex"; then
+    exit 0
+fi
+
+# Check if this is the first commit in the branch
+# Get the current branch name
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+# Skip validation if we're on main (direct commits to main)
+if [ "$current_branch" = "main" ]; then
+    echo "ℹ️  Skipping commit message validation for direct commits to main"
+    exit 0
+fi
+
+# Use main as the base branch
+base_branch="main"
+
+# Only validate the first commit in the branch
+if git merge-base "$base_branch" HEAD >/dev/null 2>&1; then
+    merge_base=$(git merge-base "$base_branch" HEAD)
+    
+    # Check if HEAD~1 exists
+    if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+        head_parent=$(git rev-parse HEAD~1)
+        
+        # If HEAD~1 is not the merge base, this is not the first commit
+        if [ "$head_parent" != "$merge_base" ]; then
+            echo "ℹ️  Skipping commit message validation - not the first commit in branch"
+            exit 0
+        fi
+        
+        echo "🔍 Validating first commit message on branch $current_branch..."
+    else
+        # HEAD~1 doesn't exist, this could be:
+        # 1. The very first commit in the repository
+        # 2. A single commit branch created from base branch
+        echo "🔍 Validating commit message (single commit)..."
+    fi
+else
+    # No merge base found - this might be an orphan branch or first commit in repo
+    echo "🔍 Validating commit message (no merge base found)..."
+fi
+
+# Check if the commit message matches the pattern
+if ! echo "$commit_message" | grep -qE "$commit_regex"; then
+    echo "❌ Invalid commit message format!"
+    echo ""
+    echo "Your commit message:"
+    echo "  $commit_message"
+    echo ""
+    echo "Expected format: <type>(<scope>): <subject>"
+    echo "  or: <type>: <subject>"
+    echo ""
+    echo "Valid types are:"
+    echo "  - feat:     A new feature"
+    echo "  - fix:      A bug fix"
+    echo "  - security: Security-related changes"
+    echo "  - release:  Release-related changes"
+    echo "  - breaking: Breaking changes"
+    echo "  - docs:     Documentation only changes"
+    echo "  - style:    Changes that do not affect the meaning of the code"
+    echo "  - refactor: A code change that neither fixes a bug nor adds a feature"
+    echo "  - perf:     A code change that improves performance"
+    echo "  - test:     Adding missing tests or correcting existing tests"
+    echo "  - build:    Changes that affect the build system or external dependencies"
+    echo "  - ci:       Changes to CI configuration files and scripts"
+    echo "  - chore:    Other changes that don't modify src or test files"
+    echo "  - revert:   Reverts a previous commit"
+    echo ""
+    echo "Examples:"
+    echo "  feat: add user authentication"
+    echo "  fix(auth): resolve login timeout issue"
+    echo "  docs: update installation guide"
+    echo ""
+    exit 1
+fi
+
+# Optional: Check commit message length
+first_line=$(echo "$commit_message" | head -n1)
+if [ ${#first_line} -gt 100 ]; then
+    echo "⚠️  Warning: First line of commit message is ${#first_line} characters long."
+    echo "Consider keeping it under 100 characters for better readability."
+    echo ""
+    echo "Tips for shortening your commit message:"
+    echo "  - Focus on the 'what' and 'why', not the 'how'"
+    echo "  - Use present tense: 'add feature' not 'added feature'"
+    echo "  - Remove unnecessary words like 'this', 'that', 'some'"
+    echo "  - Put detailed explanations in the commit body (after a blank line)"
+    echo ""
+    echo "Example of a good short message:"
+    echo "  fix(auth): resolve login timeout issue"
+    echo ""
+fi
+
+echo "✅ Commit message validation passed"
+
+exit 0
