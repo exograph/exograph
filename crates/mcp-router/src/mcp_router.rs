@@ -5,7 +5,10 @@ use async_trait::async_trait;
 use async_stream::try_stream;
 use bytes::Bytes;
 
-use crate::{tool::Tool, tools_creator::create_tools};
+use crate::{
+    error::McpRouterError, protocol_version::ProtocolVersion, tool::Tool,
+    tools_creator::create_tools,
+};
 
 use common::{
     context::RequestContext,
@@ -33,8 +36,7 @@ const ERROR_METHOD_NOT_FOUND_MESSAGE: &str = "Method not found";
 /// MCP router
 ///
 /// Partially supports the new [Streamable HTTP](https://spec.modelcontextprotocol.io/specification/2025-03-26/basic/transports/#streamable-http)
-/// protocol. Once this specification is finalized and the [official SDK](https://github.com/modelcontextprotocol/rust-sdk) supports it, we will
-/// use types from that crate.
+/// protocol.
 ///
 /// The implementation forwards requests to the GraphQL resolver.
 pub struct McpRouter {
@@ -65,13 +67,37 @@ impl McpRouter {
 
     async fn handle_initialize(
         &self,
-        _request: JsonRpcRequest,
+        request: JsonRpcRequest,
         _request_context: &RequestContext<'_>,
     ) -> Result<Option<SubsystemRpcResponse>, SubsystemRpcError> {
+        let client_protocol_version: Result<ProtocolVersion, McpRouterError> = request
+            .params
+            .as_ref()
+            .and_then(|params| {
+                params
+                    .get("protocolVersion")
+                    .and_then(|v| v.as_str())
+                    .map(|s| ProtocolVersion::try_from(s))
+            })
+            .unwrap_or(Ok(ProtocolVersion::V2024_11_05));
+
+        // The [spec](https://modelcontextprotocol.io/specification/2025-03-26/basic/lifecycle#version-negotiation)
+        // requires that if we support the client's version, we return that to be the server's version.
+        //
+        // We support every version listed in `ProtocolVersion`, so return the client's version
+        // if it is valid.
+        let server_protocol_version = match client_protocol_version {
+            Ok(version) => version,
+            Err(e) => {
+                tracing::error!("Error parsing client protocol version: {:?}", e);
+                return Err(SubsystemRpcError::InvalidRequest);
+            }
+        };
+
         let response = SubsystemRpcResponse {
             response: QueryResponse {
                 body: QueryResponseBody::Json(json!({
-                    "protocolVersion": "2024-11-05",
+                    "protocolVersion": server_protocol_version.to_string(),
                     "capabilities": {
                         "tools": {
                         }

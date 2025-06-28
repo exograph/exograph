@@ -13,6 +13,7 @@ bytes.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 async-graphql-parser.workspace = true
+thiserror.workspace = true
 
 common = { path = "../common" }
 exo-env = { path = "../../libs/exo-env" }
