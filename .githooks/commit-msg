@@ -2,7 +2,6 @@
 
 # Commit message validation hook using commitlint
 # Based on .commitlintrc.json configuration
-# Only validates the first commit in a branch
 
 # Read the commit message from the file
 commit_message=$(cat "$1")
@@ -12,44 +11,7 @@ if echo "$commit_message" | grep -qE '^Merge '; then
     exit 0
 fi
 
-# Check if this is the first commit in the branch
-# Get the current branch name
-current_branch=$(git rev-parse --abbrev-ref HEAD)
-
-# Skip validation if we're on main (direct commits to main)
-if [ "$current_branch" = "main" ]; then
-    echo "ℹ️  Skipping commit message validation for direct commits to main"
-    exit 0
-fi
-
-# Use main as the base branch
-base_branch="main"
-
-# Only validate the first commit in the branch
-if git merge-base "$base_branch" HEAD >/dev/null 2>&1; then
-    merge_base=$(git merge-base "$base_branch" HEAD)
-    
-    # Check if HEAD~1 exists
-    if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
-        head_parent=$(git rev-parse HEAD~1)
-        
-        # If HEAD~1 is not the merge base, this is not the first commit
-        if [ "$head_parent" != "$merge_base" ]; then
-            echo "ℹ️  Skipping commit message validation - not the first commit in branch"
-            exit 0
-        fi
-        
-        echo "🔍 Validating first commit message on branch $current_branch..."
-    else
-        # HEAD~1 doesn't exist, this could be:
-        # 1. The very first commit in the repository
-        # 2. A single commit branch created from base branch
-        echo "🔍 Validating commit message (single commit)..."
-    fi
-else
-    # No merge base found - this might be an orphan branch or first commit in repo
-    echo "🔍 Validating commit message (no merge base found)..."
-fi
+echo "🔍 Validating commit message..."
 
 # Check if commitlint is available
 if ! command -v npx &> /dev/null; then
@@ -69,7 +31,7 @@ fi
 if ! echo "$commit_message" | npx --no-install commitlint --verbose; then
     echo ""
     echo "💡 Use format: <type>: <subject> or <type>(<scope>): <subject>"
-    echo "Examples: feat: add auth, fix(db): resolve timeout"
+    echo "Examples: feat: add auth, fix(builder): resolve timeout"
     exit 1
 fi
 
