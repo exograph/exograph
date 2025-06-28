@@ -79,7 +79,7 @@ impl McpRouter {
                     .and_then(|v| v.as_str())
                     .map(|s| ProtocolVersion::try_from(s))
             })
-            .unwrap_or(Ok(ProtocolVersion::V2024_11_05));
+            .unwrap_or(Ok(ProtocolVersion::V2025_06_18));
 
         // The [spec](https://modelcontextprotocol.io/specification/2025-03-26/basic/lifecycle#version-negotiation)
         // requires that if we support the client's version, we return that to be the server's version.
@@ -90,7 +90,7 @@ impl McpRouter {
             Ok(version) => version,
             Err(e) => {
                 tracing::error!("Error parsing client protocol version: {:?}", e);
-                return Err(SubsystemRpcError::InvalidRequest);
+                return Err(SubsystemRpcError::Other(Box::new(e)));
             }
         };
 
