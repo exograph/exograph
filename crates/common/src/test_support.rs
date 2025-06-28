@@ -39,7 +39,7 @@ where
         .filter(|entry| entry.file_type().unwrap().is_dir())
         .filter(|entry| wildcard.matches(entry.file_name().to_str().unwrap()));
 
-    let mut failed = false;
+    let mut failed_tests = vec![];
 
     for test_config in test_configs {
         let test_config_name = test_config.file_name();
@@ -48,14 +48,15 @@ where
         if let Err(e) = test_fn(test_config_name.to_string(), test_path).await {
             println!("{}: {}", test_config_name, "failed".red());
             println!("{}", e);
-            failed = true;
+            failed_tests.push(test_config_name.to_string());
         }
     }
 
-    if failed {
+    if !failed_tests.is_empty() {
         panic!(
-            "{} (filter: '{filter_env_var}' set to '{filter}')",
-            "Some tests failed".red()
+            "{} (filter: '{filter_env_var}' set to '{filter}'):\n\t{}",
+            "The following tests failed".red(),
+            failed_tests.join("\n\t")
         );
     } else {
         Ok(())
@@ -87,7 +88,12 @@ pub fn read_relative_file(test_path: &PathBuf, path: &str) -> Result<String, std
     std::fs::read_to_string(test_path.join(path))
 }
 
-pub fn assert_file_content(test_path: &PathBuf, path: &str, actual_content: &str, test_name: &str) {
+pub fn assert_file_content(
+    test_path: &PathBuf,
+    path: &str,
+    actual_content: &str,
+    test_name: &str,
+) -> Result<(), String> {
     let expected_content = read_relative_file(test_path, path).unwrap();
     let expected_content = expected_content.trim();
 
@@ -107,12 +113,14 @@ pub fn assert_file_content(test_path: &PathBuf, path: &str, actual_content: &str
 
     if !compare_strings_ignoring_whitespace(actual_content, &expected_content) {
         std::fs::write(actual_file, actual_content).unwrap();
-        panic!("{}: {}", "File content mismatch".red(), test_name);
+        return Err(format!("{}: {}", "File content mismatch".red(), test_name));
     } else {
         if actual_file.exists() {
             std::fs::remove_file(actual_file).unwrap();
         }
     }
+
+    Ok(())
 }
 
 fn compare_strings_ignoring_whitespace(a: &str, b: &str) -> bool {

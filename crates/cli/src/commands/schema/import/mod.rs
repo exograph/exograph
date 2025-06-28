@@ -175,7 +175,7 @@ mod tests {
                 .unwrap();
 
             let output = String::from_utf8(writer.into_inner().unwrap()).unwrap();
-            assert_file_content(&test_path, "index.expected.exo", &output, &test_name);
+            assert_file_content(&test_path, "index.expected.exo", &output, &test_name)?;
 
             let expected_model_file = test_path.join("index.expected.exo");
 
@@ -199,7 +199,9 @@ mod tests {
                 None => Database::default(),
             };
 
-            Migration::verify(&client, &database, &MigrationScope::all_schemas()).await
+            Migration::verify(&client, &database, &MigrationScope::all_schemas())
+                .await
+                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
         })
         .await?;
 
