@@ -1,0 +1,8 @@
+error[C000]: Field 'invalid' specified in column mapping does not exist in type 'Member'
+  --> src/index.exo:15:5
+   |
+15 |     @column(mapping={invalid: "membership_member_id", memberTenantId: "membership_tenant_id"}) member: Member?
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Error: Parser error: Could not process input exo files
+

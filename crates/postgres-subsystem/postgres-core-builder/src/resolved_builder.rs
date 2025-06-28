@@ -13,7 +13,7 @@
 //! column name, here that information is encoded into an attribute of `ResolvedType`.
 //! If no @column is provided, the encoded information is set to an appropriate default value.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use postgres_core_model::types::EntityRepresentation;
@@ -654,17 +654,77 @@ fn compute_column_info(
 
     let user_supplied_column_mapping = column_annotation_mapping(field);
 
+    // Validate column mapping once to avoid duplicate errors
+    if let Some(ColumnMapping::Map(mapping)) = &user_supplied_column_mapping {
+        let field_base_type = match &field.typ {
+            AstFieldType::Optional(inner_typ) => inner_typ.as_ref(),
+            _ => &field.typ,
+        };
+        let field_type = field_base_type.to_typ(types).deref(types);
+
+        if let Type::Composite(ct) = field_type {
+            // Pre-compute field names for efficient lookups and simplify the code
+            let type_field_names: HashSet<&String> = ct.fields.iter().map(|f| &f.name).collect();
+
+            // Collect all primary key field names from the target type
+            let pk_field_names: Vec<&String> = ct
+                .fields
+                .iter()
+                .filter(|f| f.annotations.contains("pk"))
+                .map(|f| &f.name)
+                .collect();
+
+            // Check if all mapping keys correspond to actual fields in the target type
+            for (mapping_key, _) in mapping.iter() {
+                if !type_field_names.contains(mapping_key) {
+                    return Err(Diagnostic {
+                        level: Level::Error,
+                        message: format!(
+                            "Field '{}' specified in column mapping does not exist in type '{}'",
+                            mapping_key, ct.name
+                        ),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: field.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    });
+                }
+            }
+
+            // Check if all primary key fields are included in the mapping
+            for pk_field_name in &pk_field_names {
+                if !mapping.contains_key(*pk_field_name) {
+                    return Err(Diagnostic {
+                        level: Level::Error,
+                        message: format!(
+                            "Primary key field '{}' from type '{}' is missing in the column mapping",
+                            pk_field_name, ct.name
+                        ),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: field.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    });
+                }
+            }
+        }
+    }
+
     let compute_column_name = |field_name: &str| match &user_supplied_column_mapping {
         Some(ColumnMapping::Single(name)) => name.clone(),
         _ => field_name.to_snake_case(),
     };
 
-    let id_column_names = |field: &AstField<Typed>| {
+    let id_column_names = |field: &AstField<Typed>| -> Result<Vec<String>, Diagnostic> {
         let user_supplied_column_mapping = column_annotation_mapping(field);
 
         // Handle simple column name for non-composite types
         if let Some(ColumnMapping::Single(name)) = user_supplied_column_mapping {
-            return vec![name];
+            return Ok(vec![name]);
         }
 
         let field_base_type = match &field.typ {
@@ -676,7 +736,10 @@ fn compute_column_info(
         let base_name = field.name.to_snake_case();
 
         if let Type::Composite(ct) = field_type {
-            ct.fields
+            // Validation is already done upfront, no need to repeat it here
+
+            Ok(ct
+                .fields
                 .iter()
                 .filter_map(|f| {
                     if f.annotations.contains("pk") {
@@ -694,9 +757,9 @@ fn compute_column_info(
                         None
                     }
                 })
-                .collect::<Vec<_>>()
+                .collect::<Vec<_>>())
         } else {
-            vec![]
+            Ok(vec![])
         }
     };
 
@@ -801,7 +864,7 @@ fn compute_column_info(
                                                 })
                                     } else {
                                         Ok(ColumnInfo {
-                                            names: id_column_names(matching_field?),
+                                            names: id_column_names(matching_field?)?,
                                             self_column: false,
                                             unique_constraints,
                                             indices,
@@ -810,7 +873,7 @@ fn compute_column_info(
                                     }
                                 }
                                 Cardinality::Unbounded => Ok(ColumnInfo {
-                                    names: id_column_names(field),
+                                    names: id_column_names(field)?,
                                     self_column: true,
                                     unique_constraints,
                                     indices,
@@ -833,7 +896,7 @@ fn compute_column_info(
                                 };
 
                             Ok(ColumnInfo {
-                                names: id_column_names(field),
+                                names: id_column_names(field)?,
                                 self_column: true,
                                 unique_constraints,
                                 indices,
@@ -887,7 +950,7 @@ fn compute_column_info(
                             });
                         } else {
                             Ok(ColumnInfo {
-                                names: id_column_names(matching_field),
+                                names: id_column_names(matching_field)?,
                                 self_column: false,
                                 unique_constraints,
                                 indices,
@@ -1662,6 +1725,70 @@ mod tests {
         }
         "#,
             "Many-to-many relationships (both side optional) without a linking type should be rejected"
+        );
+    }
+
+    #[multiplatform_test]
+    fn column_mapping_validation() {
+        // Test invalid field in mapping
+        assert_resolved_err!(
+            r#"
+        @postgres
+        module Database {
+            type Member {
+                @pk memberId: String
+                @pk memberTenantId: String
+                memberName: String?
+            }
+
+            type Membership {
+                @pk membershipId: String
+                @column(mapping={invalidField: "membership_member_id", memberTenantId: "membership_tenant_id"}) member: Member
+            }
+        }
+        "#,
+            "Field 'invalidField' specified in column mapping does not exist"
+        );
+
+        // Test missing primary key field in mapping
+        assert_resolved_err!(
+            r#"
+        @postgres
+        module Database {
+            type Member {
+                @pk memberId: String
+                @pk memberTenantId: String
+                memberName: String?
+            }
+
+            type Membership {
+                @pk membershipId: String
+                @column(mapping={memberTenantId: "membership_tenant_id"}) member: Member
+            }
+        }
+        "#,
+            "Primary key field 'memberId' from type 'Member' is missing"
+        );
+
+        // Test valid mapping
+        assert_resolved!(
+            r#"
+        @postgres
+        module Database {
+            type Member {
+                @pk memberId: String
+                @pk memberTenantId: String
+                memberName: String?
+                memberships: Set<Membership>
+            }
+
+            type Membership {
+                @pk membershipId: String
+                @column(mapping={memberId: "membership_member_id", memberTenantId: "membership_tenant_id"}) member: Member
+            }
+        }
+        "#,
+            "column_mapping_validation"
         );
     }
 }

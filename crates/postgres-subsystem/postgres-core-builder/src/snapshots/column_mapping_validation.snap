@@ -1,0 +1,285 @@
+---
+source: crates/postgres-subsystem/postgres-core-builder/src/resolved_builder.rs
+expression: resolved
+---
+values:
+  - - ~
+    - Primitive:
+        Plain: Boolean
+  - - ~
+    - Primitive:
+        Plain: Int
+  - - ~
+    - Primitive:
+        Plain: Float
+  - - ~
+    - Primitive:
+        Plain: Decimal
+  - - ~
+    - Primitive:
+        Plain: String
+  - - ~
+    - Primitive:
+        Plain: LocalTime
+  - - ~
+    - Primitive:
+        Plain: LocalDateTime
+  - - ~
+    - Primitive:
+        Plain: LocalDate
+  - - ~
+    - Primitive:
+        Plain: Instant
+  - - ~
+    - Primitive:
+        Plain: Json
+  - - ~
+    - Primitive:
+        Plain: Blob
+  - - ~
+    - Primitive:
+        Plain: Uuid
+  - - ~
+    - Primitive:
+        Plain: Vector
+  - - ~
+    - Composite:
+        name: Member
+        plural_name: Members
+        representation: Managed
+        fields:
+          - name: memberId
+            typ:
+              Plain:
+                type_name: String
+                is_primitive: true
+            column_names:
+              - member_id
+            self_column: true
+            is_pk: true
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
+            type_hint: ~
+            unique_constraints: []
+            indices: []
+            cardinality: ~
+            default_value: ~
+            update_sync: false
+            readonly: false
+            doc_comments: ~
+          - name: memberTenantId
+            typ:
+              Plain:
+                type_name: String
+                is_primitive: true
+            column_names:
+              - member_tenant_id
+            self_column: true
+            is_pk: true
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
+            type_hint: ~
+            unique_constraints: []
+            indices: []
+            cardinality: ~
+            default_value: ~
+            update_sync: false
+            readonly: false
+            doc_comments: ~
+          - name: memberName
+            typ:
+              Optional:
+                Plain:
+                  type_name: String
+                  is_primitive: true
+            column_names:
+              - member_name
+            self_column: true
+            is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
+            type_hint: ~
+            unique_constraints: []
+            indices: []
+            cardinality: ~
+            default_value: ~
+            update_sync: false
+            readonly: false
+            doc_comments: ~
+          - name: memberships
+            typ:
+              List:
+                Plain:
+                  type_name: Membership
+                  is_primitive: false
+            column_names:
+              - membership_member_id
+              - membership_tenant_id
+            self_column: false
+            is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
+            type_hint: ~
+            unique_constraints: []
+            indices: []
+            cardinality: One
+            default_value: ~
+            update_sync: false
+            readonly: false
+            doc_comments: ~
+        table_name:
+          name: members
+          schema: ~
+        access:
+          default: ~
+          query: ~
+          mutation: ~
+          creation: ~
+          update: ~
+          delete: ~
+        doc_comments: ~
+  - - ~
+    - Composite:
+        name: Membership
+        plural_name: Memberships
+        representation: Managed
+        fields:
+          - name: membershipId
+            typ:
+              Plain:
+                type_name: String
+                is_primitive: true
+            column_names:
+              - membership_id
+            self_column: true
+            is_pk: true
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
+            type_hint: ~
+            unique_constraints: []
+            indices: []
+            cardinality: ~
+            default_value: ~
+            update_sync: false
+            readonly: false
+            doc_comments: ~
+          - name: member
+            typ:
+              Plain:
+                type_name: Member
+                is_primitive: false
+            column_names:
+              - membership_member_id
+              - membership_tenant_id
+            self_column: true
+            is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
+            type_hint: ~
+            unique_constraints: []
+            indices: []
+            cardinality: Unbounded
+            default_value: ~
+            update_sync: false
+            readonly: false
+            doc_comments: ~
+        table_name:
+          name: memberships
+          schema: ~
+        access:
+          default: ~
+          query: ~
+          mutation: ~
+          creation: ~
+          update: ~
+          delete: ~
+        doc_comments: ~
+  - ~
+map:
+  Blob:
+    index: 10
+    generation: ~
+  Boolean:
+    index: 0
+    generation: ~
+  Decimal:
+    index: 3
+    generation: ~
+  Float:
+    index: 2
+    generation: ~
+  Instant:
+    index: 8
+    generation: ~
+  Int:
+    index: 1
+    generation: ~
+  Json:
+    index: 9
+    generation: ~
+  LocalDate:
+    index: 7
+    generation: ~
+  LocalDateTime:
+    index: 6
+    generation: ~
+  LocalTime:
+    index: 5
+    generation: ~
+  Member:
+    index: 13
+    generation: ~
+  Membership:
+    index: 14
+    generation: ~
+  String:
+    index: 4
+    generation: ~
+  Uuid:
+    index: 11
+    generation: ~
+  Vector:
+    index: 12
+    generation: ~
