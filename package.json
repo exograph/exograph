@@ -1,0 +1,13 @@
+{
+  "name": "exograph",
+  "version": "1.0.0",
+  "description": "Exograph development dependencies",
+  "private": true,
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1"
+  },
+  "scripts": {
+    "commitlint": "commitlint"
+  }
+}
