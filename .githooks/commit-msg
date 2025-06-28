@@ -60,24 +60,16 @@ if ! command -v npx &> /dev/null; then
 fi
 
 # Check if commitlint packages are installed
-if ! npx --no-install commitlint --version &> /dev/null 2>&1; then
+if ! npx --no-install commitlint --version &> /dev/null; then
     echo "❌ Commitlint not found. Please run 'npm install' to install dependencies."
     exit 1
 fi
 
 # Run commitlint on the commit message
-echo "$commit_message" | npx --no-install commitlint --verbose
-result=$?
-
-if [ $result -ne 0 ]; then
+if ! echo "$commit_message" | npx --no-install commitlint --verbose; then
     echo ""
-    echo "💡 Tip: Use the format: <type>(<scope>): <subject>"
-    echo "   or: <type>: <subject>"
-    echo ""
-    echo "Examples:"
-    echo "  feat: add user authentication"
-    echo "  fix(auth): resolve login timeout issue"
-    echo "  docs: update installation guide"
+    echo "💡 Use format: <type>: <subject> or <type>(<scope>): <subject>"
+    echo "Examples: feat: add auth, fix(db): resolve timeout"
     exit 1
 fi
 
