@@ -1,4 +1,5 @@
 target
+node_modules
 *.exo_ir
 .vscode
 Session.vim*

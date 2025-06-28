@@ -18,13 +18,21 @@ Nice to have:
 
 To ensure code quality and consistent commit messages, set up the git hooks:
 
+1. Install Node.js dependencies for commit message validation:
+
+```sh
+npm install
+```
+
+2. Set up the git hooks:
+
 ```sh
 ./.githooks/setup.sh
 ```
 
 This will install:
 - **pre-commit**: Runs `cargo clippy` and `cargo fmt` on staged Rust files
-- **commit-msg**: Validates commit messages according to `.commitlintrc.json`
+- **commit-msg**: Validates commit messages using commitlint according to `.commitlintrc.json`
 
 # Installing the vscode extension
 

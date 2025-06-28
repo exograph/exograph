@@ -1,18 +1,14 @@
 #!/bin/bash
 
-# Commit message validation hook
+# Commit message validation hook using commitlint
 # Based on .commitlintrc.json configuration
 # Only validates the first commit in a branch
-
-# Get the commit message
-commit_regex='^(feat|fix|security|release|breaking|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+$'
-merge_regex='^Merge '
 
 # Read the commit message from the file
 commit_message=$(cat "$1")
 
 # Allow merge commits
-if echo "$commit_message" | grep -qE "$merge_regex"; then
+if echo "$commit_message" | grep -qE '^Merge '; then
     exit 0
 fi
 
@@ -55,55 +51,34 @@ else
     echo "🔍 Validating commit message (no merge base found)..."
 fi
 
-# Check if the commit message matches the pattern
-if ! echo "$commit_message" | grep -qE "$commit_regex"; then
-    echo "❌ Invalid commit message format!"
+# Check if commitlint is available
+if ! command -v npx &> /dev/null; then
+    echo "❌ npx not found. Please install Node.js and npm to use commitlint."
     echo ""
-    echo "Your commit message:"
-    echo "  $commit_message"
+    echo "To install Node.js, visit: https://nodejs.org/"
+    exit 1
+fi
+
+# Check if commitlint packages are installed
+if ! npx --no-install commitlint --version &> /dev/null 2>&1; then
+    echo "❌ Commitlint not found. Please run 'npm install' to install dependencies."
+    exit 1
+fi
+
+# Run commitlint on the commit message
+echo "$commit_message" | npx --no-install commitlint --verbose
+result=$?
+
+if [ $result -ne 0 ]; then
     echo ""
-    echo "Expected format: <type>(<scope>): <subject>"
-    echo "  or: <type>: <subject>"
-    echo ""
-    echo "Valid types are:"
-    echo "  - feat:     A new feature"
-    echo "  - fix:      A bug fix"
-    echo "  - security: Security-related changes"
-    echo "  - release:  Release-related changes"
-    echo "  - breaking: Breaking changes"
-    echo "  - docs:     Documentation only changes"
-    echo "  - style:    Changes that do not affect the meaning of the code"
-    echo "  - refactor: A code change that neither fixes a bug nor adds a feature"
-    echo "  - perf:     A code change that improves performance"
-    echo "  - test:     Adding missing tests or correcting existing tests"
-    echo "  - build:    Changes that affect the build system or external dependencies"
-    echo "  - ci:       Changes to CI configuration files and scripts"
-    echo "  - chore:    Other changes that don't modify src or test files"
-    echo "  - revert:   Reverts a previous commit"
+    echo "💡 Tip: Use the format: <type>(<scope>): <subject>"
+    echo "   or: <type>: <subject>"
     echo ""
     echo "Examples:"
     echo "  feat: add user authentication"
     echo "  fix(auth): resolve login timeout issue"
     echo "  docs: update installation guide"
-    echo ""
     exit 1
-fi
-
-# Optional: Check commit message length
-first_line=$(echo "$commit_message" | head -n1)
-if [ ${#first_line} -gt 100 ]; then
-    echo "⚠️  Warning: First line of commit message is ${#first_line} characters long."
-    echo "Consider keeping it under 100 characters for better readability."
-    echo ""
-    echo "Tips for shortening your commit message:"
-    echo "  - Focus on the 'what' and 'why', not the 'how'"
-    echo "  - Use present tense: 'add feature' not 'added feature'"
-    echo "  - Remove unnecessary words like 'this', 'that', 'some'"
-    echo "  - Put detailed explanations in the commit body (after a blank line)"
-    echo ""
-    echo "Example of a good short message:"
-    echo "  fix(auth): resolve login timeout issue"
-    echo ""
 fi
 
 echo "✅ Commit message validation passed"
