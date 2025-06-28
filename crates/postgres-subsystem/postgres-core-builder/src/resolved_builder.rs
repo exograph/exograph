@@ -13,7 +13,7 @@
 //! column name, here that information is encoded into an attribute of `ResolvedType`.
 //! If no @column is provided, the encoded information is set to an appropriate default value.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use postgres_core_model::types::EntityRepresentation;
@@ -663,6 +663,9 @@ fn compute_column_info(
         let field_type = field_base_type.to_typ(types).deref(types);
 
         if let Type::Composite(ct) = field_type {
+            // Pre-compute field names for efficient lookups and simplify the code
+            let type_field_names: HashSet<&String> = ct.fields.iter().map(|f| &f.name).collect();
+
             // Collect all primary key field names from the target type
             let pk_field_names: Vec<&String> = ct
                 .fields
@@ -673,7 +676,7 @@ fn compute_column_info(
 
             // Check if all mapping keys correspond to actual fields in the target type
             for (mapping_key, _) in mapping.iter() {
-                if !ct.fields.iter().any(|f| &f.name == mapping_key) {
+                if !type_field_names.contains(mapping_key) {
                     return Err(Diagnostic {
                         level: Level::Error,
                         message: format!(
