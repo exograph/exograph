@@ -1,0 +1,14 @@
+@postgres
+module Database {
+  type Member {
+    @pk memberId: String
+    @pk memberTenantId: String
+    memberName: String?
+  }
+
+  type Membership {
+    @pk membershipId: String
+    // The mapping is missing the memberId field, which is a primary key field in the Member type
+    @column(mapping={memberTenantId: "membership_tenant_id"}) member: Member
+  }
+}

@@ -1,0 +1,8 @@
+error[C000]: Primary key field 'memberId' from type 'Member' is missing in the column mapping
+  --> src/index.exo:12:5
+   |
+12 |     @column(mapping={memberTenantId: "membership_tenant_id"}) member: Member
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Error: Parser error: Could not process input exo files
+
