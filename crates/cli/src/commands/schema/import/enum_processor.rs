@@ -5,12 +5,11 @@ use super::{ImportContext, ModelProcessor, processor::INDENT};
 
 use heck::ToUpperCamelCase;
 
-impl ModelProcessor<DatabaseSpec, ()> for EnumSpec {
+impl ModelProcessor<DatabaseSpec> for EnumSpec {
     fn process(
         &self,
         _parent: &DatabaseSpec,
         _context: &ImportContext,
-        _parent_context: &mut (),
         writer: &mut (dyn std::io::Write + Send),
     ) -> Result<()> {
         writeln!(

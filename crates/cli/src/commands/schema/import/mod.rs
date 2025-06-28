@@ -114,7 +114,7 @@ pub(crate) async fn create_exo_model(
         context.add_table(&table.name);
     }
 
-    schema.value.process(&(), &context, &mut (), &mut writer)?;
+    schema.value.process(&(), &context, &mut writer)?;
 
     for issue in &schema.issues {
         eprintln!("{issue}");
