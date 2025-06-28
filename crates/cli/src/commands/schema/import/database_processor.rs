@@ -5,12 +5,11 @@ use heck::ToUpperCamelCase;
 
 use super::{ImportContext, ModelProcessor};
 
-impl ModelProcessor<(), ()> for DatabaseSpec {
+impl ModelProcessor<()> for DatabaseSpec {
     fn process(
         &self,
         _parent: &(),
         context: &ImportContext,
-        _parent_context: &mut (),
         writer: &mut (dyn std::io::Write + Send),
     ) -> Result<()> {
         let mut schemas = context.schemas.iter().collect::<Vec<_>>();
@@ -51,7 +50,7 @@ impl ModelProcessor<(), ()> for DatabaseSpec {
             let table_len = matching_tables.len();
 
             for (i, table) in matching_tables.iter().enumerate() {
-                table.process(self, context, &mut (), writer)?;
+                table.process(self, context, writer)?;
                 if i < table_len - 1 {
                     writeln!(writer)?;
                 }
@@ -68,7 +67,7 @@ impl ModelProcessor<(), ()> for DatabaseSpec {
             }
 
             for (i, enum_) in matching_enums.iter().enumerate() {
-                enum_.process(self, context, &mut (), writer)?;
+                enum_.process(self, context, writer)?;
                 if i < matching_enums.len() - 1 {
                     writeln!(writer)?;
                 }

@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use anyhow::Result;
 
 use exo_sql::schema::column_spec::{ColumnReferenceSpec, ColumnSpec};
@@ -15,36 +13,19 @@ use super::{ImportContext, ModelProcessor};
 
 const INDENT: &str = "    ";
 
-impl ModelProcessor<TableSpec, HashSet<String>> for ColumnSpec {
+impl ModelProcessor<TableSpec> for ColumnSpec {
     /// Converts the column specification to a exograph model.
-    /// The HashSet<String> parameter tracks written field names to prevent duplicates
-    /// when multiple foreign keys share the same column.
     fn process(
         &self,
         _parent: &TableSpec,
         context: &ImportContext,
-        parent_context: &mut HashSet<String>,
         writer: &mut (dyn std::io::Write + Send),
     ) -> Result<()> {
-        if self.reference_specs.is_some() {
-            return Ok(());
-        }
-
         let (standard_field_name, column_annotation) =
             context.get_field_name_and_column_annotation(self);
 
-        // Skip if we've already written this field (prevents duplicates when
-        // multiple foreign keys share the same column)
-        if !parent_context.insert(standard_field_name.clone()) {
-            return Ok(());
-        }
         // [@pk] [type-annotations] [name]: [data-type] = [default-value]
-        let column_type_name = context.column_type_name(
-            self,
-            self.reference_specs
-                .as_deref()
-                .and_then(|specs| specs.first()),
-        );
+        let column_type_name = context.column_type_name(self, None);
 
         let data_type = match column_type_name {
             ColumnTypeName::SelfType(data_type) => data_type,
@@ -182,25 +163,37 @@ pub fn write_foreign_key_reference(
     context: &ImportContext,
     database_spec: &DatabaseSpec,
     table_spec: &TableSpec,
-    processed_fields: &mut HashSet<String>,
     filter: &dyn Fn(&ColumnSpec) -> bool,
 ) -> Result<()> {
     for (_, references) in table_spec.foreign_key_references() {
-        if references.is_empty() {
+        let (first_column, first_reference) = match &references[..] {
+            [] => {
+                continue;
+            }
+            [reference, ..] => reference,
+        };
+
+        // Only process this foreign key if the first column matches the filter
+        // This determines when we write the FK (during PK pass or non-PK pass)
+        if !filter(first_column) {
             continue;
         }
 
-        if !filter(references[0].0) {
-            continue;
+        // Assert that all references point to the same table
+        let all_references_point_to_same_table = references.iter().all(|(_, reference)| {
+            reference.foreign_table_name == first_reference.foreign_table_name
+        });
+        if !all_references_point_to_same_table {
+            return Err(anyhow::anyhow!(
+                "All references from {} in {} must point to the same foreign table (this is like a programming error)",
+                references[0].0.name,
+                table_spec.name.fully_qualified_name()
+            ));
         }
 
-        if !processed_fields.insert(references[0].0.name.clone()) {
-            continue;
-        }
-
-        let reference = references[0].1; // All references point to the same table
-        let foreign_table_name = &reference.foreign_table_name;
+        let foreign_table_name = &first_reference.foreign_table_name;
         let field_name = context.get_composite_foreign_key_field_name(foreign_table_name);
+
         let data_type = context
             .model_name(foreign_table_name)
             .ok_or(anyhow::anyhow!(
