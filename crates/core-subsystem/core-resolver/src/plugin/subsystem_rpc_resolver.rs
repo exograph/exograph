@@ -72,6 +72,9 @@ pub enum SubsystemRpcError {
 
     #[error("{0}")]
     SystemResolutionError(SystemResolutionError),
+
+    #[error("{0}")]
+    Other(Box<dyn std::error::Error + Send + Sync>),
 }
 
 impl SubsystemRpcError {
@@ -105,6 +108,7 @@ impl SubsystemRpcError {
                 }
                 _ => Some(e.user_error_message()),
             },
+            SubsystemRpcError::Other(e) => Some(e.to_string()),
         }
     }
 
@@ -117,9 +121,10 @@ impl SubsystemRpcError {
             SubsystemRpcError::InvalidRequest => "-32600",
 
             SubsystemRpcError::UserDisplayError(_) => "-32001",
-            SubsystemRpcError::Authorization => "-32000",
+            SubsystemRpcError::Authorization => "-32004",
             SubsystemRpcError::ExpiredAuthentication => "-32003",
             SubsystemRpcError::SystemResolutionError(_) => "-32002",
+            SubsystemRpcError::Other(_) => "-32000",
         }
     }
 }

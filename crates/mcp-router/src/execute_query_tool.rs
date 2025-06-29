@@ -184,7 +184,8 @@ impl Tool for ExecuteQueryTool {
                     | SubsystemRpcError::InvalidParams(_, _)
                     | SubsystemRpcError::InvalidRequest
                     | SubsystemRpcError::UserDisplayError(_)
-                    | SubsystemRpcError::SystemResolutionError(_) => StatusCode::BAD_REQUEST,
+                    | SubsystemRpcError::SystemResolutionError(_)
+                    | SubsystemRpcError::Other(_) => StatusCode::BAD_REQUEST,
                     SubsystemRpcError::MethodNotFound(_) => StatusCode::NOT_FOUND,
                     SubsystemRpcError::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
                 };
