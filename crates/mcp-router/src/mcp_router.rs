@@ -210,7 +210,9 @@ impl McpRouter {
                 body: QueryResponseBody::Raw(None),
                 headers: vec![],
             },
-            status_code: StatusCode::OK,
+            // Notifications must be acknowledged by the server with a 202 Accepted response.
+            // (https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#sending-messages-to-the-server)
+            status_code: StatusCode::ACCEPTED,
         };
         Ok(Some(response))
     }
@@ -245,6 +247,19 @@ impl<'a> Router<RequestContext<'a>> for McpRouter {
 
         if !self.suitable(head) {
             return None;
+        }
+
+        let method = head.get_method();
+
+        if method == Method::GET {
+            // MCP clients that support SSE streaming will send a GET request to the server to check if it supports SSE streaming.
+            // We don't support SSE streaming, so we return a 405 Method Not Allowed response as per the spec
+            // (https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#listening-for-messages-from-the-server)
+            return Some(ResponsePayload {
+                body: ResponseBody::None,
+                headers: Headers::new(),
+                status_code: StatusCode::METHOD_NOT_ALLOWED,
+            });
         }
 
         let body = request_context.take_body();
