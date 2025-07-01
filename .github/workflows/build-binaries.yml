@@ -1,11 +1,12 @@
-# Workflow to build binaries for all platforms, and if it is a release-tagged, upload them to the release
+# Workflow to build binaries for all platforms, and if it is a release-tagged, upload them to the existing draft release
 # Performs:
 # - Build binaries for all platforms as well as aws-lambda
 # - Run integration tests on all platforms
-# - Upload binaries to release if it is a release-tagged commit (but as a pre-release)
+# - Upload binaries to the draft release (for tags only)
 
 # After this workflow is run:
-# - Using the Github UI (or the `gh` cli), promote this to a release
+# - Review the release notes and binaries in the draft release
+# - Using the Github UI (or the `gh` cli), publish the release
 # - (This, in turn, will trigger the build-docker workflow)
 
 name: Build Binaries
@@ -17,6 +18,23 @@ on:
       - "*"
 
 jobs:
+  # Create draft release with auto-generated notes (only for tags)
+  create-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create draft release with auto-generated notes
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --draft \
+            --generate-notes \
+            --title "Release ${{ github.ref_name }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # Build and package all the things
   build-artifacts:
     strategy:
@@ -113,7 +131,6 @@ jobs:
           file: dist/exograph-${{matrix.target}}.zip
           asset_name: exograph-${{matrix.target}}.zip
           tag: ${{ github.ref }}
-          prerelease: true
 
   build-aws-lambda:
     runs-on: ubuntu-latest
@@ -170,7 +187,6 @@ jobs:
           file: dist/exograph-${{ env.ARCH }}.zip
           asset_name: exograph-${{ env.ARCH }}.zip
           tag: ${{ github.ref }}
-          prerelease: true
 
   build-cf-worker:
     runs-on: ubuntu-latest
@@ -208,4 +224,3 @@ jobs:
           file: target/exograph-cf-worker-wasm.zip
           asset_name: exograph-cf-worker-wasm.zip
           tag: ${{ github.ref }}
-          prerelease: true

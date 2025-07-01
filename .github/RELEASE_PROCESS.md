@@ -25,19 +25,26 @@ We follow the conventional commit format: `type(scope): description`
 - `revert:` - ⏪ Reverts
 - `release:` - 🏷️ Release (excluded from release notes)
 
-## Release Notes Generation
+## Release Process
 
-When creating a new release on GitHub:
+To create a new release:
 
-1. Go to the [Releases page](../../releases)
-2. Click "Draft a new release"
-3. Choose a tag (format: `vX.Y.Z`)
-4. Click "Generate release notes"
-5. GitHub will automatically:
-   - Categorize commits based on PR labels
-   - Group changes by category with emojis
-   - Exclude dependabot changes
-   - List new contributors
+1. Run the release script: `./scripts/release.sh [major|minor|patch]`
+2. This will:
+   - Create a release branch
+   - Update `Cargo.toml` version
+   - Create and push a git tag
+3. The "Build Binaries" workflow will automatically:
+   - Create a draft release with generated release notes
+   - Build binaries for all platforms
+   - Upload binaries to the draft release
+4. The "Process Release Notes" workflow will then clean up the notes by:
+   - Removing author names from PR entries
+   - Converting PR links to `#1234` format
+   - Removing empty bullet points
+   - Capitalizing titles properly
+5. Review the cleaned release notes and binaries in the draft
+6. Publish the release when satisfied
 
 ## PR Labeling
 
