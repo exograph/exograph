@@ -2,7 +2,7 @@ name: Process Release Notes
 
 on:
   release:
-    types: [published]
+    types: [created]
   workflow_dispatch:
     inputs:
       tag:
@@ -45,9 +45,14 @@ jobs:
             
             // Function to clean up PR title
             function formatPRTitle(line) {
-              // Match the PR title pattern
-              const match = line.match(/^\* (.+?) by @\w+ in https:\/\/github\.com\/.+?\/pull\/(\d+)$/);
-              if (!match) return line;
+              // Match the original GitHub format with author
+              let match = line.match(/^\* (.+?) by @\w+ in https:\/\/github\.com\/.+?\/pull\/(\d+)$/);
+              
+              // If not original format, check if it's already processed but with full URL
+              if (!match) {
+                match = line.match(/^\* (.+?) https:\/\/github\.com\/.+?\/pull\/(\d+)$/);
+                if (!match) return line;
+              }
               
               let title = match[1];
               const prNumber = match[2];
@@ -73,12 +78,16 @@ jobs:
             // Split body into lines and process
             const lines = body.split('\n');
             const formattedLines = lines.map(line => {
-              // Only format lines that look like PR entries
-              if (line.startsWith('* ') && line.includes(' by @') && line.includes('/pull/')) {
+              // Skip empty bullet points
+              if (line.trim() === '*') {
+                return null;
+              }
+              // Format lines that look like PR entries (both original and already processed)
+              if (line.startsWith('* ') && line.includes('/pull/')) {
                 return formatPRTitle(line);
               }
               return line;
-            });
+            }).filter(line => line !== null);
             
             // Add spacing between sections
             body = formattedLines.join('\n');
