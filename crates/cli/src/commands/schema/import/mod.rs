@@ -30,15 +30,15 @@ use crate::util::open_file_for_output;
 use super::util::open_database;
 
 mod context;
-mod processor;
+mod traits;
 
 mod column_processor;
-mod database_processor;
-mod enum_processor;
-mod table_processor;
+pub mod database_processor;
+pub mod enum_processor;
+pub mod table_processor;
 
 use context::ImportContext;
-use processor::ModelProcessor;
+use traits::{ImportWriter, ModelImporter};
 pub(super) struct ImportCommandDefinition {}
 
 #[async_trait]
@@ -114,7 +114,8 @@ pub(crate) async fn create_exo_model(
         context.add_table(&table.name);
     }
 
-    schema.value.process(&(), &context, &mut writer)?;
+    let database_import = schema.value.to_import(&(), &context)?;
+    database_import.write_to(&mut writer)?;
 
     for issue in &schema.issues {
         eprintln!("{issue}");

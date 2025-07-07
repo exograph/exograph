@@ -1,26 +1,31 @@
 use anyhow::Result;
+use std::io::Write;
 
-use exo_sql::schema::column_spec::{ColumnReferenceSpec, ColumnSpec};
-
-use exo_sql::schema::database_spec::DatabaseSpec;
+use exo_sql::schema::column_spec::ColumnSpec;
 use exo_sql::schema::table_spec::TableSpec;
 use exo_sql::{
     FloatBits, FloatColumnType, IntBits, IntColumnType, NumericColumnType, StringColumnType,
     TimeColumnType, TimestampColumnType, VectorColumnType,
 };
 
-use super::{ImportContext, ModelProcessor};
+use super::{
+    ImportContext,
+    traits::{ImportWriter, ModelImporter},
+};
 
-const INDENT: &str = "    ";
+#[derive(Debug)]
+pub struct FieldImport {
+    pub name: String,
+    pub data_type: String,
+    pub is_pk: bool,
+    pub is_unique: bool,
+    pub is_nullable: bool,
+    pub annotations: Vec<String>,
+    pub default_value: Option<String>,
+}
 
-impl ModelProcessor<TableSpec> for ColumnSpec {
-    /// Converts the column specification to a exograph model.
-    fn process(
-        &self,
-        _parent: &TableSpec,
-        context: &ImportContext,
-        writer: &mut (dyn std::io::Write + Send),
-    ) -> Result<()> {
+impl ModelImporter<TableSpec, FieldImport> for ColumnSpec {
+    fn to_import(&self, _parent: &TableSpec, context: &ImportContext) -> Result<FieldImport> {
         let (standard_field_name, column_annotation) =
             context.get_field_name_and_column_annotation(self);
 
@@ -47,26 +52,17 @@ impl ModelProcessor<TableSpec> for ColumnSpec {
             all_annotations.push(col_annot);
         }
 
-        let combined_annotations = if all_annotations.is_empty() {
-            None
-        } else {
-            Some(all_annotations.join(" "))
-        };
-
-        // Write the field
         let default_value = self.default_value.as_ref().and_then(|v| v.to_model());
-        let field_spec = FieldSpec {
+
+        Ok(FieldImport {
+            name: standard_field_name,
+            data_type,
             is_pk: self.is_pk,
             is_unique: !self.unique_constraints.is_empty(),
-            field_name: &standard_field_name,
-            data_type: &data_type,
             is_nullable: self.is_nullable,
-            annotations: combined_annotations.as_deref(),
-            default_value: default_value.as_deref(),
-        };
-        write_field_common(writer, &field_spec)?;
-
-        Ok(())
+            annotations: all_annotations,
+            default_value,
+        })
     }
 }
 
@@ -119,171 +115,39 @@ fn type_annotation(physical_type: &dyn exo_sql::PhysicalColumnType) -> String {
     }
 }
 
-struct FieldSpec<'a> {
-    field_name: &'a str,
-    data_type: &'a str,
-    is_pk: bool,
-    is_unique: bool,
-    is_nullable: bool,
-    annotations: Option<&'a str>,
-    default_value: Option<&'a str>,
-}
+impl ImportWriter for FieldImport {
+    fn write_to(&self, writer: &mut (dyn Write + Send)) -> Result<()> {
+        const INDENT: &str = "  ";
 
-fn write_field_common(writer: &mut (dyn std::io::Write + Send), spec: &FieldSpec) -> Result<()> {
-    write!(writer, "{INDENT}")?;
+        write!(writer, "{INDENT}{INDENT}")?;
 
-    if spec.is_pk {
-        write!(writer, "@pk ")?;
-    }
-
-    if spec.is_unique {
-        write!(writer, "@unique ")?;
-    }
-
-    if let Some(annots) = spec.annotations {
-        write!(writer, "{annots} ")?;
-    }
-
-    write!(writer, "{}: {}", spec.field_name, spec.data_type)?;
-
-    if spec.is_nullable {
-        write!(writer, "?")?;
-    }
-
-    if let Some(default) = spec.default_value {
-        write!(writer, " = {default}")?;
-    }
-
-    writeln!(writer)?;
-    Ok(())
-}
-
-pub fn write_foreign_key_reference(
-    writer: &mut (dyn std::io::Write + Send),
-    context: &ImportContext,
-    database_spec: &DatabaseSpec,
-    table_spec: &TableSpec,
-    filter: &dyn Fn(&ColumnSpec) -> bool,
-) -> Result<()> {
-    for (_, references) in table_spec.foreign_key_references() {
-        let (first_column, first_reference) = match &references[..] {
-            [] => {
-                continue;
-            }
-            [reference, ..] => reference,
-        };
-
-        // Only process this foreign key if the first column matches the filter
-        // This determines when we write the FK (during PK pass or non-PK pass)
-        if !filter(first_column) {
-            continue;
+        // Write annotations
+        if self.is_pk {
+            write!(writer, "@pk ")?;
         }
 
-        // Assert that all references point to the same table
-        let all_references_point_to_same_table = references.iter().all(|(_, reference)| {
-            reference.foreign_table_name == first_reference.foreign_table_name
-        });
-        if !all_references_point_to_same_table {
-            return Err(anyhow::anyhow!(
-                "All references from {} in {} must point to the same foreign table (this is like a programming error)",
-                references[0].0.name,
-                table_spec.name.fully_qualified_name()
-            ));
+        if self.is_unique {
+            write!(writer, "@unique ")?;
         }
 
-        let foreign_table_name = &first_reference.foreign_table_name;
-        let field_name = context.get_composite_foreign_key_field_name(foreign_table_name);
-
-        let data_type = context
-            .model_name(foreign_table_name)
-            .ok_or(anyhow::anyhow!(
-                "No model name found for foreign table name: {:?}",
-                foreign_table_name
-            ))?;
-
-        let mapping_annotation =
-            reference_mapping_annotation(&field_name, &references, database_spec, context);
-
-        let is_pk = references.iter().all(|(col, _)| col.is_pk);
-        let is_unique = references
-            .iter()
-            .all(|(col, _)| !col.unique_constraints.is_empty());
-        let is_nullable = references.iter().any(|(col, _)| col.is_nullable);
-
-        let field_spec = FieldSpec {
-            is_pk,
-            is_unique,
-            field_name: &field_name,
-            data_type,
-            is_nullable,
-            annotations: mapping_annotation.as_deref(),
-            default_value: None, // Foreign key references don't have default values
-        };
-        write_field_common(writer, &field_spec)?;
-    }
-
-    Ok(())
-}
-
-fn reference_mapping_annotation(
-    field_name: &str,
-    references: &Vec<(&ColumnSpec, &ColumnReferenceSpec)>,
-    database_spec: &DatabaseSpec,
-    context: &ImportContext,
-) -> Option<String> {
-    let mut mapping_pairs = Vec::new();
-
-    for (col, reference) in references {
-        let foreign_table = database_spec
-            .tables
-            .iter()
-            .find(|t| t.name == reference.foreign_table_name)
-            .unwrap();
-        let foreign_column_spec = foreign_table
-            .columns
-            .iter()
-            .find(|c| c.name == reference.foreign_pk_column_name)
-            .unwrap();
-
-        let (foreign_field_name, needs_mapping) = match &foreign_column_spec.reference_specs {
-            Some(foreign_reference_specs) => {
-                let name = context.get_composite_foreign_key_field_name(
-                    &foreign_reference_specs[0].foreign_table_name,
-                );
-                let needs_mapping = name != col.name;
-                (name, needs_mapping)
-            }
-            None => {
-                let name = context.standard_field_name(&reference.foreign_pk_column_name);
-                let default_field_name =
-                    format!("{field_name}_{}", reference.foreign_pk_column_name);
-
-                let needs_mapping = default_field_name != col.name;
-                (name, needs_mapping)
-            }
-        };
-
-        if needs_mapping {
-            mapping_pairs.push((foreign_field_name, col.name.clone()));
+        for annotation in &self.annotations {
+            write!(writer, "{} ", annotation)?;
         }
-    }
 
-    match &mapping_pairs[..] {
-        [] => None,
-        [mapping_pair] => {
-            let mapping_annotation = format!("@column(\"{}\")", mapping_pair.1);
-            Some(mapping_annotation)
+        // Write field name and type
+        write!(writer, "{}: {}", self.name, self.data_type)?;
+
+        if self.is_nullable {
+            write!(writer, "?")?;
         }
-        _ => {
-            let mapping_annotation = format!(
-                "@column(mapping={{{}}})",
-                mapping_pairs
-                    .iter()
-                    .map(|(k, v)| format!("{}: \"{}\"", k, v))
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            );
-            Some(mapping_annotation)
+
+        // Write default value
+        if let Some(default) = &self.default_value {
+            write!(writer, " = {}", default)?;
         }
+
+        writeln!(writer)?;
+
+        Ok(())
     }
 }

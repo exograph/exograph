@@ -3,51 +3,68 @@ use exo_sql::schema::{
     column_spec::ColumnSpec, database_spec::DatabaseSpec, table_spec::TableSpec,
 };
 use std::collections::HashSet;
+use std::io::Write;
 
 use super::{
-    ImportContext, ModelProcessor, column_processor::write_foreign_key_reference, processor::INDENT,
+    ImportContext,
+    column_processor::FieldImport,
+    traits::{ImportWriter, ModelImporter},
 };
+
+const INDENT: &str = "  ";
 
 use heck::ToLowerCamelCase;
 
-impl ModelProcessor<DatabaseSpec> for TableSpec {
-    fn process(
-        &self,
-        parent: &DatabaseSpec,
-        context: &ImportContext,
-        writer: &mut (dyn std::io::Write + Send),
-    ) -> Result<()> {
-        if !context.generate_fragments {
-            writeln!(
-                writer,
-                "{INDENT}@access(query={}, mutation={})",
-                context.query_access, context.mutation_access
-            )?;
+#[derive(Debug)]
+pub struct TableImport {
+    pub name: String,
+    pub is_fragment: bool,
+    pub access_annotation: Option<AccessAnnotation>,
+    pub table_annotation: Option<String>,
+    pub fields: Vec<FieldImport>,
+}
 
-            if !context.has_standard_mapping(&self.name) {
-                writeln!(writer, "{INDENT}@table(name=\"{}\")", self.name.name)?;
-            }
-        }
+#[derive(Debug)]
+pub struct AccessAnnotation {
+    pub query: bool,
+    pub mutation: bool,
+}
 
-        let keyword = if context.generate_fragments {
-            "fragment"
+#[derive(Debug)]
+pub struct ColumnCategories<'a> {
+    pub scalar_columns: HashSet<&'a str>,
+    #[allow(dead_code)]
+    pub fk_consumed_columns: HashSet<&'a str>,
+    pub back_reference_fields: Vec<(String, String, bool, bool)>, // (field_name, model_name, is_many, is_nullable)
+}
+
+impl ModelImporter<DatabaseSpec, TableImport> for TableSpec {
+    fn to_import(&self, parent: &DatabaseSpec, context: &ImportContext) -> Result<TableImport> {
+        let access_annotation = if !context.generate_fragments {
+            Some(AccessAnnotation {
+                query: context.query_access,
+                mutation: context.mutation_access,
+            })
         } else {
-            "type"
+            None
         };
 
-        let type_name = {
-            let raw_name = context
-                .model_name(&self.name)
-                .expect("No model name found for table");
-
-            if context.generate_fragments {
-                format!("{}Fragment", raw_name)
+        let table_annotation =
+            if !context.generate_fragments && !context.has_standard_mapping(&self.name) {
+                Some(format!("@table(name=\"{}\")", self.name.name))
             } else {
-                raw_name.to_string()
-            }
-        };
+                None
+            };
 
-        writeln!(writer, "{INDENT}{keyword} {type_name} {{")?;
+        let raw_name = context
+            .model_name(&self.name)
+            .expect("No model name found for table");
+
+        let name = if context.generate_fragments {
+            format!("{}Fragment", raw_name)
+        } else {
+            raw_name.to_string()
+        };
 
         let is_pk = |column_spec: &ColumnSpec| column_spec.is_pk;
         let is_not_pk = |column_spec: &ColumnSpec| !column_spec.is_pk;
@@ -55,31 +72,27 @@ impl ModelProcessor<DatabaseSpec> for TableSpec {
         // Categorize columns to determine which should be written as scalars vs consumed by FK references
         let column_categories = categorize_columns(self, context);
 
-        // First write the primary key fields (scalars first, then FKs)
-        write_scalar_fields(writer, self, context, &column_categories, &is_pk)?;
-        write_foreign_key_reference(writer, context, parent, self, &is_pk)?;
+        let mut fields = Vec::new();
 
-        // Then write the non-primary key fields (scalars first, then FKs)
-        write_scalar_fields(writer, self, context, &column_categories, &is_not_pk)?;
-        write_foreign_key_reference(writer, context, parent, self, &is_not_pk)?;
+        // First add the primary key fields (scalars first, then FKs)
+        add_scalar_fields(&mut fields, self, context, &column_categories, &is_pk)?;
+        add_foreign_key_references(&mut fields, context, parent, self, &is_pk)?;
 
-        // Finally write back-references (such as Set<User>, User?, etc.) for which this table is the target
-        write_back_references(writer, context, &column_categories)?;
+        // Then add the non-primary key fields (scalars first, then FKs)
+        add_scalar_fields(&mut fields, self, context, &column_categories, &is_not_pk)?;
+        add_foreign_key_references(&mut fields, context, parent, self, &is_not_pk)?;
 
-        writeln!(writer, "{INDENT}}}")?;
+        // Finally add back-references (such as Set<User>, User?, etc.) for which this table is the target
+        add_back_references(&mut fields, &column_categories)?;
 
-        Ok(())
+        Ok(TableImport {
+            name,
+            is_fragment: context.generate_fragments,
+            access_annotation,
+            table_annotation,
+            fields,
+        })
     }
-}
-
-struct ColumnCategories<'a> {
-    /// Columns that should be written as scalar fields
-    scalar_columns: HashSet<&'a str>,
-    /// Columns that are consumed by FK references (won't be written as scalars)
-    #[allow(dead_code)]
-    fk_consumed_columns: HashSet<&'a str>,
-    /// Back-reference fields with complete information (deduplicated)
-    back_reference_fields: Vec<(String, String, bool, bool)>, // (field_name, model_name, is_many, is_nullable)
 }
 
 fn categorize_columns<'a>(
@@ -154,15 +167,15 @@ fn categorize_columns<'a>(
     }
 }
 
-fn write_scalar_fields(
-    writer: &mut (dyn std::io::Write + Send),
+fn add_scalar_fields(
+    fields: &mut Vec<FieldImport>,
     table_spec: &TableSpec,
     context: &ImportContext,
     column_categories: &ColumnCategories,
     filter: &dyn Fn(&ColumnSpec) -> bool,
 ) -> Result<()> {
     for column in &table_spec.columns {
-        // Write this column as a scalar field if:
+        // Add this column as a scalar field if:
         // 1. It's in the scalar_columns set (not consumed by FK)
         // 2. It matches the filter (PK or non-PK)
         if column_categories
@@ -170,36 +183,205 @@ fn write_scalar_fields(
             .contains(column.name.as_str())
             && filter(column)
         {
-            column.process(table_spec, context, writer)?;
+            fields.push(column.to_import(table_spec, context)?);
         }
     }
 
     Ok(())
 }
 
-fn write_back_references(
-    writer: &mut (dyn std::io::Write + Send),
-    _context: &ImportContext,
-    column_categories: &ColumnCategories,
+fn add_foreign_key_references(
+    fields: &mut Vec<FieldImport>,
+    context: &ImportContext,
+    database_spec: &DatabaseSpec,
+    table_spec: &TableSpec,
+    filter: &dyn Fn(&ColumnSpec) -> bool,
 ) -> Result<()> {
-    // Write back-references using pre-computed deduplicated information
-    for (field_name, model_name, is_many, is_nullable) in &column_categories.back_reference_fields {
-        write!(writer, "{INDENT}{INDENT}{field_name}: ")?;
+    for (_, references) in table_spec.foreign_key_references() {
+        let (first_column, first_reference) = match &references[..] {
+            [] => {
+                continue;
+            }
+            [reference, ..] => reference,
+        };
 
-        if *is_many {
-            write!(writer, "Set<")?;
-        }
-        write!(writer, "{}", model_name)?;
-        if *is_many {
-            write!(writer, ">")?;
-        }
-
-        if *is_nullable {
-            write!(writer, "?")?;
+        // Only process this foreign key if the first column matches the filter
+        // This determines when we write the FK (during PK pass or non-PK pass)
+        if !filter(first_column) {
+            continue;
         }
 
-        writeln!(writer)?;
+        // Assert that all references point to the same table
+        let all_references_point_to_same_table = references.iter().all(|(_, reference)| {
+            reference.foreign_table_name == first_reference.foreign_table_name
+        });
+        if !all_references_point_to_same_table {
+            return Err(anyhow::anyhow!(
+                "All foreign key references from column '{}' in table '{}' must point to the same foreign table (this is likely a programming error)",
+                references[0].0.name,
+                table_spec.name.fully_qualified_name()
+            ));
+        }
+
+        let foreign_table_name = &first_reference.foreign_table_name;
+        let field_name = context.get_composite_foreign_key_field_name(foreign_table_name);
+
+        let data_type = context
+            .model_name(foreign_table_name)
+            .ok_or(anyhow::anyhow!(
+                "No model name found for foreign table '{}' referenced from table '{}'",
+                foreign_table_name.fully_qualified_name(),
+                table_spec.name.fully_qualified_name()
+            ))?
+            .to_string();
+
+        let mapping_annotation =
+            reference_mapping_annotation(&field_name, &references, database_spec, context);
+
+        let is_pk = references.iter().all(|(col, _)| col.is_pk);
+        let is_unique = references
+            .iter()
+            .all(|(col, _)| !col.unique_constraints.is_empty());
+        let is_nullable = references.iter().any(|(col, _)| col.is_nullable);
+
+        let mut annotations = Vec::new();
+        if let Some(mapping) = mapping_annotation {
+            annotations.push(mapping);
+        }
+
+        fields.push(FieldImport {
+            name: field_name,
+            data_type,
+            is_pk,
+            is_unique,
+            is_nullable,
+            annotations,
+            default_value: None, // Foreign key references don't have default values
+        });
     }
 
     Ok(())
+}
+
+fn add_back_references(
+    fields: &mut Vec<FieldImport>,
+    column_categories: &ColumnCategories,
+) -> Result<()> {
+    // Add back-references using pre-computed deduplicated information
+    for (field_name, model_name, is_many, is_nullable) in &column_categories.back_reference_fields {
+        let data_type = if *is_many {
+            format!("Set<{}>", model_name)
+        } else {
+            model_name.clone()
+        };
+
+        fields.push(FieldImport {
+            name: field_name.clone(),
+            data_type,
+            is_pk: false,
+            is_unique: false,
+            is_nullable: *is_nullable,
+            annotations: Vec::new(),
+            default_value: None,
+        });
+    }
+
+    Ok(())
+}
+
+fn reference_mapping_annotation(
+    field_name: &str,
+    references: &Vec<(
+        &ColumnSpec,
+        &exo_sql::schema::column_spec::ColumnReferenceSpec,
+    )>,
+    database_spec: &DatabaseSpec,
+    context: &ImportContext,
+) -> Option<String> {
+    let mut mapping_pairs = Vec::new();
+
+    for (col, reference) in references {
+        let foreign_table = database_spec
+            .tables
+            .iter()
+            .find(|t| t.name == reference.foreign_table_name)
+            .unwrap();
+        let foreign_column_spec = foreign_table
+            .columns
+            .iter()
+            .find(|c| c.name == reference.foreign_pk_column_name)
+            .unwrap();
+
+        let (foreign_field_name, needs_mapping) = match &foreign_column_spec.reference_specs {
+            Some(foreign_reference_specs) => {
+                let name = context.get_composite_foreign_key_field_name(
+                    &foreign_reference_specs[0].foreign_table_name,
+                );
+                let needs_mapping = name != col.name;
+                (name, needs_mapping)
+            }
+            None => {
+                let name = context.standard_field_name(&reference.foreign_pk_column_name);
+                let default_field_name =
+                    format!("{field_name}_{}", reference.foreign_pk_column_name);
+
+                let needs_mapping = default_field_name != col.name;
+                (name, needs_mapping)
+            }
+        };
+
+        if needs_mapping {
+            mapping_pairs.push((foreign_field_name, col.name.clone()));
+        }
+    }
+
+    match &mapping_pairs[..] {
+        [] => None,
+        [mapping_pair] => {
+            let mapping_annotation = format!("@column(\"{}\")", mapping_pair.1);
+            Some(mapping_annotation)
+        }
+        _ => {
+            let mapping_annotation = format!(
+                "@column(mapping={{{}}})",
+                mapping_pairs
+                    .iter()
+                    .map(|(k, v)| format!("{}: \"{}\"", k, v))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            );
+            Some(mapping_annotation)
+        }
+    }
+}
+
+impl ImportWriter for TableImport {
+    fn write_to(&self, writer: &mut (dyn Write + Send)) -> Result<()> {
+        // Write access annotation
+        if let Some(access) = &self.access_annotation {
+            writeln!(
+                writer,
+                "{INDENT}@access(query={}, mutation={})",
+                access.query, access.mutation
+            )?;
+        }
+
+        // Write table annotation
+        if let Some(table_annotation) = &self.table_annotation {
+            writeln!(writer, "{INDENT}{}", table_annotation)?;
+        }
+
+        // Write type/fragment declaration
+        let keyword = if self.is_fragment { "fragment" } else { "type" };
+        writeln!(writer, "{INDENT}{keyword} {} {{", self.name)?;
+
+        // Write fields
+        for field in &self.fields {
+            field.write_to(writer)?;
+        }
+
+        writeln!(writer, "{INDENT}}}")?;
+
+        Ok(())
+    }
 }
