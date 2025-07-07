@@ -217,7 +217,7 @@ fn add_foreign_key_references(
         });
         if !all_references_point_to_same_table {
             return Err(anyhow::anyhow!(
-                "All references from {} in {} must point to the same foreign table (this is like a programming error)",
+                "All foreign key references from column '{}' in table '{}' must point to the same foreign table (this is likely a programming error)",
                 references[0].0.name,
                 table_spec.name.fully_qualified_name()
             ));
@@ -229,8 +229,9 @@ fn add_foreign_key_references(
         let data_type = context
             .model_name(foreign_table_name)
             .ok_or(anyhow::anyhow!(
-                "No model name found for foreign table name: {:?}",
-                foreign_table_name
+                "No model name found for foreign table '{}' referenced from table '{}'",
+                foreign_table_name.fully_qualified_name(),
+                table_spec.name.fully_qualified_name()
             ))?
             .to_string();
 

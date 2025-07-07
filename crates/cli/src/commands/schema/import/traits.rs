@@ -1,3 +1,9 @@
+//! Core traits for the import module.
+//!
+//! This module defines traits used throughout the import system:
+//! - `ModelImporter`: Converts database models into import structures
+//! - `ImportWriter`: Serializes import structures to output
+
 use anyhow::Result;
 use std::io::Write;
 
