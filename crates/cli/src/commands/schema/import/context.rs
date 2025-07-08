@@ -200,7 +200,7 @@ impl<'a> ImportContext<'a> {
     pub(super) fn referenced_columns(
         &self,
         table_name: &SchemaObjectName,
-    ) -> Vec<(SchemaObjectName, &ColumnSpec, &Vec<ColumnReferenceSpec>)> {
+    ) -> Vec<(SchemaObjectName, &ColumnSpec)> {
         let other_tables = self
             .database_spec
             .tables
@@ -217,11 +217,7 @@ impl<'a> ImportContext<'a> {
                             if reference_specs.iter().any(|reference_spec| {
                                 &reference_spec.foreign_table_name == table_name
                             }) {
-                                Some((
-                                    other_table_name.clone(),
-                                    other_table_column,
-                                    reference_specs,
-                                ))
+                                Some((other_table_name.clone(), other_table_column))
                             } else {
                                 None
                             }

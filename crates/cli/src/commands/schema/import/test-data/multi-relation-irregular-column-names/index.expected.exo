@@ -1,0 +1,19 @@
+@postgres
+module Database {
+  @access(query=true, mutation=false)
+  type Account {
+    @pk accountId: Uuid = uuidGenerateV4()
+    name: String
+    @precision(15) @scale(2) balance: Decimal = "0"
+    @relation("account") transactions: Set<Transaction>
+    @relation("counterpartyAccount") counterpartyTransactions: Set<Transaction>
+  }
+
+  @access(query=true, mutation=false)
+  type Transaction {
+    @pk transactionId: Uuid = uuidGenerateV4()
+    @precision(15) @scale(2) amount: Decimal
+    @column("account_id") account: Account
+    @column("counterparty_account_id") counterpartyAccount: Account?
+  }
+}
