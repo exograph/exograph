@@ -235,11 +235,9 @@ impl TableSpecImportNaming for TableSpec {
         for (ref_table_name, column) in context.referenced_columns(&self.name) {
             if let Some(model_name) = context.model_name(&ref_table_name) {
                 let is_many = column.unique_constraints.is_empty();
-                let empty_vec = vec![];
-                let source_fks = source_table_fk_counts
+                let has_multiple_relations = source_table_fk_counts
                     .get(&ref_table_name.fully_qualified_name())
-                    .unwrap_or(&empty_vec);
-                let has_multiple_relations = source_fks.len() > 1;
+                    .is_some_and(|source_fks| source_fks.len() > 1);
 
                 let (field_name, relation_name) = if has_multiple_relations {
                     // Multiple relations from source table to this table
@@ -437,13 +435,11 @@ impl TableSpecImportNaming for TableSpec {
 /// - `derive_relation_name("userId")` -> "user"
 /// - `derive_relation_name("status")` -> "status"
 fn compute_relation_name(column_name: &str) -> String {
-    if let Some(stripped) = column_name.strip_suffix("_id") {
-        stripped.to_string()
-    } else if let Some(stripped) = column_name.strip_suffix("Id") {
-        stripped.to_string()
-    } else {
-        column_name.to_string()
-    }
+    column_name
+        .strip_suffix("_id")
+        .or_else(|| column_name.strip_suffix("Id"))
+        .unwrap_or(column_name)
+        .to_string()
 }
 
 fn reference_mapping_annotation(
