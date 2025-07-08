@@ -7,7 +7,7 @@ module Database {
     @pk state: String
     @pk zip: Int
     info: String?
-    people: Set<Person>?
+    people: Set<Person>
   }
 
   @access(query=true, mutation=false)
