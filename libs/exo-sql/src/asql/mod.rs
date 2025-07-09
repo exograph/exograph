@@ -17,5 +17,6 @@ pub mod order_by;
 pub mod predicate;
 pub mod select;
 pub mod selection;
+pub mod transaction_holder;
 
 pub mod update;

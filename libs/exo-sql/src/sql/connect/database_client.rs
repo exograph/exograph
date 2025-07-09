@@ -39,6 +39,7 @@ impl DerefMut for DatabaseClient {
     }
 }
 
+/// Abstracts over the different transaction types that can be returned by the database client.
 pub enum TransactionWrapper<'a> {
     #[cfg(feature = "pool")]
     Pooled(deadpool_postgres::Transaction<'a>),
