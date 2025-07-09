@@ -97,15 +97,9 @@ impl TransactionHolder {
     pub async fn finalize(&mut self, commit: bool) -> Result<(), tokio_postgres::Error> {
         let mut state = self.state.lock().await;
         if commit {
-            state.commit().await.map_err(|e| match e {
-                DatabaseError::Delegate(pg_err) => pg_err,
-                _ => tokio_postgres::Error::__private_api_timeout(),
-            })
+            state.commit().await
         } else {
-            state.rollback().await.map_err(|e| match e {
-                DatabaseError::Delegate(pg_err) => pg_err,
-                _ => tokio_postgres::Error::__private_api_timeout(),
-            })
+            state.rollback().await
         }
     }
 }
@@ -141,7 +135,7 @@ impl TransactionState {
                 // 4. The transaction is only accessed through methods that ensure the client is still alive
                 // 5. Both are protected by the same Mutex<TransactionState> ensuring exclusive access
                 // 6. The transaction is always dropped before or with the client in commit/rollback
-                // 6. The 'static lifetime here is for the type system, but the actual lifetime
+                // 7. The 'static lifetime here is for the type system, but the actual lifetime
                 //    is managed by the containing struct which ensures memory safety
                 let tx_static: TransactionWrapper<'static> = unsafe { std::mem::transmute(tx) };
                 self.transaction = Some(tx_static);
@@ -174,7 +168,7 @@ impl TransactionState {
         }
     }
 
-    async fn commit(&mut self) -> Result<(), DatabaseError> {
+    async fn commit(&mut self) -> Result<(), tokio_postgres::Error> {
         if let Some(tx) = self.transaction.take() {
             tx.commit().await?;
         }
@@ -182,7 +176,7 @@ impl TransactionState {
         Ok(())
     }
 
-    async fn rollback(&mut self) -> Result<(), DatabaseError> {
+    async fn rollback(&mut self) -> Result<(), tokio_postgres::Error> {
         if let Some(tx) = self.transaction.take() {
             tx.rollback().await?;
         }
