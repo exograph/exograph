@@ -114,7 +114,12 @@ impl IntegrationTest {
 
         if extension == "gql" {
             // For init files, we don't care about the name, so we use the parent directory as root and project
-            let parent = init_file_path.parent().unwrap();
+            let parent = init_file_path.parent().with_context(|| {
+                format!(
+                    "Could not get parent directory for init file: {}",
+                    init_file_path.display()
+                )
+            })?;
             Self::load(init_file_path, vec![], parent, parent).map(|test| {
                 let IntegrationTest {
                     test_operations, ..
@@ -169,7 +174,7 @@ impl IntegrationTest {
     Error as a single stage test: {}
     Error as a multistage test: {}
     "#,
-                testfile_path.to_str().unwrap(),
+                testfile_path.display(),
                 single_stage_error,
                 multi_stage_error
             );
@@ -184,7 +189,7 @@ impl IntegrationTest {
             bail!(
                 "Unknown fields: {:?} defined in {}",
                 extra_keys.iter().collect::<Vec<_>>(),
-                testfile_path.to_str().unwrap()
+                testfile_path.display()
             );
         }
 
@@ -234,14 +239,24 @@ impl IntegrationTest {
         testfile_path: &Path,
         invariants: Vec<TestfileStageInvariant>,
     ) -> Result<Vec<ApiOperationInvariant>> {
-        let testfile_dir = testfile_path.parent().unwrap();
+        let testfile_dir = testfile_path.parent().with_context(|| {
+            format!(
+                "Could not get parent directory for testfile: {}",
+                testfile_path.display()
+            )
+        })?;
 
         let mut invariant_ops: Vec<ApiOperationInvariant> = vec![];
 
         for invariant in invariants {
             let invariant_path = testfile_dir.join(invariant.path.clone());
             // For invariants, we don't care about the name, so we use the parent directory as root and project
-            let parent = invariant_path.parent().unwrap();
+            let parent = invariant_path.parent().with_context(|| {
+                format!(
+                    "Could not get parent directory for invariant file: {}",
+                    invariant_path.display()
+                )
+            })?;
             let integration_test = Self::load(&invariant_path, vec![], parent, parent)?;
 
             for op in integration_test.test_operations {
