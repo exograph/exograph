@@ -30,7 +30,13 @@ impl TestSuite {
         exo_project_dirs
             .into_iter()
             .map(|exo_project_dir| {
-                let tests = load_tests_dir(&exo_project_dir, &[], pattern)?;
+                let tests = load_tests_dir(
+                    &exo_project_dir,
+                    &[],
+                    pattern,
+                    root_directory,
+                    &exo_project_dir,
+                )?;
                 Ok(TestSuite {
                     project_dir: exo_project_dir,
                     tests,
@@ -44,6 +50,8 @@ fn load_tests_dir(
     test_directory: &Path, // directory that contains "src/index.exo"
     init_ops: &[InitOperation],
     pattern: &Option<String>,
+    root_dir: &Path,
+    project_dir: &Path, // The exo project directory
 ) -> Result<Vec<IntegrationTest>> {
     // Begin directory traversal
     let mut exotest_files: Vec<PathBuf> = vec![];
@@ -89,14 +97,21 @@ fn load_tests_dir(
     let mut testfiles = vec![];
 
     for testfile_path in exotest_files.iter() {
-        let testfile = IntegrationTest::load(testfile_path, init_ops.clone())?;
+        let testfile =
+            IntegrationTest::load(testfile_path, init_ops.clone(), root_dir, project_dir)?;
         testfiles.push(testfile);
     }
 
     // Recursively parse test files
     for sub_directory in sub_directories.iter() {
         let child_init_ops = init_ops.clone();
-        let child_testfiles = load_tests_dir(sub_directory, &child_init_ops, pattern)?;
+        let child_testfiles = load_tests_dir(
+            sub_directory,
+            &child_init_ops,
+            pattern,
+            root_dir,
+            project_dir,
+        )?;
         testfiles.extend(child_testfiles)
     }
 

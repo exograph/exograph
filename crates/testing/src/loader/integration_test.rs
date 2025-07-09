@@ -68,18 +68,33 @@ struct TestfileMultipleStages {
 
 impl IntegrationTest {
     pub fn name(&self) -> String {
-        let relative_testfile_path = {
-            let base_path = self.testfile_path.components().skip(1).collect::<PathBuf>();
+        // Make the test path relative to the root directory where the test command was run
+        let relative_testfile_path = self
+            .testfile_path
+            .strip_prefix(&self.root_dir)
+            .unwrap_or(&self.testfile_path);
 
-            if base_path.starts_with("tests") {
-                base_path.components().skip(1).collect::<PathBuf>()
-            } else {
-                base_path
-            }
+        // Only remove "tests" directory if it's a direct child of the project directory
+        let project_tests_dir = self.project_dir.join("tests");
+        let path_without_project_tests = if self.testfile_path.starts_with(&project_tests_dir) {
+            // If the test file is under project_dir/tests/, remove that "tests" part
+            self.testfile_path
+                .strip_prefix(&project_tests_dir)
+                .map(|p| {
+                    // Make it relative to root_dir
+                    let project_relative = self
+                        .project_dir
+                        .strip_prefix(&self.root_dir)
+                        .unwrap_or(&self.project_dir);
+                    project_relative.join(p)
+                })
+                .unwrap_or(relative_testfile_path.to_path_buf())
+        } else {
+            relative_testfile_path.to_path_buf()
         };
 
-        // Drop to extension (".exotest") to obtain the name
-        relative_testfile_path
+        // Drop the extension (".exotest") to obtain the name
+        path_without_project_tests
             .with_extension("")
             .to_str()
             .expect("Failed to convert file name into Unicode")
@@ -98,7 +113,9 @@ impl IntegrationTest {
             .ok_or(anyhow::anyhow!("Init file extension is not valid UTF-8"))?;
 
         if extension == "gql" {
-            Self::load(init_file_path, vec![]).map(|test| {
+            // For init files, we don't care about the name, so we use the parent directory as root and project
+            let parent = init_file_path.parent().unwrap();
+            Self::load(init_file_path, vec![], parent, parent).map(|test| {
                 let IntegrationTest {
                     test_operations, ..
                 } = test;
@@ -121,7 +138,12 @@ impl IntegrationTest {
         }
     }
 
-    pub fn load(testfile_path: &PathBuf, init_ops: Vec<InitOperation>) -> Result<IntegrationTest> {
+    pub fn load(
+        testfile_path: &PathBuf,
+        init_ops: Vec<InitOperation>,
+        root_dir: &Path,
+        project_dir: &Path,
+    ) -> Result<IntegrationTest> {
         let mut file = File::open(testfile_path).context("Could not open test file")?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)
@@ -203,6 +225,8 @@ impl IntegrationTest {
             extra_envs: common.envs.unwrap_or_default(),
             init_operations: init_ops,
             test_operations: test_operation_sequence,
+            root_dir: root_dir.to_path_buf(),
+            project_dir: project_dir.to_path_buf(),
         })
     }
 
@@ -216,7 +240,9 @@ impl IntegrationTest {
 
         for invariant in invariants {
             let invariant_path = testfile_dir.join(invariant.path.clone());
-            let integration_test = Self::load(&invariant_path, vec![])?;
+            // For invariants, we don't care about the name, so we use the parent directory as root and project
+            let parent = invariant_path.parent().unwrap();
+            let integration_test = Self::load(&invariant_path, vec![], parent, parent)?;
 
             for op in integration_test.test_operations {
                 invariant_ops.push(ApiOperationInvariant { operation: op });
