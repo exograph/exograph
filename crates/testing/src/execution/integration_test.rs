@@ -102,9 +102,10 @@ impl IntegrationTest {
         project_dir: &PathBuf,
         ephemeral_database: &dyn EphemeralDatabaseServer,
     ) -> Result<TestResult> {
-        let log_prefix = format!("({})\n :: ", self.name()).purple();
+        let test_name = self.name();
+        let log_prefix = format!("({})\n :: ", test_name).purple();
 
-        let db_instance_name = format!("exotest_{:x}", md5::compute(self.name()));
+        let db_instance_name = format!("exotest_{:x}", md5::compute(&test_name));
 
         // create a database
         let db_instance = ephemeral_database.create_database(&db_instance_name)?;
@@ -119,7 +120,7 @@ impl IntegrationTest {
                 .collect();
 
             // create the schema
-            println!("{log_prefix} Initializing schema for {} ...", self.name());
+            println!("{log_prefix} Initializing schema for {} ...", test_name);
 
             let migrate_child = cmd("exo")
                 .args([
@@ -134,7 +135,7 @@ impl IntegrationTest {
 
             if !migrate_child.status.success() {
                 eprintln!("{}", std::str::from_utf8(&migrate_child.stderr).unwrap());
-                bail!("Could not build schema for {}", self.name());
+                bail!("Could not build schema for {}", test_name);
             }
 
             // Verify the schema to exercise the verification logic (which in-turn exercises the database introspection logic)
@@ -145,7 +146,7 @@ impl IntegrationTest {
 
             if !verify_child.status.success() {
                 eprintln!("{}", std::str::from_utf8(&verify_child.stderr).unwrap());
-                bail!("Could not verify schema for {}", self.name());
+                bail!("Could not verify schema for {}", test_name);
             }
 
             // spawn a exo instance
@@ -155,7 +156,7 @@ impl IntegrationTest {
             let mut extra_envs = self.extra_envs.clone();
 
             if telemetry_on {
-                extra_envs.insert("OTEL_SERVICE_NAME".to_string(), self.name());
+                extra_envs.insert("OTEL_SERVICE_NAME".to_string(), test_name.clone());
             }
 
             let router = {
@@ -208,7 +209,7 @@ impl IntegrationTest {
             let result = run_init_operation(operation, &mut ctx)
                 .await
                 .with_context(|| {
-                    format!("While initializing database for testfile {}", self.name())
+                    format!("While initializing database for testfile {}", test_name)
                 })?;
 
             match result {
@@ -226,7 +227,7 @@ impl IntegrationTest {
         for operation in self.test_operations.iter() {
             let result = assert_api_operation(operation, &mut ctx)
                 .await
-                .with_context(|| anyhow!("While running tests for {}", self.name()));
+                .with_context(|| anyhow!("While running tests for {}", test_name));
 
             match result {
                 Ok(op_result) => match op_result {

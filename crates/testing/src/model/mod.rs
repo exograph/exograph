@@ -22,11 +22,16 @@ pub struct TestSuite {
 
 #[derive(Debug, Clone)]
 pub struct IntegrationTest {
+    /// The root directory from which the test command was run (used to compute the test name to be relative to the root directory)
+    pub root_dir: PathBuf,
+    /// The exo project directory containing src/ and tests/ (used to compute the test name to drop the "tests/" prefix)
+    pub project_dir: PathBuf,
     pub testfile_path: PathBuf,
     pub retries: usize,
     pub init_operations: Vec<InitOperation>,
     pub test_operations: Vec<ApiOperation>,
-    pub extra_envs: HashMap<String, String>, // extra envvars to be set when starting the exo server
+    /// Extra envvars to be set when starting the exo server
+    pub extra_envs: HashMap<String, String>,
 }
 
 #[allow(clippy::large_enum_variant)]
