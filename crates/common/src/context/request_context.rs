@@ -53,7 +53,7 @@ impl<'a> RequestContext<'a> {
                 env,
                 jwt_authenticator,
                 system_router,
-                transaction_holder: Arc::new(Mutex::new(TransactionHolder::default())),
+                transaction_holder: Arc::new(Mutex::new(TransactionHolder::new())),
             },
         }
     }

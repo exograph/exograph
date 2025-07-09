@@ -48,13 +48,14 @@ pub mod database_error;
 pub use asql::{
     abstract_operation::AbstractOperation,
     column_path::{ColumnPath, ColumnPathLink, PhysicalColumnPath},
-    database_executor::{DatabaseExecutor, TransactionHolder},
+    database_executor::DatabaseExecutor,
     delete::AbstractDelete,
     insert::{AbstractInsert, ColumnValuePair, InsertionElement, InsertionRow, NestedInsertion},
     order_by::{AbstractOrderBy, AbstractOrderByExpr},
     predicate::AbstractPredicate,
     select::AbstractSelect,
     selection::{AliasedSelectionElement, Selection, SelectionCardinality, SelectionElement},
+    transaction_holder::TransactionHolder,
     update::{
         AbstractUpdate, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractInsertSet,
         NestedAbstractUpdate,
