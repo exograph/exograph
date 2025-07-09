@@ -123,25 +123,40 @@ impl TransactionState {
         Ok(())
     }
 
-    async fn ensure_transaction(&mut self) -> Result<(), DatabaseError> {
-        if self.transaction.is_none() && !self.finalized {
-            if let Some(ref mut client) = self.client {
-                let tx = client.transaction().await?;
-
-                // SAFETY: This lifetime extension is safe because:
-                // 1. The TransactionWrapper<'_> borrows from the DatabaseClient (see DatabaseClient::transaction)
-                // 2. Both the client and transaction are stored in the same struct (TransactionState)
-                // 3. All fields of TransactionState and TransactionHolder are private, thus their access is only in this module
-                // 4. The transaction is only accessed through methods that ensure the client is still alive
-                // 5. Both are protected by the same Mutex<TransactionState> ensuring exclusive access
-                // 6. The transaction is always dropped before or with the client in commit/rollback
-                // 7. The 'static lifetime here is for the type system, but the actual lifetime
-                //    is managed by the containing struct which ensures memory safety
-                let tx_static: TransactionWrapper<'static> = unsafe { std::mem::transmute(tx) };
-                self.transaction = Some(tx_static);
-            }
+    async fn ensure_transaction(
+        &mut self,
+    ) -> Result<&mut TransactionWrapper<'static>, DatabaseError> {
+        if self.finalized {
+            return Err(DatabaseError::Transaction(
+                "Transaction already finalized".to_string(),
+            ));
         }
-        Ok(())
+
+        match self.transaction {
+            Some(ref mut tx) => Ok(tx),
+            None => match self.client {
+                Some(ref mut client) => {
+                    let tx = client.transaction().await?;
+
+                    // SAFETY: This lifetime extension is safe because:
+                    // 1. The TransactionWrapper<'_> borrows from the DatabaseClient (see DatabaseClient::transaction)
+                    // 2. Both the client and transaction are stored in the same struct (TransactionState)
+                    // 3. All fields of TransactionState and TransactionHolder are private, thus their access is only in this module
+                    // 4. The transaction is only accessed through methods that ensure the client is still alive
+                    // 5. Both are protected by the same Mutex<TransactionState> ensuring exclusive access
+                    // 6. The transaction is always dropped before or with the client in commit/rollback
+                    // 7. The 'static lifetime here is for the type system, but the actual lifetime
+                    //    is managed by the containing struct which ensures memory safety
+                    let tx_static: TransactionWrapper<'static> = unsafe { std::mem::transmute(tx) };
+
+                    self.transaction = Some(tx_static);
+                    Ok(self.transaction.as_mut().unwrap())
+                }
+                None => Err(DatabaseError::Transaction(
+                    "No database client available".to_string(),
+                )),
+            },
+        }
     }
 
     async fn execute_work(
@@ -151,14 +166,8 @@ impl TransactionState {
         needs_tx: bool,
     ) -> Result<TransactionStepResult, DatabaseError> {
         if work.needs_transaction() || needs_tx {
-            self.ensure_transaction().await?;
-            if let Some(ref mut tx) = self.transaction {
-                work.execute(database, tx.deref_mut()).await
-            } else {
-                Err(DatabaseError::Transaction(
-                    "Failed to create transaction".to_string(),
-                ))
-            }
+            let tx = self.ensure_transaction().await?;
+            work.execute(database, tx.deref_mut()).await
         } else if let Some(ref mut client) = self.client {
             work.execute(database, client.deref_mut()).await
         } else {
