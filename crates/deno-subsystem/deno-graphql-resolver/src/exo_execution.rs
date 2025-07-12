@@ -21,9 +21,8 @@ use core_resolver::{
 };
 
 use exo_deno::{
-    deno_executor::CallbackProcessor,
-    deno_executor_pool::DenoExecutorConfig,
-    deno_module::{DenoModule, DenoModuleSharedState},
+    deno_executor::CallbackProcessor, deno_executor_pool::DenoExecutorConfig,
+    deno_module::DenoModule,
 };
 
 use super::exograph_ops::InterceptedOperationInfo;
@@ -106,7 +105,6 @@ const SHIMS: [(&str, &[&str]); 3] = {
     ]
 };
 
-const USER_AGENT: &str = "Exograph";
 const ADDITIONAL_CODE: &[&str] = &[include_str!("./exograph_error.js")];
 const EXPLICIT_ERROR_CLASS_NAME: Option<&'static str> = Some("ExographError");
 
@@ -136,32 +134,20 @@ deno_core::extension!(
         dir "extension",
         "__init.js",
          "exograph:ops.js" = "exograph.js",
-    ],
-    customizer = |ext: &mut Extension| {
-        use deno_core::ascii_str_include;
-        use deno_core::ExtensionFileSource;
-        ext.esm_files.to_mut().clear();
-        // Without this, the esm_files are of the `LoadedFromFsDuringSnapshot` kind (and loaded from the path of the build machine).
-        // By explicitly adding the files here, we ensure that they are of the `IncludedInBinary` kind (and loaded from the binary).
-        ext.esm_files.to_mut().push(ExtensionFileSource::new("exograph:ops.js", ascii_str_include!("../extension/exograph.js")));
-        ext.esm_files.to_mut().push(ExtensionFileSource::new("ext:exograph/__init.js", ascii_str_include!("../extension/__init.js")));
-        ext.esm_entry_point = Some("ext:exograph/__init.js");
-      }
+    ]
 );
 
 pub fn exo_config() -> DenoExecutorConfig<Option<InterceptedOperationInfo>> {
     fn create_extensions() -> Vec<Extension> {
-        vec![exograph::init_ops_and_esm()]
+        vec![exograph::init()]
     }
 
     DenoExecutorConfig::new(
-        USER_AGENT,
         SHIMS.to_vec(),
         ADDITIONAL_CODE.to_vec(),
         EXPLICIT_ERROR_CLASS_NAME,
         create_extensions,
         process_call_context,
-        DenoModuleSharedState::default(),
     )
 }
 
@@ -171,12 +157,12 @@ mod tests {
     use test_log::test;
 
     use super::exograph;
-    use exo_deno::{DenoModule, DenoModuleSharedState, UserCode};
+    use exo_deno::{DenoModule, UserCode};
 
     #[test]
     #[allow(deprecated)]
     fn check_extension_esm_is_embedded() {
-        let extension = exograph::init_ops_and_esm();
+        let extension = exograph::init();
         extension.esm_files.iter().for_each(|esm_file| {
             assert!(matches!(
                 esm_file.code,
@@ -194,11 +180,9 @@ mod tests {
                     .join("test_exograph_extension.js")
                     .to_owned(),
             ),
-            "deno_module",
             vec![],
             vec![],
-            vec![exograph::init_ops_and_esm()],
-            DenoModuleSharedState::default(),
+            vec![exograph::init()],
             None,
             None,
             None,

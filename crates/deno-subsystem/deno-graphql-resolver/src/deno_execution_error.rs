@@ -14,7 +14,7 @@ use core_resolver::{
 };
 use thiserror::Error;
 
-use exo_deno::deno_error::DenoError;
+use exo_deno::error::DenoError;
 
 #[derive(Error, Debug)]
 pub enum DenoExecutionError {

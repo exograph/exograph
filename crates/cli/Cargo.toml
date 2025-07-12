@@ -38,6 +38,7 @@ wildmatch.workspace = true
 tracing.workspace = true
 strsim = "0.11.1"
 
+exo-deno = { path = "../../libs/exo-deno" }
 exo-sql = { path = "../../libs/exo-sql", features = [
   "pool",
   "interactive-migration",

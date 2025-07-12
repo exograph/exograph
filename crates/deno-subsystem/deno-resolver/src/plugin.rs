@@ -36,7 +36,7 @@ impl SubsystemLoader for DenoSubsystemLoader {
         serialized_subsystem: SerializableSubsystem,
         _env: &dyn Environment,
     ) -> Result<Box<SubsystemResolver>, SubsystemLoadingError> {
-        deno_core::JsRuntime::init_platform(None, true);
+        exo_deno::initialize();
 
         let graphql = match serialized_subsystem.graphql {
             Some(graphql) => {

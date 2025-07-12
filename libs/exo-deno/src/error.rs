@@ -21,7 +21,7 @@ pub enum DenoError {
 
     // Non-explicit error thrown by the runtime (such as undefined variable)
     #[error("{0}")]
-    JsError(Box<JsError>),
+    JsError(#[from] JsError),
 
     #[error("{0}")]
     AnyError(#[from] AnyError),
@@ -57,10 +57,7 @@ pub enum DenoInternalError {
     Serde(#[from] deno_core::serde_v8::Error),
     #[error("{0}")]
     DataError(#[from] DataError),
-}
 
-impl From<JsError> for DenoError {
-    fn from(err: JsError) -> Self {
-        DenoError::JsError(Box::new(err))
-    }
+    #[error("{0}")]
+    CoreError(#[from] deno_core::error::CoreError),
 }

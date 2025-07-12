@@ -12,7 +12,7 @@ tokio.workspace = true
 include_dir.workspace = true
 ctor.workspace = true
 
-exo-deno = { path = "../../libs/exo-deno", features = ["typescript-loader"] }
+exo-deno = { path = "../../libs/exo-deno" }
 
 [build-dependencies]
 which.workspace = true

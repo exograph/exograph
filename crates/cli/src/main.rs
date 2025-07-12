@@ -89,5 +89,7 @@ async fn main() -> Result<()> {
 
     let config = config::load_config()?;
 
+    exo_deno::initialize();
+
     subcommand_definition.execute(&matches, &config).await
 }

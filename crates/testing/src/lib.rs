@@ -34,7 +34,7 @@ pub fn run(
     // on Linux issue. The tests are run in parallel and will initialize the deno module
     // (and the deno runtime) in child threads, which will cause the crash if we don't do it
     // here first.
-    deno_core::JsRuntime::init_platform(None, true);
+    exo_deno::initialize();
 
     let root_directory_str = root_directory.to_str().unwrap();
     println!(

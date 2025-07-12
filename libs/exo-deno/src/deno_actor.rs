@@ -25,8 +25,8 @@ use tokio::sync::{
 };
 use tracing::instrument;
 
-use crate::deno_error::{DenoError, DenoInternalError};
-use crate::deno_module::{Arg, DenoModule, DenoModuleSharedState, UserCode};
+use crate::deno_module::{Arg, DenoModule, UserCode};
+use crate::error::{DenoError, DenoInternalError};
 
 struct DenoCall<C, R> {
     method_name: String,
@@ -91,12 +91,10 @@ where
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         code: UserCode,
-        user_agent_name: &'static str,
         shims: Vec<(&'static str, &'static [&'static str])>,
         additional_code: Vec<&'static str>,
         extension_ops: fn() -> Vec<Extension>,
         explicit_error_class_name: Option<&'static str>,
-        shared_state: DenoModuleSharedState,
         process_call_context: fn(&mut DenoModule, C) -> (),
     ) -> Result<DenoActor<C, M, R>, DenoError> {
         let (callback_sender, callback_receiver) = tokio::sync::mpsc::channel(1);
@@ -124,11 +122,9 @@ where
                 // first, initialize the Deno module
                 let deno_module = DenoModule::new(
                     code,
-                    user_agent_name,
                     shims,
                     additional_code,
                     extension_ops(),
-                    shared_state,
                     explicit_error_class_name,
                     None,
                     None,
@@ -274,7 +270,6 @@ mod tests {
     use std::path::Path;
     use tokio::sync::mpsc::channel;
 
-    const USER_AGENT_NAME: &str = "TestDenoAgent";
     const ADDITIONAL_CODE: &str = "";
     const EXPLICIT_ERROR_CLASS_NAME: Option<&str> = None;
 
@@ -282,12 +277,10 @@ mod tests {
     async fn test_actor() {
         let actor: DenoActor<(), (), ()> = DenoActor::new(
             UserCode::LoadFromFs(Path::new("src/test_js/direct.js").to_path_buf()),
-            USER_AGENT_NAME,
             vec![],
             vec![ADDITIONAL_CODE],
             Vec::new,
             EXPLICIT_ERROR_CLASS_NAME,
-            DenoModuleSharedState::default(),
             |_, _| {},
         )
         .unwrap();
