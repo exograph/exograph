@@ -25,6 +25,7 @@ pub use deno_module::{Arg, DenoModule, UserCode};
 
 mod deno_actor;
 mod embedded_module_loader;
+mod typescript_module_loader;
 
 pub use deno_core;
 

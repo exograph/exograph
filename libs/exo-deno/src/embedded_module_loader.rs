@@ -8,13 +8,13 @@
 // by the Apache License, Version 2.0.
 
 use deno_core::ModuleLoader;
-use deno_core::ModuleResolutionError;
 use deno_core::ModuleSource;
 use deno_core::ModuleSpecifier;
 use deno_core::RequestedModuleType;
 use deno_core::ResolutionKind;
 use deno_core::error::ModuleLoaderError;
 use deno_core::futures::FutureExt;
+use deno_core::resolve_import;
 use deno_core::url::Url;
 
 use std::cell::RefCell;
@@ -38,11 +38,10 @@ impl ModuleLoader for EmbeddedModuleLoader {
     fn resolve(
         &self,
         specifier: &str,
-        _referrer: &str,
+        referrer: &str,
         _kind: ResolutionKind,
     ) -> Result<ModuleSpecifier, ModuleLoaderError> {
-        ModuleSpecifier::parse(specifier)
-            .map_err(|e| ModuleLoaderError::Resolution(ModuleResolutionError::InvalidUrl(e)))
+        Ok(resolve_import(specifier, referrer)?)
     }
 
     fn load(
@@ -86,9 +85,16 @@ impl ModuleLoader for EmbeddedModuleLoader {
             let source_code_map = self.source_code_map.clone();
             let module_specifier = module_specifier.clone();
 
+            #[cfg(feature = "typescript-loader")]
+            let embedded_dirs = self.embedded_dirs.clone();
+
             let maybe_referrer = maybe_referrer.cloned();
 
             let module_load_future = async move {
+                #[cfg(feature = "typescript-loader")]
+                let loader = crate::typescript_module_loader::TypescriptLoader { embedded_dirs };
+
+                #[cfg(not(feature = "typescript-loader"))]
                 let loader = deno_core::FsModuleLoader;
 
                 // use the configured loader to load the script from an external source

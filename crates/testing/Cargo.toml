@@ -40,7 +40,7 @@ exo-sql = { path = "../../libs/exo-sql", features = [
   "test-support",
   "pool",
 ] }
-exo-deno = { path = "../../libs/exo-deno" }
+exo-deno = { path = "../../libs/exo-deno", features = ["typescript-loader"] }
 exo-env = { path = "../../libs/exo-env" }
 
 system-router = { path = "../system-router" }
