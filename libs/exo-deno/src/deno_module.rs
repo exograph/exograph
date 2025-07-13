@@ -49,7 +49,8 @@ use super::embedded_module_loader::EmbeddedModuleLoader;
 use deno_error::JsErrorBox;
 use node_resolver::errors::ClosestPkgJsonError;
 
-/// Minimal implementation of NodeRequireLoader for compatibility
+/// Minimal implementation of NodeRequireLoader
+/// Since we use the bundler approach, we don't need to load any files from the file system.
 struct BasicNodeRequireLoader;
 
 impl deno_runtime::deno_node::NodeRequireLoader for BasicNodeRequireLoader {
@@ -58,7 +59,6 @@ impl deno_runtime::deno_node::NodeRequireLoader for BasicNodeRequireLoader {
         _permissions: &mut dyn deno_runtime::deno_node::NodePermissions,
         path: &'a std::path::Path,
     ) -> Result<std::borrow::Cow<'a, std::path::Path>, JsErrorBox> {
-        // Allow all file access for simplicity
         Ok(std::borrow::Cow::Borrowed(path))
     }
 
@@ -66,14 +66,12 @@ impl deno_runtime::deno_node::NodeRequireLoader for BasicNodeRequireLoader {
         &self,
         path: &std::path::Path,
     ) -> Result<deno_core::FastString, JsErrorBox> {
-        // Read file content
         let content = std::fs::read_to_string(path)
             .map_err(|e| JsErrorBox::generic(format!("Failed to read file: {}", e)))?;
         Ok(deno_core::FastString::from(content))
     }
 
     fn is_maybe_cjs(&self, _specifier: &deno_core::url::Url) -> Result<bool, ClosestPkgJsonError> {
-        // For simplicity, assume CommonJS modules are not used
         Ok(false)
     }
 }
@@ -223,6 +221,7 @@ impl DenoModule {
         let mut worker = MainWorker::bootstrap_from_options(&main_module, services, worker_options);
 
         // Ensure sys_traits::impls::RealSys is available in the op_state before any operations
+        // Needed for Node code (such as in deno-stripe integration tests)
         {
             let runtime = &mut worker.js_runtime;
             let op_state_ref = runtime.op_state();
@@ -647,18 +646,6 @@ mod tests {
             json!({ "userId": 1, "id": 5, "title": "laboriosam mollitia et enim quasi adipisci quia provident illum", "completed": false })
         );
     }
-
-    // #[op2]
-    // #[string]
-    // fn op_rust_impl(#[string] arg: String) -> Result<String, AnyError> {
-    //     Ok(format!("Register Op: {arg}"))
-    // }
-
-    // #[op2(async)]
-    // #[string]
-    // async fn op_async_rust_impl(#[string] arg: String) -> Result<String, AnyError> {
-    //     Ok(format!("Register Async Op: {arg}"))
-    // }
 
     #[op2]
     #[string]
