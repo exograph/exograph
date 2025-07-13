@@ -75,8 +75,14 @@ async fn bundle_source(module_fs_path: &Path) -> Result<String, ModelBuildingErr
         .arg("bundle")
         .arg("--allow-import")
         .arg(module_fs_path.to_string_lossy().as_ref())
-        .output()
-        .map_err(|e| ModelBuildingError::Generic(format!("Error: {}", e)))?;
+        .output()?;
+
+    if !output.status.success() {
+        return Err(ModelBuildingError::Generic(format!(
+            "Failed to bundle Deno: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )));
+    }
 
     String::from_utf8(output.stdout).map_err(|e| {
         ModelBuildingError::Generic(format!("Failed to parse bundled output as UTF-8: {}", e))
