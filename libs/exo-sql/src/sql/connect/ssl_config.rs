@@ -144,6 +144,8 @@ impl SslConfig {
                 }
             }
 
+            // Ignore the result (install_default returns the existing provider if it's already installed)
+            let _existing = rustls::crypto::aws_lc_rs::default_provider().install_default();
             let config = rustls::ClientConfig::builder()
                 .with_root_certificates(root_store)
                 .with_no_client_auth();

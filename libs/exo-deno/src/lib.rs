@@ -53,10 +53,8 @@ pub fn initialize() {
     }
     INITIALIZED.store(true, Ordering::Relaxed);
 
-    use deno_runtime::deno_tls::rustls;
-
     deno_core::JsRuntime::init_platform(None, true);
-    rustls::crypto::aws_lc_rs::default_provider()
-        .install_default()
-        .unwrap();
+    // Ignore the result (install_default returns the existing provider if it's already installed)
+    let _existing =
+        deno_runtime::deno_tls::rustls::crypto::aws_lc_rs::default_provider().install_default();
 }
