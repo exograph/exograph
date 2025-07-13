@@ -22,7 +22,7 @@ clap.workspace = true
 futures.workspace = true
 rand.workspace = true
 ctrlc = "3.4"
-zip = "0.6.6"
+zip.workspace = true
 inquire = "0.7.5"
 reqwest = { workspace = true, features = ["stream"] }
 serde.workspace = true

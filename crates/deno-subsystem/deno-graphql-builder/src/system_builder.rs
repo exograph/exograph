@@ -7,8 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, env, path::Path};
 
+use async_trait::async_trait;
+use common::download::{download_if_needed, exo_cache_root};
 use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use core_model_builder::{
     ast::ast_types::{AstExpr, AstModule},
@@ -30,6 +32,57 @@ use url::Url;
 
 use crate::module_skeleton_generator;
 
+const DENO_VERSION: &str = "2.4.1";
+
+async fn bundle_source(module_fs_path: &Path) -> Result<String, ModelBuildingError> {
+    let deno_path = exo_cache_root()
+        .map_err(|e| {
+            ModelBuildingError::Generic(format!("Failed to determine cache root directory: {}", e))
+        })?
+        .join("deno")
+        .join(DENO_VERSION)
+        .join("deno");
+
+    if !deno_path.exists() {
+        let target_os = env::consts::OS;
+        let target_arch = env::consts::ARCH;
+
+        let platform = match (target_os, target_arch) {
+            ("macos", "x86_64") => "x86_64-apple-darwin",
+            ("macos", "aarch64") => "aarch64-apple-darwin",
+            ("linux", "x86_64") => "x86_64-unknown-linux-gnu",
+            ("windows", "x86_64") => "x86_64-pc-windows-msvc",
+            (os, arch) => {
+                return Err(ModelBuildingError::Generic(format!(
+                    "Unsupported platform: {os}-{arch}"
+                )));
+            }
+        };
+
+        download_if_needed(
+            &format!(
+                "https://github.com/denoland/deno/releases/download/v{DENO_VERSION}/deno-{platform}.zip"
+            ),
+            "Deno",
+            Some(&format!("deno/{DENO_VERSION}")),
+            true,
+        )
+        .await
+        .map_err(|e| ModelBuildingError::Generic(format!("Failed to download Deno: {}", e)))?;
+    }
+
+    let output = std::process::Command::new(deno_path)
+        .arg("bundle")
+        .arg("--allow-import")
+        .arg(module_fs_path.to_string_lossy().as_ref())
+        .output()
+        .map_err(|e| ModelBuildingError::Generic(format!("Error: {}", e)))?;
+
+    String::from_utf8(output.stdout).map_err(|e| {
+        ModelBuildingError::Generic(format!("Failed to parse bundled output as UTF-8: {}", e))
+    })
+}
+
 pub struct ModelDenoSystemWithInterceptors {
     pub underlying: DenoSubsystem,
 
@@ -40,8 +93,9 @@ pub struct DenoScriptProcessor {
     build_mode: BuildMode,
 }
 
+#[async_trait]
 impl ScriptProcessor for DenoScriptProcessor {
-    fn process_script(
+    async fn process_script(
         &self,
         module: &AstModule<Typed>,
         base_system: &BaseModelSystem,
@@ -59,15 +113,7 @@ impl ScriptProcessor for DenoScriptProcessor {
 
         let root = Url::from_file_path(std::fs::canonicalize(module_fs_path).unwrap()).unwrap();
 
-        // TODO: Ensure that the correct version of deno is installed and use that instead of the hardcoded path.
-        let output = std::process::Command::new("/Users/ramnivas/.deno/bin/deno")
-            .arg("bundle")
-            .arg("--allow-import")
-            .arg(module_fs_path.to_string_lossy().as_ref())
-            .output()
-            .map_err(|e| ModelBuildingError::Generic(format!("Error: {}", e)))?;
-
-        let bundled = String::from_utf8(output.stdout).unwrap();
+        let bundled = bundle_source(module_fs_path).await?;
 
         let script_defn = DenoScriptDefn {
             modules: HashMap::from([(

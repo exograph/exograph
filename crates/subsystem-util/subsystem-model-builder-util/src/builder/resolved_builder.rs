@@ -268,8 +268,9 @@ async fn resolve_module(
     source_path.pop();
     source_path.push(&module_relative_path);
 
-    let (script_path, bundled_script) =
-        script_processor.process_script(module, base_system, typechecked_system, &source_path)?;
+    let (script_path, bundled_script) = script_processor
+        .process_script(module, base_system, typechecked_system, &source_path)
+        .await?;
 
     fn extract_intercept_annot<'a>(
         annotations: &'a AnnotationMap,
@@ -588,6 +589,7 @@ fn resolve_field_type(
 mod tests {
     use std::path::Path;
 
+    use async_trait::async_trait;
     use builder::{
         load_subsystem_builders, parser,
         typechecker::{self, annotation_map::AnnotationMapImpl},
@@ -656,8 +658,9 @@ mod tests {
 
     struct TestScriptProcessor {}
 
+    #[async_trait]
     impl ScriptProcessor for TestScriptProcessor {
-        fn process_script(
+        async fn process_script(
             &self,
             _module: &AstModule<Typed>,
             _base_system: &BaseModelSystem,

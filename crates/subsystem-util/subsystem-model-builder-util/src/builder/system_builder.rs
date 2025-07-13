@@ -9,6 +9,7 @@
 
 use std::path::Path;
 
+use async_trait::async_trait;
 use core_model::mapped_arena::{MappedArena, SerializableSlab, SerializableSlabIndex};
 use core_model_builder::{
     ast::ast_types::{AstExpr, AstModule},
@@ -29,8 +30,9 @@ use super::{
     type_builder::{self, ResolvedTypeEnv},
 };
 
+#[async_trait]
 pub trait ScriptProcessor {
-    fn process_script(
+    async fn process_script(
         &self,
         module: &AstModule<Typed>,
         base_system: &BaseModelSystem,

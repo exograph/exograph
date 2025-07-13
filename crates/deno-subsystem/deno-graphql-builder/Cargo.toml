@@ -5,13 +5,15 @@ edition.workspace = true
 publish = false
 
 [dependencies]
+async-trait.workspace = true
 core-model = { path = "../../core-subsystem/core-model" }
 core-model-builder = { path = "../../core-subsystem/core-model-builder" }
 subsystem-model-builder-util = { path = "../../subsystem-util/subsystem-model-builder-util" }
 deno-graphql-model = { path = "../deno-graphql-model" }
 exo-deno = { path = "../../../libs/exo-deno" }
-url.workspace = true
+common = { path = "../../common" }
 
+url.workspace = true
 deno_core.workspace = true
 serde_json.workspace = true
 

@@ -52,7 +52,7 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
         );
 
         let downloaded_file_path =
-            download_if_needed(&download_url, "Exograph AWS Distribution").await?;
+            download_if_needed(&download_url, "Exograph AWS Distribution", None, false).await?;
 
         let app_name: String = app_name_from_args(matches);
 

@@ -27,6 +27,7 @@ cookie = "0.18.1"
 elsa = "1.8.1"
 async-graphql-value.workspace = true
 tokio-postgres.workspace = true
+zip.workspace = true
 
 exo-env = { path = "../../libs/exo-env" }
 exo-sql = { path = "../../libs/exo-sql" }

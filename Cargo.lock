@@ -1485,6 +1485,7 @@ dependencies = [
  "tracing-subscriber",
  "wasm-bindgen-test",
  "wildmatch",
+ "zip",
 ]
 
 [[package]]
@@ -2187,7 +2188,9 @@ dependencies = [
 name = "deno-graphql-builder"
 version = "0.23.0"
 dependencies = [
+ "async-trait",
  "codemap",
+ "common",
  "core-model",
  "core-model-builder",
  "deno-graphql-model",
@@ -9037,6 +9040,7 @@ dependencies = [
 name = "subsystem-model-builder-util"
 version = "0.23.0"
 dependencies = [
+ "async-trait",
  "builder",
  "codemap",
  "codemap-diagnostic",

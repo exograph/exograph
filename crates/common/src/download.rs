@@ -7,7 +7,12 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{cmp::min, fs::create_dir_all, io::Write, path::PathBuf};
+use std::{
+    cmp::min,
+    fs::{File, create_dir_all},
+    io::Write,
+    path::PathBuf,
+};
 
 use anyhow::{Ok, Result, anyhow};
 use futures::StreamExt;
@@ -22,8 +27,18 @@ use tempfile::NamedTempFile;
 /// # Arguments
 /// - `url`: The URL to download from.
 /// - `info_name`: The name of the file to display in the progress bar etc. (e.g. "Exograph AWS Distribution")
-pub async fn download_if_needed(url: &str, info_name: &str) -> Result<PathBuf> {
-    let download_dir = cache_dir()?;
+/// - `relative_cache_dir`: The relative path to the cache directory.
+/// - `unzip`: Whether to unzip the file after downloading.
+pub async fn download_if_needed(
+    url: &str,
+    info_name: &str,
+    relative_cache_dir: Option<&str>,
+    unzip: bool,
+) -> Result<PathBuf> {
+    let download_dir = match relative_cache_dir {
+        Some(relative_cache_dir) => exo_cache_root()?.join(relative_cache_dir),
+        None => version_cache_dir()?,
+    };
 
     // Download filename is the same as the last segment of the URL
     let download_file_name = url
@@ -57,7 +72,7 @@ pub async fn download_if_needed(url: &str, info_name: &str) -> Result<PathBuf> {
 
     let mut response_stream = response.bytes_stream();
     let mut downloaded_len: u64 = 0;
-    let mut temp_downloaded_file = NamedTempFile::new_in(download_dir)?;
+    let mut temp_downloaded_file = NamedTempFile::new_in(download_dir.clone())?;
 
     // Download to a temporary file first
     while let Some(chunk) = response_stream.next().await {
@@ -69,20 +84,29 @@ pub async fn download_if_needed(url: &str, info_name: &str) -> Result<PathBuf> {
         pb.set_position(downloaded_len);
     }
 
-    // Then move it to the final location. This avoids partially downloaded files.
-    std::fs::rename(temp_downloaded_file.path(), &download_file_path)?;
+    if unzip {
+        // Unzip the file if it's a zip file
+        let mut zip_file = zip::ZipArchive::new(File::open(temp_downloaded_file.path())?)?;
+        zip_file.extract(&download_dir)?;
+    } else {
+        // Then move it to the final location. This avoids partially downloaded files.
+        std::fs::rename(temp_downloaded_file.path(), &download_file_path)?;
+    }
 
     pb.finish_with_message("Downloaded!");
 
     Ok(download_file_path)
 }
 
-fn cache_dir() -> Result<PathBuf> {
+fn version_cache_dir() -> Result<PathBuf> {
     let current_version = env!("CARGO_PKG_VERSION");
 
+    Ok(exo_cache_root()?.join(current_version))
+}
+
+pub fn exo_cache_root() -> Result<PathBuf> {
     Ok(home_dir()
         .ok_or(anyhow!("Failed to resolve home directory"))?
         .join(".exograph")
-        .join("cache")
-        .join(current_version))
+        .join("cache"))
 }
