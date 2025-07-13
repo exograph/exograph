@@ -13,8 +13,9 @@ use colored::Colorize;
 use crate::commands::{build::build, command::CommandDefinition};
 use crate::config::Config;
 
+use common::download::download_if_needed;
+
 use super::{
-    download::download_if_needed,
     util::{app_name_arg, app_name_from_args, write_template_file},
 };
 

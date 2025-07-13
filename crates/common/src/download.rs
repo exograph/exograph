@@ -22,7 +22,7 @@ use tempfile::NamedTempFile;
 /// # Arguments
 /// - `url`: The URL to download from.
 /// - `info_name`: The name of the file to display in the progress bar etc. (e.g. "Exograph AWS Distribution")
-pub(super) async fn download_if_needed(url: &str, info_name: &str) -> Result<PathBuf> {
+pub async fn download_if_needed(url: &str, info_name: &str) -> Result<PathBuf> {
     let download_dir = cache_dir()?;
 
     // Download filename is the same as the last segment of the URL

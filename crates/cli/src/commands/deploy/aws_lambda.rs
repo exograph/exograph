@@ -20,7 +20,9 @@ use colored::Colorize;
 use crate::commands::{build::build, command::CommandDefinition};
 use crate::config::Config;
 
-use super::{download::download_if_needed, util::app_name_arg, util::app_name_from_args};
+use common::download::download_if_needed;
+
+use super::{util::app_name_arg, util::app_name_from_args};
 
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 

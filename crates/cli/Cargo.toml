@@ -23,14 +23,12 @@ futures.workspace = true
 rand.workspace = true
 ctrlc = "3.4"
 zip = "0.6.6"
-home = "0.5.11"
 inquire = "0.7.5"
 reqwest = { workspace = true, features = ["stream"] }
 serde.workspace = true
 serde_json.workspace = true
-indicatif = "0.17.11"
-tempfile.workspace = true
 which.workspace = true
+tempfile.workspace = true
 toml = { version = "0.8.22", features = ["parse"] }
 semver = "1.0.26"
 pluralizer.workspace = true
