@@ -75,7 +75,9 @@ struct PlaygroundConfig {
 }
 
 fn exo_playground_config(env: &dyn Environment) -> PlaygroundConfig {
-    let enable_schema_live_update = env.enabled(EXO_INTROSPECTION_LIVE_UPDATE, false);
+    let enable_schema_live_update = env
+        .enabled(EXO_INTROSPECTION_LIVE_UPDATE, false)
+        .unwrap_or(false);
     // Normalize the OIDC URL to remove the trailing slash, if any
     let oidc_url = env
         .get("EXO_OIDC_URL")

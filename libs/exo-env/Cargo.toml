@@ -5,6 +5,7 @@ edition.workspace = true
 publish = false
 
 [dependencies]
+thiserror.workspace = true
 
 [lib]
 doctest = false

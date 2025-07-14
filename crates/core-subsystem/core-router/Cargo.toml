@@ -11,7 +11,7 @@ test-context = []
 [dependencies]
 thiserror.workspace = true
 
-common = { path = "../../common" }
+exo-env = { path = "../../../libs/exo-env" }
 
 core-plugin-shared = { path = "../core-plugin-shared" }
 core-plugin-interface = { path = "../core-plugin-interface" }

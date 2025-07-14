@@ -20,13 +20,13 @@ use std::{io::ErrorKind, sync::Arc};
 
 use common::{
     env_const::{
-        DeploymentMode, EXO_ENABLE_MCP_API, EXO_SERVER_PORT, get_deployment_mode,
+        DeploymentMode, EXO_ENABLE_MCP, EXO_SERVER_PORT, get_deployment_mode,
         get_graphql_http_path, get_playground_http_path,
     },
     introspection::{IntrospectionMode, introspection_mode},
 };
 
-use exo_env::{Environment, SystemEnvironment};
+use exo_env::{EnvError, Environment, SystemEnvironment};
 
 const EXO_SERVER_HOST: &str = "EXO_SERVER_HOST";
 
@@ -37,7 +37,7 @@ enum ServerError {
     #[error("{0}")]
     Io(#[from] std::io::Error),
     #[error("{0}")]
-    EnvError(#[from] common::EnvError),
+    EnvError(#[from] exo_env::EnvError),
     #[error("{0}")]
     ServerInitError(#[from] server_common::ServerInitError),
 }
@@ -119,10 +119,12 @@ async fn main() -> Result<(), ServerError> {
                     "\thttp://{pretty_addr}{}",
                     get_graphql_http_path(env.as_ref())
                 );
-                if env.as_ref().enabled(EXO_ENABLE_MCP_API, false) {
+                if env.as_ref().enabled(EXO_ENABLE_MCP, true)? {
                     println!("- MCP endpoint hosted at:");
                     println!("\thttp://{pretty_addr}{}", get_mcp_http_path(env.as_ref()));
                 }
+
+                Ok::<(), EnvError>(())
             };
 
             let print_playground_info = || {
@@ -135,11 +137,11 @@ async fn main() -> Result<(), ServerError> {
 
             match introspection_mode(&SystemEnvironment)? {
                 IntrospectionMode::Enabled => {
-                    print_server_info();
+                    print_server_info()?;
                     print_playground_info();
                 }
                 IntrospectionMode::Disabled => {
-                    print_server_info();
+                    print_server_info()?;
                 }
                 IntrospectionMode::Only => {
                     print_playground_info();

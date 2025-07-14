@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use common::EnvError;
+use exo_env::EnvError;
 
 use core_plugin_interface::interface::{LibraryLoadingError, SubsystemLoadingError};
 use core_plugin_shared::error::ModelSerializationError;
