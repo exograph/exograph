@@ -13,10 +13,17 @@ use std::sync::Arc;
 pub trait Environment: Send + Sync {
     fn get(&self, key: &str) -> Option<String>;
 
-    fn enabled(&self, key: &str, default_value: bool) -> bool {
+    fn enabled(&self, key: &str, default_value: bool) -> Result<bool, EnvError> {
         match self.get(key) {
-            Some(value) => value == "true" || value == "1",
-            None => default_value,
+            Some(value) => match value.to_lowercase().as_str() {
+                "true" | "1" | "yes" | "on" | "enabled" | "enable" => Ok(true),
+                "false" | "0" | "no" | "off" | "disabled" | "disable" => Ok(false),
+                _ => Err(EnvError::InvalidBoolean {
+                    key: key.to_string(),
+                    value,
+                }),
+            },
+            None => Ok(default_value),
         }
     }
 
@@ -29,6 +36,21 @@ pub trait Environment: Send + Sync {
             .map(|value| value.split(',').map(|s| s.trim().into()).collect())
             .unwrap_or(default_value)
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum EnvError {
+    #[error(
+        "Invalid value for {key}: {value}. Expected true, 1, yes, on, enabled, enable OR false, 0, no, off, disabled, disable"
+    )]
+    InvalidBoolean { key: String, value: String },
+
+    #[error("Invalid env value {env_value} for {env_key}: {message}")]
+    InvalidEnum {
+        env_key: &'static str,
+        env_value: String,
+        message: String,
+    },
 }
 
 pub struct SystemEnvironment;

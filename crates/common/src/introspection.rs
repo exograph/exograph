@@ -1,6 +1,6 @@
-use exo_env::Environment;
+use exo_env::{EnvError, Environment};
 
-use crate::{EnvError, env_const::EXO_INTROSPECTION};
+use crate::env_const::EXO_INTROSPECTION;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum IntrospectionMode {

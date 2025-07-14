@@ -9,7 +9,7 @@
 
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 
-use common::env_const::{EXO_ENABLE_MCP_API, EXO_UNSTABLE_ENABLE_RPC_API};
+use common::env_const::{EXO_ENABLE_MCP, EXO_UNSTABLE_ENABLE_RPC_API};
 use common::introspection::{IntrospectionMode, introspection_mode};
 use common::router::PlainRequestPayload;
 use core_plugin_shared::profile::{SchemaProfile, SchemaProfiles};
@@ -113,7 +113,7 @@ pub async fn create_system_router_from_system(
     }
 
     let graphql_router = {
-        let allow_mutations = env.enabled(EXO_GRAPHQL_ALLOW_MUTATIONS, true);
+        let allow_mutations = env.enabled(EXO_GRAPHQL_ALLOW_MUTATIONS, true)?;
 
         let profile = if allow_mutations {
             SchemaProfile::all()
@@ -315,17 +315,17 @@ async fn create_system_router(
     let mut routers: Vec<Box<dyn for<'a> Router<RequestContext<'a>> + Send + Sync>> =
         vec![Box::new(graphql_router)];
 
-    if env.enabled(EXO_UNSTABLE_ENABLE_REST_API, false) {
+    if env.enabled(EXO_UNSTABLE_ENABLE_REST_API, false)? {
         routers.push(Box::new(rest_router));
     }
 
-    if env.enabled(EXO_UNSTABLE_ENABLE_RPC_API, false) {
+    if env.enabled(EXO_UNSTABLE_ENABLE_RPC_API, false)? {
         routers.push(Box::new(rpc_router));
     }
 
     #[cfg(not(target_family = "wasm"))]
     {
-        if env.enabled(EXO_ENABLE_MCP_API, false) {
+        if env.enabled(EXO_ENABLE_MCP, true)? {
             routers.push(Box::new(mcp_router));
         }
     }

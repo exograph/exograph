@@ -1,6 +1,4 @@
-use exo_env::Environment;
-
-use super::EnvError;
+use exo_env::{EnvError, Environment};
 
 pub const EXO_INTROSPECTION: &str = "EXO_INTROSPECTION";
 pub const EXO_INTROSPECTION_LIVE_UPDATE: &str = "EXO_INTROSPECTION_LIVE_UPDATE";
@@ -34,7 +32,7 @@ pub const EXO_GRAPHQL_ALLOW_MUTATIONS: &str = "EXO_GRAPHQL_ALLOW_MUTATIONS";
 
 pub const EXO_UNSTABLE_ENABLE_REST_API: &str = "EXO_UNSTABLE_ENABLE_REST_API";
 pub const EXO_UNSTABLE_ENABLE_RPC_API: &str = "EXO_UNSTABLE_ENABLE_RPC_API";
-pub const EXO_ENABLE_MCP_API: &str = "EXO_ENABLE_MCP_API";
+pub const EXO_ENABLE_MCP: &str = "EXO_ENABLE_MCP";
 
 pub const EXO_WWW_AUTHENTICATE_HEADER: &str = "EXO_WWW_AUTHENTICATE_HEADER";
 

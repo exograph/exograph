@@ -1599,9 +1599,9 @@ version = "0.20.0"
 name = "core-router"
 version = "0.20.0"
 dependencies = [
- "common",
  "core-plugin-interface",
  "core-plugin-shared",
+ "exo-env",
  "thiserror 2.0.12",
 ]
 
@@ -3743,6 +3743,9 @@ dependencies = [
 [[package]]
 name = "exo-env"
 version = "0.20.0"
+dependencies = [
+ "thiserror 2.0.12",
+]
 
 [[package]]
 name = "exo-sql"
