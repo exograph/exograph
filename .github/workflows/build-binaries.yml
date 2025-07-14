@@ -28,10 +28,21 @@ jobs:
 
       - name: Create draft release with auto-generated notes
         run: |
-          gh release create "${{ github.ref_name }}" \
-            --draft \
-            --generate-notes \
-            --title "Release ${{ github.ref_name }}"
+          # Get the previous semantic version tag
+          PREVIOUS_TAG=$(git tag --list --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -2 | tail -1)
+          
+          if [ -n "$PREVIOUS_TAG" ]; then
+            gh release create "${{ github.ref_name }}" \
+              --draft \
+              --generate-notes \
+              --notes-start-tag "$PREVIOUS_TAG" \
+              --title "Release ${{ github.ref_name }}"
+          else
+            gh release create "${{ github.ref_name }}" \
+              --draft \
+              --generate-notes \
+              --title "Release ${{ github.ref_name }}"
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
