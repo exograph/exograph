@@ -27,6 +27,7 @@ use deno_runtime::worker::WorkerServiceOptions;
 use include_dir::Dir;
 use tracing::error;
 
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::path::PathBuf;
 use tracing::instrument;
@@ -57,9 +58,9 @@ impl deno_runtime::deno_node::NodeRequireLoader for BasicNodeRequireLoader {
     fn ensure_read_permission<'a>(
         &self,
         _permissions: &mut dyn deno_runtime::deno_node::NodePermissions,
-        path: &'a std::path::Path,
-    ) -> Result<std::borrow::Cow<'a, std::path::Path>, JsErrorBox> {
-        Ok(std::borrow::Cow::Borrowed(path))
+        path: Cow<'a, std::path::Path>,
+    ) -> Result<Cow<'a, std::path::Path>, JsErrorBox> {
+        Ok(path)
     }
 
     fn load_text_file_lossy(
