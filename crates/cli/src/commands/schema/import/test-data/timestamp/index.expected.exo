@@ -3,9 +3,9 @@ module Database {
   @access(query=true, mutation=false)
   type Issue {
     @pk id: Int = autoIncrement()
-    @maxLength(200) name: String
-    dueDate: LocalDate = now()
     createdAt: Instant? = now()
+    dueDate: LocalDate = now()
+    @maxLength(200) name: String
     updatedAt: Instant? = now()
   }
 }

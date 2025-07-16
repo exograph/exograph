@@ -17,11 +17,27 @@ use super::{
 pub struct FieldImport {
     pub name: String,
     pub data_type: String,
-    pub is_pk: bool,
+    pub field_type: FieldImportType,
     pub is_unique: bool,
     pub is_nullable: bool,
     pub annotations: Vec<String>,
     pub default_value: Option<String>,
+}
+
+#[derive(Debug)]
+pub enum FieldImportType {
+    Scalar { is_pk: bool },
+    Reference { is_pk: bool },
+    BackReference { is_many: bool },
+}
+
+impl FieldImportType {
+    pub fn is_pk(&self) -> bool {
+        matches!(
+            self,
+            FieldImportType::Scalar { is_pk: true } | FieldImportType::Reference { is_pk: true }
+        )
+    }
 }
 
 impl ModelImporter<TableSpec, FieldImport> for ColumnSpec {
@@ -29,7 +45,6 @@ impl ModelImporter<TableSpec, FieldImport> for ColumnSpec {
         let (standard_field_name, column_annotation) =
             context.get_field_name_and_column_annotation(self);
 
-        // [@pk] [type-annotations] [name]: [data-type] = [default-value]
         let column_type_name = context.column_type_name(self, None);
 
         let data_type = match column_type_name {
@@ -57,7 +72,7 @@ impl ModelImporter<TableSpec, FieldImport> for ColumnSpec {
         Ok(FieldImport {
             name: standard_field_name,
             data_type,
-            is_pk: self.is_pk,
+            field_type: FieldImportType::Scalar { is_pk: self.is_pk },
             is_unique: !self.unique_constraints.is_empty(),
             is_nullable: self.is_nullable,
             annotations: all_annotations,
@@ -116,13 +131,15 @@ fn type_annotation(physical_type: &dyn exo_sql::PhysicalColumnType) -> String {
 }
 
 impl ImportWriter for FieldImport {
-    fn write_to(&self, writer: &mut (dyn Write + Send)) -> Result<()> {
+    fn write_to(self, writer: &mut (dyn Write + Send)) -> Result<()> {
         const INDENT: &str = "  ";
 
         write!(writer, "{INDENT}{INDENT}")?;
 
+        // [@pk] [type-annotations] [name]: [data-type] = [default-value]
+
         // Write annotations
-        if self.is_pk {
+        if self.field_type.is_pk() {
             write!(writer, "@pk ")?;
         }
 

@@ -84,12 +84,13 @@ impl ModelImporter<(), DatabaseImport> for DatabaseSpec {
 }
 
 impl ImportWriter for DatabaseImport {
-    fn write_to(&self, writer: &mut (dyn Write + Send)) -> Result<()> {
-        for (i, module) in self.modules.iter().enumerate() {
+    fn write_to(self, writer: &mut (dyn Write + Send)) -> Result<()> {
+        let modules_len = self.modules.len();
+        for (i, module) in self.modules.into_iter().enumerate() {
             module.write_to(writer)?;
 
             // Add newline between modules
-            if i < self.modules.len() - 1 {
+            if i < modules_len - 1 {
                 writeln!(writer)?;
             }
         }
@@ -98,7 +99,7 @@ impl ImportWriter for DatabaseImport {
 }
 
 impl ImportWriter for ModuleImport {
-    fn write_to(&self, writer: &mut (dyn Write + Send)) -> Result<()> {
+    fn write_to(self, writer: &mut (dyn Write + Send)) -> Result<()> {
         // Write @postgres annotation
         write!(writer, "@postgres")?;
         if let Some(schema) = &self.schema {
@@ -111,23 +112,31 @@ impl ImportWriter for ModuleImport {
         // Write module declaration
         writeln!(writer, "module {} {{", self.module_name)?;
 
-        // Write tables
-        let table_len = self.tables.len();
-        for (i, table) in self.tables.iter().enumerate() {
+        // Write tables in alphabetical order
+        let mut tables = self.tables;
+        tables.sort_by_cached_key(|a| a.name.to_upper_camel_case());
+
+        let table_len = tables.len();
+        for (i, table) in tables.into_iter().enumerate() {
             table.write_to(writer)?;
             if i < table_len - 1 {
                 writeln!(writer)?;
             }
         }
 
+        // Write enums in alphabetical order
+        let mut enums = self.enums;
+        enums.sort_by_cached_key(|a| a.name.to_upper_camel_case());
+
         // Write enums
-        if !self.enums.is_empty() {
+        if !enums.is_empty() {
             writeln!(writer)?;
         }
 
-        for (i, enum_) in self.enums.iter().enumerate() {
+        let enum_len = enums.len();
+        for (i, enum_) in enums.into_iter().enumerate() {
             enum_.write_to(writer)?;
-            if i < self.enums.len() - 1 {
+            if i < enum_len - 1 {
                 writeln!(writer)?;
             }
         }

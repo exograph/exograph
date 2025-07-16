@@ -3,8 +3,8 @@ module Database {
   @access(query=true, mutation=false)
   type Todo {
     @pk id: Int = autoIncrement("public.my_sequence")
-    title: String
     completed: Boolean
+    title: String
     user: User
   }
 

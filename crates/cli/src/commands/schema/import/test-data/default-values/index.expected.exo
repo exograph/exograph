@@ -3,18 +3,18 @@ module Database {
   @access(query=true, mutation=false)
   type Issue {
     @pk id: Uuid = generate_uuid()
-    name: String
-    description: String = "No description"
-    @maxLength(50) status: String = "pending"
-    @precision(10) @scale(2) price: Decimal = "10.00"
     createdAt: LocalDateTime = now()
-    updatedAt: LocalDateTime = now()
+    description: String = "No description"
     dueDate: LocalDate = now()
-    isActive: Boolean = true
     fixedDate: LocalDateTime = "2025-01-01T12:00:00"
+    @doublePrecision fixedFloat: Float = 100.00
+    fixedInt: Int = 100
     fixedTime: LocalTime = "12:00:00"
     fixedTimestamp: LocalDateTime = "2025-01-01T12:00:00"
-    fixedInt: Int = 100
-    @doublePrecision fixedFloat: Float = 100.00
+    isActive: Boolean = true
+    name: String
+    @precision(10) @scale(2) price: Decimal = "10.00"
+    @maxLength(50) status: String = "pending"
+    updatedAt: LocalDateTime = now()
   }
 }

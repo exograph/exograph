@@ -2,16 +2,16 @@
 module Database {
   @access(query=true, mutation=false)
   type Event {
-    @pk tenantId: String
     @pk eventId: String
+    @pk tenantId: String
     name: String
     @column(mapping={sourceId: "source_id", tenantId: "tenant_id"}) source: Source
   }
 
   @access(query=true, mutation=false)
   type Source {
-    @pk tenantId: String
     @pk sourceId: String
+    @pk tenantId: String
     name: String?
     events: Set<Event>
   }

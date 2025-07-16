@@ -18,5 +18,5 @@ pub(super) trait ModelImporter<P, O> {
 
 /// A trait for writing import structures to output
 pub(super) trait ImportWriter {
-    fn write_to(&self, writer: &mut (dyn Write + Send)) -> Result<()>;
+    fn write_to(self, writer: &mut (dyn Write + Send)) -> Result<()>;
 }
