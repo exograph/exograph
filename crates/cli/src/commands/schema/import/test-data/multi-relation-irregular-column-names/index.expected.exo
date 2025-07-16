@@ -3,10 +3,10 @@ module Database {
   @access(query=true, mutation=false)
   type Account {
     @pk accountId: Uuid = uuidGenerateV4()
-    name: String
     @precision(15) @scale(2) balance: Decimal = "0"
-    @relation("account") transactions: Set<Transaction>
+    name: String
     @relation("counterpartyAccount") counterpartyTransactions: Set<Transaction>
+    @relation("account") transactions: Set<Transaction>
   }
 
   @access(query=true, mutation=false)

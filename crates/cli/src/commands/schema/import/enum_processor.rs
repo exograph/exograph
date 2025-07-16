@@ -27,7 +27,7 @@ impl ModelImporter<DatabaseSpec, EnumImport> for EnumSpec {
 }
 
 impl ImportWriter for EnumImport {
-    fn write_to(&self, writer: &mut (dyn Write + Send)) -> Result<()> {
+    fn write_to(self, writer: &mut (dyn Write + Send)) -> Result<()> {
         writeln!(writer, "{INDENT}enum {} {{", self.name)?;
 
         for variant in &self.variants {

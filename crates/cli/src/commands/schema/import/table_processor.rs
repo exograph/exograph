@@ -5,6 +5,7 @@ use exo_sql::schema::{
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
 
+use super::column_processor::FieldImportKind;
 use super::{
     ImportContext,
     column_processor::FieldImport,
@@ -75,23 +76,16 @@ impl ModelImporter<DatabaseSpec, TableImport> for TableSpec {
             raw_name.to_string()
         };
 
-        let is_pk = |column_spec: &ColumnSpec| column_spec.is_pk;
-        let is_not_pk = |column_spec: &ColumnSpec| !column_spec.is_pk;
-
         // Categorize columns to determine which should be written as scalars vs consumed by FK references
         let column_categories = self.categorize_columns(context);
 
         let mut fields = Vec::new();
 
-        // First add the primary key fields (scalars first, then FKs)
-        self.add_scalar_fields(&mut fields, context, &column_categories, &is_pk)?;
-        self.add_foreign_key_references(&mut fields, context, parent, &is_pk)?;
+        // Add scalar fields and foreign key references (these columns exist in this table)
+        self.add_scalar_fields(&mut fields, context, &column_categories)?;
+        self.add_foreign_key_references(&mut fields, context, parent)?;
 
-        // Then add the non-primary key fields (scalars first, then FKs)
-        self.add_scalar_fields(&mut fields, context, &column_categories, &is_not_pk)?;
-        self.add_foreign_key_references(&mut fields, context, parent, &is_not_pk)?;
-
-        // Finally add back-references (such as Set<User>, User?, etc.) for which this table is the target
+        // Add back-references (such as Set<User>, User?, etc.) for which this table is the target
         add_back_references(&mut fields, &column_categories)?;
 
         Ok(TableImport {
@@ -105,7 +99,7 @@ impl ModelImporter<DatabaseSpec, TableImport> for TableSpec {
 }
 
 impl ImportWriter for TableImport {
-    fn write_to(&self, writer: &mut (dyn Write + Send)) -> Result<()> {
+    fn write_to(self, writer: &mut (dyn Write + Send)) -> Result<()> {
         // Write access annotation
         if let Some(access) = &self.access_annotation {
             writeln!(
@@ -125,7 +119,70 @@ impl ImportWriter for TableImport {
         writeln!(writer, "{INDENT}{keyword} {} {{", self.name)?;
 
         // Write fields
-        for field in &self.fields {
+        let mut fields = self.fields;
+
+        // Sort fields (within each category: ordered by type, nullable, and name):
+        // - PK fields
+        //   - Scalars
+        //   - References
+        // - Non-PK fields
+        //   - Scalars
+        //   - References
+        //   - Back-references
+        //     - One
+        //     - Many
+        fields.sort_by(|a, b| {
+            let a_kind = &a.field_kind;
+            let b_kind = &b.field_kind;
+
+            let scalar_pk_cmp = || {
+                matches!(b_kind, FieldImportKind::Scalar { is_pk: true })
+                    .cmp(&matches!(a_kind, FieldImportKind::Scalar { is_pk: true }))
+            };
+            let reference_pk_cmp = || {
+                matches!(b_kind, FieldImportKind::Reference { is_pk: true }).cmp(&matches!(
+                    a_kind,
+                    FieldImportKind::Reference { is_pk: true }
+                ))
+            };
+            let scalar_non_pk_cmp = || {
+                matches!(b_kind, FieldImportKind::Scalar { is_pk: false })
+                    .cmp(&matches!(a_kind, FieldImportKind::Scalar { is_pk: false }))
+            };
+            let reference_non_pk_cmp = || {
+                matches!(b_kind, FieldImportKind::Reference { is_pk: false }).cmp(&matches!(
+                    a_kind,
+                    FieldImportKind::Reference { is_pk: false }
+                ))
+            };
+            let back_reference_one_cmp = || {
+                matches!(b_kind, FieldImportKind::BackReference { is_many: false }).cmp(&matches!(
+                    a_kind,
+                    FieldImportKind::BackReference { is_many: false }
+                ))
+            };
+            let back_reference_many_cmp = || {
+                matches!(b_kind, FieldImportKind::BackReference { is_many: true }).cmp(&matches!(
+                    a_kind,
+                    FieldImportKind::BackReference { is_many: true }
+                ))
+            };
+            let type_cmp = || a.data_type.cmp(&b.data_type);
+            let nullable_cmp = || a.is_nullable.cmp(&b.is_nullable);
+            let name_cmp = || a.name.cmp(&b.name);
+
+            scalar_pk_cmp()
+                .then_with(reference_pk_cmp)
+                .then_with(scalar_non_pk_cmp)
+                .then_with(reference_non_pk_cmp)
+                .then_with(back_reference_one_cmp)
+                .then_with(back_reference_many_cmp)
+                .then_with(type_cmp)
+                .then_with(nullable_cmp)
+                .then_with(name_cmp)
+        });
+
+        for field in fields {
             field.write_to(writer)?;
         }
 
@@ -146,7 +203,6 @@ trait TableSpecImportNaming {
         fields: &mut Vec<FieldImport>,
         context: &ImportContext,
         column_categories: &ColumnCategories,
-        filter: &dyn Fn(&ColumnSpec) -> bool,
     ) -> Result<()>;
 
     /// Add foreign key reference fields to the field list
@@ -155,7 +211,6 @@ trait TableSpecImportNaming {
         fields: &mut Vec<FieldImport>,
         context: &ImportContext,
         database_spec: &DatabaseSpec,
-        filter: &dyn Fn(&ColumnSpec) -> bool,
     ) -> Result<()>;
 }
 
@@ -287,7 +342,6 @@ impl TableSpecImportNaming for TableSpec {
         fields: &mut Vec<FieldImport>,
         context: &ImportContext,
         column_categories: &ColumnCategories,
-        filter: &dyn Fn(&ColumnSpec) -> bool,
     ) -> Result<()> {
         for column in &self.columns {
             // Add this column as a scalar field if:
@@ -296,7 +350,6 @@ impl TableSpecImportNaming for TableSpec {
             if column_categories
                 .scalar_columns
                 .contains(column.name.as_str())
-                && filter(column)
             {
                 fields.push(column.to_import(self, context)?);
             }
@@ -310,23 +363,17 @@ impl TableSpecImportNaming for TableSpec {
         fields: &mut Vec<FieldImport>,
         context: &ImportContext,
         database_spec: &DatabaseSpec,
-        filter: &dyn Fn(&ColumnSpec) -> bool,
     ) -> Result<()> {
         // Group foreign keys by target table
         let mut fks_by_target: HashMap<String, Vec<_>> = HashMap::new();
 
         for (_, references) in self.foreign_key_references() {
-            let (first_column, first_reference) = match &references[..] {
+            let (_, first_reference) = match &references[..] {
                 [] => {
                     continue;
                 }
                 [reference, ..] => reference,
             };
-
-            // Only process this foreign key if the first column matches the filter
-            if !filter(first_column) {
-                continue;
-            }
 
             let foreign_table_name = &first_reference.foreign_table_name;
             fks_by_target
@@ -414,7 +461,7 @@ impl TableSpecImportNaming for TableSpec {
                 fields.push(FieldImport {
                     name: field_name,
                     data_type,
-                    is_pk,
+                    field_kind: FieldImportKind::Reference { is_pk },
                     is_unique,
                     is_nullable,
                     annotations,
@@ -566,10 +613,14 @@ fn add_back_references(
             annotations.push(format!("@relation(\"{}\")", rel_name));
         }
 
+        let field_kind = FieldImportKind::BackReference {
+            is_many: back_ref.is_many,
+        };
+
         fields.push(FieldImport {
             name: back_ref.field_name.clone(),
             data_type,
-            is_pk: false,
+            field_kind,
             is_unique: false,
             is_nullable: back_ref.is_nullable,
             annotations,

@@ -3,8 +3,8 @@ module Database {
   @access(query=true, mutation=false)
   type Metric {
     @pk id: Int = autoIncrement()
-    name: String
-    @singlePrecision @column("min_30d_price") min30dPrice: Float
     @singlePrecision max30dPrice: Float
+    @singlePrecision @column("min_30d_price") min30dPrice: Float
+    name: String
   }
 }

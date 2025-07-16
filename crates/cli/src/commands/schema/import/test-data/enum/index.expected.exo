@@ -3,11 +3,11 @@ module Database {
   @access(query=true, mutation=false)
   type Todo {
     @pk id: Int = autoIncrement()
-    title: String
     completed: Boolean
+    priority: Priority
     priorityWithDefault: Priority = MEDIUM
     priorityNullable: Priority?
-    priority: Priority
+    title: String
   }
 
   enum Priority {

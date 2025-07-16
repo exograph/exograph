@@ -3,9 +3,9 @@ module Database {
   @access(query=true, mutation=false)
   type Todo {
     @pk id: Int = autoIncrement()
-    title: String
     completed: Boolean
     priority: Int = 0
+    title: String
     user: User
   }
 
