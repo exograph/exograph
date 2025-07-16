@@ -17,7 +17,7 @@ use super::{
 pub struct FieldImport {
     pub name: String,
     pub data_type: String,
-    pub field_type: FieldImportType,
+    pub field_kind: FieldImportKind,
     pub is_unique: bool,
     pub is_nullable: bool,
     pub annotations: Vec<String>,
@@ -25,17 +25,17 @@ pub struct FieldImport {
 }
 
 #[derive(Debug)]
-pub enum FieldImportType {
+pub enum FieldImportKind {
     Scalar { is_pk: bool },
     Reference { is_pk: bool },
     BackReference { is_many: bool },
 }
 
-impl FieldImportType {
+impl FieldImportKind {
     pub fn is_pk(&self) -> bool {
         matches!(
             self,
-            FieldImportType::Scalar { is_pk: true } | FieldImportType::Reference { is_pk: true }
+            FieldImportKind::Scalar { is_pk: true } | FieldImportKind::Reference { is_pk: true }
         )
     }
 }
@@ -72,7 +72,7 @@ impl ModelImporter<TableSpec, FieldImport> for ColumnSpec {
         Ok(FieldImport {
             name: standard_field_name,
             data_type,
-            field_type: FieldImportType::Scalar { is_pk: self.is_pk },
+            field_kind: FieldImportKind::Scalar { is_pk: self.is_pk },
             is_unique: !self.unique_constraints.is_empty(),
             is_nullable: self.is_nullable,
             annotations: all_annotations,
@@ -139,7 +139,7 @@ impl ImportWriter for FieldImport {
         // [@pk] [type-annotations] [name]: [data-type] = [default-value]
 
         // Write annotations
-        if self.field_type.is_pk() {
+        if self.field_kind.is_pk() {
             write!(writer, "@pk ")?;
         }
 

@@ -2,11 +2,10 @@ use anyhow::Result;
 use exo_sql::schema::{
     column_spec::ColumnSpec, database_spec::DatabaseSpec, table_spec::TableSpec,
 };
-use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
 
-use super::column_processor::FieldImportType;
+use super::column_processor::FieldImportKind;
 use super::{
     ImportContext,
     column_processor::FieldImport,
@@ -133,56 +132,31 @@ impl ImportWriter for TableImport {
         //     - One
         //     - Many
         fields.sort_by(|a, b| {
-            let a_is_pk = a.field_type.is_pk();
-            let b_is_pk = b.field_type.is_pk();
+            let a_kind = &a.field_kind;
+            let b_kind = &b.field_kind;
 
-            match (a_is_pk, b_is_pk) {
-                (true, false) => return Ordering::Less,
-                (false, true) => return Ordering::Greater,
-                (true, true) => return a.name.cmp(&b.name),
-                (false, false) => {}
-            }
-
-            let a_is_scalar = matches!(a.field_type, FieldImportType::Scalar { is_pk: false });
-            let b_is_scalar = matches!(b.field_type, FieldImportType::Scalar { is_pk: false });
-
-            match (a_is_scalar, b_is_scalar) {
-                (true, false) => return Ordering::Less,
-                (false, true) => return Ordering::Greater,
-                (true, true) => return a.name.cmp(&b.name),
-                (false, false) => {}
-            }
-
-            let a_is_one_to_one = matches!(
-                a.field_type,
-                FieldImportType::BackReference { is_many: false }
-            );
-            let b_is_one_to_one = matches!(
-                b.field_type,
-                FieldImportType::BackReference { is_many: false }
-            );
-
-            match (a_is_one_to_one, b_is_one_to_one) {
-                (true, false) => return Ordering::Less,
-                (false, true) => return Ordering::Greater,
-                (true, true) => return a.name.cmp(&b.name),
-                (false, false) => {}
-            }
-
-            let a_is_one_to_many = matches!(
-                a.field_type,
-                FieldImportType::BackReference { is_many: true }
-            );
-            let b_is_one_to_many = matches!(
-                b.field_type,
-                FieldImportType::BackReference { is_many: true }
-            );
-
-            match (a_is_one_to_many, b_is_one_to_many) {
-                (true, false) => Ordering::Less,
-                (false, true) => Ordering::Greater,
-                _ => a.name.cmp(&b.name),
-            }
+            b_kind
+                .is_pk()
+                .cmp(&a_kind.is_pk())
+                .then_with(|| {
+                    matches!(b_kind, FieldImportKind::Scalar { .. })
+                        .cmp(&matches!(a_kind, FieldImportKind::Scalar { .. }))
+                })
+                .then_with(|| {
+                    matches!(b_kind, FieldImportKind::Reference { .. })
+                        .cmp(&matches!(a_kind, FieldImportKind::Reference { .. }))
+                })
+                .then_with(|| {
+                    matches!(b_kind, FieldImportKind::BackReference { is_many: false }).cmp(
+                        &matches!(a_kind, FieldImportKind::BackReference { is_many: false }),
+                    )
+                })
+                .then_with(|| {
+                    matches!(b_kind, FieldImportKind::BackReference { is_many: true }).cmp(
+                        &matches!(a_kind, FieldImportKind::BackReference { is_many: true }),
+                    )
+                })
+                .then_with(|| a.name.cmp(&b.name))
         });
 
         for field in fields {
@@ -464,7 +438,7 @@ impl TableSpecImportNaming for TableSpec {
                 fields.push(FieldImport {
                     name: field_name,
                     data_type,
-                    field_type: FieldImportType::Reference { is_pk },
+                    field_kind: FieldImportKind::Reference { is_pk },
                     is_unique,
                     is_nullable,
                     annotations,
@@ -616,14 +590,14 @@ fn add_back_references(
             annotations.push(format!("@relation(\"{}\")", rel_name));
         }
 
-        let field_type = FieldImportType::BackReference {
+        let field_kind = FieldImportKind::BackReference {
             is_many: back_ref.is_many,
         };
 
         fields.push(FieldImport {
             name: back_ref.field_name.clone(),
             data_type,
-            field_type,
+            field_kind,
             is_unique: false,
             is_nullable: back_ref.is_nullable,
             annotations,
