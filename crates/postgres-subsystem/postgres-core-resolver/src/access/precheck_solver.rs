@@ -648,8 +648,9 @@ fn compute_relational_sides(
     let path_column_path = to_column_path(tail_path);
 
     let value_column_path =
-        cast::literal_column_path(value, column_type(tail_path, database), false)
-            .map_err(|_| AccessSolverError::Generic("Invalid literal".into()))?;
+        cast::literal_column_path(value, column_type(tail_path, database), false).map_err(|e| {
+            AccessSolverError::Generic(format!("Failed to cast literal: '{value:?}': {e}").into())
+        })?;
 
     Ok((path_column_path, value_column_path))
 }
@@ -662,7 +663,9 @@ fn compute_literal_column_path(
     value
         .map(|v| cast::literal_column_path(v, column_type(associated_column_path, database), false))
         .transpose()
-        .map_err(|_| AccessSolverError::Generic("Invalid literal".into()))
+        .map_err(|e| {
+            AccessSolverError::Generic(format!("Failed to cast literal: '{value:?}': {e}").into())
+        })
 }
 
 #[allow(clippy::too_many_arguments)]
