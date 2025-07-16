@@ -2,10 +2,10 @@
 module Database {
   @access(query=true, mutation=false)
   type Address {
+    @pk zip: Int
     @pk city: String
     @pk state: String
     @pk street: String
-    @pk zip: Int
     people: Set<Person>
   }
 

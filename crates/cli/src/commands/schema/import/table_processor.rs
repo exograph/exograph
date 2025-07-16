@@ -121,7 +121,7 @@ impl ImportWriter for TableImport {
         // Write fields
         let mut fields = self.fields;
 
-        // Sort fields (within each category, ordered by name):
+        // Sort fields (within each category: ordered by type, nullable, and name):
         // - PK fields
         //   - Scalars
         //   - References
@@ -135,28 +135,51 @@ impl ImportWriter for TableImport {
             let a_kind = &a.field_kind;
             let b_kind = &b.field_kind;
 
-            b_kind
-                .is_pk()
-                .cmp(&a_kind.is_pk())
-                .then_with(|| {
-                    matches!(b_kind, FieldImportKind::Scalar { .. })
-                        .cmp(&matches!(a_kind, FieldImportKind::Scalar { .. }))
-                })
-                .then_with(|| {
-                    matches!(b_kind, FieldImportKind::Reference { .. })
-                        .cmp(&matches!(a_kind, FieldImportKind::Reference { .. }))
-                })
-                .then_with(|| {
-                    matches!(b_kind, FieldImportKind::BackReference { is_many: false }).cmp(
-                        &matches!(a_kind, FieldImportKind::BackReference { is_many: false }),
-                    )
-                })
-                .then_with(|| {
-                    matches!(b_kind, FieldImportKind::BackReference { is_many: true }).cmp(
-                        &matches!(a_kind, FieldImportKind::BackReference { is_many: true }),
-                    )
-                })
-                .then_with(|| a.name.cmp(&b.name))
+            let scalar_pk_cmp = || {
+                matches!(b_kind, FieldImportKind::Scalar { is_pk: true })
+                    .cmp(&matches!(a_kind, FieldImportKind::Scalar { is_pk: true }))
+            };
+            let reference_pk_cmp = || {
+                matches!(b_kind, FieldImportKind::Reference { is_pk: true }).cmp(&matches!(
+                    a_kind,
+                    FieldImportKind::Reference { is_pk: true }
+                ))
+            };
+            let scalar_non_pk_cmp = || {
+                matches!(b_kind, FieldImportKind::Scalar { is_pk: false })
+                    .cmp(&matches!(a_kind, FieldImportKind::Scalar { is_pk: false }))
+            };
+            let reference_non_pk_cmp = || {
+                matches!(b_kind, FieldImportKind::Reference { is_pk: false }).cmp(&matches!(
+                    a_kind,
+                    FieldImportKind::Reference { is_pk: false }
+                ))
+            };
+            let back_reference_one_cmp = || {
+                matches!(b_kind, FieldImportKind::BackReference { is_many: false }).cmp(&matches!(
+                    a_kind,
+                    FieldImportKind::BackReference { is_many: false }
+                ))
+            };
+            let back_reference_many_cmp = || {
+                matches!(b_kind, FieldImportKind::BackReference { is_many: true }).cmp(&matches!(
+                    a_kind,
+                    FieldImportKind::BackReference { is_many: true }
+                ))
+            };
+            let type_cmp = || a.data_type.cmp(&b.data_type);
+            let nullable_cmp = || a.is_nullable.cmp(&b.is_nullable);
+            let name_cmp = || a.name.cmp(&b.name);
+
+            scalar_pk_cmp()
+                .then_with(reference_pk_cmp)
+                .then_with(scalar_non_pk_cmp)
+                .then_with(reference_non_pk_cmp)
+                .then_with(back_reference_one_cmp)
+                .then_with(back_reference_many_cmp)
+                .then_with(type_cmp)
+                .then_with(nullable_cmp)
+                .then_with(name_cmp)
         });
 
         for field in fields {

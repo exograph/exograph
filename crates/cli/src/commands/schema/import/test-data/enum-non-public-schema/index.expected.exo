@@ -5,8 +5,8 @@ module NonPublicDatabase {
     @pk id: Int = autoIncrement()
     completed: Boolean
     priority: Priority
-    priorityNullable: Priority?
     priorityWithDefault: Priority = MEDIUM
+    priorityNullable: Priority?
     title: String
   }
 

@@ -4,8 +4,8 @@ module Database {
   type Issue {
     @pk id: Int = autoIncrement()
     createdAt: Instant? = now()
+    updatedAt: Instant? = now()
     dueDate: LocalDate = now()
     @maxLength(200) name: String
-    updatedAt: Instant? = now()
   }
 }
