@@ -157,7 +157,11 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
 
                     Ok(AccessSolution::Solved(column_predicate(
                         cast::literal_column_path(&value, &*physical_column.typ, op.needs_unnest())
-                            .map_err(|_| AccessSolverError::Generic("Invalid literal".into()))?,
+                            .map_err(|e| {
+                                AccessSolverError::Generic(
+                                    format!("Failed to cast literal: '{value:?}': {e}").into(),
+                                )
+                            })?,
                         to_column_path(&column),
                     )))
                 }
@@ -172,7 +176,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                         cast::literal_column_path(&value, &*physical_column.typ, op.needs_unnest())
                             .map_err(|e| {
                                 AccessSolverError::Generic(
-                                    format!("Invalid literal: {:?}", e).into(),
+                                    format!("Failed to cast literal: '{value:?}': {e}").into(),
                                 )
                             })?;
 
