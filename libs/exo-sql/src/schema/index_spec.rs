@@ -90,6 +90,12 @@ impl IndexSpec {
         }
     }
 
+    // Does the other index serve the same purpose as this index?
+    // Effectively, match ignoring the index name
+    pub fn effectively_eq(&self, other: &IndexSpec) -> bool {
+        self.columns == other.columns && self.index_kind == other.index_kind
+    }
+
     pub async fn from_live_db(
         client: &DatabaseClient,
         table_name: &SchemaObjectName,
