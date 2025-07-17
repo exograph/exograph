@@ -329,7 +329,7 @@ impl TableSpec {
             let new_index = new
                 .indices
                 .iter()
-                .find(|i| i.columns == existing_index.columns);
+                .find(|i| i.name == existing_index.name || i.effectively_eq(existing_index));
 
             match new_index {
                 Some(new_index) => {
@@ -345,7 +345,10 @@ impl TableSpec {
         }
 
         for new_index in new.indices.iter() {
-            let existing_index = self.indices.iter().find(|i| i.columns == new_index.columns);
+            let existing_index = self
+                .indices
+                .iter()
+                .find(|i| i.name == new_index.name || i.effectively_eq(new_index));
 
             if existing_index.is_none() {
                 changes.push(SchemaOp::CreateIndex {
@@ -355,21 +358,29 @@ impl TableSpec {
             }
         }
 
-        for (constraint_name, _column_names) in self.named_unique_constraints().iter() {
-            if !new.named_unique_constraints().contains_key(constraint_name) {
-                // constraint deletion
+        let self_unique_constraints = self.named_unique_constraints();
+        let new_unique_constraints = new.named_unique_constraints();
+
+        for (self_constraint_name, self_column_names) in self_unique_constraints.iter() {
+            let new_constraint_column_names = TableSpec::matching_column_group(
+                &new_unique_constraints,
+                (self_constraint_name, self_column_names),
+            );
+
+            // If the constraint does not exist in the new spec, remove it
+            if new_constraint_column_names.is_none() {
                 changes.push(SchemaOp::RemoveUniqueConstraint {
                     table: new,
-                    constraint: constraint_name.to_string(),
+                    constraint: self_constraint_name.to_string(),
                 });
             }
         }
 
-        for (new_constraint_name, new_constraint_column_names) in
-            new.named_unique_constraints().iter()
-        {
-            let existing_constraints = self.named_unique_constraints();
-            let existing_constraint_column_names = existing_constraints.get(new_constraint_name);
+        for (new_constraint_name, new_constraint_column_names) in new_unique_constraints.iter() {
+            let existing_constraint_column_names = TableSpec::matching_column_group(
+                &self_unique_constraints,
+                (new_constraint_name, new_constraint_column_names),
+            );
 
             match existing_constraint_column_names {
                 Some(existing_constraint_column_names) => {
@@ -569,6 +580,19 @@ impl TableSpec {
                 (group_name, column_map)
             })
             .collect()
+    }
+
+    fn matching_column_group<'a>(
+        column_groups: &'a HashMap<&String, HashSet<String>>,
+        elem: (&String, &HashSet<String>),
+    ) -> Option<&'a HashSet<String>> {
+        let (group_name, column_names) = elem;
+
+        column_groups.get(group_name).or_else(|| {
+            column_groups
+                .iter()
+                .find_map(|(_, columns)| (columns == column_names).then_some(columns))
+        })
     }
 }
 
