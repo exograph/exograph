@@ -326,7 +326,10 @@ impl TableSpec {
         }
 
         for existing_index in self.indices.iter() {
-            let new_index = new.indices.iter().find(|i| i.name == existing_index.name);
+            let new_index = new
+                .indices
+                .iter()
+                .find(|i| i.columns == existing_index.columns);
 
             match new_index {
                 Some(new_index) => {
@@ -342,7 +345,7 @@ impl TableSpec {
         }
 
         for new_index in new.indices.iter() {
-            let existing_index = self.indices.iter().find(|i| i.name == new_index.name);
+            let existing_index = self.indices.iter().find(|i| i.columns == new_index.columns);
 
             if existing_index.is_none() {
                 changes.push(SchemaOp::CreateIndex {

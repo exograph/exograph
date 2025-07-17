@@ -212,6 +212,12 @@ trait TableSpecImportNaming {
         context: &ImportContext,
         database_spec: &DatabaseSpec,
     ) -> Result<()>;
+
+    /// Get all index names that contain the specified column
+    fn get_indices_for_column(&self, column_name: &str) -> Vec<&str>;
+
+    /// Generate index annotation for a column, handling both single and multi-column indices
+    fn generate_index_annotation(&self, column_name: &str) -> Option<String>;
 }
 
 impl TableSpecImportNaming for TableSpec {
@@ -351,7 +357,14 @@ impl TableSpecImportNaming for TableSpec {
                 .scalar_columns
                 .contains(column.name.as_str())
             {
-                fields.push(column.to_import(self, context)?);
+                let mut field_import = column.to_import(self, context)?;
+
+                // Add @index annotation if this column has an index
+                if let Some(index_annotation) = self.generate_index_annotation(&column.name) {
+                    field_import.annotations.push(index_annotation);
+                }
+
+                fields.push(field_import);
             }
         }
 
@@ -458,6 +471,16 @@ impl TableSpecImportNaming for TableSpec {
                     }
                 }
 
+                // Add @index annotation if any of the FK columns have an index
+                // For FK fields, we need to check the foreign key column name (not the field name)
+                if let Some(fk_column) = references.first() {
+                    if let Some(index_annotation) =
+                        self.generate_index_annotation(&fk_column.0.name)
+                    {
+                        annotations.push(index_annotation);
+                    }
+                }
+
                 fields.push(FieldImport {
                     name: field_name,
                     data_type,
@@ -471,6 +494,49 @@ impl TableSpecImportNaming for TableSpec {
         }
 
         Ok(())
+    }
+
+    fn get_indices_for_column(&self, column_name: &str) -> Vec<&str> {
+        self.indices
+            .iter()
+            .filter(|index| index.columns.contains(column_name))
+            .map(|index| index.name.as_str())
+            .collect()
+    }
+
+    fn generate_index_annotation(&self, column_name: &str) -> Option<String> {
+        let mut index_names = self.get_indices_for_column(column_name);
+        if index_names.is_empty() {
+            return None;
+        }
+
+        // If there's only one index and it's a single-column index, use simple @index annotation
+        if index_names.len() == 1 {
+            let index_name = index_names[0];
+            let index = self
+                .indices
+                .iter()
+                .find(|idx| idx.name == index_name)
+                .unwrap();
+            if index.columns.len() == 1 {
+                return Some("@index".to_string());
+            }
+        }
+
+        // Sort indices: single-column indices first, then multi-column indices
+        index_names.sort_by_key(|&name| {
+            let index = self.indices.iter().find(|idx| idx.name == name).unwrap();
+            index.columns.len()
+        });
+
+        // For multiple indices or multi-column indices, generate full annotation with index names
+        let index_list = index_names
+            .iter()
+            .map(|name| format!("\"{}\"", name))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        Some(format!("@index({})", index_list))
     }
 }
 
