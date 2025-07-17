@@ -18,7 +18,7 @@ We will start by building the model using the "yolo" mode to let us focus on the
 
 Let's start by expressing the concept of `Concert`, `Venue, and their relationship.
 
-> Make sure you have followed the steps in the [installation instructions](/getting-started/index.md).
+> Make sure you have followed the steps in the [installation instructions](/getting-started/local.md).
 
 Create a new Exograph project using the `exo new` command.
 

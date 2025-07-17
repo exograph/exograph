@@ -38,10 +38,12 @@ Watching the src directory for changes...
 
 Verifying new model...
 Started server on localhost:9876 in 2.61 ms
+- GraphQL hosted at:
+        http://localhost:9876/graphql
+- MCP endpoint hosted at:
+        http://localhost:9876/mcp        
 - Playground hosted at:
         http://localhost:9876/playground
-- Endpoint hosted at:
-        http://localhost:9876/graphql
 ```
 
 Exograph will restart the server and apply the necessary migrations whenever you change any file in the directory. If the database schema doesn't match the expected schema, it will automatically apply safe migrations.

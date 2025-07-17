@@ -17,7 +17,7 @@ Exograph offers a great developer experience throughout the application lifecycl
 
 ### Simple to get started
 
-Once you install Exograph, you can get a simple GraphQL [server ready](getting-started/index.md#creating-a-simple-application) in seconds thanks to its [yolo](cli-reference/development/yolo.md) mode. As you refine your model, Exograph helps by checking that it is error-free and [giving precise error messages](application-tutorial/model.md#creating-the-model). In its [dev](cli-reference/development/dev.md) mode, Exograph automatically reloads your code as you make changes and checks for consistency between your model and the database. It also offers a [GraphiQL playground](getting-started/index.md#using-the-graphiql-interface) to try out queries and mutations. The [Exograph VS Code extension](https://marketplace.visualstudio.com/items?itemName=exograph.exograph) makes working with Exograph model files easier.
+Once you install Exograph, you can get a simple GraphQL [server ready](getting-started/local.md#creating-a-simple-application) in seconds thanks to its [yolo](cli-reference/development/yolo.md) mode. As you refine your model, Exograph helps by checking that it is error-free and [giving precise error messages](application-tutorial/model.md#creating-the-model). In its [dev](cli-reference/development/dev.md) mode, Exograph automatically reloads your code as you make changes and checks for consistency between your model and the database. It also offers a [GraphiQL playground](getting-started/local.md#using-the-graphiql-interface) to try out queries and mutations. The [Exograph VS Code extension](https://marketplace.visualstudio.com/items?itemName=exograph.exograph) makes working with Exograph model files easier.
 
 ### Easy to develop
 

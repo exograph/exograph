@@ -36,10 +36,12 @@ Postgres URL: postgres://exo@%2Fvar%2Ffolders%2F8g%2Fttrcklpj7879w6fbk26dgrbh000
 Generated JWT secret: c1d22ndtjjxlxni
 Applying migrations...
 Started server on localhost:9876 in 6.14 ms
+- GraphQL hosted at:
+        http://localhost:9876/graphql
+- MCP endpoint hosted at:
+        http://localhost:9876/mcp        
 - Playground hosted at:
         http://localhost:9876/playground
-- Endpoint hosted at:
-        http://localhost:9876/graphql
 ```
 
 import EphemeralDb from './_ephemeral_db.md';

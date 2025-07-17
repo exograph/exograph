@@ -26,8 +26,10 @@ It will print the information necessary to connect to the server:
 
 ```shell-session
 Started server on 0.0.0.0:9876 in 5.47 ms
-- Endpoint hosted at:
+- GraphQL endpoint hosted at:
         http://0.0.0.0:9876/graphql
+- MCP endpoint hosted at:
+        http://0.0.0.0:9876/mcp
 ```
 
 You can now send GraphQL queries to the endpoint using a GraphQL client such as [Apollo Client](https://www.apollographql.com/docs/react/) or [urql](https://formidable.com/open-source/urql/).
