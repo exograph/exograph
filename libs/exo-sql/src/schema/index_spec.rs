@@ -153,8 +153,8 @@ impl IndexSpec {
         self_table: &'a TableSpec,
         other_table: &'a TableSpec,
     ) -> Vec<SchemaOp<'a>> {
-        if self.name == other.name
-            && self.columns == other.columns
+        // Ignore the index name, since other information is sufficient to define the index (the name is auxiliary to work with multiple columns)
+        if self.columns == other.columns
             && self_table.name == other_table.name
             && self.index_kind == other.index_kind
         {
