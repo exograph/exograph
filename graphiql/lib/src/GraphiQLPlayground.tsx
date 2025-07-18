@@ -7,21 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-import React, {
-  useState,
-  useRef,
-  useContext,
-  useEffect,
-  useCallback,
-  useMemo,
-} from "react";
-import GraphiQL from "graphiql";
-import {
-  Fetcher,
-  FetcherOpts,
-  FetcherParams,
-  createLocalStorage,
-} from "@graphiql/toolkit";
+import React, { useState, useRef, useContext, useEffect, useCallback, useMemo } from "react";
+import { GraphiQL, HISTORY_PLUGIN } from "graphiql";
+import { Fetcher, FetcherOpts, FetcherParams, createLocalStorage } from "@graphiql/toolkit";
 import { GraphQLSchema } from "graphql";
 import { fetchSchema, SchemaError } from "./schema";
 import { AuthContext, AuthContextProvider } from "./AuthContext";
@@ -30,9 +18,8 @@ import { AuthToolbarButton } from "./auth";
 import { explorerPlugin } from "@graphiql/plugin-explorer";
 
 import "./index.css";
-import "graphiql/graphiql.css";
-import "@graphiql/plugin-explorer/dist/style.css";
-import { useTheme as useGraphiqlTheme } from "@graphiql/react";
+import "graphiql/style.css";
+import "@graphiql/plugin-explorer/style.css";
 import { Theme, useTheme } from "./theme";
 import { JwtSecret } from "./auth/secret";
 
@@ -99,10 +86,7 @@ function _GraphiQLPlayground({
 }: _GraphiQLPlaygroundProps) {
   const { getTokenFn } = useContext(AuthContext);
 
-  const dataFetcher: Fetcher = async (
-    graphQLParams: FetcherParams,
-    opts?: FetcherOpts
-  ) => {
+  const dataFetcher: Fetcher = async (graphQLParams: FetcherParams, opts?: FetcherOpts) => {
     // Add a special header (`_exo_playground`) to the request to indicate that it's coming from the playground
     let additionalHeaders: Record<string, any> = {
       _exo_playground: "true",
@@ -129,10 +113,7 @@ function _GraphiQLPlayground({
     });
   };
 
-  const schemaFetcher: Fetcher = (
-    graphQLParams: FetcherParams,
-    opts?: FetcherOpts
-  ) => {
+  const schemaFetcher: Fetcher = (graphQLParams: FetcherParams, opts?: FetcherOpts) => {
     const additionalHeaders: Record<string, any> = {
       _exo_operation_kind: "schema_query",
     };
@@ -172,9 +153,7 @@ function SchemaFetchingCore({
   enableSchemaLiveUpdate: boolean;
   schemaId?: number;
 } & GraphiQLPassThroughProps) {
-  const [schema, setSchema] = useState<GraphQLSchema | SchemaError | null>(
-    null
-  );
+  const [schema, setSchema] = useState<GraphQLSchema | SchemaError | null>(null);
   const networkErrorCount = useRef(0);
 
   const fetchAndSetSchema = useCallback(async () => {
@@ -194,11 +173,10 @@ function SchemaFetchingCore({
     } else {
       setSchema(fetchedSchema);
     }
-  }, [setSchema, schemaFetcher, enableSchemaLiveUpdate]);
+  }, [schema, setSchema, schemaFetcher, enableSchemaLiveUpdate]);
 
   const unrecoverableNetworkError =
-    schema === "NetworkError" &&
-    (networkErrorCount.current >= 3 || !enableSchemaLiveUpdate);
+    schema === "NetworkError" && (networkErrorCount.current >= 3 || !enableSchemaLiveUpdate);
 
   // Reset the schema when the schemaId changes (another effect will re-fetch the schema)
   useEffect(() => {
@@ -290,6 +268,8 @@ function SchemaFetchingCore({
   );
 }
 
+const plugins = [HISTORY_PLUGIN, explorerPlugin()];
+
 function Core({
   schema,
   initialQuery,
@@ -301,15 +281,8 @@ function Core({
   upstreamGraphQLEndpoint?: string;
   schema: GraphQLSchema | null;
 } & GraphiQLPassThroughProps) {
-  const explorer = explorerPlugin({ showAttribution: false });
-
-  const { setTheme: setGraphiqlTheme } = useGraphiqlTheme();
   const storedTheme = useTheme();
   const effectiveTheme = theme || storedTheme;
-
-  useEffect(() => {
-    setGraphiqlTheme(effectiveTheme);
-  }, [setGraphiqlTheme, effectiveTheme]);
 
   const storage = useMemo(() => {
     return createLocalStorage({
@@ -318,37 +291,44 @@ function Core({
   }, [storageKey]);
 
   return (
-    <>
-      <GraphiQL
-        fetcher={fetcher}
-        query={initialQuery}
-        plugins={[explorer]}
-        defaultEditorToolsVisibility={true}
-        isHeadersEditorEnabled={true}
-        schema={schema}
-        toolbar={{ additionalContent: <AuthToolbarButton /> }}
-        showPersistHeadersSettings={true}
-        storage={storage}
-      >
-        <GraphiQL.Logo>
-          <Logo theme={effectiveTheme} />
-        </GraphiQL.Logo>
-        {upstreamGraphQLEndpoint && (
-          <GraphiQL.Footer>
-            <div style={{ paddingTop: "5px" }}>
-              <b>Endpoint URL</b>:{" "}
-              <span
-                style={{
-                  color: "hsl(var(--color-primary))",
-                }}
-              >
-                {upstreamGraphQLEndpoint}
-              </span>
-            </div>
-          </GraphiQL.Footer>
+    <GraphiQL
+      fetcher={fetcher}
+      defaultQuery={initialQuery}
+      plugins={plugins}
+      defaultEditorToolsVisibility={true}
+      isHeadersEditorEnabled={true}
+      schema={schema}
+      showPersistHeadersSettings={true}
+      storage={storage}
+    >
+      <GraphiQL.Logo>
+        <Logo theme={effectiveTheme} />
+      </GraphiQL.Logo>
+      <GraphiQL.Toolbar>
+        {({ merge, prettify, copy }) => (
+          <>
+            {prettify}
+            {merge}
+            {copy}
+            <AuthToolbarButton />
+          </>
         )}
-      </GraphiQL>
-    </>
+      </GraphiQL.Toolbar>
+      {upstreamGraphQLEndpoint && (
+        <GraphiQL.Footer>
+          <div style={{ paddingTop: "5px" }}>
+            <b>Endpoint URL</b>:{" "}
+            <span
+              style={{
+                color: "hsl(var(--color-primary))",
+              }}
+            >
+              {upstreamGraphQLEndpoint}
+            </span>
+          </div>
+        </GraphiQL.Footer>
+      )}
+    </GraphiQL>
   );
 }
 
@@ -360,9 +340,7 @@ function ErrorMessage(props: {
   return (
     <div className="error-message">
       <div className="error-title">{props.title}</div>
-      {props.message && (
-        <div className="error-description">{props.message}</div>
-      )}
+      {props.message && <div className="error-description">{props.message}</div>}
       {props.children}
     </div>
   );
@@ -393,10 +371,7 @@ function EmptySchema() {
 
 function NetworkError({ onRetry }: { onRetry: () => void }) {
   return (
-    <ErrorMessage
-      title="Network error"
-      message="Please ensure that the server is running."
-    >
+    <ErrorMessage title="Network error" message="Please ensure that the server is running.">
       <button className="graphiql-button reload-btn" onClick={() => onRetry()}>
         Retry
       </button>
@@ -405,7 +380,5 @@ function NetworkError({ onRetry }: { onRetry: () => void }) {
 }
 
 function Overlay(props: { children: React.ReactNode }) {
-  return (
-    <div className="overlay graphiql-dialog-overlay">{props.children}</div>
-  );
+  return <div className="overlay graphiql-dialog-overlay">{props.children}</div>;
 }
