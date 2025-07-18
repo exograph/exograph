@@ -13,13 +13,7 @@ import InstallOsDetector from './InstallOsDetector';
 
 Let's set up Exograph and create a simple application to ensure everything works as expected.
 
-## Setting up
-
-### Install Prerequisites
-
-Install either [Postgres](https://www.postgresql.org/download/) or [Docker](https://docs.docker.com/install). We need one of these to enable the "yolo" mode during development.
-
-### Install Exograph
+## Installing Exograph
 
 <Tabs groupId="install-os">
   <TabItem value="mac-linux" label="Mac and Linux">
@@ -44,7 +38,9 @@ irm https://raw.githubusercontent.com/exograph/exograph/main/installer/install.p
 An alternative to installing Exograph directly on your machine is to use Docker. See the [Docker](/docs/getting-started/docker.md) guide for more information.
 :::
 
-### Install the VS Code extension
+Also install either [Postgres](https://www.postgresql.org/download/) or [Docker](https://docs.docker.com/install). One of these is required to use the `yolo` mode during development.
+
+## Installing the VS Code extension
 
 Click [here](vscode:extension/exograph.exograph) to install the Exograph VS Code extension.
 
@@ -130,7 +126,7 @@ Started server on localhost:9876 in 6.14 ms
         http://localhost:9876/playground
 ```
 
-### Using the GraphiQL interface
+## Using the GraphiQL interface
 
 Visit the playground at [http://localhost:9876/playground](http://localhost:9876/playground).
 
@@ -143,7 +139,7 @@ sources={{
   }}
 />
 
-#### Performing GraphQL mutations
+### Performing GraphQL mutations
 
 Let's create a couple of todo items.
 
@@ -195,7 +191,7 @@ You should see the following output:
 }
 ```
 
-#### Performing GraphQL queries
+### Performing GraphQL queries
 
 Now we can query the todos.
 
@@ -233,3 +229,33 @@ You should see the following output:
 ```
 
 You can do much more: getting a todo by id or some filtering criteria, updating and deleting todos, etc. We will leave all those details for later.
+
+## Working with LLMs using MCP
+
+Let's connect the MCP server started by the `yolo` command to an LLM. We will use [Claude Desktop](https://claude.ai/download) as the MCP client.
+
+Add the following to your Claude Desktop configuration. The specific file you need to modify depends on your operating system, so follow the instructions [here](https://modelcontextprotocol.io/quickstart/user#2-add-the-filesystem-mcp-server).
+
+```json
+{
+  "mcpServers": {
+    "todo-mcp": {
+      "command": "/Users/ramnivas/.exograph/bin/exo-mcp-bridge",
+      "args": ["--endpoint", "http://localhost:9876/mcp"]
+    }
+  }
+}
+```
+
+Now you can ask Claude Desktop questions such as "List all the todos", "List all the todos that are not completed", or "Have I completed installation?"
+
+<ThemedImage
+className="screenshot"
+alt="Claude Desktop MCP"
+sources={{
+    light: useBaseUrl('/claude-todo-mcp.png'),
+    dark: useBaseUrl('/claude-todo-mcp.png'),
+  }}
+/>
+
+The MCP server offered by Exograph shows its full power with complex domain models with access control. We will cover that in the [MCP tutorial](/mcp-tutorial/overview.md).

@@ -23,7 +23,7 @@ pub fn create_tools(
 ) -> Result<Vec<Box<dyn Tool>>, SystemLoadingError> {
     let www_authenticate_header = env.get(EXO_WWW_AUTHENTICATE_HEADER);
 
-    let tool_mode = if env.get_or_else("EXO_UNSTABLE_MCP_MODE", "combine") == "separate" {
+    let tool_mode = if env.get_or_else("EXO_MCP_MODE", "combined") == "separate" {
         McpToolMode::SeparateIntrospection
     } else {
         McpToolMode::CombineIntrospection
