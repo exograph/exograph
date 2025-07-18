@@ -32,10 +32,7 @@ export function AuthToolbarButton() {
   return (
     <AuthConfigProvider>
       <div style={{ position: "relative" }}>
-        <ToolbarButton
-          label={getTooltip()}
-          onClick={() => setShowAuthPanel(!showAuthPanel)}
-        >
+        <ToolbarButton label={getTooltip()} onClick={() => setShowAuthPanel(!showAuthPanel)}>
           <svg
             fill="none"
             viewBox="0 0 24 24"
@@ -65,10 +62,7 @@ export function AuthToolbarButton() {
   );
 }
 
-export function AuthPanel(props: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
+export function AuthPanel(props: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const { isSignedIn } = useContext(AuthContext);
   const signoutRef = React.createRef<HTMLButtonElement>();
 
@@ -87,30 +81,20 @@ export function AuthPanel(props: {
   }
 
   if (isSignedIn) {
-    return (
-      <SignOutButton
-        onSignOut={() => props.onOpenChange(false)}
-        ref={signoutRef}
-      />
-    );
+    return <SignOutButton onSignOut={() => props.onOpenChange(false)} ref={signoutRef} />;
   } else {
     return <SignInDialog {...props} />;
   }
 }
 
-function SignInDialog(props: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
+function SignInDialog(props: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const { plugin } = useContext(AuthContext);
   const SignInPanel = plugin.getSignInPanel();
 
   return (
     <Dialog modal={false} open={props.open} onOpenChange={props.onOpenChange}>
       <div className="graphiql-dialog-header">
-        <Dialog.Title className="graphiql-dialog-title">
-          Authentication
-        </Dialog.Title>
+        <Dialog.Title className="graphiql-dialog-title">Authentication</Dialog.Title>
         <Dialog.Close />
       </div>
       <div
@@ -126,30 +110,28 @@ function SignInDialog(props: {
   );
 }
 
-const SignOutButton = forwardRef<HTMLButtonElement, { onSignOut: () => void }>(
-  (props, ref) => {
-    const { getSignOutFn } = useContext(AuthContext);
+const SignOutButton = forwardRef<HTMLButtonElement, { onSignOut: () => void }>((props, ref) => {
+  const { getSignOutFn } = useContext(AuthContext);
 
-    return (
-      <button
-        ref={ref}
-        style={{
-          background: "hsla(var(--color-secondary), 1)",
-          color: "white",
-          width: "100px",
-          padding: "5px",
-          borderRadius: "5px",
-          position: "absolute",
-          right: "-16px",
-          marginTop: "5px",
-          zIndex: 100,
-        }}
-        onClick={() => {
-          getSignOutFn && getSignOutFn().then(props.onSignOut);
-        }}
-      >
-        Sign Out
-      </button>
-    );
-  }
-);
+  return (
+    <button
+      ref={ref}
+      style={{
+        background: "hsla(var(--color-secondary), 1)",
+        color: "white",
+        width: "100px",
+        padding: "5px",
+        borderRadius: "5px",
+        position: "absolute",
+        right: "-16px",
+        marginTop: "5px",
+        zIndex: 100,
+      }}
+      onClick={() => {
+        getSignOutFn && getSignOutFn().then(props.onSignOut);
+      }}
+    >
+      Sign Out
+    </button>
+  );
+});

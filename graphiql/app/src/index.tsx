@@ -10,11 +10,7 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
 
-import {
-  GraphiQLPlayground,
-  Fetcher,
-  createGraphiQLFetcher,
-} from "exograph-playground-lib";
+import { GraphiQLPlayground, Fetcher, createGraphiQLFetcher } from "exograph-playground-lib";
 import { PlaygroundConfig } from "./config";
 
 let playgroundConfig = (window as any).exoConfig as PlaygroundConfig;
