@@ -26,6 +26,7 @@ COPY --from=builder /app/target/index.exo_ir ./target/index.exo_ir
 
 # The following defers checking for connection to the database until the first request is received.
 ENV EXO_CHECK_CONNECTION_ON_STARTUP=false
+ENV EXO_ENV=production
 ENV EXO_POSTGRES_URL=${DATABASE_URL} 
 
 CMD ["sh", "-c", "EXO_SERVER_PORT=${PORT} exo-server"]

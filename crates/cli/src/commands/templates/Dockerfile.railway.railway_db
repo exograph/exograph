@@ -24,6 +24,7 @@ COPY --from=builder /app/target/index.exo_ir ./target/index.exo_ir
 
 # Update the following environment variables to match your needs. See the documentation for more information.
 ENV EXO_POSTGRES_URL=${DATABASE_PRIVATE_URL}?sslmode=disable
+ENV EXO_ENV=production
 
 # The following defers checking for connection to the database until the first request is received.
 # This accommodates Railway's delay in setting up private networking (which takes about 100ms after the app is ready).

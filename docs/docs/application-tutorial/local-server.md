@@ -72,7 +72,7 @@ Now, you can start the server in production mode.
 
 ```shell-session
 # shell-command-next-line
-exo-server
+EXO_ENV=production exo-server
 ```
 
 Compared to the development mode:

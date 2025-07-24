@@ -12,7 +12,7 @@ use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 use colored::Colorize;
 use common::env_const::{
-    _EXO_DEPLOYMENT_MODE, EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
+    EXO_CORS_DOMAINS, EXO_ENV, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
 };
 use exo_env::{MapEnvironment, SystemEnvironment};
 use exo_sql::DatabaseClient;
@@ -80,7 +80,7 @@ impl CommandDefinition for DevCommandDefinition {
         setup_trusted_documents_enforcement(matches, &mut env_vars);
         env_vars.set(EXO_INTROSPECTION, "true");
         env_vars.set(EXO_INTROSPECTION_LIVE_UPDATE, "true");
-        env_vars.set(_EXO_DEPLOYMENT_MODE, "dev");
+        env_vars.set(EXO_ENV, "dev");
         env_vars.set(EXO_CORS_DOMAINS, "*");
 
         const MIGRATE: &str = "Attempt migration";

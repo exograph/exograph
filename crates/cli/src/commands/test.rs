@@ -13,6 +13,7 @@ use super::command::{CommandDefinition, get, get_required};
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
+use common::env_const::EXO_ENV;
 use exo_sql::testing::db::EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE;
 
 use crate::config::Config;
@@ -65,6 +66,11 @@ impl CommandDefinition for TestCommandDefinition {
                     std::env::remove_var(key);
                 }
             }
+        }
+
+        // SAFETY: std::env::set_var is unsafe if called from multiple threads. This is a start of the process and still in the main thread.
+        unsafe {
+            std::env::set_var(EXO_ENV, "test");
         }
 
         testing::run(&dir, &pattern, run_introspection_tests)

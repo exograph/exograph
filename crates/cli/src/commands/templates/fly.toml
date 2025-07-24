@@ -11,6 +11,7 @@ dockerfile = "Dockerfile.fly"
 release_command = "exo schema migrate --use-ir --apply-to-database"
 
 [env]
+EXO_ENV = "production"
 <<<ENV_VARS>>>
 
 [experimental]
