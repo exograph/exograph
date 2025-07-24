@@ -40,6 +40,8 @@ enum ServerError {
     EnvError(#[from] exo_env::EnvError),
     #[error("{0}")]
     ServerInitError(#[from] server_common::ServerInitError),
+    #[error("Configuration error: {0}")]
+    ConfigError(String),
 }
 
 // A custom `Debug` implementation for `ServerError` (that delegate to the `Display` impl), so that
@@ -81,11 +83,24 @@ async fn main() -> Result<(), ServerError> {
 
     let server_host = env.as_ref().get(EXO_SERVER_HOST);
 
+    let deployment_mode = match get_deployment_mode(env.as_ref())? {
+        Some(mode) => mode,
+        None => {
+            return Err(ServerError::ConfigError(
+                "Cannot determine deployment mode. Must set EXO_ENV to one of 'yolo', 'dev', 'test', 'playground', or 'production'"
+                    .to_string(),
+            ));
+        }
+    };
+
     let server = match server_host {
         Some(host) => server.bind((host, server_port)),
         None => {
-            match get_deployment_mode(env.as_ref())? {
-                DeploymentMode::Dev | DeploymentMode::Yolo | DeploymentMode::Playground(_) => {
+            match deployment_mode {
+                DeploymentMode::Dev
+                | DeploymentMode::Yolo
+                | DeploymentMode::Test
+                | DeploymentMode::Playground(_) => {
                     // Bind to "localhost" (needed for development). By binding to "localhost" we
                     // bind to both IPv4 and IPv6 loopback addresses ([::1]:9876, 127.0.0.1:9876)
                     //
@@ -94,7 +109,7 @@ async fn main() -> Result<(), ServerError> {
                     // works fine, if we bind to IPv6 loopback address "::1").
                     server.bind(("localhost", server_port))
                 }
-                DeploymentMode::Prod => {
+                DeploymentMode::Production => {
                     // Bind to "0.0.0.0" (all interfaces; needed for production; see the
                     // recommendation in `HttpServer::bind` documentation). This allows the server
                     // to be accessed from outside the host machine (e.g. when the server is in a
@@ -104,6 +119,7 @@ async fn main() -> Result<(), ServerError> {
             }
         }
     };
+
     match server {
         Ok(server) => {
             let pretty_addr = pretty_addr(&server.addrs());

@@ -17,7 +17,7 @@ pub const EXO_CHECK_CONNECTION_ON_STARTUP: &str = "EXO_CHECK_CONNECTION_ON_START
 
 pub const EXO_SERVER_PORT: &str = "EXO_SERVER_PORT";
 
-pub const _EXO_DEPLOYMENT_MODE: &str = "_EXO_DEPLOYMENT_MODE"; // "yolo", "dev", "playground" or "prod" (default)
+pub const EXO_ENV: &str = "EXO_ENV"; // "yolo", "dev", "playground" or "prod" 
 pub const _EXO_ENFORCE_TRUSTED_DOCUMENTS: &str = "_EXO_ENFORCE_TRUSTED_DOCUMENTS";
 
 pub const _EXO_UPSTREAM_ENDPOINT_URL: &str = "_EXO_UPSTREAM_ENDPOINT_URL";
@@ -38,39 +38,48 @@ pub const EXO_WWW_AUTHENTICATE_HEADER: &str = "EXO_WWW_AUTHENTICATE_HEADER";
 
 #[derive(Debug)]
 pub enum DeploymentMode {
-    Yolo,
-    Dev,
-    Playground(String), // URL of the GraphQL endpoint to connect to
-    Prod,
+    Yolo,               // Corresponds to "exo yolo"
+    Dev,                // Corresponds to "exo dev"
+    Test,               // Corresponds to "exo test"
+    Playground(String), // URL of the GraphQL endpoint to connect to (corresponds to "exo playground")
+    Production,         // Corresponds to "EXO_ENV=production"
 }
 
-pub fn get_deployment_mode(env: &dyn Environment) -> Result<DeploymentMode, EnvError> {
-    let deployment_mode = env.get(_EXO_DEPLOYMENT_MODE);
+pub fn get_deployment_mode(env: &dyn Environment) -> Result<Option<DeploymentMode>, EnvError> {
+    let deployment_mode = env.get(EXO_ENV);
 
-    match deployment_mode.as_deref() {
-        Some("yolo") => Ok(DeploymentMode::Yolo),
-        Some("dev") => Ok(DeploymentMode::Dev),
-        Some("playground") => {
-            let endpoint_url =
-                env.get(_EXO_UPSTREAM_ENDPOINT_URL)
-                    .ok_or(EnvError::InvalidEnum {
-                        env_key: _EXO_UPSTREAM_ENDPOINT_URL,
-                        env_value: "".to_string(),
-                        message: "Must be set to a valid URL".to_string(),
-                    })?;
-            Ok(DeploymentMode::Playground(endpoint_url))
-        }
-        Some("prod") | None => Ok(DeploymentMode::Prod),
-        Some(other) => Err(EnvError::InvalidEnum {
-            env_key: _EXO_DEPLOYMENT_MODE,
-            env_value: other.to_string(),
-            message: "Must be one of 'yolo', 'dev', 'playground', or 'prod'".to_string(),
-        }),
-    }
+    deployment_mode
+        .as_deref()
+        .map(|mode| match mode {
+            "yolo" => Ok(DeploymentMode::Yolo),
+            "dev" => Ok(DeploymentMode::Dev),
+            "test" => Ok(DeploymentMode::Test),
+            "playground" => {
+                let endpoint_url =
+                    env.get(_EXO_UPSTREAM_ENDPOINT_URL)
+                        .ok_or(EnvError::InvalidEnum {
+                            env_key: _EXO_UPSTREAM_ENDPOINT_URL,
+                            env_value: "".to_string(),
+                            message: "Must be set to a valid URL".to_string(),
+                        })?;
+                Ok(DeploymentMode::Playground(endpoint_url))
+            }
+            "production" => Ok(DeploymentMode::Production),
+            other => Err(EnvError::InvalidEnum {
+                env_key: EXO_ENV,
+                env_value: other.to_string(),
+                message: "Must be one of 'yolo', 'dev', 'test', 'playground', or 'production'"
+                    .to_string(),
+            }),
+        })
+        .transpose()
 }
 
 pub fn is_production(env: &dyn Environment) -> bool {
-    matches!(get_deployment_mode(env), Ok(DeploymentMode::Prod) | Err(_))
+    matches!(
+        get_deployment_mode(env),
+        Ok(Some(DeploymentMode::Production))
+    )
 }
 
 #[cfg(not(target_family = "wasm"))]

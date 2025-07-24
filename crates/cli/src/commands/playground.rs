@@ -8,8 +8,8 @@ use clap::{Arg, ArgMatches, Command};
 
 use anyhow::Result;
 use common::env_const::{
-    _EXO_DEPLOYMENT_MODE, _EXO_UPSTREAM_ENDPOINT_URL, EXO_CHECK_CONNECTION_ON_STARTUP,
-    EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_POSTGRES_URL,
+    _EXO_UPSTREAM_ENDPOINT_URL, EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CORS_DOMAINS, EXO_ENV,
+    EXO_INTROSPECTION, EXO_POSTGRES_URL,
 };
 use exo_env::{MapEnvironment, SystemEnvironment};
 
@@ -58,7 +58,7 @@ impl CommandDefinition for PlaygroundCommandDefinition {
         env_vars.set(EXO_POSTGRES_URL, "postgres://__placeholder");
         env_vars.set(EXO_CHECK_CONNECTION_ON_STARTUP, "false");
         env_vars.set(EXO_CORS_DOMAINS, "*");
-        env_vars.set(_EXO_DEPLOYMENT_MODE, "playground");
+        env_vars.set(EXO_ENV, "playground");
         env_vars.set(_EXO_UPSTREAM_ENDPOINT_URL, &endpoint_url);
 
         let mut server = watcher::build_and_start_server(port, &Config::default(), None, &|| {

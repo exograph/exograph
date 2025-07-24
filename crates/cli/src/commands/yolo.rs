@@ -13,7 +13,7 @@ use async_trait::async_trait;
 use clap::{ArgMatches, Command};
 use colored::Colorize;
 use common::env_const::{
-    _EXO_DEPLOYMENT_MODE, EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
+    EXO_CORS_DOMAINS, EXO_ENV, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
 };
 use exo_env::{MapEnvironment, SystemEnvironment};
 use exo_sql::schema::migration::Migration;
@@ -97,7 +97,7 @@ impl CommandDefinition for YoloCommandDefinition {
         env_vars.set(EXO_POSTGRES_URL, &db.url());
         env_vars.set(EXO_INTROSPECTION, "true");
         env_vars.set(EXO_INTROSPECTION_LIVE_UPDATE, "true");
-        env_vars.set(_EXO_DEPLOYMENT_MODE, "yolo");
+        env_vars.set(EXO_ENV, "yolo");
 
         match &jwt_secret {
             JWTSecret::EnvSecret(s) => env_vars.set(EXO_JWT_SECRET, s),

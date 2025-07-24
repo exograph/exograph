@@ -43,7 +43,7 @@ pub fn configure_router(
     env: Arc<dyn Environment>,
 ) -> impl FnOnce(&mut ServiceConfig) {
     let endpoint_url = match get_deployment_mode(env.as_ref()) {
-        Ok(DeploymentMode::Playground(url)) => Some(Url::parse(&url).unwrap()),
+        Ok(Some(DeploymentMode::Playground(url))) => Some(Url::parse(&url).unwrap()),
         _ => None,
     };
 
