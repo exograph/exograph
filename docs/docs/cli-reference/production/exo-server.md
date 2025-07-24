@@ -15,11 +15,11 @@ You build the exo_ir using the `exo build` command. See [`exo build`](/cli-refer
 
 ## Serving the exo_ir
 
-You serve the exo_ir using the `exo-server` command. The command expects `target/index_exo_ir` as the location of the exo_ir file (which is the file created by the `exo build` command).
+You serve the exo_ir using the `exo-server` command. The command expects `target/index_exo_ir` as the location of the exo_ir file (which is the file created by the `exo build` command). The command also requires the `EXO_ENV` environment variable to be set (typically to `production`).
 
 ```shell-session
 # shell-command-next-line
-exo-server
+EXO_ENV=production exo-server
 ```
 
 It will print the information necessary to connect to the server:
@@ -32,11 +32,11 @@ Started server on 0.0.0.0:9876 in 5.47 ms
 
 You can now send GraphQL queries to the endpoint using a GraphQL client such as [Apollo Client](https://www.apollographql.com/docs/react/) or [urql](https://formidable.com/open-source/urql/).
 
+By default, the `exo-server` command will have its introspection and playground disabled. While you can enable it by setting the `EXO_INTROSPECTION` environment variable to `true`, it is not a [good idea to do so in production](/production/introspection.md).
+
 ## Playground
 
-What if you want to use the GraphQL playground with the production deployment with all the goodies, such as autocomplete, schema documentation, query history, and [integrated authentication](/authentication/overview.md)?
-
-By default, the `exo-server` command will have its introspection and playground disabled. While you can enable it by setting the `EXO_INTROSPECTION` environment variable to `true`, it is not a [good idea to do so in production](/production/introspection.md). Instead, you can use the `exo playground` command that fetches the schema from your local model and executes GraphQL operations against the specified endpoint.
+What if you want to use the GraphQL playground with the production deployment with all the goodies, such as autocomplete, schema documentation, query history, and [integrated authentication](/authentication/overview.md)? Exograph provides `exo playground` that fetches the schema from your local model and executes GraphQL operations against the specified endpoint.
 
 ```shell-session
 # shell-command-next-line
