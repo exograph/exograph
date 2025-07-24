@@ -55,21 +55,26 @@ pub fn get_deployment_mode(env: &dyn Environment) -> Result<Option<DeploymentMod
             "dev" => Ok(DeploymentMode::Dev),
             "test" => Ok(DeploymentMode::Test),
             "playground" => {
-                let endpoint_url =
-                    env.get(_EXO_UPSTREAM_ENDPOINT_URL)
-                        .ok_or(EnvError::InvalidEnum {
-                            env_key: _EXO_UPSTREAM_ENDPOINT_URL,
-                            env_value: "".to_string(),
-                            message: "Must be set to a valid URL".to_string(),
-                        })?;
+                let endpoint_url = env.get(_EXO_UPSTREAM_ENDPOINT_URL).ok_or_else(|| {
+                    let actual_value = env
+                        .get(_EXO_UPSTREAM_ENDPOINT_URL)
+                        .unwrap_or_else(|| "<unset>".to_string());
+                    EnvError::InvalidEnum {
+                        env_key: _EXO_UPSTREAM_ENDPOINT_URL,
+                        env_value: actual_value.clone(),
+                        message: format!("Must be set to a valid URL, got: {}", actual_value),
+                    }
+                })?;
                 Ok(DeploymentMode::Playground(endpoint_url))
             }
             "production" => Ok(DeploymentMode::Production),
             other => Err(EnvError::InvalidEnum {
                 env_key: EXO_ENV,
                 env_value: other.to_string(),
-                message: "Must be one of 'yolo', 'dev', 'test', 'playground', or 'production'"
-                    .to_string(),
+                message: format!(
+                    "Must be one of 'yolo', 'dev', 'test', 'playground', or 'production', got: {}",
+                    other
+                ),
             }),
         })
         .transpose()

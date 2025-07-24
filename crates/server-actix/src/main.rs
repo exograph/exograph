@@ -86,10 +86,14 @@ async fn main() -> Result<(), ServerError> {
     let deployment_mode = match get_deployment_mode(env.as_ref())? {
         Some(mode) => mode,
         None => {
-            return Err(ServerError::ConfigError(
-                "Cannot determine deployment mode. Must set EXO_ENV to one of 'yolo', 'dev', 'test', 'playground', or 'production'"
-                    .to_string(),
-            ));
+            let env_value = env
+                .as_ref()
+                .get("EXO_ENV")
+                .unwrap_or_else(|| "<unset>".to_string());
+            return Err(ServerError::ConfigError(format!(
+                "Cannot determine deployment mode. Must set EXO_ENV to one of 'yolo', 'dev', 'test', 'playground', or 'production', got: {}",
+                env_value
+            )));
         }
     };
 
