@@ -12,9 +12,10 @@ use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 use colored::Colorize;
 use common::env_const::{
-    EXO_CORS_DOMAINS, EXO_ENV, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
+    DeploymentMode, EXO_CORS_DOMAINS, EXO_ENV, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
+    load_env,
 };
-use exo_env::{MapEnvironment, SystemEnvironment};
+use exo_env::MapEnvironment;
 use exo_sql::DatabaseClient;
 use exo_sql::schema::migration::{Migration, VerificationErrors};
 use futures::FutureExt;
@@ -59,6 +60,9 @@ impl CommandDefinition for DevCommandDefinition {
 
     /// Run local exograph server
     async fn execute(&self, matches: &ArgMatches, config: &Config) -> Result<()> {
+        let mut env_vars =
+            MapEnvironment::new_with_fallback(Arc::new(load_env(&DeploymentMode::Dev)));
+
         let root_path = PathBuf::from(".");
         ensure_exo_project_dir(&root_path)?;
 
@@ -76,7 +80,6 @@ impl CommandDefinition for DevCommandDefinition {
         let migration_scope_str = migration_scope_value(matches);
 
         // Create environment variables for the child server process
-        let mut env_vars = MapEnvironment::new_with_fallback(Arc::new(SystemEnvironment));
         setup_trusted_documents_enforcement(matches, &mut env_vars);
         env_vars.set(EXO_INTROSPECTION, "true");
         env_vars.set(EXO_INTROSPECTION_LIVE_UPDATE, "true");

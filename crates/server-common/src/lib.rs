@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use exo_env::Environment;
 use std::{env, process::exit, sync::Arc};
 use thiserror::Error;
 
@@ -14,7 +15,6 @@ use common::logging_tracing::{self, OtelError};
 use core_plugin_interface::interface::SubsystemLoader;
 
 use core_router::SystemLoadingError;
-use exo_env::SystemEnvironment;
 use system_router::{SystemRouter, create_system_router_from_file};
 
 /// Initialize the server by:
@@ -27,17 +27,12 @@ use system_router::{SystemRouter, create_system_router_from_file};
 ///
 /// # Exit codes
 /// - 1 - If the exo_ir file doesn't exist or can't be loaded.
-pub async fn init() -> Result<SystemRouter, ServerInitError> {
+pub async fn init(env: Arc<dyn Environment>) -> Result<SystemRouter, ServerInitError> {
     logging_tracing::init().await?;
 
     let exo_ir_file = get_exo_ir_file_name();
 
-    Ok(create_system_router_from_file(
-        &exo_ir_file,
-        create_static_loaders(),
-        Arc::new(SystemEnvironment),
-    )
-    .await?)
+    Ok(create_system_router_from_file(&exo_ir_file, create_static_loaders(), env).await?)
 }
 
 pub fn create_static_loaders() -> Vec<Box<dyn SubsystemLoader>> {

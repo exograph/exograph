@@ -13,9 +13,10 @@ use async_trait::async_trait;
 use clap::{ArgMatches, Command};
 use colored::Colorize;
 use common::env_const::{
-    EXO_CORS_DOMAINS, EXO_ENV, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
+    DeploymentMode, EXO_CORS_DOMAINS, EXO_ENV, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
+    load_env,
 };
-use exo_env::{MapEnvironment, SystemEnvironment};
+use exo_env::{Environment, MapEnvironment};
 use exo_sql::schema::migration::Migration;
 use std::{
     path::PathBuf,
@@ -61,6 +62,9 @@ impl CommandDefinition for YoloCommandDefinition {
 
     /// Run local exograph server with a temporary database
     async fn execute(&self, matches: &ArgMatches, config: &Config) -> Result<()> {
+        let mut env_vars =
+            MapEnvironment::new_with_fallback(Arc::new(load_env(&DeploymentMode::Yolo)));
+
         let root_path = PathBuf::from(".");
         ensure_exo_project_dir(&root_path)?;
 
@@ -77,8 +81,8 @@ impl CommandDefinition for YoloCommandDefinition {
         let db_server = EphemeralDatabaseLauncher::from_env().create_server()?;
         let db = db_server.create_database("yolo")?;
 
-        let jwt_secret = std::env::var(EXO_JWT_SECRET).ok();
-        let oidc_url = std::env::var(EXO_OIDC_URL).ok();
+        let jwt_secret = env_vars.get(EXO_JWT_SECRET);
+        let oidc_url = env_vars.get(EXO_OIDC_URL);
 
         let jwt_secret = match (jwt_secret, oidc_url) {
             (Some(_), Some(_)) => Err(anyhow::anyhow!(
@@ -92,7 +96,6 @@ impl CommandDefinition for YoloCommandDefinition {
         }?;
 
         // Create environment variables for the child server process
-        let mut env_vars = MapEnvironment::new_with_fallback(Arc::new(SystemEnvironment));
         setup_trusted_documents_enforcement(matches, &mut env_vars);
         env_vars.set(EXO_POSTGRES_URL, &db.url());
         env_vars.set(EXO_INTROSPECTION, "true");
