@@ -1,4 +1,8 @@
-# Managing Environment Variables
+---
+sidebar_position: 75
+---
+
+# Managing Environments
 
 Exograph provides flexible environment variable management through `.env` files and environment modes. You can configure different settings for development, testing, and production environments.
 
