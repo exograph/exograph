@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 thiserror.workspace = true
+dotenvy = "0.15"
 
 [lib]
 doctest = false

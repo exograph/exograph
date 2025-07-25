@@ -5,3 +5,17 @@ generated/
 node_modules/
 .wrangler/
 .dev.vars
+
+# Env files (unlikely to be added to git)
+.env.yolo.local
+.env.dev.local
+.env.test.local
+.env.production.local
+.env.production
+.env.local
+
+# Env file (might be okay to add to git)
+.env.yolo
+.env.dev
+.env.test
+.env

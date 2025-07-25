@@ -9,7 +9,7 @@
 
 use actix_web::{App, HttpServer, middleware, web};
 
-use common::env_const::get_mcp_http_path;
+use common::env_const::{get_mcp_http_path, load_env};
 use server_actix::configure_router;
 use thiserror::Error;
 use tracing_actix_web::TracingLogger;
@@ -57,9 +57,22 @@ impl std::fmt::Debug for ServerError {
 async fn main() -> Result<(), ServerError> {
     let start_time = time::SystemTime::now();
 
-    let env = Arc::new(SystemEnvironment);
+    let deployment_mode = match get_deployment_mode(&SystemEnvironment)? {
+        Some(mode) => mode,
+        None => {
+            let env_value = SystemEnvironment
+                .get("EXO_ENV")
+                .unwrap_or_else(|| "<unset>".to_string());
+            return Err(ServerError::ConfigError(format!(
+                "Cannot determine deployment mode. Must set EXO_ENV to one of 'yolo', 'dev', 'test', 'playground', or 'production', got: {}",
+                env_value
+            )));
+        }
+    };
 
-    let system_router = web::Data::new(server_common::init().await?);
+    let env = Arc::new(load_env(&deployment_mode));
+
+    let system_router = web::Data::new(server_common::init(env.clone()).await?);
 
     let server_port = env
         .get(EXO_SERVER_PORT)
@@ -82,20 +95,6 @@ async fn main() -> Result<(), ServerError> {
     });
 
     let server_host = env.as_ref().get(EXO_SERVER_HOST);
-
-    let deployment_mode = match get_deployment_mode(env.as_ref())? {
-        Some(mode) => mode,
-        None => {
-            let env_value = env
-                .as_ref()
-                .get("EXO_ENV")
-                .unwrap_or_else(|| "<unset>".to_string());
-            return Err(ServerError::ConfigError(format!(
-                "Cannot determine deployment mode. Must set EXO_ENV to one of 'yolo', 'dev', 'test', 'playground', or 'production', got: {}",
-                env_value
-            )));
-        }
-    };
 
     let server = match server_host {
         Some(host) => server.bind((host, server_port)),

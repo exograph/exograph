@@ -3744,6 +3744,7 @@ dependencies = [
 name = "exo-env"
 version = "0.22.0"
 dependencies = [
+ "dotenvy",
  "thiserror 2.0.12",
 ]
 
@@ -8395,6 +8396,7 @@ version = "0.22.0"
 dependencies = [
  "actix-web",
  "common",
+ "dotenvy",
  "exo-env",
  "http 1.1.0",
  "reqwest",

@@ -1,4 +1,6 @@
-use exo_env::{EnvError, Environment};
+use std::sync::Arc;
+
+use exo_env::{CompositeEnvironment, DotEnvironment, EnvError, Environment, SystemEnvironment};
 
 pub const EXO_INTROSPECTION: &str = "EXO_INTROSPECTION";
 pub const EXO_INTROSPECTION_LIVE_UPDATE: &str = "EXO_INTROSPECTION_LIVE_UPDATE";
@@ -45,6 +47,18 @@ pub enum DeploymentMode {
     Production,         // Corresponds to "EXO_ENV=production"
 }
 
+impl DeploymentMode {
+    pub fn env_key(&self) -> &str {
+        match self {
+            DeploymentMode::Yolo => "yolo",
+            DeploymentMode::Dev => "dev",
+            DeploymentMode::Test => "test",
+            DeploymentMode::Playground(_) => "playground",
+            DeploymentMode::Production => "production",
+        }
+    }
+}
+
 pub fn get_deployment_mode(env: &dyn Environment) -> Result<Option<DeploymentMode>, EnvError> {
     let deployment_mode = env.get(EXO_ENV);
 
@@ -78,6 +92,26 @@ pub fn get_deployment_mode(env: &dyn Environment) -> Result<Option<DeploymentMod
             }),
         })
         .transpose()
+}
+
+pub fn load_env(mode: &DeploymentMode) -> impl Environment + Send + Sync + 'static {
+    let mode_key = mode.env_key();
+
+    // Files in order of precedence
+    let env_files = [
+        format!(".env.{}.local", mode_key),
+        ".env.local".to_string(),
+        format!(".env.{}", mode_key),
+        ".env".to_string(),
+    ];
+
+    let mut envs: Vec<Arc<dyn Environment>> = vec![Arc::new(SystemEnvironment)];
+
+    for env_file in env_files.iter() {
+        envs.push(Arc::new(DotEnvironment::new(env_file)));
+    }
+
+    CompositeEnvironment::new(envs)
 }
 
 pub fn is_production(env: &dyn Environment) -> bool {
