@@ -35,6 +35,7 @@ use std::time::Duration;
 use std::{collections::HashMap, time::SystemTime};
 
 use exo_env::MapEnvironment;
+use exo_sql::TransactionMode;
 
 use crate::execution::assertion::assert_using_deno;
 use crate::model::{
@@ -277,7 +278,7 @@ async fn run_database_operation(
 ) -> Result<OperationResult> {
     let db_url = ctx.database_url.clone();
 
-    let client = DatabaseClientManager::from_url(&db_url, true, None)
+    let client = DatabaseClientManager::from_url(&db_url, true, None, TransactionMode::ReadWrite)
         .await?
         .get_client()
         .await?;

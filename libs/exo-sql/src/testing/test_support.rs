@@ -7,6 +7,7 @@ use std::sync::PoisonError;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::DatabaseClientManager;
+use crate::TransactionMode;
 use crate::sql::connect::database_client::DatabaseClient;
 use crate::testing::db::{
     EphemeralDatabaseLauncher, EphemeralDatabaseServer, generate_random_string,
@@ -56,12 +57,13 @@ where
 
     let database = database_server.create_database(&database_name).unwrap();
 
-    let client = DatabaseClientManager::from_url_direct(&database.url(), false)
-        .await
-        .unwrap()
-        .get_client()
-        .await
-        .unwrap();
+    let client =
+        DatabaseClientManager::from_url_direct(&database.url(), false, TransactionMode::ReadWrite)
+            .await
+            .unwrap()
+            .get_client()
+            .await
+            .unwrap();
 
     f(client).await
 }

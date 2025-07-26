@@ -11,20 +11,17 @@ use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 use colored::Colorize;
-use common::env_const::{
-    DeploymentMode, EXO_CORS_DOMAINS, EXO_ENV, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
-    load_env,
-};
+use common::env_const::{DeploymentMode, EXO_POSTGRES_READ_WRITE, load_env};
 use exo_env::MapEnvironment;
-use exo_sql::DatabaseClient;
 use exo_sql::schema::migration::{Migration, VerificationErrors};
+use exo_sql::{DatabaseClient, TransactionMode};
 use futures::FutureExt;
 use std::{path::PathBuf, sync::Arc};
 
 use super::command::{
     CommandDefinition, enforce_trusted_documents_arg, get, migration_scope_arg, port_arg,
 };
-use crate::commands::command::migration_scope_value;
+use crate::commands::command::{migration_scope_value, read_write_arg};
 use crate::config::{Config, WatchStage};
 use crate::{
     commands::{
@@ -49,6 +46,7 @@ impl CommandDefinition for DevCommandDefinition {
             .arg(port_arg())
             .arg(enforce_trusted_documents_arg())
             .arg(migration_scope_arg())
+            .arg(read_write_arg())
             .arg(
                 Arg::new("ignore-migration-errors")
                     .help("Ignore migration errors")
@@ -72,19 +70,37 @@ impl CommandDefinition for DevCommandDefinition {
         let ignore_migration_errors: bool =
             get(matches, "ignore-migration-errors").unwrap_or(false);
 
+        let read_write_mode: bool = super::util::read_write_mode(matches, "read-write", &env_vars)?;
+
+        let transaction_mode = if read_write_mode {
+            TransactionMode::ReadWrite
+        } else {
+            TransactionMode::ReadOnly
+        };
+
         println!(
             "{}",
             "Starting server in development mode...".purple().bold()
         );
 
+        if transaction_mode == TransactionMode::ReadOnly {
+            println!(
+                "{}",
+                "Running in read-only mode. To enable write access, pass --read-write."
+                    .purple()
+                    .bold()
+            );
+        }
+
         let migration_scope_str = migration_scope_value(matches);
 
         // Create environment variables for the child server process
         setup_trusted_documents_enforcement(matches, &mut env_vars);
-        env_vars.set(EXO_INTROSPECTION, "true");
-        env_vars.set(EXO_INTROSPECTION_LIVE_UPDATE, "true");
-        env_vars.set(EXO_ENV, "dev");
-        env_vars.set(EXO_CORS_DOMAINS, "*");
+        super::util::set_dev_yolo_env_vars(&mut env_vars, false);
+        env_vars.set(
+            EXO_POSTGRES_READ_WRITE,
+            if read_write_mode { "true" } else { "false" },
+        );
 
         const MIGRATE: &str = "Attempt migration";
         const CONTINUE: &str = "Continue with old schema";
@@ -95,15 +111,15 @@ impl CommandDefinition for DevCommandDefinition {
             let model_file = model_file.clone();
             let migration_scope_str = migration_scope_str.clone();
             let env_vars = env_vars.clone();
+
             async move {
                 let migration_scope = compute_migration_scope(migration_scope_str);
                 println!("{}", "\nVerifying new model...".blue().bold());
 
-                let db_client = util::open_database(None).await?;
+                let db_client = util::open_database(None, transaction_mode).await?;
 
                 loop {
-                    // Pass true as use_ir to use the IR model, since we just built the model in the watcher
-                    let database = util::extract_postgres_database(&model_file, None, true).await?;
+                    let database = util::extract_postgres_database(&model_file, None, false).await?;
                     let mut db_client = db_client.get_client().await?;
                     let verification_result = Migration::verify(&db_client, &database, &migration_scope).await;
 

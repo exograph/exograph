@@ -9,7 +9,10 @@
 
 use crate::{Connect, database_error::DatabaseError};
 
-use super::{creation::DatabaseCreation, database_client::DatabaseClient};
+use super::{
+    creation::{DatabaseCreation, TransactionMode},
+    database_client::DatabaseClient,
+};
 
 #[cfg(feature = "pool")]
 use super::database_pool::DatabasePool;
@@ -82,20 +85,26 @@ impl DatabaseClientManager {
         url: &str,
         check_connection: bool,
         #[allow(unused_variables)] pool_size: Option<usize>,
+        transaction_mode: TransactionMode,
     ) -> Result<Self, DatabaseError> {
         #[cfg(feature = "pool")]
         {
-            Self::from_url_pooled(url, check_connection, pool_size).await
+            Self::from_url_pooled(url, check_connection, pool_size, transaction_mode).await
         }
         #[cfg(not(feature = "pool"))]
         {
-            Self::from_url_direct(url, check_connection).await
+            Self::from_url_direct(url, check_connection, transaction_mode).await
         }
     }
 
-    pub async fn from_url_direct(url: &str, check_connection: bool) -> Result<Self, DatabaseError> {
+    pub async fn from_url_direct(
+        url: &str,
+        check_connection: bool,
+        transaction_mode: TransactionMode,
+    ) -> Result<Self, DatabaseError> {
         let creation = DatabaseCreation::Url {
             url: url.to_string(),
+            transaction_mode,
         };
         let res = Ok(DatabaseClientManager::Direct(creation));
 
@@ -113,9 +122,11 @@ impl DatabaseClientManager {
         url: &str,
         check_connection: bool,
         pool_size: Option<usize>,
+        transaction_mode: TransactionMode,
     ) -> Result<Self, DatabaseError> {
         let creation = DatabaseCreation::Url {
             url: url.to_string(),
+            transaction_mode,
         };
         let res = Ok(Self::Pooled(
             DatabasePool::create(creation, pool_size).await?,

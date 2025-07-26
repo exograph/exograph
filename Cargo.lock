@@ -8396,7 +8396,6 @@ version = "0.22.0"
 dependencies = [
  "actix-web",
  "common",
- "dotenvy",
  "exo-env",
  "http 1.1.0",
  "reqwest",

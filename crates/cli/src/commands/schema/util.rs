@@ -17,7 +17,7 @@ use core_plugin_shared::{
     serializable_system::SerializableSystem, system_serializer::SystemSerializer,
 };
 use exo_sql::Database;
-use exo_sql::{DatabaseClientManager, database_error::DatabaseError};
+use exo_sql::{DatabaseClientManager, TransactionMode, database_error::DatabaseError};
 use postgres_core_model::subsystem::PostgresCoreSubsystem;
 
 use crate::commands::build::build_system_with_static_builders;
@@ -27,16 +27,19 @@ use common::env_const::{
 };
 
 pub(crate) async fn open_database(
-    database: Option<&str>,
+    url: Option<&str>,
+    transaction_mode: TransactionMode,
 ) -> Result<DatabaseClientManager, DatabaseError> {
-    if let Some(database) = database {
-        Ok(DatabaseClientManager::from_url(database, true, None).await?)
+    if let Some(url) = url {
+        Ok(DatabaseClientManager::from_url(url, true, None, transaction_mode).await?)
     } else {
-        Ok(database_manager_from_env().await?)
+        Ok(database_manager_from_env(transaction_mode).await?)
     }
 }
 
-pub(crate) async fn database_manager_from_env() -> Result<DatabaseClientManager, DatabaseError> {
+pub(crate) async fn database_manager_from_env(
+    transaction_mode: TransactionMode,
+) -> Result<DatabaseClientManager, DatabaseError> {
     let url = std::env::var(EXO_POSTGRES_URL)
         .or(std::env::var(DATABASE_URL))
         .or(Err(DatabaseError::Config(format!(
@@ -50,7 +53,7 @@ pub(crate) async fn database_manager_from_env() -> Result<DatabaseClientManager,
         .map(|s| s == "true")
         .unwrap_or(true);
 
-    DatabaseClientManager::from_url(&url, check_connection, pool_size).await
+    DatabaseClientManager::from_url(&url, check_connection, pool_size, transaction_mode).await
 }
 
 pub(crate) async fn create_system(

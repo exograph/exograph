@@ -15,6 +15,7 @@ use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 use colored::Colorize;
+use exo_sql::TransactionMode;
 
 use super::command::{
     CommandDefinition, database_arg, get_required, migration_scope_arg, mutation_access_arg,
@@ -111,7 +112,8 @@ impl CommandDefinition for NewCommandDefinition {
         if from_database {
             let mut model_file = File::create(src_path.join("index.exo"))?;
 
-            let db_client = open_database(database_url.as_deref()).await?;
+            let db_client =
+                open_database(database_url.as_deref(), TransactionMode::ReadOnly).await?;
             let db_client = db_client.get_client().await?;
 
             let table_names = create_exo_model(

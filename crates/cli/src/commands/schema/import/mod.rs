@@ -14,7 +14,7 @@ use colored::Colorize;
 use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::issue::WithIssues;
 use exo_sql::schema::spec::{MigrationScope, MigrationScopeMatches};
-use exo_sql::{DatabaseClient, SchemaObjectName};
+use exo_sql::{DatabaseClient, SchemaObjectName, TransactionMode};
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -73,7 +73,7 @@ impl CommandDefinition for ImportCommandDefinition {
         let yes: bool = yes_value(matches);
 
         let mut writer = open_file_for_output(output.as_deref(), yes)?;
-        let db_client = open_database(database_url.as_deref()).await?;
+        let db_client = open_database(database_url.as_deref(), TransactionMode::ReadOnly).await?;
         let db_client = db_client.get_client().await?;
 
         let table_names = create_exo_model(

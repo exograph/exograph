@@ -11,6 +11,7 @@ use std::{io, path::PathBuf};
 
 use anyhow::anyhow;
 use colored::Colorize;
+use exo_env::SystemEnvironment;
 use exo_sql::SchemaObjectName;
 use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::migration::{
@@ -18,7 +19,7 @@ use exo_sql::schema::migration::{
     PredefinedMigrationInteraction, TableAction, migrate_interactively,
 };
 use exo_sql::schema::spec::MigrationScope;
-use exo_sql::{Database, DatabaseClient};
+use exo_sql::{Database, DatabaseClient, TransactionMode};
 
 use crate::commands::command::{
     database_value, migration_scope_arg, migration_scope_value, yes_arg, yes_value,
@@ -99,7 +100,21 @@ impl CommandDefinition for MigrateCommandDefinition {
 
         let database = util::extract_postgres_database(&model, None, use_ir).await?;
 
-        let db_client = open_database(database_url.as_deref()).await?;
+        let transaction_mode = {
+            let read_write_mode = crate::commands::util::read_write_mode(
+                matches,
+                "apply-to-database",
+                &SystemEnvironment,
+            )?;
+
+            if read_write_mode {
+                TransactionMode::ReadWrite
+            } else {
+                TransactionMode::ReadOnly
+            }
+        };
+
+        let db_client = open_database(database_url.as_deref(), transaction_mode).await?;
         let mut db_client = db_client.get_client().await?;
 
         let scope = compute_migration_scope(scope);
@@ -111,13 +126,23 @@ impl CommandDefinition for MigrateCommandDefinition {
                 .await?
         };
 
+        if migrations.is_empty() {
+            println!(
+                "{}",
+                "The schema is up to date. No migrations needed.".yellow()
+            );
+            return Ok(());
+        }
+
         if apply_to_database {
             migrations
                 .apply(&mut db_client, allow_destructive_changes)
                 .await?;
+            println!("{}", "Migration applied successfully.".green());
         } else {
             let mut buffer: Box<dyn io::Write> = open_file_for_output(output.as_deref(), yes)?;
             migrations.write(&mut buffer, allow_destructive_changes)?;
+            println!("{}", "Migration script written to file.".green());
         }
 
         Ok(())
