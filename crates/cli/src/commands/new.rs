@@ -23,6 +23,7 @@ use super::command::{
 use crate::commands::command::{
     database_value, migration_scope_value, mutation_access_value, query_access_value,
 };
+use crate::commands::schema::import::print_imported_tables;
 use crate::config::Config;
 use crate::schema::import::create_exo_model;
 use crate::schema::util::open_database;
@@ -113,7 +114,7 @@ impl CommandDefinition for NewCommandDefinition {
             let db_client = open_database(database_url.as_deref()).await?;
             let db_client = db_client.get_client().await?;
 
-            create_exo_model(
+            let table_names = create_exo_model(
                 &mut model_file,
                 &db_client,
                 query_access,
@@ -122,6 +123,10 @@ impl CommandDefinition for NewCommandDefinition {
                 scope,
             )
             .await?;
+
+            println!("Imported tables:");
+            print_imported_tables(table_names, 80);
+            println!();
         }
 
         println!(
