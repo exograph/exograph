@@ -10,10 +10,11 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::{Arg, Command};
-use exo_sql::DatabaseClient;
+use colored::Colorize;
 use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::issue::WithIssues;
 use exo_sql::schema::spec::{MigrationScope, MigrationScopeMatches};
+use exo_sql::{DatabaseClient, SchemaObjectName};
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -75,7 +76,7 @@ impl CommandDefinition for ImportCommandDefinition {
         let db_client = open_database(database_url.as_deref()).await?;
         let db_client = db_client.get_client().await?;
 
-        create_exo_model(
+        let table_names = create_exo_model(
             &mut writer,
             &db_client,
             query_access,
@@ -86,7 +87,9 @@ impl CommandDefinition for ImportCommandDefinition {
         .await?;
 
         if let Some(output) = &output {
-            eprintln!("\nExograph model written to `{}`", output.display());
+            println!("Imported tables:");
+            print_imported_tables(table_names, 80);
+            println!("\nExograph model written to `{}`", output.display());
         }
 
         Ok(())
@@ -100,7 +103,7 @@ pub(crate) async fn create_exo_model(
     mutation_access: bool,
     generate_fragments: bool,
     scope: Option<String>,
-) -> Result<()> {
+) -> Result<Vec<SchemaObjectName>> {
     let schema = import_schema(db_client, &compute_migration_scope(scope)).await?;
 
     let mut context = ImportContext::new(
@@ -109,6 +112,13 @@ pub(crate) async fn create_exo_model(
         mutation_access,
         generate_fragments,
     );
+
+    let table_names = schema
+        .value
+        .tables
+        .iter()
+        .map(|table| table.name.clone())
+        .collect::<Vec<_>>();
 
     for table in &schema.value.tables {
         context.add_table(&table.name);
@@ -121,7 +131,7 @@ pub(crate) async fn create_exo_model(
         eprintln!("{issue}");
     }
 
-    Ok(())
+    Ok(table_names)
 }
 
 async fn import_schema(
@@ -135,6 +145,53 @@ async fn import_schema(
 
     let database = DatabaseSpec::from_live_database(client, scope_matches).await?;
     Ok(database)
+}
+
+pub(crate) fn print_imported_tables(table_names: Vec<SchemaObjectName>, max_width: usize) {
+    // Group tables by schema
+    let mut tables_by_schema: std::collections::HashMap<String, Vec<&SchemaObjectName>> =
+        std::collections::HashMap::new();
+
+    for table_name in &table_names {
+        let schema = table_name.schema.as_deref().unwrap_or("public");
+        tables_by_schema
+            .entry(schema.to_string())
+            .or_default()
+            .push(table_name);
+    }
+
+    // Sort schemas and tables within each schema
+    let mut sorted_schemas: Vec<_> = tables_by_schema.keys().collect();
+    sorted_schemas.sort();
+
+    for schema in sorted_schemas {
+        print!("    {}:", schema.bold().purple());
+        let mut tables = tables_by_schema[schema].clone();
+        tables.sort_by(|a, b| a.name.cmp(&b.name));
+
+        let available_width = max_width - 8; // schema is indented 4 spaces, and table starts with 4 spaces
+        let mut current_line_width = 0;
+
+        for (i, table) in tables.iter().enumerate() {
+            let needs_comma = i > 0;
+            let text_width = table.name.len() + if needs_comma { 2 } else { 0 }; // +2 for comma and space
+
+            if current_line_width == 0 || current_line_width + text_width <= available_width {
+                if current_line_width == 0 {
+                    print!("\n        {}", table.name.bold().cyan());
+                    current_line_width = table.name.len();
+                } else {
+                    print!(", {}", table.name.bold().cyan());
+                    current_line_width += text_width;
+                }
+            } else {
+                print!("\n        {}", table.name.bold().cyan());
+                current_line_width = table.name.len();
+            }
+        }
+
+        println!();
+    }
 }
 
 #[cfg(all(test, not(target_family = "wasm")))]
