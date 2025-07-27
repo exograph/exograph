@@ -19,6 +19,8 @@ exo dev
 
 If your project uses a Postgres module, you must create a database with the appropriate schema. Please see the [exo schema](schema/create.md) command for more information. You will also need to export the `EXO_POSTGRES_URL` environment variable to that database (there are a few other options. Please see the [configuration](/postgres/configuration.md) page for more details).
 
+By default, it will run in read-only mode. You can enable write access by passing the `--read-write` option or setting the `EXO_POSTGRES_READ_WRITE` environment variable to `true`.
+
 By default, it will start the server on port 9876. You can change this by passing the `--port` (or the shorter `-p`) option.
 
 By default, it will enforce [trusted documents](../../production/trusted-documents.md). You can turn this off by passing the `--enforce-trusted-documents=false` option.

@@ -30,6 +30,8 @@ Started server on 0.0.0.0:9876 in 5.47 ms
         http://0.0.0.0:9876/graphql
 ```
 
+By default, the `exo-server` command will run the database in read-only mode. You can enable write access by setting the `EXO_POSTGRES_READ_WRITE` environment variable to `true`.
+
 You can now send GraphQL queries to the endpoint using a GraphQL client such as [Apollo Client](https://www.apollographql.com/docs/react/) or [urql](https://formidable.com/open-source/urql/).
 
 By default, the `exo-server` command will have its introspection and playground disabled. While you can enable it by setting the `EXO_INTROSPECTION` environment variable to `true`, it is not a [good idea to do so in production](/production/introspection.md).
