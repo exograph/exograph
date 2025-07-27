@@ -17,12 +17,12 @@ createdb concerts-db
 
 ## Setting up the environment
 
-Let's create a .env file and populate the environment variables.
+Let's create a .env.local file and populate the environment variables.
 
-```sh file=.env
-export EXO_POSTGRES_URL=postgres://localhost/concerts-db
-export EXO_CORS_DOMAINS="*"
-export EXO_JWT_SECRET=your_jwt_secret # Change this to your secret
+```sh file=.env.local
+EXO_POSTGRES_URL=postgres://localhost/concerts-db
+EXO_CORS_DOMAINS="*"
+EXO_JWT_SECRET=your_jwt_secret # Change this to your secret
 ```
 
 We set the `EXO_POSTGRES_URL` environment variable to the database we created earlier. Here, we assume the default setup of Postgres, where the username is the same as the current user without a password. If you have a different setup, you should change the URL accordingly (the format is `postgres://username:password@host:port/database`)
@@ -41,10 +41,10 @@ Now, start the server.
 
 ```shell-session
 # shell-command-next-line
-source .env
-# shell-command-next-line
-exo dev
+exo dev --read-write
 ```
+
+If you want to run the server in read-only mode, you can omit the `--read-write` option.
 
 In development mode, Exograph will watch for changes to the model and automatically apply the migration to the database. Therefore, except for using the database and the JWT secret you specified, everything else is identical to the "yolo" mode.
 
@@ -62,8 +62,6 @@ If you wish, you can create a separate database for production (which will be th
 Unlike `exo yolo` or `exo dev`, Exograph doesn't manage the database schema in production mode. Instead, it provides a command to generate the SQL schema from the model.Let's use `exo` command to update the database schema by applying the migration. Since this is a fresh database, migration entails creating the tables and related objects.
 
 ```shell-session
-# shell-command-next-line
-source .env
 # shell-command-next-line
 exo schema migrate --apply-to-database
 ```

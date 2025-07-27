@@ -12,12 +12,9 @@ use async_recursion::async_recursion;
 use async_trait::async_trait;
 use clap::{ArgMatches, Command};
 use colored::Colorize;
-use common::env_const::{
-    DeploymentMode, EXO_CORS_DOMAINS, EXO_ENV, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
-    load_env,
-};
+use common::env_const::{DATABASE_URL, DeploymentMode, EXO_POSTGRES_READ_WRITE, load_env};
 use exo_env::{Environment, MapEnvironment};
-use exo_sql::schema::migration::Migration;
+use exo_sql::{TransactionMode, schema::migration::Migration};
 use std::{
     path::PathBuf,
     sync::{Arc, atomic::Ordering},
@@ -97,17 +94,23 @@ impl CommandDefinition for YoloCommandDefinition {
 
         // Create environment variables for the child server process
         setup_trusted_documents_enforcement(matches, &mut env_vars);
+        super::util::set_dev_yolo_env_vars(&mut env_vars, true);
+
+        if env_vars.get(EXO_POSTGRES_URL).is_some() || env_vars.get(DATABASE_URL).is_some() {
+            println!("{}", "Yolo mode ignores EXO_POSTGRES_URL and DATABASE_URL env vars. Creating a new ephemeral database instead.".yellow());
+        }
         env_vars.set(EXO_POSTGRES_URL, &db.url());
-        env_vars.set(EXO_INTROSPECTION, "true");
-        env_vars.set(EXO_INTROSPECTION_LIVE_UPDATE, "true");
-        env_vars.set(EXO_ENV, "yolo");
+
+        if env_vars.get(EXO_POSTGRES_READ_WRITE).is_some() {
+            println!("{}", "Yolo mode ignores EXO_POSTGRES_READ_WRITE env. Using read-write mode with the ephemeral database it creates.".yellow());
+        }
+        env_vars.set(EXO_POSTGRES_READ_WRITE, "true");
 
         match &jwt_secret {
             JWTSecret::EnvSecret(s) => env_vars.set(EXO_JWT_SECRET, s),
             JWTSecret::Generated(s) => env_vars.set(EXO_JWT_SECRET, s),
             JWTSecret::EnvOidc(s) => env_vars.set(EXO_OIDC_URL, s),
         };
-        env_vars.set(EXO_CORS_DOMAINS, "*");
 
         let prestart_callback = || {
             setup_database(
@@ -161,7 +164,7 @@ async fn setup_database(
         }
     };
 
-    let db_client = util::open_database(Some(&db.url())).await?;
+    let db_client = util::open_database(Some(&db.url()), TransactionMode::ReadWrite).await?;
     let mut db_client = db_client.get_client().await?;
 
     let database = util::extract_postgres_database(&model, None, false).await?;
@@ -182,7 +185,7 @@ async fn setup_database(
         println!("Error while applying migration: {e}");
         let options = vec![CONTINUE, REBUILD, PAUSE, EXIT];
         let ans = inquire::Select::new("Choose an option:", options).prompt()?;
-        let db_client = util::open_database(Some(&db.url())).await?;
+        let db_client = util::open_database(Some(&db.url()), TransactionMode::ReadWrite).await?;
         let mut db_client = db_client.get_client().await?;
 
         match ans {

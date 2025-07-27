@@ -9,7 +9,14 @@
 
 use std::io::stdin;
 
-use clap::Arg;
+use anyhow::anyhow;
+use clap::{Arg, ArgMatches, parser::ValueSource};
+use colored::Colorize;
+use common::env_const::{
+    EXO_CORS_DOMAINS, EXO_ENV, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
+    EXO_POSTGRES_READ_WRITE,
+};
+use exo_env::{Environment, MapEnvironment};
 use exo_sql::schema::spec::{MigrationScope, MigrationScopeMatches, NameMatching};
 use rand::Rng;
 
@@ -62,6 +69,88 @@ pub(crate) fn compute_migration_scope(scope_value: Option<String>) -> MigrationS
     } else {
         MigrationScope::FromNewSpec
     }
+}
+
+/// Set the environment variables common to the dev and yolo modes.
+pub(crate) fn set_dev_yolo_env_vars(env_vars: &mut MapEnvironment, is_yolo: bool) {
+    let mode_name = if is_yolo { "yolo" } else { "dev" };
+
+    if env_vars.get(EXO_INTROSPECTION).is_some() {
+        println!(
+            "{}",
+            format!(
+                "{} mode ignores EXO_INTROSPECTION. Introspection is always enabled.",
+                mode_name
+            )
+            .yellow()
+        );
+    }
+    env_vars.set(EXO_INTROSPECTION, "true");
+
+    if env_vars.get(EXO_INTROSPECTION_LIVE_UPDATE).is_some() {
+        println!(
+            "{}",
+            format!(
+                "{} mode ignores EXO_INTROSPECTION_LIVE_UPDATE. Live update is always enabled.",
+                mode_name
+            )
+            .yellow()
+        );
+    }
+    env_vars.set(EXO_INTROSPECTION_LIVE_UPDATE, "true");
+
+    if env_vars.get(EXO_CORS_DOMAINS).is_some() {
+        println!(
+            "{}",
+            format!(
+                "{} mode ignores EXO_CORS_DOMAINS. Using * instead.",
+                mode_name
+            )
+            .yellow()
+        );
+    }
+    env_vars.set(EXO_CORS_DOMAINS, "*");
+
+    if env_vars.get(EXO_ENV).is_some() {
+        println!(
+            "{}",
+            format!(
+                "{} mode ignores EXO_ENV. Using {} instead.",
+                mode_name, mode_name
+            )
+            .yellow()
+        );
+    }
+    env_vars.set(EXO_ENV, mode_name);
+}
+
+pub(crate) fn read_write_mode(
+    matches: &ArgMatches,
+    flag_id: &str,
+    env_vars: &dyn Environment,
+) -> Result<bool, anyhow::Error> {
+    let cli_flag = matches.get_flag(flag_id);
+    let env_flag = env_vars
+        .enabled(EXO_POSTGRES_READ_WRITE, false)
+        .map_err(|e| anyhow!("Invalid value for EXO_POSTGRES_READ_WRITE: {}", e))?;
+
+    let cli_arg_source = matches.value_source(flag_id);
+    let env_arg_val = env_vars.get(EXO_POSTGRES_READ_WRITE);
+
+    if cli_arg_source == Some(ValueSource::CommandLine)
+        && env_arg_val.is_some()
+        && cli_flag != env_flag
+    {
+        anyhow::bail!(
+            "Conflicting values for the --{} flag ({}) and the {} env var ({})",
+            flag_id,
+            cli_flag,
+            EXO_POSTGRES_READ_WRITE,
+            env_arg_val.unwrap()
+        );
+    }
+
+    Ok(cli_flag || env_flag)
 }
 
 #[cfg(test)]

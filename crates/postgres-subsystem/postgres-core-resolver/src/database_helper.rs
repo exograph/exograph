@@ -1,5 +1,5 @@
 use exo_env::Environment;
-use exo_sql::{DatabaseClientManager, DatabaseExecutor};
+use exo_sql::{DatabaseClientManager, DatabaseExecutor, TransactionMode};
 use thiserror::Error;
 use tokio_postgres::{Row, types::FromSqlOwned};
 
@@ -14,7 +14,10 @@ pub async fn create_database_executor(
     } else {
         #[cfg(feature = "network")]
         {
-            use common::env_const::{DATABASE_URL, EXO_POSTGRES_URL};
+            use common::env_const::{
+                DATABASE_URL, EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE,
+                EXO_POSTGRES_READ_WRITE, EXO_POSTGRES_URL,
+            };
 
             let url = env
                 .get(EXO_POSTGRES_URL)
@@ -23,14 +26,21 @@ pub async fn create_database_executor(
                     DatabaseHelperError::Config("Env EXO_POSTGRES_URL not set".to_string())
                 })?;
             let pool_size: Option<usize> = env
-                .get("EXO_CONNECTION_POOL_SIZE")
+                .get(EXO_CONNECTION_POOL_SIZE)
                 .and_then(|s| s.parse().ok());
             let check_connection = env
-                .get("EXO_CHECK_CONNECTION_ON_STARTUP")
-                .map(|s| s == "true")
-                .unwrap_or(true);
+                .enabled(EXO_CHECK_CONNECTION_ON_STARTUP, true)
+                .map_err(|e| DatabaseHelperError::BoxedError(Box::new(e)))?;
+            let transaction_mode = if env
+                .enabled(EXO_POSTGRES_READ_WRITE, false)
+                .map_err(|e| DatabaseHelperError::BoxedError(Box::new(e)))?
+            {
+                TransactionMode::ReadWrite
+            } else {
+                TransactionMode::ReadOnly
+            };
 
-            DatabaseClientManager::from_url(&url, check_connection, pool_size)
+            DatabaseClientManager::from_url(&url, check_connection, pool_size, transaction_mode)
                 .await
                 .map_err(|e| DatabaseHelperError::BoxedError(Box::new(e)))?
         }

@@ -77,6 +77,10 @@ pub enum MigrationError {
 }
 
 impl Migration {
+    pub fn is_empty(&self) -> bool {
+        self.statements.is_empty()
+    }
+
     pub fn from_schemas(
         old_schema_spec: &DatabaseSpec,
         new_schema_spec: &DatabaseSpec,

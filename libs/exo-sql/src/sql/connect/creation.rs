@@ -15,9 +15,35 @@ use crate::database_error::DatabaseError;
 
 use super::database_client::DatabaseClient;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransactionMode {
+    ReadOnly,
+    ReadWrite,
+}
+
+impl TransactionMode {
+    pub fn update_config(self, config: &mut Config) {
+        tracing::info!("Setting database transaction mode to {:?}", self);
+        if self == TransactionMode::ReadOnly {
+            let read_only_options = "-c default_transaction_read_only=on";
+            match config.get_options() {
+                Some(options) => {
+                    config.options(format!("{} {}", options, read_only_options));
+                }
+                None => {
+                    config.options(read_only_options);
+                }
+            }
+        }
+    }
+}
+
 pub enum DatabaseCreation {
     #[cfg(feature = "postgres-url")]
-    Url { url: String },
+    Url {
+        url: String,
+        transaction_mode: TransactionMode,
+    },
     Connect {
         config: Box<Config>,
         connect: Box<dyn Connect>,
@@ -34,22 +60,29 @@ impl DatabaseCreation {
                 Ok(DatabaseClient::Direct(client))
             }
             #[cfg(feature = "postgres-url")]
-            DatabaseCreation::Url { url } => Self::from_url(url).await,
+            DatabaseCreation::Url {
+                url,
+                transaction_mode,
+            } => Self::from_url(url, *transaction_mode).await,
         }
     }
 
     #[cfg(feature = "postgres-url")]
-    async fn from_url(url: &str) -> Result<DatabaseClient, DatabaseError> {
+    async fn from_url(
+        url: &str,
+        transaction_mode: TransactionMode,
+    ) -> Result<DatabaseClient, DatabaseError> {
         use std::str::FromStr;
 
         use crate::sql::connect::ssl_config::SslConfig;
 
         let (url, ssl_config) = SslConfig::from_url(url)?;
 
-        let config = Config::from_str(&url).map_err(|e| {
+        let mut config = Config::from_str(&url).map_err(|e| {
             DatabaseError::Delegate(e)
                 .with_context("Failed to parse PostgreSQL connection string".into())
         })?;
+        transaction_mode.update_config(&mut config);
 
         // Only if there is any TCP host, use the TLS connector (with the new Rustls version, SSL over unix sockets errors out)
         let has_tcp_hosts = config

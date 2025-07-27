@@ -12,7 +12,7 @@ use colored::Colorize;
 
 use common::env_const::{
     EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION, EXO_JWT_SECRET,
-    EXO_POSTGRES_URL,
+    EXO_POSTGRES_READ_WRITE, EXO_POSTGRES_URL,
 };
 use common::http::{MemoryRequestHead, MemoryRequestPayload, RequestPayload, ResponseBodyError};
 use common::operation_payload::OperationsPayload;
@@ -35,6 +35,7 @@ use std::time::Duration;
 use std::{collections::HashMap, time::SystemTime};
 
 use exo_env::MapEnvironment;
+use exo_sql::TransactionMode;
 
 use crate::execution::assertion::assert_using_deno;
 use crate::model::{
@@ -185,6 +186,7 @@ impl IntegrationTest {
                         "false".to_string(),
                     ),
                     (EXO_INTROSPECTION.to_string(), "enabled".to_string()),
+                    (EXO_POSTGRES_READ_WRITE.to_string(), "true".to_string()),
                 ]);
 
                 env.extend(extra_envs);
@@ -277,7 +279,7 @@ async fn run_database_operation(
 ) -> Result<OperationResult> {
     let db_url = ctx.database_url.clone();
 
-    let client = DatabaseClientManager::from_url(&db_url, true, None)
+    let client = DatabaseClientManager::from_url(&db_url, true, None, TransactionMode::ReadWrite)
         .await?
         .get_client()
         .await?;

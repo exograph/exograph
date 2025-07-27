@@ -15,6 +15,7 @@ use deadpool_postgres::{Connect, Manager, ManagerConfig, Pool, RecyclingMethod};
 
 use tokio_postgres::Config;
 
+use crate::TransactionMode;
 use crate::database_error::DatabaseError;
 
 use super::{creation::DatabaseCreation, database_client::DatabaseClient};
@@ -30,7 +31,10 @@ impl DatabasePool {
     ) -> Result<Self, DatabaseError> {
         match creation {
             #[cfg(feature = "postgres-url")]
-            DatabaseCreation::Url { url } => Self::from_db_url(&url, pool_size).await,
+            DatabaseCreation::Url {
+                url,
+                transaction_mode,
+            } => Self::from_db_url(&url, pool_size, transaction_mode).await,
             DatabaseCreation::Connect { config, connect } => {
                 Self::from_connect(pool_size, *config, ConnectBridge(connect)).await
             }
@@ -42,22 +46,32 @@ impl DatabasePool {
     }
 
     #[cfg(feature = "postgres-url")]
-    async fn from_db_url(url: &str, pool_size: Option<usize>) -> Result<Self, DatabaseError> {
-        Self::from_helper(pool_size, url).await
+    async fn from_db_url(
+        url: &str,
+        pool_size: Option<usize>,
+        transaction_mode: TransactionMode,
+    ) -> Result<Self, DatabaseError> {
+        Self::from_helper(url, pool_size, transaction_mode).await
     }
 
     #[cfg(feature = "postgres-url")]
-    async fn from_helper(pool_size: Option<usize>, url: &str) -> Result<Self, DatabaseError> {
+    async fn from_helper(
+        url: &str,
+        pool_size: Option<usize>,
+        transaction_mode: TransactionMode,
+    ) -> Result<Self, DatabaseError> {
         use std::str::FromStr;
 
         use crate::sql::connect::ssl_config::SslConfig;
 
         let (url, ssl_config) = SslConfig::from_url(url)?;
 
-        let config = Config::from_str(&url).map_err(|e| {
+        let mut config = Config::from_str(&url).map_err(|e| {
             DatabaseError::Delegate(e)
                 .with_context("Failed to parse PostgreSQL connection string".into())
         })?;
+
+        transaction_mode.update_config(&mut config);
 
         match ssl_config {
             Some(ssl_config) => {
@@ -104,7 +118,7 @@ impl DatabasePool {
             recycling_method: RecyclingMethod::Fast,
         };
 
-        let manager = { Manager::from_connect(config, connect, manager_config) };
+        let manager = Manager::from_connect(config, connect, manager_config);
 
         let pool = Pool::builder(manager);
 

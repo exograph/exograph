@@ -175,6 +175,15 @@ pub fn migration_scope_value(matches: &ArgMatches) -> Option<String> {
     get(matches, "scope")
 }
 
+pub fn read_write_arg() -> Arg {
+    Arg::new("read-write")
+        .help("Run in read-write mode")
+        .long("read-write")
+        .action(clap::ArgAction::SetTrue)
+        .required(false)
+        .num_args(0)
+}
+
 pub fn port_arg() -> Arg {
     Arg::new("port")
         .help("Listen port")

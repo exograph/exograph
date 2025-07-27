@@ -6,6 +6,8 @@ sidebar_position: 8
 
 Currently, Exograph supports one instance of Postgres as a database specified using the `EXO_POSTGRES_URL` environment variable, which must be in the standard Postgres URL format (`postgres://<username>:<password>@<host>:<port?>/<database>?<connection-config-key-value>`). If this environment variable is absent, Exograph will look for `DATABASE_URL` as a fallback (this simplifies deployment to platforms such as Fly.io, which sets the `DATABASE_URL` environment variable by default). In either case, if the `port` part of the URL is not specified, Exograph will default to `5432`.
 
+By default, Exograph runs in read-only mode. You may enable write access by passing setting the `EXO_POSTGRES_READ_WRITE` environment variable to `true`.
+
 You can also configure connection pooling using the following environment variables:
 
 - `EXO_CONNECTION_POOL_SIZE` - The maximum number of connections in the pool. Defaults to `10`.

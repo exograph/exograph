@@ -10,6 +10,7 @@
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use clap::Command;
+use exo_sql::TransactionMode;
 use exo_sql::schema::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
 
@@ -41,7 +42,8 @@ impl CommandDefinition for VerifyCommandDefinition {
         let database_url = database_value(matches);
         let use_ir: bool = matches.get_flag("use-ir");
         let scope: Option<String> = migration_scope_value(matches);
-        let db_client = util::open_database(database_url.as_deref()).await?;
+        let db_client =
+            util::open_database(database_url.as_deref(), TransactionMode::ReadOnly).await?;
 
         let database = util::extract_postgres_database(&model, None, use_ir).await?;
         let db_client = db_client.get_client().await?;
