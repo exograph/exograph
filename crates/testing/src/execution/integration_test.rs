@@ -12,7 +12,7 @@ use colored::Colorize;
 
 use common::env_const::{
     EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION, EXO_JWT_SECRET,
-    EXO_POSTGRES_URL,
+    EXO_POSTGRES_READ_WRITE, EXO_POSTGRES_URL,
 };
 use common::http::{MemoryRequestHead, MemoryRequestPayload, RequestPayload, ResponseBodyError};
 use common::operation_payload::OperationsPayload;
@@ -186,6 +186,7 @@ impl IntegrationTest {
                         "false".to_string(),
                     ),
                     (EXO_INTROSPECTION.to_string(), "enabled".to_string()),
+                    (EXO_POSTGRES_READ_WRITE.to_string(), "true".to_string()),
                 ]);
 
                 env.extend(extra_envs);
