@@ -129,35 +129,28 @@ pub(crate) fn read_write_mode(
     flag_id: &str,
     env_vars: &dyn Environment,
 ) -> Result<bool, anyhow::Error> {
-    let cli_arg = matches.value_source(flag_id);
-    let env_arg = env_vars.get(EXO_POSTGRES_READ_WRITE);
+    let cli_flag = matches.get_flag(flag_id);
+    let env_flag = env_vars
+        .enabled(EXO_POSTGRES_READ_WRITE, false)
+        .map_err(|e| anyhow!("Invalid value for EXO_POSTGRES_READ_WRITE: {}", e))?;
 
-    match (cli_arg, env_arg) {
-        (Some(ValueSource::CommandLine), Some(env_arg)) => {
-            let cli_flag = matches.get_flag(flag_id);
-            let env_flag = env_vars
-                .enabled(EXO_POSTGRES_READ_WRITE, false)
-                .map_err(|e| anyhow!("Invalid value for EXO_POSTGRES_READ_WRITE: {}", e))?;
+    let cli_arg_source = matches.value_source(flag_id);
+    let env_arg_val = env_vars.get(EXO_POSTGRES_READ_WRITE);
 
-            if cli_flag != env_flag {
-                anyhow::bail!(
-                    "Conflicting values for the --{} flag ({}) and the {} env var (set to {})",
-                    flag_id,
-                    cli_flag,
-                    EXO_POSTGRES_READ_WRITE,
-                    env_arg
-                );
-            }
-            Ok(cli_flag)
-        }
-        _ => {
-            let cli_flag = matches.get_flag(flag_id);
-            let env_flag = env_vars
-                .enabled(EXO_POSTGRES_READ_WRITE, false)
-                .map_err(|e| anyhow!("Invalid value for EXO_POSTGRES_READ_WRITE: {}", e))?;
-            Ok(cli_flag || env_flag)
-        }
+    if cli_arg_source == Some(ValueSource::CommandLine)
+        && env_arg_val.is_some()
+        && cli_flag != env_flag
+    {
+        anyhow::bail!(
+            "Conflicting values for the --{} flag ({}) and the {} env var ({})",
+            flag_id,
+            cli_flag,
+            EXO_POSTGRES_READ_WRITE,
+            env_arg_val.unwrap()
+        );
     }
+
+    Ok(cli_flag || env_flag)
 }
 
 #[cfg(test)]
