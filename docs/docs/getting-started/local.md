@@ -240,7 +240,7 @@ Add the following to your Claude Desktop configuration. The specific file you ne
 {
   "mcpServers": {
     "todo-mcp": {
-      "command": "/Users/ramnivas/.exograph/bin/exo-mcp-bridge",
+      "command": "<your-home-directory>/.exograph/bin/exo-mcp-bridge",
       "args": ["--endpoint", "http://localhost:9876/mcp"]
     }
   }

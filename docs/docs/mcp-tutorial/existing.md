@@ -96,7 +96,7 @@ Let's switch to the admin user. The tutorial code is configured to give the admi
 ./scripts/switch-user.sh admin
 ```
 
-The "admin" argument sets up configuration for the admin user (by passing the `Authorization` header), which has full access to all data. Later, we'll see how to configure access for a specific customer or financial advisor. 
+The "admin" argument sets up configuration for the admin user (by passing the `Authorization` header), which has full access to all data. Later, we'll see how to configure access for a specific customer or financial advisor.
 
 Now, start Claude Desktop and open a new chat window. If you click on the "Search and tools" button, you should see the "finance-advisory-local" server in the list.
 

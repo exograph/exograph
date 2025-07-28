@@ -8,7 +8,7 @@ The MCP protocol specifies several [capabilities](https://modelcontextprotocol.i
 
 Here's how it works:
 
-1. **Initialization**: When an MCP client (such as Claude Desktop or VS Code) connects, it queries each configured MCP server for its capabilities ([the initialization phase](https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle#initialization)). 
+1. **Initialization**: When an MCP client (such as Claude Desktop or VS Code) connects, it queries each configured MCP server for its capabilities ([the initialization phase](https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle#initialization)).
 
     Exograph declares the `tools` capability during the initialization phase.
 

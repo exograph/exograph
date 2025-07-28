@@ -63,7 +63,7 @@ module TodoModule {
 }
 
 @deno("todos.ts")
-module TodoService { 
+module TodoService {
   /// Computes the effort required to complete a todo
   query computeEffort(id: Int): Int
 }

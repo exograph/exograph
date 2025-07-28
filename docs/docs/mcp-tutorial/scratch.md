@@ -79,7 +79,7 @@ context AuthContext {
 Next, use the `AuthContext` in the `index.exo` file to tighten the access control rules. We want to restrict the `Account` type so it can be viewed only by:
 - The associated customer (`self.customer.id == AuthContext.id`)
 - The customer's financial advisor (`self.customer.financialAdvisor.id == AuthContext.id`)
-- An admin (`AuthContext.role == "admin"`) 
+- An admin (`AuthContext.role == "admin"`)
 
 So the access control rule would be:
 ```exo
@@ -104,7 +104,7 @@ Since Exograph's default access control is `false`, we don't need to specify `@a
 Similarly, for the `Customer` type, we want to ensure it can be viewed only by:
 - The customer themselves (`self.id == AuthContext.id`)
 - The associated financial advisor (`self.financialAdvisor.id == AuthContext.id`)
-- An admin (`AuthContext.role == "admin"`) 
+- An admin (`AuthContext.role == "admin"`)
 
 So the access control rule would be:
 ```exo

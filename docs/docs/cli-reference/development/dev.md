@@ -41,7 +41,7 @@ Started server on localhost:9876 in 2.61 ms
 - GraphQL hosted at:
         http://localhost:9876/graphql
 - MCP endpoint hosted at:
-        http://localhost:9876/mcp        
+        http://localhost:9876/mcp
 - Playground hosted at:
         http://localhost:9876/playground
 ```
