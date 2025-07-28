@@ -1,11 +1,11 @@
 
 # Starting from an existing database
 
-We'll redo the [same tutorial](/mcp-tutorial), but this time starting from an existing database to show how you can do the same with your own database.
+We'll redo the [same tutorial](../mcp-tutorial), but this time starting from an existing database to show how you can do the same with your own database.
 
 ## Setting up a new database
 
-Let's use `ddl.sql` and `seed.sql` from the `financial-advisor-mcp` directory to create a new database (which is the same as the one we used in the [existing Exograph model](existing) tutorial).
+Let's use `ddl.sql` and `seed.sql` from the `financial-advisor-mcp` directory to create a new database (which is the same as the one we used in the [existing Exograph model](../mcp-tutorial) tutorial).
 
 ```sh
 # shell-command-next-line
@@ -122,8 +122,8 @@ type Customer {
 }
 ```
 
-You can now update the rest of the types in a similar manner. Study [access control rules](/postgres/access-control.md) for more details or take a peek at the [code](https://github.com/exograph/examples/blob/main/financial-advisor-mcp/src/index.exo) from the [existing Exograph model](existing.md) tutorial.
+You can now update the rest of the types in a similar manner. Study [access control rules](/postgres/access-control.md) for more details or take a peek at the [code](https://github.com/exograph/examples/blob/main/financial-advisor-mcp/src/index.exo) from the [existing Exograph model](../mcp-tutorial) tutorial.
 
 ## Using the MCP server
 
-Using the MCP server is the same as in the [existing Exograph model](existing.md) tutorial. Make sure to pass the `Authorization` header, since with access control in place, you'll get errors without it (except for types that have access control set to `@access(query=true, mutate=false)`).
+Using the MCP server is the same as in the [existing Exograph model](../mcp-tutorial) tutorial. Make sure to pass the `Authorization` header, since with access control in place, you'll get errors without it (except for types that have access control set to `@access(query=true, mutate=false)`).

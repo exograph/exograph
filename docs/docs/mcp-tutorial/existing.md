@@ -36,7 +36,7 @@ Let's start the MCP server. Assuming you have either Postgres or Docker installe
 exo yolo --seed seed.sql
 ```
 
-This command creates a new temporary database and seeds it with sample data. When you stop the server, the database will be deleted. Alternatively, you can use dev mode with an existing database. See [here](/cli-reference/development/dev) for more details. Either way, the console will display the MCP server URL:
+This command creates a new temporary database and seeds it with sample data. When you stop the server, the database will be deleted. Alternatively, you can use dev mode with an existing database. See [here](cli-reference/development/dev) for more details. Either way, the console will display the MCP server URL:
 
 ```sh
 Started server on localhost:9876 in 11.55 ms
