@@ -23,11 +23,14 @@ pub fn create_tools(
 ) -> Result<Vec<Box<dyn Tool>>, SystemLoadingError> {
     let www_authenticate_header = env.get(EXO_WWW_AUTHENTICATE_HEADER);
 
-    let tool_mode = if env.get_or_else("EXO_UNSTABLE_MCP_MODE", "combine") == "separate" {
-        McpToolMode::SeparateIntrospection
-    } else {
-        McpToolMode::CombineIntrospection
-    };
+    let tool_mode = match env.get_or_else("EXO_MCP_MODE", "combined").as_str() {
+        "separate" => Ok(McpToolMode::SeparateIntrospection),
+        "combined" => Ok(McpToolMode::CombineIntrospection),
+        other => Err(SystemLoadingError::Config(format!(
+            "Invalid value for EXO_MCP_MODE: '{}'. Valid values are 'separate' or 'combined'.",
+            other
+        ))),
+    }?;
 
     let profiles = schema_profiles.unwrap_or_default();
 

@@ -15,7 +15,11 @@ Exograph elements can have annotations that precede them. Annotations provide ad
 
 ## Comments
 
-Exograph files support line comments using the `//` syntax and block comments using the `/* */` syntax. Comments may appear anywhere in the file. Here are a few examples:
+Exograph files support regular comments and documentation comments.
+
+### Regular Comments
+
+Regular comments use the `//` syntax for line comments and `/* */` syntax for block comments. Comments may appear anywhere in the file. Here are a few examples:
 
 ```exo
 // User module describes the user model and operations
@@ -28,3 +32,61 @@ module UserModule {
   }
 }
 ```
+
+### Documentation Comments
+
+Documentation comments are special comments that become part of the GraphQL schema description and are included in introspection results. Exograph supports two types of documentation comments (which follow conventions from [Rust](https://doc.rust-lang.org/book/ch14-02-publishing-to-crates-io.html#the-doc-attribute)):
+
+#### Element Documentation Comments
+
+Element documentation comments use `///` for line comments or `/** */` for block comments and document specific elements like types, fields, methods, and interceptors:
+
+```exo
+@postgres
+/// Todo database module for managing user tasks
+module TodoModule {
+  /// Represents a todo item with user ownership
+  @access(query=true, mutate=true)
+  type Todo {
+    /// Unique identifier for the todo
+    @pk id: Int
+    
+    /**
+     * The todo's title or description
+     * This field is required and cannot be empty
+     */
+    title: String
+    
+    /// Whether the todo is completed
+    completed: Boolean
+  }
+}
+
+@deno("todos.ts")
+module TodoService {
+  /// Computes the effort required to complete a todo
+  query computeEffort(id: Int): Int
+}
+```
+
+#### Global Documentation Comments
+
+Global documentation comments use `//!` for line comments or `/*! */` for block comments and provide top-level documentation for the entire schema:
+
+```exo
+//! Multi-user todo application model. Users can only query/mutate their own todos. Admins can query/mutate all todos.
+
+/*!
+ * The default user role is "user".
+ * The default priority is "medium".
+ */
+
+context AuthContext {
+  @jwt("sub") id: Int
+  @jwt role: String
+}
+```
+
+Documentation comments are particularly useful when using Exograph with MCP (Model Context Protocol), as they provide LLMs with context about your data model and operations.
+
+

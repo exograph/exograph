@@ -5,7 +5,7 @@ slug: /application-tutorial
 
 # Overview
 
-While the simple app developed in the [previous section](/getting-started/index.md#using-the-graphiql-interface) is a good starting point, a real-work application needs more. In this section, we will create a fully-featured application that will demonstrate several capabilities of Exograph. Among them:
+While the simple app developed in the [previous section](/getting-started/local.md#using-the-graphiql-interface) is a good starting point, a real-work application needs more. In this section, we will create a fully-featured application that will demonstrate several capabilities of Exograph. Among them:
 
 1. Creating relations
 2. Expressing access control rules

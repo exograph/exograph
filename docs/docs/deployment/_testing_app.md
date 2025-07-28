@@ -13,4 +13,4 @@ Starting playground server connected to the endpoint at: https://<server-url>/gr
         http://localhost:9876/playground
 ```
 
-Now open http://localhost:9876/playground to see the GraphiQL Playground. You can execute queries and mutations. See the [Getting Started](/getting-started/index.md#using-the-graphiql-interface) guide for more details.
+Now open http://localhost:9876/playground to see the GraphiQL Playground. You can execute queries and mutations. See the [Getting Started](/getting-started/local.md#using-the-graphiql-interface) guide for more details.

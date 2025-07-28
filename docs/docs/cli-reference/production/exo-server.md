@@ -26,8 +26,10 @@ It will print the information necessary to connect to the server:
 
 ```shell-session
 Started server on 0.0.0.0:9876 in 5.47 ms
-- Endpoint hosted at:
+- GraphQL endpoint hosted at:
         http://0.0.0.0:9876/graphql
+- MCP endpoint hosted at:
+        http://0.0.0.0:9876/mcp
 ```
 
 By default, the `exo-server` command will run the database in read-only mode. You can enable write access by setting the `EXO_POSTGRES_READ_WRITE` environment variable to `true`.
