@@ -6,7 +6,7 @@ sidebar_position: 50
 
 Exograph offers the [Streamable HTTP protocol](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#streamable-http). However, not all MCP clients can connect over this transport, and even those that do have limitations. For example, Claude Desktop requires the MCP server to be available on a publicly accessible server. To address this, Exograph ships with an executable `exo-mcp-bridge` that offers the `stdio` protocol on one side and connects to the MCP server over HTTP on the other. It also supports setting headers and cookies to pass through to the MCP server, which is useful for authentication.
 
-You typically use `exo-mcp-bridge` in your MCP client configuration as shown in the [MCP tutorial](/mcp-tutorial). There's no need to invoke `exo-mcp-bridge` directly (for example, from the command line)—the MCP client will invoke it for you.
+You typically use `exo-mcp-bridge` in your MCP client configuration as shown in the [MCP tutorial](../mcp-tutorial). There's no need to invoke `exo-mcp-bridge` directly (for example, from the command line)—the MCP client will invoke it for you.
 
 To configure this in Claude Desktop, add the following to your `claude_desktop_config.json`:
 

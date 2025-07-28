@@ -258,4 +258,4 @@ sources={{
   }}
 />
 
-The MCP server offered by Exograph shows its full power with complex domain models with access control. We will cover that in the [MCP tutorial](/mcp-tutorial).
+The MCP server offered by Exograph shows its full power with complex domain models with access control. We will cover that in the [MCP tutorial](mcp-tutorial).

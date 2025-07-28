@@ -4,7 +4,7 @@ sidebar_position: 20
 
 # Customizing tools
 
-As we saw in the [how it works](/mcp/how-it-works) section, Exograph's MCP server offers the `execute_query` tool in `combined` mode and an additional `introspect` tool in `separate` mode. This is often sufficient when using Exograph directly from Claude Desktop or similar MCP clients. However, when using Exograph as part of an agentic workflow, you may want finer control over the tools to focus on specific parts of the schema.
+As we saw in the [how it works](../mcp/how-it-works) section, Exograph's MCP server offers the `execute_query` tool in `combined` mode and an additional `introspect` tool in `separate` mode. This is often sufficient when using Exograph directly from Claude Desktop or similar MCP clients. However, when using Exograph as part of an agentic workflow, you may want finer control over the tools to focus on specific parts of the schema.
 
 Profiles allow you to specify which types, queries, and mutations are exposed through MCP tools.
 
@@ -16,7 +16,7 @@ By default, all queries and no mutations are exposed. You can customize this beh
 Profiles relate closely to [bounded context](https://martinfowler.com/bliki/BoundedContext.html) from domain-driven design. You form boundaries around related domain parts and expose only tools specific to that bounded context. Agents can then choose appropriate tools based on the prompt and context.
 :::
 
-You specify profiles in the `exo.toml` file at the root of your project (for other usages of the `exo.toml` file, see [here](/cli-reference/config)).
+You specify profiles in the `exo.toml` file at the root of your project (for other usages of the `exo.toml` file, see [here](../cli-reference/config)).
 
 ```toml
 [[mcp.profiles]]
