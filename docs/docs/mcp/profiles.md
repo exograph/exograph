@@ -25,7 +25,7 @@ name = "branch_management"
 
 For each profile, Exograph exposes the `execute_query_<profile_name>` tool (and corresponding introspect tool in `separate` mode). The above profile exposes the `execute_query_branch_management` tool (and `introspect_branch_management` tool in `separate` mode). If you don't specify other attributes, the tool exposes all queries and no mutations.
 
-You can control exposed queries and mutations using include/exclude patterns. Each property accepts an array of [wildcard patterns](https://docs.rs/globset/latest/globset/struct.Pattern.html). For example, `"branch*"` matches `branches`, `branch`, `branchAgg`, etc. Use `"*"` to match all types or operations.
+You can control exposed queries and mutations using include/exclude patterns. Each property accepts an array of [wildcard patterns](https://docs.rs/wildmatch/2.4.0/wildmatch/). For example, `"branch*"` matches `branches`, `branch`, `branchAgg`, etc. Use `"*"` to match all types or operations.
 
 **Query Control Properties:**
 - `queries.operations.include`: Include queries matching pattern (default: `["*"]` - all queries)
