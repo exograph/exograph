@@ -122,7 +122,7 @@ type Customer {
 }
 ```
 
-You can now update the rest of the types in a similar manner. Study [access control rules](/postgres/access-control.md) for more details or take a peek at the [code](https://github.com/exograph/exograph-examples/blob/main/financial-advisor-mcp/index.exo) from the [existing Exograph model](existing.md) tutorial.
+You can now update the rest of the types in a similar manner. Study [access control rules](/postgres/access-control.md) for more details or take a peek at the [code](https://github.com/exograph/examples/blob/main/financial-advisor-mcp/src/index.exo) from the [existing Exograph model](existing.md) tutorial.
 
 ## Using the MCP server
 

@@ -11,11 +11,11 @@ In this part, we will start with an existing Exograph model. Later, we will star
 
 ## Clone the examples repository
 
-The code is available in the [exograph-examples](https://github.com/exograph/exograph-examples) repository. Clone the repository and navigate to the `financial-advisor-mcp` directory.
+The code is available in the [Exograph examples repository](https://github.com/exograph/examples). Clone the repository and navigate to the `financial-advisor-mcp` directory.
 
 ```sh
 # shell-command-next-line
-git clone https://github.com/exograph/exograph-examples.git
+git clone https://github.com/exograph/examples.git exograph-examples
 # shell-command-next-line
 cd exograph-examples/financial-advisor-mcp
 ```
