@@ -5,15 +5,15 @@ We'll redo the [same tutorial](/mcp-tutorial), but this time starting from an ex
 
 ## Setting up a new database
 
-Let's use `ddl.sql` and `seed.sql` from the `financial-advisor` directory to create a new database.
+Let's use `ddl.sql` and `seed.sql` from the `financial-advisor-mcp` directory to create a new database (which is the same as the one we used in the [existing Exograph model](existing) tutorial).
 
 ```sh
 # shell-command-next-line
-createdb financial-advisor
+createdb financial-advisor-mcp
 # shell-command-next-line
-psql -U postgres -d financial-advisor -f ddl.sql
+psql -U postgres -d financial-advisor-mcp -f ddl.sql
 # shell-command-next-line
-psql -U postgres -d financial-advisor -f seed.sql
+psql -U postgres -d financial-advisor-mcp -f seed.sql
 ```
 
 ## Creating a new Exograph model from the database
@@ -22,20 +22,20 @@ Use the `exo new` command to create a new Exograph model from the database:
 
 ```sh
 # shell-command-next-line
-DATABASE_URL=postgresql://localhost:5432/financial-advisor exo new financial-advisor-scratch --query-access true
+DATABASE_URL=postgresql://localhost:5432/financial-advisor-mcp exo new financial-advisor-mcp-scratch --query-access true
 ```
 
-This creates a new Exograph model in the `financial-advisor-scratch` directory. The `--query-access true` flag sets up access control rules so that anyone can query any data (but no one can mutate it).
+This creates a new Exograph model in the `financial-advisor-mcp-scratch` directory. The `--query-access true` flag sets up access control rules so that anyone can query any data (but no one can mutate it).
 
-Open the `financial-advisor-scratch/index.exo` file. You should see the Exograph model for the financial advisor domain (and all access control annotations set to `@access(query=true, mutate=false)`).
+Open the `financial-advisor-mcp-scratch/index.exo` file. You should see the Exograph model for the financial advisor domain (and all access control annotations set to `@access(query=true, mutate=false)`).
 
 ## Starting the MCP server
 
-Before starting the MCP server, create a `.env.dev.local` file in the `financial-advisor-scratch` directory:
+Before starting the MCP server, create a `.env.dev.local` file in the `financial-advisor-mcp-scratch` directory:
 
 ```sh
 # shell-command-next-line
-echo "DATABASE_URL=postgresql://localhost:5432/financial-advisor" > financial-advisor-scratch/.env.dev.local
+echo "DATABASE_URL=postgresql://localhost:5432/financial-advisor-mcp" > financial-advisor-mcp-scratch/.env.dev.local
 ```
 
 Use the `exo dev` command to start the MCP server:
@@ -122,7 +122,7 @@ type Customer {
 }
 ```
 
-You can now update the rest of the types in a similar manner. Study [access control rules](/postgres/access-control.md) for more details or take a peek at the [code](https://github.com/exograph/exograph-examples/blob/main/financial-advisor/index.exo) from the [existing Exograph model](existing.md) tutorial.
+You can now update the rest of the types in a similar manner. Study [access control rules](/postgres/access-control.md) for more details or take a peek at the [code](https://github.com/exograph/exograph-examples/blob/main/financial-advisor-mcp/index.exo) from the [existing Exograph model](existing.md) tutorial.
 
 ## Using the MCP server
 

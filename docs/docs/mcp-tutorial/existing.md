@@ -11,13 +11,13 @@ In this part, we will start with an existing Exograph model. Later, we will star
 
 ## Clone the examples repository
 
-The code is available in the [exograph-examples](https://github.com/exograph/exograph-examples) repository. Clone the repository and navigate to the `financial-advisor` directory.
+The code is available in the [exograph-examples](https://github.com/exograph/exograph-examples) repository. Clone the repository and navigate to the `financial-advisor-mcp` directory.
 
 ```sh
 # shell-command-next-line
 git clone https://github.com/exograph/exograph-examples.git
 # shell-command-next-line
-cd exograph-examples/financial-advisor
+cd exograph-examples/financial-advisor-mcp
 ```
 
 Open the current folder in your favorite IDE (VS Code, Cursor, etc.) with the [Exograph extension](https://marketplace.visualstudio.com/items?itemName=exograph.exograph) installed. Open the `index.exo` file. You should see the Exograph model for the financial advisor domain with access control rules such as:
