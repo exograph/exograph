@@ -41,7 +41,7 @@ impl ModuleLoader for EmbeddedModuleLoader {
         referrer: &str,
         _kind: ResolutionKind,
     ) -> Result<ModuleSpecifier, ModuleLoaderError> {
-        Ok(resolve_import(specifier, referrer)?)
+        resolve_import(specifier, referrer).map_err(ModuleLoaderError::from_err)
     }
 
     fn load(

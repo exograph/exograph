@@ -60,4 +60,7 @@ pub enum DenoInternalError {
 
     #[error("{0}")]
     CoreError(#[from] deno_core::error::CoreError),
+
+    #[error("{0}")]
+    JsError(#[from] deno_core::error::JsError),
 }

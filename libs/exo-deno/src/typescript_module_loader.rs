@@ -17,9 +17,7 @@ use deno_core::ModuleSpecifier;
 use deno_core::ModuleType;
 use deno_core::RequestedModuleType;
 use deno_core::ResolutionKind;
-use deno_core::anyhow::anyhow;
 use deno_core::error::AnyError;
-use deno_core::error::CoreError;
 use deno_core::error::ModuleLoaderError;
 use deno_core::resolve_import;
 use include_dir::Dir;
@@ -39,7 +37,7 @@ impl ModuleLoader for TypescriptLoader {
         referrer: &str,
         _kind: ResolutionKind,
     ) -> Result<ModuleSpecifier, deno_core::error::ModuleLoaderError> {
-        Ok(resolve_import(specifier, referrer)?)
+        resolve_import(specifier, referrer).map_err(ModuleLoaderError::from_err)
     }
 
     fn load(
@@ -81,70 +79,52 @@ impl ModuleLoader for TypescriptLoader {
                     let code = std::thread::spawn(move || {
                         let res =
                             reqwest::blocking::get(&module_specifier_string).map_err(|e| {
-                                ModuleLoaderError::Core(CoreError::Io(std::io::Error::new(
-                                    std::io::ErrorKind::Other,
-                                    anyhow!("Failed to fetch {}: {:?}", module_specifier_string, e),
-                                )))
+                                ModuleLoaderError::generic(format!(
+                                    "Failed to fetch {}: {:?}",
+                                    module_specifier_string, e
+                                ))
                             })?;
 
                         if !res.status().is_success() {
-                            Err(ModuleLoaderError::Core(CoreError::Io(std::io::Error::new(
-                                std::io::ErrorKind::Other,
-                                anyhow!(
-                                    "Failed to fetch {}: {:?}",
-                                    module_specifier_string,
-                                    res.status()
-                                ),
-                            ))))
+                            Err(ModuleLoaderError::generic(format!(
+                                "Failed to fetch {}: {:?}",
+                                module_specifier_string,
+                                res.status()
+                            )))
                         } else {
                             Ok(res
                                 .bytes()
                                 .map_err(|e| {
-                                    ModuleLoaderError::Core(CoreError::Io(std::io::Error::new(
-                                        std::io::ErrorKind::Other,
-                                        anyhow!(
-                                            "Failed to fetch {}: {:?}",
-                                            module_specifier_string,
-                                            e
-                                        ),
-                                    )))
+                                    ModuleLoaderError::generic(format!(
+                                        "Failed to fetch {}: {:?}",
+                                        module_specifier_string, e
+                                    ))
                                 })?
                                 .to_vec())
                         }
                     })
                     .join()
                     .map_err(|e| {
-                        ModuleLoaderError::Core(CoreError::Io(std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            anyhow!("Failed to fetch (thread join): {:?}", e),
-                        )))
+                        ModuleLoaderError::generic(format!(
+                            "Failed to fetch (thread join): {:?}",
+                            e
+                        ))
                     })?
-                    .map_err(|e| {
-                        ModuleLoaderError::Core(CoreError::Io(std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            anyhow!("Failed to fetch  {:?}", e),
-                        )))
-                    })?;
+                    .map_err(|e| ModuleLoaderError::generic(format!("Failed to fetch  {:?}", e)))?;
 
                     (Code::Vec(code), MediaType::from_path(&path))
                 }
 
                 "file" => {
-                    let path = module_specifier.to_file_path().map_err(|()| {
-                        ModuleLoaderError::Core(CoreError::Io(std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            anyhow!("Failed to get file path"),
-                        )))
-                    })?;
+                    let path = module_specifier
+                        .to_file_path()
+                        .map_err(|()| ModuleLoaderError::generic("Failed to get file path"))?;
 
                     let code = std::fs::read(&path).ok().map(Code::Vec).ok_or_else(|| {
-                        ModuleLoaderError::Core(CoreError::Io(std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            anyhow!(
-                                "Could not get contents of {} from filesystem",
-                                path.display()
-                            ),
-                        )))
+                        ModuleLoaderError::generic(format!(
+                            "Could not get contents of {} from filesystem",
+                            path.display()
+                        ))
                     })?;
 
                     (code, MediaType::from_path(&path))
@@ -153,10 +133,7 @@ impl ModuleLoader for TypescriptLoader {
                     let host = module_specifier
                         .host()
                         .ok_or_else(|| {
-                            ModuleLoaderError::Core(CoreError::Io(std::io::Error::new(
-                                std::io::ErrorKind::Other,
-                                anyhow!("No key specified in embedded URL"),
-                            )))
+                            ModuleLoaderError::generic("No key specified in embedded URL")
                         })?
                         .to_string();
                     let path = PathBuf::from(module_specifier.path()[1..].to_string()); // [1..]: trim the root slash
@@ -169,19 +146,19 @@ impl ModuleLoader for TypescriptLoader {
                                 .map(|source| Code::Slice(source.contents()))
                         })
                         .ok_or_else(|| {
-                            ModuleLoaderError::Core(CoreError::Io(std::io::Error::new(
-                                std::io::ErrorKind::Other,
-                                anyhow!("Could not get embedded contents of {}", path.display()),
-                            )))
+                            ModuleLoaderError::generic(format!(
+                                "Could not get embedded contents of {}",
+                                path.display()
+                            ))
                         })?;
 
                     (code, MediaType::from_path(&path))
                 }
                 scheme => {
-                    return Err(ModuleLoaderError::Core(CoreError::Io(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        anyhow!("Unknown protocol scheme {}", scheme),
-                    ))));
+                    return Err(ModuleLoaderError::generic(format!(
+                        "Unknown protocol scheme {}",
+                        scheme
+                    )));
                 }
             };
 
@@ -199,10 +176,10 @@ impl ModuleLoader for TypescriptLoader {
                 | MediaType::Tsx => (ModuleType::JavaScript, true),
                 MediaType::Json => (ModuleType::Json, false),
                 _ => {
-                    return Err(ModuleLoaderError::Core(CoreError::Io(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        anyhow!("Unknown extension {:?}", media_type.as_ts_extension()),
-                    ))));
+                    return Err(ModuleLoaderError::generic(format!(
+                        "Unknown extension {:?}",
+                        media_type.as_ts_extension()
+                    )));
                 }
             };
 
@@ -213,10 +190,10 @@ impl ModuleLoader for TypescriptLoader {
                     Code::String(s) => Ok(s),
                 }
                 .map_err(|e| {
-                    ModuleLoaderError::Core(CoreError::Io(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        anyhow!("Failed to convert source to string: {:?}", e),
-                    )))
+                    ModuleLoaderError::generic(format!(
+                        "Failed to convert source to string: {:?}",
+                        e
+                    ))
                 })?;
 
                 let parsed = deno_ast::parse_module(ParseParams {
@@ -228,10 +205,7 @@ impl ModuleLoader for TypescriptLoader {
                     maybe_syntax: None,
                 })
                 .map_err(|e| {
-                    ModuleLoaderError::Core(CoreError::Io(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        anyhow!("Failed to parse module: {:?}", e),
-                    )))
+                    ModuleLoaderError::generic(format!("Failed to parse module: {:?}", e))
                 })?;
 
                 Code::String(
@@ -242,10 +216,10 @@ impl ModuleLoader for TypescriptLoader {
                             &EmitOptions::default(),
                         )
                         .map_err(|e| {
-                            ModuleLoaderError::Core(CoreError::Io(std::io::Error::new(
-                                std::io::ErrorKind::Other,
-                                anyhow!("Failed to transpile module: {:?}", e),
-                            )))
+                            ModuleLoaderError::generic(format!(
+                                "Failed to transpile module: {:?}",
+                                e
+                            ))
                         })?
                         .into_source()
                         .text,
@@ -255,10 +229,7 @@ impl ModuleLoader for TypescriptLoader {
             };
 
             let source = source.to_string().map_err(|e| {
-                ModuleLoaderError::Core(CoreError::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    anyhow!("Failed to convert source to string: {:?}", e),
-                )))
+                ModuleLoaderError::generic(format!("Failed to convert source to string: {:?}", e))
             })?;
 
             let module = ModuleSource::new(
@@ -273,7 +244,7 @@ impl ModuleLoader for TypescriptLoader {
 
         deno_core::ModuleLoadResponse::Sync(
             load(module_specifier, embedded_dirs)
-                .map_err(|e| deno_core::error::ModuleLoaderError::Core(CoreError::from(e))),
+                .map_err(deno_core::error::ModuleLoaderError::from_err),
         )
     }
 }

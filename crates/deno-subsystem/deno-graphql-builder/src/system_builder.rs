@@ -32,7 +32,7 @@ use url::Url;
 
 use crate::module_skeleton_generator;
 
-const DENO_VERSION: &str = "2.4.2";
+const DENO_VERSION: &str = "2.4.3";
 
 async fn bundle_source(module_fs_path: &Path) -> Result<String, ModelBuildingError> {
     let deno_path = exo_cache_root()
