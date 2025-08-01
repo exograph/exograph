@@ -4,6 +4,38 @@ sidebar_position: 120
 
 # FAQ
 
+## License
+
+Exograph is released under the [Business Source License 1.1 with an additional grant](https://github.com/exograph/exograph/blob/main/LICENSE). We've designed our licensing to be as permissive as possible while ensuring the sustainability of the project. The license offers:
+
+- **Complete freedom for your applications**: Build, deploy, and monetize backends for your own products, client projects, and commercial services
+- **No usage limits**: There are no restrictions on scale, number of users, or revenue generated using Exograph
+- **Source code access**: The full source code is available for you to inspect, learn from, and modify
+- **No vendor lock-in**: Because you have access to the source code, you're never locked into our service or support
+- **Future open source**: After a specified period, Exograph will automatically become available under the [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0)
+
+### Can I use Exograph to build and deploy a backend for my web and mobile application?
+
+**Absolutely!** You can use Exograph to build and deploy production backends for your web applications, mobile apps, or any other type of application. This includes traditional APIs, MCP servers, or any other protocol that Exograph supports. There are no restrictions on this use case.
+
+### Does my backend have to be open source?
+
+**No!** Your backend application can be closed source, open source, or anything in between. You have complete freedom to choose how to license your own application.
+
+### Can I build and deploy a backend for a client using Exograph?
+
+**Absolutely!** Whether you're a freelancer, agency, or consulting company, you're free to build and deploy backends for your clients.
+
+### Do I need to publish modifications I make to Exograph itself?
+
+**No, you don't have to publish your modifications.** You're welcome to modify Exograph's source code for your own needs and keep those changes private. While we'd love contributions back to the project, you're under no obligation to do so.
+
+### Can I offer Exograph as a hosted service?
+
+**This is the only restriction in our license.** You cannot create a cloud platform where developers sign up, upload their Exograph models or connect their version control systems, and you deploy and manage their backends as a service.
+
+If you're interested in offering Exograph as a hosted service, please [contact us](mailto:contact@exograph.dev) to discuss partnership or licensing options.
+
 ## The Exograph Language
 
 ### Why doesn't Exograph use the GraphQL schema language?
