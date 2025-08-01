@@ -4,17 +4,15 @@ sidebar_position: 75
 
 # Managing Environments
 
-Exograph provides flexible environment variable management through `.env` files and environment modes. You can configure different settings for development, testing, and production environments.
+Exograph provides flexible environment variable management through `.env*` files and environment modes. You can configure different settings for development, testing, and production environments.
 
 ## Environment Modes
 
-The `EXO_ENV` environment variable controls Exograph's environment mode. Valid values for `EXO_ENV` are:
+The `EXO_ENV` environment variable controls loading of `.env*` files. It also controls the [IP address of the server](cli-reference/environment.md#http-paths).
 
-- `yolo`: Quick exploration with temporary database (`exo yolo` sets this automatically)
-- `dev`: Development mode with persistent database (`exo dev` sets this automatically)
-- `test`: Testing environment (`exo test` sets this automatically)
-- `playground`: Playground mode to connect to an existing GraphQL endpoint (`exo playground` sets this automatically)
-- `production`: Production deployment. **You must set this explicitly when running `exo-server`**.
+For `exo yolo`, `exo dev`, `exo test`, and `exo playground`, Exograph automatically sets this variable to the subcommand name. For example, when running `exo yolo`, `EXO_ENV` is set to `yolo`.
+
+You can also set it manually to control the environment mode when running `exo-server` or other `exo` commands such as `exo schema migrate`. For example, when running `EXO_ENV=production exo-server`, Exograph will files with the `production` mode as described [below](#environment-file-loading). Similarly, when running `EXO_ENV=dev exo schema migrate`, Exograph will files with the `dev` mode.
 
 ## Environment File Loading
 
@@ -32,36 +30,17 @@ Higher precedence files override variables in lower precedence files. For exampl
 
 ### Local Files (`.local` suffix)
 
-Use these files for local development. Never commit them to version control:
-
-- `.env.yolo.local`
-- `.env.dev.local` 
-- `.env.test.local`
-- `.env.production.local`
-- `.env.local`
-
-Create a `.env.{mode}.local` file for environment variables specific to your local development environment.
+Use these files with specific environment variables for local development. Never commit them to version control. For example, you can create a `.env.dev.local` file with the following content to point to a local database and a JWT secret for development:
 
 ```properties
 DATABASE_URL=postgres://localhost/finance-dev
 EXO_JWT_SECRET=your-dev-secret
 ```
 
-If you want to share the same environment variables across multiple modes, you can create a `.env.local` file.
-
 ### Shared Files
 
-You can commit these files to version control for shared configuration:
-- `.env.yolo`
-- `.env.dev`
-- `.env.test`
-- `.env` (base configuration)
+If you want to share the same environment variables across multiple modes, you can create a `.env` or `.env.{mode}` file. You may commit these files to version control for shared configuration. For example, you can create a `.env.dev` file with the following content to use a shared SMTP server for development:
 
-**Note**: Avoid committing `.env.production` as it may contain sensitive production secrets.
-
-New Exograph projects include a `.gitignore` file that excludes all .env files, with comments guiding you on which files are safe to commit.
-
-Your team can share `.env.{mode}` files for environment variables common to all developers.
 
 ```properties
 MAIL_HOST=dev.example.com
@@ -70,7 +49,13 @@ MAIL_USERNAME=your-dev-username
 MAIL_PASSWORD=your-dev-password
 ```
 
-Create a `.env` file for environment variables common to all modes, similar to `.env.local`.
+:::warning
+Avoid committing `.env.production` as it may contain sensitive production secrets. New Exograph projects include a `.gitignore` file that excludes all .env files, with comments guiding you on which files are safe to commit.
+:::
+
+### Mode agnostic files
+
+Create a `.env` file for environment variables common to all modes.
 
 ## Production Secrets
 

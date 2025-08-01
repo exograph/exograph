@@ -7,14 +7,18 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 use colored::Colorize;
-use common::env_const::_EXO_ENFORCE_TRUSTED_DOCUMENTS;
-use exo_env::MapEnvironment;
+use common::env_processing::EnvProcessing;
+use common::{env_const::_EXO_ENFORCE_TRUSTED_DOCUMENTS, logging_tracing};
+use exo_env::{Environment, MapEnvironment};
 
 use super::{build::BuildError, update::report_update_needed};
 use crate::config::Config;
@@ -23,10 +27,29 @@ use crate::config::Config;
 pub trait CommandDefinition {
     fn command(&self) -> Command;
 
-    async fn execute(&self, matches: &ArgMatches, _config: &Config) -> Result<()>;
+    async fn execute(
+        &self,
+        matches: &ArgMatches,
+        config: &Config,
+        env: Arc<dyn Environment>,
+    ) -> Result<()>;
 
     // Offer to opt-out of update notifications (for example, if the command is `exo update`)
     async fn is_update_report_needed(&self) -> bool {
+        true
+    }
+
+    /// Describe the env processing for this command.
+    ///
+    /// By default, the command will process env files and use the value of `EXO_ENV` to determine the environment.
+    ///
+    /// Commands such as `exo new` can override to return `DoNotProcess` to disable env file processing.
+    fn env_processing(&self, env: &dyn Environment) -> EnvProcessing {
+        EnvProcessing::Process(env.get("EXO_ENV"))
+    }
+
+    /// Whether this command is a leaf command ("exo schema" isn't a leaf command, but "exo schema create" is)
+    fn is_leaf(&self) -> bool {
         true
     }
 }
@@ -66,7 +89,16 @@ impl CommandDefinition for SubcommandDefinition {
             )
     }
 
-    async fn execute(&self, matches: &ArgMatches, config: &Config) -> Result<()> {
+    fn is_leaf(&self) -> bool {
+        false
+    }
+
+    async fn execute(
+        &self,
+        matches: &ArgMatches,
+        config: &Config,
+        env: Arc<dyn Environment>,
+    ) -> Result<()> {
         let subcommand = matches.subcommand().unwrap();
 
         let command_definition = self
@@ -76,10 +108,24 @@ impl CommandDefinition for SubcommandDefinition {
 
         match command_definition {
             Some(command_definition) => {
-                if command_definition.is_update_report_needed().await {
-                    report_update_needed().await?;
-                }
-                command_definition.execute(subcommand.1, config).await
+                let env = if command_definition.is_leaf() {
+                    if command_definition.is_update_report_needed().await {
+                        report_update_needed(env.as_ref()).await?;
+                    }
+
+                    let env_processing = command_definition.env_processing(env.as_ref());
+                    let env = Arc::new(env_processing.load_env());
+
+                    // We have to wait to initialize tracing until after the env files have been loaded
+                    // This allows .env files to contain EXO_LOG, and OTEL_* variables
+                    logging_tracing::init(env.as_ref()).await?;
+
+                    env
+                } else {
+                    env
+                };
+
+                command_definition.execute(subcommand.1, config, env).await
             }
             None => Err(anyhow!("Unknown subcommand: {}", subcommand.0)),
         }

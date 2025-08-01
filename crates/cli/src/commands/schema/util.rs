@@ -16,6 +16,7 @@ use anyhow::anyhow;
 use core_plugin_shared::{
     serializable_system::SerializableSystem, system_serializer::SystemSerializer,
 };
+use exo_env::Environment;
 use exo_sql::Database;
 use exo_sql::{DatabaseClientManager, TransactionMode, database_error::DatabaseError};
 use postgres_core_model::subsystem::PostgresCoreSubsystem;
@@ -29,28 +30,30 @@ use common::env_const::{
 pub(crate) async fn open_database(
     url: Option<&str>,
     transaction_mode: TransactionMode,
+    env: &dyn Environment,
 ) -> Result<DatabaseClientManager, DatabaseError> {
     if let Some(url) = url {
         Ok(DatabaseClientManager::from_url(url, true, None, transaction_mode).await?)
     } else {
-        Ok(database_manager_from_env(transaction_mode).await?)
+        Ok(database_manager_from_env(transaction_mode, env).await?)
     }
 }
 
 pub(crate) async fn database_manager_from_env(
     transaction_mode: TransactionMode,
+    env: &dyn Environment,
 ) -> Result<DatabaseClientManager, DatabaseError> {
-    let url = std::env::var(EXO_POSTGRES_URL)
-        .or(std::env::var(DATABASE_URL))
-        .or(Err(DatabaseError::Config(format!(
+    let url = env
+        .get(EXO_POSTGRES_URL)
+        .or(env.get(DATABASE_URL))
+        .ok_or(DatabaseError::Config(format!(
             "{EXO_POSTGRES_URL} or {DATABASE_URL} not set"
-        ))))?;
-    let pool_size = std::env::var(EXO_CONNECTION_POOL_SIZE)
-        .ok()
+        )))?;
+    let pool_size = env
+        .get(EXO_CONNECTION_POOL_SIZE)
         .and_then(|s| s.parse().ok());
-    let check_connection = std::env::var(EXO_CHECK_CONNECTION_ON_STARTUP)
-        .ok()
-        .map(|s| s == "true")
+    let check_connection = env
+        .enabled(EXO_CHECK_CONNECTION_ON_STARTUP, true)
         .unwrap_or(true);
 
     DatabaseClientManager::from_url(&url, check_connection, pool_size, transaction_mode).await

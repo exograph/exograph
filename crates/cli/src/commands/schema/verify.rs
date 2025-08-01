@@ -10,9 +10,11 @@
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use clap::Command;
+use exo_env::Environment;
 use exo_sql::TransactionMode;
 use exo_sql::schema::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use crate::commands::command::{
     CommandDefinition, database_arg, database_value, default_model_file, migration_scope_arg,
@@ -37,13 +39,22 @@ impl CommandDefinition for VerifyCommandDefinition {
     }
 
     /// Verify that a schema is compatible with a exograph model
-    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
+    async fn execute(
+        &self,
+        matches: &clap::ArgMatches,
+        _config: &Config,
+        env: Arc<dyn Environment>,
+    ) -> Result<()> {
         let model: PathBuf = default_model_file();
         let database_url = database_value(matches);
         let use_ir: bool = matches.get_flag("use-ir");
         let scope: Option<String> = migration_scope_value(matches);
-        let db_client =
-            util::open_database(database_url.as_deref(), TransactionMode::ReadOnly).await?;
+        let db_client = util::open_database(
+            database_url.as_deref(),
+            TransactionMode::ReadOnly,
+            env.as_ref(),
+        )
+        .await?;
 
         let database = util::extract_postgres_database(&model, None, use_ir).await?;
         let db_client = db_client.get_client().await?;

@@ -1,5 +1,6 @@
 use std::{cell::OnceCell, sync::Arc};
 
+use common::env_const::EXO_LOG;
 use exo_env::Environment;
 use system_router::{SystemRouter, create_system_router_from_system};
 use tracing::level_filters::LevelFilter;
@@ -36,7 +37,7 @@ fn setup_tracing(env: &WorkerEnvironment) {
     // Set up simple tracing filter.
     // The proper way would be to call `parse_lossy` on the `EnvFilter` builder, but that adds about
     // 300KB to the wasm binary (and makes the total size exceed the recommended 1MB).
-    let level: LevelFilter = match env.get("EXO_LOG") {
+    let level: LevelFilter = match env.get(EXO_LOG) {
         Some(level) => match level.to_lowercase().as_str() {
             "trace" => LevelFilter::TRACE,
             "debug" => LevelFilter::DEBUG,

@@ -10,12 +10,14 @@
 use std::{
     fs::{File, create_dir_all},
     path::PathBuf,
+    sync::Arc,
 };
 
 use anyhow::{Ok, Result};
 use async_trait::async_trait;
 use clap::Command;
 use colored::Colorize;
+use exo_env::Environment;
 
 use crate::commands::{build::build, command::CommandDefinition};
 use crate::config::Config;
@@ -43,7 +45,12 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
             .arg(app_name_arg())
     }
 
-    async fn execute(&self, matches: &clap::ArgMatches, config: &Config) -> Result<()> {
+    async fn execute(
+        &self,
+        matches: &clap::ArgMatches,
+        config: &Config,
+        _env: Arc<dyn Environment>,
+    ) -> Result<()> {
         let download_file_name = "exograph-aws-lambda-linux-2023-x86_64.zip";
         let download_url = format!(
             "https://github.com/exograph/exograph/releases/download/v{CURRENT_VERSION}/{download_file_name}"

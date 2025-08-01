@@ -12,12 +12,14 @@ use std::{
     fs::File,
     io::{BufRead, Write},
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use clap::{Arg, ArgAction, Command};
 use colored::Colorize;
+use exo_env::Environment;
 
 use crate::commands::{
     build::build,
@@ -65,7 +67,12 @@ impl CommandDefinition for FlyCommandDefinition {
 
     /// Create a fly.toml file, a Dockerfile, and build the docker image. Then provide instructions
     /// on how to deploy the app to Fly.io.
-    async fn execute(&self, matches: &clap::ArgMatches, config: &Config) -> Result<()> {
+    async fn execute(
+        &self,
+        matches: &clap::ArgMatches,
+        config: &Config,
+        _env: Arc<dyn Environment>,
+    ) -> Result<()> {
         let app_name: String = app_name_from_args(matches);
         let envs: Option<Vec<String>> = matches.get_many("env").map(|env| env.cloned().collect());
         let env_file: Option<PathBuf> = get(matches, "env-file");

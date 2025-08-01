@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     fs::{File, create_dir_all},
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use async_trait::async_trait;
@@ -9,6 +10,7 @@ use async_trait::async_trait;
 use anyhow::Result;
 use clap::Command;
 use colored::Colorize;
+use exo_env::Environment;
 
 use crate::commands::{build::build, command::CommandDefinition};
 use crate::config::Config;
@@ -33,7 +35,12 @@ impl CommandDefinition for CfWorkerCommandDefinition {
             .arg(app_name_arg())
     }
 
-    async fn execute(&self, matches: &clap::ArgMatches, config: &Config) -> Result<()> {
+    async fn execute(
+        &self,
+        matches: &clap::ArgMatches,
+        config: &Config,
+        _env: Arc<dyn Environment>,
+    ) -> Result<()> {
         let app_name: String = app_name_from_args(matches);
 
         build(false, config).await?; // Build the exo_ir file
