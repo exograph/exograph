@@ -37,10 +37,9 @@ DATABASE_URL=postgres://localhost/finance-dev
 EXO_JWT_SECRET=your-dev-secret
 ```
 
-### Shared Files
+### Mode-specific Shared Files
 
-If you want to share the same environment variables across multiple modes, you can create a `.env` or `.env.{mode}` file. You may commit these files to version control for shared configuration. For example, you can create a `.env.dev` file with the following content to use a shared SMTP server for development:
-
+For mode-specific variables you want to share with your team, use a `.env.{mode}` file. You may commit these files to version control. For example, you can create a `.env.dev` file with the following content to use a shared SMTP server during development:
 
 ```properties
 MAIL_HOST=dev.example.com
@@ -50,13 +49,13 @@ MAIL_PASSWORD=your-dev-password
 ```
 
 :::warning
-Avoid committing `.env.production` as it may contain sensitive production secrets. New Exograph projects include a `.gitignore` file that excludes all .env files, with comments guiding you on which files are safe to commit.
+Avoid committing `.env.production` as it may contain sensitive production secrets. Projects created with `exo new` include a `.gitignore` file that excludes all .env files, with comments to guide whichfiles are safe to commit.
 :::
 
-### Mode agnostic files
+### Mode-agnostic Shared File
 
 Create a `.env` file for environment variables common to all modes.
 
 ## Production Secrets
 
-You should never include production secrets in your `.env` files. Instead, use facilities provided by your infrastructure provider. For example, if you're using Fly.io, you can use [Fly.io Secrets](https://fly.io/docs/reference/secrets/) to manage your secrets. See [Deploying Exograph on Fly.io](./deployment/flyio.md#set-the-jwt-secret-or-the-oidc-url) for more details.
+You should never include production secrets in your `.env*` files. Instead, use facilities provided by your infrastructure provider. For example, if you're using Fly.io, you can use [Fly.io Secrets](https://fly.io/docs/reference/secrets/) to manage your secrets. See [Deploying Exograph on Fly.io](./deployment/flyio.md#set-the-jwt-secret-or-the-oidc-url) for more details.

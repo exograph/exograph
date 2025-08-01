@@ -16,6 +16,7 @@ use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 use colored::Colorize;
+use common::env_processing::EnvProcessing;
 use exo_env::Environment;
 use exo_sql::TransactionMode;
 
@@ -55,6 +56,10 @@ impl CommandDefinition for NewCommandDefinition {
             .arg(migration_scope_arg())
             .arg(query_access_arg())
             .arg(mutation_access_arg())
+    }
+
+    fn env_processing(&self, _env: &dyn Environment) -> EnvProcessing {
+        EnvProcessing::DoNotProcess
     }
 
     async fn execute(

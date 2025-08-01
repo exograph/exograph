@@ -54,7 +54,7 @@ pub(crate) async fn database_manager_from_env(
         .and_then(|s| s.parse().ok());
     let check_connection = env
         .enabled(EXO_CHECK_CONNECTION_ON_STARTUP, true)
-        .unwrap_or(true);
+        .map_err(|e| DatabaseError::Config(e.to_string()))?;
 
     DatabaseClientManager::from_url(&url, check_connection, pool_size, transaction_mode).await
 }
