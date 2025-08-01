@@ -10,11 +10,14 @@
 use std::fs::{File, create_dir_all};
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 use colored::Colorize;
+use common::env_processing::EnvProcessing;
+use exo_env::Environment;
 use exo_sql::TransactionMode;
 
 use super::command::{
@@ -55,7 +58,16 @@ impl CommandDefinition for NewCommandDefinition {
             .arg(mutation_access_arg())
     }
 
-    async fn execute(&self, matches: &ArgMatches, _config: &Config) -> Result<()> {
+    fn env_processing(&self, _env: &dyn Environment) -> EnvProcessing {
+        EnvProcessing::DoNotProcess
+    }
+
+    async fn execute(
+        &self,
+        matches: &ArgMatches,
+        _config: &Config,
+        env: Arc<dyn Environment>,
+    ) -> Result<()> {
         let path: PathBuf = get_required(matches, "path")?;
         let from_database: bool = matches.get_flag("from-database");
         let database_url = database_value(matches);
@@ -112,8 +124,12 @@ impl CommandDefinition for NewCommandDefinition {
         if from_database {
             let mut model_file = File::create(src_path.join("index.exo"))?;
 
-            let db_client =
-                open_database(database_url.as_deref(), TransactionMode::ReadOnly).await?;
+            let db_client = open_database(
+                database_url.as_deref(),
+                TransactionMode::ReadOnly,
+                env.as_ref(),
+            )
+            .await?;
             let db_client = db_client.get_client().await?;
 
             let table_names = create_exo_model(

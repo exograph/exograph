@@ -25,10 +25,6 @@ impl DotEnvironment {
 
     fn load_vars(&self) -> &HashMap<String, String> {
         self.vars.get_or_init(|| {
-            if !self.file_path.exists() {
-                return HashMap::new();
-            }
-
             let mut vars = HashMap::new();
             if let Ok(iter) = dotenvy::from_filename_iter(&self.file_path) {
                 for (key, value) in iter.flatten() {

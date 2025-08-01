@@ -17,7 +17,9 @@ Please see the [EnvFilter documentation](https://docs.rs/tracing-subscriber/late
 
 ## OpenTelemetry
 
-OpenTelemetry support is built in to the exograph server and can be enabled simply by setting standard [environment variables](https://opentelemetry.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/). A subset of these are supported, including:
+OpenTelemetry support is built in to the exograph server and can be enabled simply by setting the `EXO_ENABLE_OTEL` environment variable to `true`.
+
+You can also set standard [environment variables](https://opentelemetry.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/) to configure the exporter. A subset of these are supported, including:
 
 - `OTEL_SERVICE_NAME` to set the name of your service.
 - `OTEL_EXPORTER_OTLP_ENDPOINT` to set the endpoint to export trace data to.

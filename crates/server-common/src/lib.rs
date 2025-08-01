@@ -28,7 +28,7 @@ use system_router::{SystemRouter, create_system_router_from_file};
 /// # Exit codes
 /// - 1 - If the exo_ir file doesn't exist or can't be loaded.
 pub async fn init(env: Arc<dyn Environment>) -> Result<SystemRouter, ServerInitError> {
-    logging_tracing::init().await?;
+    logging_tracing::init(env.as_ref()).await?;
 
     let exo_ir_file = get_exo_ir_file_name();
 

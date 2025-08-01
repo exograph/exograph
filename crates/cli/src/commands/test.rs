@@ -7,13 +7,14 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use super::command::{CommandDefinition, get, get_required};
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 use common::env_const::EXO_ENV;
+use exo_env::Environment;
 use exo_sql::testing::db::EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE;
 
 use crate::config::Config;
@@ -43,7 +44,12 @@ impl CommandDefinition for TestCommandDefinition {
             )
     }
 
-    async fn execute(&self, matches: &ArgMatches, _config: &Config) -> Result<()> {
+    async fn execute(
+        &self,
+        matches: &ArgMatches,
+        _config: &Config,
+        _env: Arc<dyn Environment>,
+    ) -> Result<()> {
         let dir: PathBuf = get_required(matches, "dir")?;
         let pattern: Option<String> = get(matches, "pattern"); // glob pattern indicating tests to be executed
 

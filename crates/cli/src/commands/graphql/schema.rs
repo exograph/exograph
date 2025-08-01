@@ -10,11 +10,13 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::{Arg, Command, ValueEnum, builder::PossibleValue};
+use exo_env::Environment;
 
 use std::{
     fs::{self, File},
     io::Write,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use crate::commands::{
@@ -46,7 +48,12 @@ impl CommandDefinition for SchemaCommandDefinition {
     }
 
     /// Create a database schema from a exograph model
-    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
+    async fn execute(
+        &self,
+        matches: &clap::ArgMatches,
+        _config: &Config,
+        _env: Arc<dyn Environment>,
+    ) -> Result<()> {
         let use_ir: bool = matches.get_flag("use-ir");
 
         let model_path: PathBuf = default_model_file();

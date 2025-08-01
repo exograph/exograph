@@ -11,6 +11,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use clap::{Arg, Command};
 use colored::Colorize;
+use exo_env::Environment;
 use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::issue::WithIssues;
 use exo_sql::schema::spec::{MigrationScope, MigrationScopeMatches};
@@ -18,6 +19,7 @@ use exo_sql::{DatabaseClient, SchemaObjectName, TransactionMode};
 
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use crate::commands::command::{
     CommandDefinition, database_arg, database_value, get, migration_scope_arg,
@@ -63,7 +65,12 @@ impl CommandDefinition for ImportCommandDefinition {
     }
 
     /// Create a exograph model file based on a database schema
-    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
+    async fn execute(
+        &self,
+        matches: &clap::ArgMatches,
+        _config: &Config,
+        env: Arc<dyn Environment>,
+    ) -> Result<()> {
         let output: Option<PathBuf> = get(matches, "output");
         let database_url = database_value(matches);
         let query_access: bool = query_access_value(matches);
@@ -73,7 +80,12 @@ impl CommandDefinition for ImportCommandDefinition {
         let yes: bool = yes_value(matches);
 
         let mut writer = open_file_for_output(output.as_deref(), yes)?;
-        let db_client = open_database(database_url.as_deref(), TransactionMode::ReadOnly).await?;
+        let db_client = open_database(
+            database_url.as_deref(),
+            TransactionMode::ReadOnly,
+            env.as_ref(),
+        )
+        .await?;
         let db_client = db_client.get_client().await?;
 
         let table_names = create_exo_model(

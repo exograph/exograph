@@ -12,7 +12,8 @@ use async_recursion::async_recursion;
 use async_trait::async_trait;
 use clap::{ArgMatches, Command};
 use colored::Colorize;
-use common::env_const::{DATABASE_URL, DeploymentMode, EXO_POSTGRES_READ_WRITE, load_env};
+use common::env_const::{DATABASE_URL, EXO_POSTGRES_READ_WRITE};
+use common::env_processing::EnvProcessing;
 use exo_env::{Environment, MapEnvironment};
 use exo_sql::{TransactionMode, schema::migration::Migration};
 use std::{
@@ -57,10 +58,18 @@ impl CommandDefinition for YoloCommandDefinition {
             .arg(seed_arg())
     }
 
+    fn env_processing(&self, _env: &dyn Environment) -> EnvProcessing {
+        EnvProcessing::Process(Some("yolo".to_string()))
+    }
+
     /// Run local exograph server with a temporary database
-    async fn execute(&self, matches: &ArgMatches, config: &Config) -> Result<()> {
-        let mut env_vars =
-            MapEnvironment::new_with_fallback(Arc::new(load_env(&DeploymentMode::Yolo)));
+    async fn execute(
+        &self,
+        matches: &ArgMatches,
+        config: &Config,
+        env: Arc<dyn Environment>,
+    ) -> Result<()> {
+        let mut env_vars = MapEnvironment::new_with_fallback(env);
 
         let root_path = PathBuf::from(".");
         ensure_exo_project_dir(&root_path)?;
@@ -164,7 +173,8 @@ async fn setup_database(
         }
     };
 
-    let db_client = util::open_database(Some(&db.url()), TransactionMode::ReadWrite).await?;
+    let db_client =
+        util::open_database(Some(&db.url()), TransactionMode::ReadWrite, &env_vars).await?;
     let mut db_client = db_client.get_client().await?;
 
     let database = util::extract_postgres_database(&model, None, false).await?;
@@ -185,7 +195,8 @@ async fn setup_database(
         println!("Error while applying migration: {e}");
         let options = vec![CONTINUE, REBUILD, PAUSE, EXIT];
         let ans = inquire::Select::new("Choose an option:", options).prompt()?;
-        let db_client = util::open_database(Some(&db.url()), TransactionMode::ReadWrite).await?;
+        let db_client =
+            util::open_database(Some(&db.url()), TransactionMode::ReadWrite, &env_vars).await?;
         let mut db_client = db_client.get_client().await?;
 
         match ans {

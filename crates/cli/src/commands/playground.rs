@@ -11,7 +11,7 @@ use common::env_const::{
     _EXO_UPSTREAM_ENDPOINT_URL, EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CORS_DOMAINS, EXO_ENV,
     EXO_INTROSPECTION, EXO_POSTGRES_URL,
 };
-use exo_env::{MapEnvironment, SystemEnvironment};
+use exo_env::{Environment, MapEnvironment};
 
 use crate::{commands::command::get_required, config::Config, util::watcher};
 
@@ -42,14 +42,19 @@ impl CommandDefinition for PlaygroundCommandDefinition {
             )
     }
 
-    async fn execute(&self, matches: &ArgMatches, _config: &Config) -> Result<()> {
+    async fn execute(
+        &self,
+        matches: &ArgMatches,
+        _config: &Config,
+        env: Arc<dyn Environment>,
+    ) -> Result<()> {
         let port: Option<u32> = get(matches, "port");
         let endpoint_url: String = get_required(matches, "endpoint")?;
 
         ensure_exo_project_dir(&PathBuf::from("."))?;
 
         // Create environment variables for the child server process
-        let mut env_vars = MapEnvironment::new_with_fallback(Arc::new(SystemEnvironment));
+        let mut env_vars = MapEnvironment::new_with_fallback(env);
         env_vars.set(EXO_INTROSPECTION, "only");
         // We don't need a database connection in playground mode, but the Postgres resolver
         // currently requires a valid URL to be set (when we fix

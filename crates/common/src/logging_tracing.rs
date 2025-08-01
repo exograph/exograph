@@ -36,6 +36,7 @@
 //! ```
 //!
 
+use exo_env::Environment;
 use http::Uri;
 use thiserror::Error;
 
@@ -45,15 +46,15 @@ use std::str::FromStr;
 use tonic::transport::{ClientTlsConfig, Endpoint};
 use tracing_subscriber::{EnvFilter, filter::LevelFilter, prelude::*};
 
-const EXO_LOG: &str = "EXO_LOG";
+use crate::env_const::{EXO_ENABLE_OTEL, EXO_LOG};
 
 /// Initialize the tracing subscriber.
 ///
 /// Creates a `tracing_subscriber::fmt` layer by default and adds a OpenTelemetry layer
 /// if any OpenTelemetry environment variables are set, exporting traces with `opentelemetry_otlp`.
-pub async fn init() -> Result<(), OtelError> {
+pub async fn init(env: &dyn Environment) -> Result<(), OtelError> {
     let telemetry_layer = {
-        let oltp_trace_provider = create_oltp_trace_provider().await?;
+        let oltp_trace_provider = create_oltp_trace_provider(env).await?;
 
         use opentelemetry::trace::TracerProvider as _;
         let oltp_tracer = oltp_trace_provider.map(|provider| provider.tracer("Exograph"));
@@ -76,16 +77,21 @@ pub async fn init() -> Result<(), OtelError> {
     Ok(())
 }
 
-async fn create_oltp_trace_provider() -> Result<Option<TracerProvider>, OtelError> {
-    if !std::env::vars().any(|(name, _)| name.starts_with("OTEL_")) {
+async fn create_oltp_trace_provider(
+    env: &dyn Environment,
+) -> Result<Option<TracerProvider>, OtelError> {
+    if !env.enabled(EXO_ENABLE_OTEL, false)? {
         return Ok(None);
     }
-    let protocol = std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").unwrap_or("grpc".to_string());
+    let protocol = env
+        .get("OTEL_EXPORTER_OTLP_PROTOCOL")
+        .unwrap_or("grpc".to_string());
     // If a traces-specific endpoint is set, use that instead of the exporter's endpoint
-    let endpoint = std::env::var("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
-        .or_else(|_| std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT"));
+    let endpoint = env
+        .get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+        .or_else(|| env.get("OTEL_EXPORTER_OTLP_ENDPOINT"));
 
-    let headers = parse_otlp_headers_from_env();
+    let headers = parse_otlp_headers_from_env(env);
     use opentelemetry_otlp::WithExportConfig;
 
     let exporter = match protocol.as_str() {
@@ -94,7 +100,7 @@ async fn create_oltp_trace_provider() -> Result<Option<TracerProvider>, OtelErro
                 .with_tonic()
                 .with_metadata(metadata_from_headers(headers));
 
-            if let Ok(endpoint) = endpoint {
+            if let Some(endpoint) = endpoint {
                 // Check if we need TLS
                 if endpoint.as_str().starts_with("https://") {
                     exporter =
@@ -142,7 +148,7 @@ async fn create_oltp_trace_provider() -> Result<Option<TracerProvider>, OtelErro
                 .with_http()
                 .with_headers(headers.into_iter().collect());
 
-            if let Ok(endpoint) = endpoint {
+            if let Some(endpoint) = endpoint {
                 exporter = exporter.with_endpoint(endpoint);
             }
 
@@ -172,10 +178,10 @@ fn metadata_from_headers(headers: Vec<(String, String)>) -> tonic::metadata::Met
     metadata
 }
 
-fn parse_otlp_headers_from_env() -> Vec<(String, String)> {
+fn parse_otlp_headers_from_env(env: &dyn Environment) -> Vec<(String, String)> {
     let mut headers = Vec::new();
 
-    if let Ok(hdrs) = std::env::var("OTEL_EXPORTER_OTLP_HEADERS") {
+    if let Some(hdrs) = env.get("OTEL_EXPORTER_OTLP_HEADERS") {
         hdrs.split_terminator(',')
             .filter(|h| !h.is_empty())
             .map(|header| {
@@ -201,4 +207,7 @@ pub enum OtelError {
 
     #[error(transparent)]
     IoError(#[from] std::io::Error),
+
+    #[error(transparent)]
+    EnvError(#[from] exo_env::EnvError),
 }

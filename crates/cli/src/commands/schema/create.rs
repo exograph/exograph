@@ -10,7 +10,9 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::Command;
+use exo_env::Environment;
 use exo_sql::schema::migration::Migration;
+use std::sync::Arc;
 use std::{io::Write, path::PathBuf};
 
 use exo_sql::schema::database_spec::DatabaseSpec;
@@ -41,7 +43,12 @@ impl CommandDefinition for CreateCommandDefinition {
     }
 
     /// Create a database schema from a exograph model
-    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
+    async fn execute(
+        &self,
+        matches: &clap::ArgMatches,
+        _config: &Config,
+        _env: Arc<dyn Environment>,
+    ) -> Result<()> {
         let use_ir: bool = matches.get_flag("use-ir");
 
         let model: PathBuf = default_model_file();
