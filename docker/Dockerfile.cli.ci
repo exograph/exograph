@@ -24,8 +24,7 @@ ENV TZ=Etc/UTC
 ENV APP_USER=exo
 
 ### Create a non-root user to run the cli
-RUN groupadd $APP_USER \
-  && useradd --create-home -g $APP_USER $APP_USER
+RUN useradd --create-home --user-group $APP_USER
 
 USER $APP_USER
 
