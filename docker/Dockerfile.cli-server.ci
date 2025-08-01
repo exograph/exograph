@@ -32,6 +32,4 @@ USER $APP_USER
 
 ENV APP_DIR=$HOME/app
 
-RUN mkdir -p ${APP_DIR}
-
 WORKDIR ${APP_DIR}
