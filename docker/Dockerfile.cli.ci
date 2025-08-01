@@ -22,13 +22,14 @@ COPY --from=builder /usr/src/exo /usr/local/bin/exo
 
 ENV TZ=Etc/UTC
 ENV APP_USER=exo
-ENV APP_DIR=/usr/src/app
+ENV HOME_DIR=/home/$APP_USER
+ENV APP_DIR=$HOME_DIR/app
 
 ### Create a non-root user to run the cli
 RUN groupadd $APP_USER \
   && useradd -g $APP_USER $APP_USER \
   && mkdir -p ${APP_DIR}
-RUN chown -R $APP_USER:$APP_USER ${APP_DIR}
+RUN chown -R $APP_USER:$APP_USER ${HOME_DIR}
 USER $APP_USER
 
 WORKDIR ${APP_DIR}
