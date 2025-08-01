@@ -30,7 +30,7 @@ Higher precedence files override variables in lower precedence files. For exampl
 
 ### Local Files (`.local` suffix)
 
-Use these files with specific environment variables for local development. Never commit them to version control. For example, you can create a `.env.dev.local` file with the following content to point to a local database and a JWT secret for development:
+Use `.env.{mode}.local` for mode-specific local variables, and `.env.local` for local variables shared across all modes. Never commit them to version control. For example, you can create a `.env.dev.local` file with the following content to point to a local database and a JWT secret for development:
 
 ```properties
 DATABASE_URL=postgres://localhost/finance-dev
