@@ -12,6 +12,7 @@ release_command = "exo schema migrate --use-ir --apply-to-database"
 
 [env]
 EXO_ENV = "production"
+EXO_POSTGRES_READ_WRITE = "false" # Change this to "true" to allow write operations with Postgres
 <<<ENV_VARS>>>
 
 [experimental]
@@ -20,7 +21,7 @@ auto_rollback = true
 
 [[services]]
 http_checks = []
-internal_port = 8080
+internal_port = 9876
 processes = ["app"]
 protocol = "tcp"
 script_checks = []
