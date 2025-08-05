@@ -9,6 +9,13 @@
   by the Apache License, Version 2.0.
 */
 
+@import "tailwindcss";
+
+/* Protect GraphiQL from TailwindCSS interference */
+.graphiql-container {
+  all: revert;
+}
+
 body {
   padding: 0;
   margin: 0;
