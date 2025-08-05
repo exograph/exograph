@@ -23,7 +23,7 @@ use common::{
 use exo_env::Environment;
 use http::StatusCode;
 
-use crate::graphiql;
+use crate::playground;
 
 pub struct PlaygroundRouterConfig {
     playground_path: String,
@@ -119,7 +119,7 @@ impl<'a> Router<RequestContext<'a>> for PlaygroundRouter {
             )]
         };
 
-        match graphiql::get_asset_bytes(asset_path, env) {
+        match playground::get_asset_bytes(asset_path, env) {
             Some(asset) => {
                 let headers = cache_control.into_iter().chain(vec![(
                     http::header::CONTENT_TYPE.to_string(),
