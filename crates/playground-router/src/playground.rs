@@ -20,10 +20,10 @@ use std::path::Path;
 
 use common::env_const::{get_graphql_http_path, get_playground_http_path};
 
-static GRAPHIQL_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../../graphiql/app/dist");
+static PLAYGROUND_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../../playground/app/dist");
 
 pub fn get_asset_bytes<P: AsRef<Path>>(file_name: P, env: &dyn Environment) -> Option<Vec<u8>> {
-    GRAPHIQL_DIR.get_file(file_name.as_ref()).map(|file| {
+    PLAYGROUND_DIR.get_file(file_name.as_ref()).map(|file| {
         if file_name.as_ref() == Path::new("index.html") {
             let str = file
                 .contents_utf8()

@@ -11,19 +11,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-env-changed=TARGET");
     if !std::env::var("TARGET").unwrap().starts_with("wasm") {
         // TODO: Simplify this once https://github.com/rust-lang/cargo/pull/12158 lands
-        let graphiql_folder_path = std::env::current_dir()?
+        let playground_folder_path = std::env::current_dir()?
             .parent()
             .unwrap()
             .parent()
             .unwrap()
-            .join("graphiql");
+            .join("playground");
 
-        let graphiql_lib_path = graphiql_folder_path.join("lib");
-        let graphiql_app_path = graphiql_folder_path.join("app");
+        let playground_lib_path = playground_folder_path.join("lib");
+        let playground_app_path = playground_folder_path.join("app");
 
         let npm = which::which("npm").map_err(|e| format!("Failed to find npm: {e}"))?;
 
-        for sub_folder in &[&graphiql_lib_path, &graphiql_app_path] {
+        for sub_folder in &[&playground_lib_path, &playground_app_path] {
             for dependent_path in &[
                 "src",
                 "public",
@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .wait()?
                 .success()
             {
-                panic!("Failed to install graphiql dependencies");
+                panic!("Failed to install playground dependencies");
             }
 
             if !std::process::Command::new(npm.clone())
@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .wait()?
                 .success()
             {
-                panic!("Failed to build graphiql");
+                panic!("Failed to build playground");
             }
         }
     }
