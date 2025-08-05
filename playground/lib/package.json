@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "build": "tsc --p ./tsconfig.json && postcss src/*.css --dir dist/",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint .",
     "watch": "tsc --watch --p ./tsconfig.json && postcss src/*.css --dir dist/ --watch"
   },
   "dependencies": {

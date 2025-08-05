@@ -10,6 +10,7 @@
 import { GraphiQLPlayground } from "./GraphiQLPlayground";
 import { Navbar } from "./Navbar";
 import { AuthContextProvider } from "./AuthContext";
+import { ThemeProvider } from "./theme";
 import { Fetcher } from "@graphiql/toolkit";
 import { JwtSecret } from "./auth/secret";
 
@@ -32,13 +33,15 @@ export function Playground({
   ...playgroundProps
 }: PlaygroundProps) {
   return (
-    <AuthContextProvider oidcUrl={oidcUrl} jwtSecret={jwtSecret}>
-      <div className="h-screen flex flex-col overflow-hidden">
-        <Navbar />
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <GraphiQLPlayground {...playgroundProps} />
+    <ThemeProvider>
+      <AuthContextProvider oidcUrl={oidcUrl} jwtSecret={jwtSecret}>
+        <div className="h-screen flex flex-col overflow-hidden">
+          <Navbar />
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <GraphiQLPlayground {...playgroundProps} />
+          </div>
         </div>
-      </div>
-    </AuthContextProvider>
+      </AuthContextProvider>
+    </ThemeProvider>
   );
 }

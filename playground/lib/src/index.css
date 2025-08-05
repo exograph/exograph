@@ -11,6 +11,11 @@
 
 @import "tailwindcss";
 
+@config "../tailwind.config.js";
+
+/* Dark mode configuration for Tailwind v4 */
+@variant dark (&:where(.dark, .dark *));
+
 /* Prevent body scroll */
 html, body, #root {
   height: 100%;
