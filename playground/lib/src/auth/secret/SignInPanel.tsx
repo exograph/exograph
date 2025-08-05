@@ -1,20 +1,14 @@
 import { useContext, useEffect, useState } from "react";
-import { EditorView } from "@codemirror/view";
-import CodeMirror from "@uiw/react-codemirror";
-import { linter } from "@codemirror/lint";
-import { json, jsonParseLinter } from "@codemirror/lang-json";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import Editor from "@monaco-editor/react";
+import { useTheme } from "../../theme";
 
-import { tags } from "@lezer/highlight";
 import { AuthConfigContext } from "./AuthConfigProvider";
 import { SecretAuthContext } from "./SecretAuthProvider";
-
-const jsonExtension = json();
-const jsonLinterExtension = linter(jsonParseLinter());
 
 export function SignInPanel(props: { onDone: () => void }) {
   const { config, setConfig } = useContext(AuthConfigContext);
   const { setSignedIn } = useContext(SecretAuthContext);
+  const theme = useTheme();
 
   const [jwtSecret, setJwtSecret] = useState(config.secret.value);
   const [claims, setClaims] = useState(config.claims || "");
@@ -38,79 +32,69 @@ export function SignInPanel(props: { onDone: () => void }) {
     props.onDone();
   }
 
-  const secretStyleAdditions = config.secret.readOnly
-    ? {
-        backgroundColor: "lightgray",
-        cursor: "not-allowed",
-      }
-    : {};
-
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        width: "100%",
-      }}
-    >
-      <div style={labelStyle}>Secret</div>
-      <CodeMirror
-        style={{
-          ...codeMirrorStyle,
-          ...secretStyleAdditions,
-        }}
-        placeholder={"EXO_JWT_SECRET value"}
-        value={jwtSecret}
-        editable={!config.secret.readOnly}
-        basicSetup={{
-          lineNumbers: false,
-          foldGutter: false,
-          syntaxHighlighting: true,
-          highlightActiveLine: false,
-        }}
-        extensions={[syntaxHighlighting(exoHighlightStyle)]}
-        theme={exoTheme}
-        onChange={setJwtSecret}
-      />
-      <div style={labelStyle}>Claims</div>
-      <CodeMirror
-        style={codeMirrorStyle}
-        value={claims}
-        minHeight="5rem"
-        basicSetup={{
-          lineNumbers: false,
-          foldGutter: false,
-          syntaxHighlighting: true,
-          highlightActiveLine: false,
-        }}
-        extensions={[
-          syntaxHighlighting(exoHighlightStyle),
-          jsonExtension,
-          jsonLinterExtension,
-        ]}
-        theme={exoTheme}
-        onChange={setClaims}
-      />
-      {
-        <div
-          style={{
-            color: "brown",
-            fontSize: "0.9rem",
-            height: "2rem",
-          }}
-        >
-          {claimsError}
+    <div className="flex flex-col w-full space-y-4">
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+          Secret
+        </label>
+        <input
+          type="text"
+          className={`w-full px-3 py-2 rounded-lg border font-mono text-sm ${
+            config.secret.readOnly 
+              ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed text-gray-500 dark:text-gray-400' 
+              : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+          } border-gray-300 dark:border-gray-600 shadow-sm focus:outline-none`}
+          placeholder="EXO_JWT_SECRET value"
+          value={jwtSecret}
+          readOnly={config.secret.readOnly}
+          onChange={(e) => setJwtSecret(e.target.value)}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+          Claims
+        </label>
+        <div className="rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm overflow-hidden">
+          <Editor
+            height="5rem"
+            defaultLanguage="json"
+            value={claims}
+            onChange={(value) => setClaims(value || "")}
+            theme={theme === "dark" ? "vs-dark" : "vs"}
+            options={{
+              minimap: { enabled: false },
+              lineNumbers: "off",
+              folding: false,
+              glyphMargin: false,
+              lineDecorationsWidth: 0,
+              lineNumbersMinChars: 0,
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              fontSize: 14,
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+              scrollbar: {
+                vertical: "hidden",
+                horizontal: "hidden"
+              }
+            }}
+          />
         </div>
-      }
-      <div style={{ display: "flex", gap: "1rem", justifyContent: "end" }}>
+        {claimsError && (
+          <div className="text-red-600 text-sm mt-1 min-h-[1.5rem]">
+            {claimsError}
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-end pt-2">
         <button
-          className="graphiql-button"
-          style={{
-            background: enableSignIn
-              ? "hsla(var(--color-tertiary), 1)"
-              : "hsla(var(--color-tertiary), 0.4)",
-            color: "white",
-          }}
+          className={`px-4 py-2 rounded-md font-medium transition-colors ${
+            enableSignIn
+              ? 'bg-blue-600 hover:bg-blue-700 text-white'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
           onClick={() => {
             onSignIn();
           }}
@@ -123,41 +107,3 @@ export function SignInPanel(props: { onDone: () => void }) {
   );
 }
 
-let exoTheme = EditorView.theme({
-  "&.cm-focused": {
-    outline: "none !important",
-  },
-  ".cm-cursor": {
-    borderLeftColor: "hsla(var(--color-neutral),1)",
-    borderLeftWidth: "2px",
-  },
-  ".cm-gutters": {
-    backgroundColor: "inherit",
-    border: "none",
-    color: "hsl(var(--color-neutral), 0.5)",
-  },
-  ".cm-activeLineGutter": {
-    backgroundColor: "inherit",
-  },
-});
-
-const labelStyle = {
-  fontSize: "var(--font-size-h4)",
-  fontWeight: "bold",
-  marginTop: "0.5rem",
-  marginBottom: "0.4rem",
-};
-
-const exoHighlightStyle = HighlightStyle.define([
-  { tag: tags.keyword, color: "#fc6" },
-  { tag: tags.comment, color: "#f5d", fontStyle: "italic" },
-  { tag: tags.string, color: "hsl(var(--color-warning))" },
-  { tag: tags.number, color: "hsl(var(--color-success))" },
-]);
-
-const codeMirrorStyle = {
-  borderRadius: "10px",
-  marginBottom: "10px",
-  padding: "10px",
-  boxShadow: "0px 0px 8px 0px hsla(var(--color-neutral), 0.2)",
-};

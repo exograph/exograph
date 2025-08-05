@@ -14,13 +14,7 @@ export function SignInPanel() {
 
   const switchLink = (
     <button
-      style={{
-        background: "none",
-        border: "none",
-        color: "hsl(var(--color-primary))",
-        cursor: "pointer",
-        textDecoration: "underline",
-      }}
+      className="bg-transparent border-none text-blue-600 dark:text-blue-400 cursor-pointer underline hover:text-blue-700 dark:hover:text-blue-300"
       onClick={(e) => {
         e.preventDefault();
         setCurrentPanel(currentPanel === "info" ? "sign-in" : "info");
@@ -33,21 +27,9 @@ export function SignInPanel() {
   if (canShowSignIn) {
     if (currentPanel === "sign-in") {
       return (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            marginLeft: "auto",
-            marginRight: "auto",
-            gap: "1rem",
-          }}
-        >
+        <div className="flex flex-col mx-auto gap-4">
           <button
-            className="graphiql-button"
-            style={{
-              background: "hsla(var(--color-tertiary), 1)",
-              color: "white",
-            }}
+            className="px-4 py-2 rounded-md font-medium transition-colors bg-blue-600 hover:bg-blue-700 text-white"
             onClick={() =>
               loginWithRedirect({
                 // Specify custom openUrl to prevent Auth0 from reopening the window (which doesn't work in Arc)
@@ -78,69 +60,59 @@ function ConfigurationPanel(props: { onDone: () => void }) {
     config.profile || "read:current_user profile"
   );
   const disabledDone = domain === "" || clientId === "" || profile === "";
-  const background = disabledDone
-    ? "hsla(var(--color-secondary), 0.5)"
-    : "hsla(var(--color-secondary), 1)";
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        width: "100%",
-      }}
-    >
-      <div style={labelStyle}>Auth0 Domain</div>
-      <input
-        style={inputStyle}
-        value={domain}
-        onChange={(e) => setDomain(e.target.value)}
-      />
-      <div style={labelStyle}>Auth0 Client Id</div>
-      <input
-        style={inputStyle}
-        value={clientId}
-        onChange={(e) => setClientId(e.target.value)}
-      />
-      <div style={labelStyle}>Profile</div>
-      <input
-        style={inputStyle}
-        value={profile}
-        onChange={(e) => setProfile(e.target.value)}
-      />
-      <button
-        className="graphiql-button"
-        style={{
-          background,
-          color: "white",
-          width: "fit-content",
-          alignSelf: "flex-end",
-          marginTop: "1rem",
-        }}
-        disabled={disabledDone}
-        onClick={() => {
-          setConfig(new Auth0Config(domain, clientId, profile));
-          props.onDone();
-        }}
-      >
-        Done
-      </button>
+    <div className="flex flex-col w-full space-y-4">
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+          Auth0 Domain
+        </label>
+        <input
+          type="text"
+          className="w-full px-3 py-2 rounded-lg border font-mono text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 shadow-sm focus:outline-none"
+          value={domain}
+          onChange={(e) => setDomain(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+          Auth0 Client Id
+        </label>
+        <input
+          type="text"
+          className="w-full px-3 py-2 rounded-lg border font-mono text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 shadow-sm focus:outline-none"
+          value={clientId}
+          onChange={(e) => setClientId(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+          Profile
+        </label>
+        <input
+          type="text"
+          className="w-full px-3 py-2 rounded-lg border font-mono text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 shadow-sm focus:outline-none"
+          value={profile}
+          onChange={(e) => setProfile(e.target.value)}
+        />
+      </div>
+      <div className="flex justify-end pt-2">
+        <button
+          className={`px-4 py-2 rounded-md font-medium transition-colors ${
+            disabledDone
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 text-white'
+          }`}
+          disabled={disabledDone}
+          onClick={() => {
+            setConfig(new Auth0Config(domain, clientId, profile));
+            props.onDone();
+          }}
+        >
+          Done
+        </button>
+      </div>
     </div>
   );
 }
 
-const labelStyle = {
-  fontSize: "var(--font-size-h4)",
-  fontWeight: "bold",
-  marginTop: "0.5rem",
-  marginBottom: "0.4rem",
-};
-
-const inputStyle = {
-  background: "transparent",
-  borderRadius: "10px",
-  marginBottom: "10px",
-  padding: "10px",
-  border: "1px solid hsla(var(--color-neutral), 0.2)",
-  boxShadow: "0px 0px 8px 0px hsla(var(--color-neutral), 0.2)",
-};
