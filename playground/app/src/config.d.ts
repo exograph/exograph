@@ -3,6 +3,7 @@
 export type PlaygroundConfig = {
   playgroundHttpPath: string;
   graphqlHttpPath: string;
+  mcpHttpPath?: string;
 
   enableSchemaLiveUpdate: boolean;
 

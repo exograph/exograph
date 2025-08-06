@@ -16,6 +16,7 @@ import {
   createGraphiQLFetcher,
 } from "exograph-playground-lib";
 import { PlaygroundConfig } from "./config";
+import { PlaygroundTabProps } from "exograph-playground-lib/dist/types";
 
 let playgroundConfig = (window as any).exoConfig as PlaygroundConfig;
 
@@ -39,6 +40,13 @@ const graphqlProps = {
   enableSchemaLiveUpdate: playgroundConfig.enableSchemaLiveUpdate,
 };
 
-const tabs = [graphqlProps];
+const mcpProps = playgroundConfig.mcpHttpPath && {
+  tabType: "mcp" as const,
+  mcpHttpPath: playgroundConfig.mcpHttpPath,
+};
+
+const tabs = [graphqlProps, mcpProps].filter(
+  (prop) => prop !== undefined
+) as Array<PlaygroundTabProps>;
 
 root.render(<Playground auth={authProps} tabs={tabs} />);

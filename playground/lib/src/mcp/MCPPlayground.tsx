@@ -10,13 +10,16 @@
 import { PlaygroundMCPProps } from "./types";
 import { BasePlaygroundComponentProps } from "../util/component-types";
 
-export interface MCPPlaygroundProps extends BasePlaygroundComponentProps<PlaygroundMCPProps> {}
+export interface MCPPlaygroundProps
+  extends BasePlaygroundComponentProps<PlaygroundMCPProps> {}
 
-export function MCPPlayground({ tab: _mcp, auth: _auth }: MCPPlaygroundProps) {
+export function MCPPlayground({ tab: mcp, auth: _auth }: MCPPlaygroundProps) {
   return (
     <div className="flex items-center justify-center h-full bg-white dark:bg-gray-800">
       <div className="text-2xl text-gray-600 dark:text-gray-300">
         MCP Playground Coming soon
+        <br />
+        {mcp.mcpHttpPath}
       </div>
     </div>
   );

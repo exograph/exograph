@@ -11,5 +11,5 @@ import { PlaygroundTabProps } from "../types";
 
 export interface PlaygroundMCPProps extends PlaygroundTabProps {
   readonly tabType: "mcp";
-  // TODO: Add MCP-specific properties when MCP functionality is implemented
+  readonly mcpHttpPath: string;
 }
