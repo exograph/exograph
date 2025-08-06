@@ -10,7 +10,11 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
 
-import { Playground, Fetcher, createGraphiQLFetcher } from "exograph-playground-lib";
+import {
+  Playground,
+  Fetcher,
+  createGraphiQLFetcher,
+} from "exograph-playground-lib";
 import { PlaygroundConfig } from "./config";
 
 let playgroundConfig = (window as any).exoConfig as PlaygroundConfig;
@@ -22,13 +26,19 @@ const urlFetcher: Fetcher = createGraphiQLFetcher({
 const container = document.getElementById("root");
 const root = createRoot(container as HTMLElement);
 
-root.render(
-  <Playground
-    fetcher={urlFetcher}
-    oidcUrl={playgroundConfig.oidcUrl}
-    upstreamGraphQLEndpoint={playgroundConfig.upstreamGraphQLEndpoint}
-    enableSchemaLiveUpdate={playgroundConfig.enableSchemaLiveUpdate}
-    jwtSourceHeader={playgroundConfig.jwtSourceHeader}
-    jwtSourceCookie={playgroundConfig.jwtSourceCookie}
-  />
-);
+const authProps = {
+  oidcUrl: playgroundConfig.oidcUrl,
+  jwtSourceHeader: playgroundConfig.jwtSourceHeader,
+  jwtSourceCookie: playgroundConfig.jwtSourceCookie,
+};
+
+const graphqlProps = {
+  tabType: "graphql" as const,
+  fetcher: urlFetcher,
+  upstreamGraphQLEndpoint: playgroundConfig.upstreamGraphQLEndpoint,
+  enableSchemaLiveUpdate: playgroundConfig.enableSchemaLiveUpdate,
+};
+
+const tabs = [graphqlProps];
+
+root.render(<Playground auth={authProps} tabs={tabs} />);

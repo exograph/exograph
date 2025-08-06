@@ -11,7 +11,7 @@ export function Logo() {
   const ThemedLogo = (theme === "dark" ? DarkLogo : LightLogo) as any;
 
   return (
-    <div className="flex items-center h-8">
+    <div className="flex items-center h-10">
       <a
         href="https://exograph.dev"
         target="_blank"

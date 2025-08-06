@@ -26,30 +26,19 @@ import { GraphQLSchema } from "graphql";
 import { fetchSchema, SchemaError } from "./schema";
 import { AuthContext } from "../auth/AuthContext";
 import { explorerPlugin } from "@graphiql/plugin-explorer";
+import { PlaygroundGraphQLProps as GraphiQLProps } from "./types";
+import { BasePlaygroundComponentProps } from "../util/component-types";
 
 import "./index.css";
 import "graphiql/style.css";
 import "@graphiql/plugin-explorer/style.css";
 import { useTheme } from "../util/theme";
 
-interface GraphiQLPlaygroundProps extends GraphiQLPassThroughProps {
-  upstreamGraphQLEndpoint?: string;
-  enableSchemaLiveUpdate: boolean;
-  schemaId?: number;
-  jwtSourceHeader?: string;
-  jwtSourceCookie?: string;
-}
+export interface GraphiQLPlaygroundProps extends BasePlaygroundComponentProps<GraphiQLProps> {}
 
-export function GraphiQLPlayground({
-  fetcher,
-  upstreamGraphQLEndpoint,
-  enableSchemaLiveUpdate,
-  schemaId,
-  initialQuery,
-  storageKey,
-  jwtSourceHeader,
-  jwtSourceCookie,
-}: GraphiQLPlaygroundProps) {
+export function GraphiQLPlayground({ tab: graphql, auth }: GraphiQLPlaygroundProps) {
+  const { fetcher } = graphql;
+  const { jwtSourceHeader, jwtSourceCookie } = auth;
   const { getTokenFn } = useContext(AuthContext);
 
   const dataFetcher: Fetcher = async (
@@ -98,37 +87,19 @@ export function GraphiQLPlayground({
 
   return (
     <SchemaFetchingCore
-      fetcher={dataFetcher}
       schemaFetcher={schemaFetcher}
-      upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
-      enableSchemaLiveUpdate={enableSchemaLiveUpdate}
-      schemaId={schemaId}
-      initialQuery={initialQuery}
-      storageKey={storageKey}
+      {...graphql}
+      fetcher={dataFetcher}
     />
   );
 }
 
-interface GraphiQLPassThroughProps {
-  fetcher: Fetcher;
-  initialQuery?: string;
-  storageKey?: string;
-}
-
-function SchemaFetchingCore({
-  schemaFetcher,
-  fetcher,
-  upstreamGraphQLEndpoint,
-  enableSchemaLiveUpdate,
-  schemaId,
-  initialQuery,
-  storageKey,
-}: {
-  schemaFetcher: Fetcher;
-  upstreamGraphQLEndpoint?: string;
-  enableSchemaLiveUpdate: boolean;
-  schemaId?: number;
-} & GraphiQLPassThroughProps) {
+function SchemaFetchingCore(
+  props: {
+    schemaFetcher: Fetcher;
+  } & GraphiQLProps
+) {
+  const { schemaFetcher, enableSchemaLiveUpdate, schemaId } = props;
   const [schema, setSchema] = useState<GraphQLSchema | SchemaError | null>(
     null
   );
@@ -187,29 +158,21 @@ function SchemaFetchingCore({
   }, [enableSchemaLiveUpdate, schema, fetchAndSetSchema]);
 
   let errorMessage = null;
+
+  const coreProps = {
+    initialQuery: props.initialQuery,
+    fetcher: props.fetcher,
+    upstreamGraphQLEndpoint: props.upstreamGraphQLEndpoint,
+    storageKey: props.storageKey,
+  };
+
   let core = null;
 
   if (schema === null) {
     errorMessage = null; // Loading, but let's not show any error (we could consider showing with a delay to avoid a flash of the overlay)
-    core = (
-      <Core
-        schema={null}
-        initialQuery={initialQuery}
-        fetcher={fetcher}
-        upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
-        storageKey={storageKey}
-      />
-    );
+    core = <Core {...coreProps} schema={null} />;
   } else if (typeof schema == "string") {
-    core = (
-      <Core
-        schema={null}
-        initialQuery={initialQuery}
-        fetcher={fetcher}
-        upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
-        storageKey={storageKey}
-      />
-    );
+    core = <Core {...coreProps} schema={null} />;
     if (schema === "EmptySchema") {
       errorMessage = <EmptySchema />;
     } else if (schema === "InvalidSchema") {
@@ -225,15 +188,7 @@ function SchemaFetchingCore({
       );
     }
   } else {
-    core = (
-      <Core
-        schema={schema}
-        initialQuery={initialQuery}
-        fetcher={fetcher}
-        upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
-        storageKey={storageKey}
-      />
-    );
+    core = <Core {...coreProps} schema={schema} />;
   }
 
   return (
@@ -253,9 +208,11 @@ function Core({
   upstreamGraphQLEndpoint,
   storageKey,
 }: {
-  upstreamGraphQLEndpoint?: string;
   schema: GraphQLSchema | null;
-} & GraphiQLPassThroughProps) {
+} & Pick<
+  GraphiQLProps,
+  "fetcher" | "initialQuery" | "storageKey" | "upstreamGraphQLEndpoint"
+>) {
   const theme = useTheme();
 
   const storage = useMemo(() => {
