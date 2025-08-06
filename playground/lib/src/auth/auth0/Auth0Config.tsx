@@ -1,4 +1,4 @@
-import { updateLocalStorage } from "../../AuthContext";
+import { updateLocalStorage } from "../AuthContext";
 
 const auth0DomainKey = "exograph:auth0DomainKey";
 const auth0ClientIdKey = "exograph:auth0ClientIdKey";

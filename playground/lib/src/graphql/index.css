@@ -1,0 +1,64 @@
+/*
+  Copyright Exograph, Inc. All rights reserved.
+
+  Use of this software is governed by the Business Source License
+  included in the LICENSE file at the root of this repository.
+
+  As of the Change Date specified in that file, in accordance with
+  the Business Source License, use of this software will be governed
+  by the Apache License, Version 2.0.
+*/
+
+/* Protect GraphiQL from TailwindCSS interference */
+.graphiql-container {
+  all: revert;
+  height: 100% !important;
+}
+
+.graphiql-editor-tools>.active {
+  font-weight: bold;
+}
+
+.graphiql-button:disabled,
+.graphiql-button:disabled:hover {
+  color: #b4a8a8;
+  cursor: not-allowed;
+}
+
+.graphiql-sessions {
+  margin: 2px !important;
+}
+
+.overlay {
+  cursor: not-allowed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: inherit;
+  height: inherit;
+  position: absolute !important;
+}
+
+.error-message {
+  font-family: Roboto, sans-serif;
+  text-align: center;
+  color: hsl(var(--color-error));
+  background: hsla(var(--color-secondary), 0.15);
+  padding: 4rem;
+  border-radius: 1rem;
+}
+
+.error-title {
+  font-size: 2rem;
+  margin-bottom: 3rem;
+}
+
+.error-description {
+  font-size: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.error-message .graphiql-button {
+  border: 1px solid;
+}
+

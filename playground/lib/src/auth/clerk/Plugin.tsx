@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { AuthPlugin } from "../../AuthPlugin";
+import { AuthPlugin } from "../AuthPlugin";
 import { SignInPanel } from "./SignInPanel";
 import { AuthConfigProvider } from "./AuthConfigProvider";
 import { UserIcon } from "./UserIcon";

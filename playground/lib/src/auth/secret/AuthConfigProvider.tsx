@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { AuthContext } from "../../AuthContext";
+import { AuthContext } from "../AuthContext";
 import { SecretConfig } from "./SecretConfig";
 import * as jose from "jose";
 import { SecretAuthContext, SecretAuthProvider } from "./SecretAuthProvider";

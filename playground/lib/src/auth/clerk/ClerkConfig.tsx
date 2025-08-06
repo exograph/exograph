@@ -1,4 +1,4 @@
-import { updateLocalStorage } from "../../AuthContext";
+import { updateLocalStorage } from "../AuthContext";
 
 const clerkPublishableKey = "exograph:clerkPublishableKey";
 const clerkTemplateIdKey = "exograph:clerkTemplateId";
