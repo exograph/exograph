@@ -10,8 +10,8 @@
 #![cfg(not(target_family = "wasm"))]
 
 use common::env_const::{
-    _EXO_UPSTREAM_ENDPOINT_URL, EXO_INTROSPECTION_LIVE_UPDATE, EXO_JWT_SOURCE_COOKIE,
-    EXO_JWT_SOURCE_HEADER,
+    _EXO_UPSTREAM_ENDPOINT_URL, EXO_ENABLE_MCP, EXO_INTROSPECTION_LIVE_UPDATE,
+    EXO_JWT_SOURCE_COOKIE, EXO_JWT_SOURCE_HEADER, get_mcp_http_path,
 };
 use exo_env::Environment;
 use include_dir::{Dir, include_dir};
@@ -55,6 +55,7 @@ pub fn get_asset_bytes<P: AsRef<Path>>(file_name: P, env: &dyn Environment) -> O
 struct PlaygroundConfig {
     playground_http_path: String,
     graphql_http_path: String,
+    mcp_http_path: Option<String>,
 
     enable_schema_live_update: bool,
 
@@ -85,6 +86,10 @@ fn exo_playground_config(env: &dyn Environment) -> PlaygroundConfig {
 
     let playground_http_path = get_playground_http_path(env);
     let graphql_http_path = get_graphql_http_path(env);
+    let mcp_http_path = env
+        .enabled(EXO_ENABLE_MCP, true)
+        .unwrap_or(false)
+        .then(|| get_mcp_http_path(env));
     let upstream_graphql_endpoint = env.get(_EXO_UPSTREAM_ENDPOINT_URL);
 
     let jwt_source_header = env.get(EXO_JWT_SOURCE_HEADER);
@@ -93,6 +98,7 @@ fn exo_playground_config(env: &dyn Environment) -> PlaygroundConfig {
     PlaygroundConfig {
         playground_http_path,
         graphql_http_path,
+        mcp_http_path,
 
         enable_schema_live_update,
         oidc_url,
