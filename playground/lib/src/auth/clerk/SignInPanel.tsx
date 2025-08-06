@@ -13,13 +13,7 @@ export function SignInPanel() {
 
   const switchLink = (
     <button
-      style={{
-        background: "none",
-        border: "none",
-        color: "hsl(var(--color-primary))",
-        cursor: "pointer",
-        textDecoration: "underline",
-      }}
+      className="bg-transparent border-none text-blue-600 dark:text-blue-400 cursor-pointer underline hover:text-blue-700 dark:hover:text-blue-300"
       onClick={(e) => {
         e.preventDefault();
         setCurrentPanel(currentPanel === "info" ? "sign-in" : "info");
@@ -32,15 +26,7 @@ export function SignInPanel() {
   if (canShowSignIn) {
     if (currentPanel === "sign-in") {
       return (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            marginLeft: "auto",
-            marginRight: "auto",
-            gap: "1rem",
-          }}
-        >
+        <div className="flex flex-col mx-auto gap-4">
           <SignIn redirectUrl={"/playground"} />
           {switchLink}
         </div>
@@ -60,63 +46,48 @@ function ConfigurationPanel(props: { onDone: () => void }) {
   );
   const [templateId, setTemplateId] = useState<string>(config.templateId || "");
   const disabledDone = publishableKey === "";
-  const background = disabledDone
-    ? "hsla(var(--color-secondary), 0.5)"
-    : "hsla(var(--color-secondary), 1)";
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        width: "100%",
-      }}
-    >
-      <div style={labelStyle}>Clerk Publishable Key</div>
-      <input
-        style={inputStyle}
-        value={publishableKey}
-        onChange={(e) => setPublishableKey(e.target.value)}
-      />
-      <div style={labelStyle}>Template for getting token (optional)</div>
-      <input
-        style={inputStyle}
-        value={templateId}
-        onChange={(e) => setTemplateId(e.target.value)}
-      />
-      <button
-        className="graphiql-button"
-        style={{
-          background,
-          color: "white",
-          width: "fit-content",
-          alignSelf: "flex-end",
-          marginTop: "1rem",
-        }}
-        disabled={disabledDone}
-        onClick={() => {
-          setConfig(new ClerkConfig(publishableKey, templateId));
-          props.onDone();
-        }}
-      >
-        Done
-      </button>
+    <div className="flex flex-col w-full space-y-4">
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+          Clerk Publishable Key
+        </label>
+        <input
+          type="text"
+          className="w-full px-3 py-2 rounded-lg border font-mono text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 shadow-sm focus:outline-none"
+          value={publishableKey}
+          onChange={(e) => setPublishableKey(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+          Template for getting token (optional)
+        </label>
+        <input
+          type="text"
+          className="w-full px-3 py-2 rounded-lg border font-mono text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 shadow-sm focus:outline-none"
+          value={templateId}
+          onChange={(e) => setTemplateId(e.target.value)}
+        />
+      </div>
+      <div className="flex justify-end pt-2">
+        <button
+          className={`px-4 py-2 rounded-md font-medium transition-colors ${
+            disabledDone
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 text-white'
+          }`}
+          disabled={disabledDone}
+          onClick={() => {
+            setConfig(new ClerkConfig(publishableKey, templateId));
+            props.onDone();
+          }}
+        >
+          Done
+        </button>
+      </div>
     </div>
   );
 }
 
-const labelStyle = {
-  fontSize: "var(--font-size-h4)",
-  fontWeight: "bold",
-  marginTop: "0.5rem",
-  marginBottom: "0.4rem",
-};
-
-const inputStyle = {
-  background: "transparent",
-  borderRadius: "10px",
-  marginBottom: "10px",
-  padding: "10px",
-  border: "1px solid hsla(var(--color-neutral), 0.2)",
-  boxShadow: "0px 0px 8px 0px hsla(var(--color-neutral), 0.2)",
-};

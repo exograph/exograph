@@ -11,14 +11,37 @@
 
 @import "tailwindcss";
 
+@config "../tailwind.config.js";
+
+/* Dark mode configuration for Tailwind v4 */
+@variant dark (&:where(.dark, .dark *));
+
+/* Prevent body scroll */
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Center dialog */
+dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+}
+
+/* Dialog backdrop */
+dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
 /* Protect GraphiQL from TailwindCSS interference */
 .graphiql-container {
   all: revert;
+  height: 100% !important;
 }
 
-.logo {
-  width: 125px
-}
 
 .graphiql-editor-tools>.active {
   font-weight: bold;
@@ -62,3 +85,4 @@
 .error-message .graphiql-button {
   border: 1px solid;
 }
+

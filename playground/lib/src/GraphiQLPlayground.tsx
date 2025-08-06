@@ -7,28 +7,32 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-import React, { useState, useRef, useContext, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useRef,
+  useContext,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import { GraphiQL, HISTORY_PLUGIN } from "graphiql";
-import { Fetcher, FetcherOpts, FetcherParams, createLocalStorage } from "@graphiql/toolkit";
+import {
+  Fetcher,
+  FetcherOpts,
+  FetcherParams,
+  createLocalStorage,
+} from "@graphiql/toolkit";
 import { GraphQLSchema } from "graphql";
 import { fetchSchema, SchemaError } from "./schema";
-import { AuthContext, AuthContextProvider } from "./AuthContext";
-import { Logo } from "./Logo";
-import { AuthToolbarButton } from "./auth";
+import { AuthContext } from "./AuthContext";
 import { explorerPlugin } from "@graphiql/plugin-explorer";
 
 import "./index.css";
 import "graphiql/style.css";
 import "@graphiql/plugin-explorer/style.css";
-import { Theme, useTheme } from "./theme";
-import { JwtSecret } from "./auth/secret";
+import { useTheme } from "./theme";
 
-interface GraphiQLPlaygroundProps extends _GraphiQLPlaygroundProps {
-  oidcUrl?: string;
-  jwtSecret?: JwtSecret;
-}
-
-interface _GraphiQLPlaygroundProps extends GraphiQLPassThroughProps {
+interface GraphiQLPlaygroundProps extends GraphiQLPassThroughProps {
   upstreamGraphQLEndpoint?: string;
   enableSchemaLiveUpdate: boolean;
   schemaId?: number;
@@ -38,55 +42,20 @@ interface _GraphiQLPlaygroundProps extends GraphiQLPassThroughProps {
 
 export function GraphiQLPlayground({
   fetcher,
-  oidcUrl,
-  jwtSecret,
   upstreamGraphQLEndpoint,
   enableSchemaLiveUpdate,
   schemaId,
   initialQuery,
-  theme,
   storageKey,
   jwtSourceHeader,
   jwtSourceCookie,
 }: GraphiQLPlaygroundProps) {
-  return (
-    <AuthContextProvider oidcUrl={oidcUrl} jwtSecret={jwtSecret}>
-      <_GraphiQLPlayground
-        fetcher={fetcher}
-        upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
-        enableSchemaLiveUpdate={enableSchemaLiveUpdate}
-        jwtSourceHeader={jwtSourceHeader}
-        jwtSourceCookie={jwtSourceCookie}
-        schemaId={schemaId}
-        initialQuery={initialQuery}
-        theme={theme}
-        storageKey={storageKey}
-      />
-    </AuthContextProvider>
-  );
-}
-
-interface GraphiQLPassThroughProps {
-  fetcher: Fetcher;
-  initialQuery?: string;
-  theme?: Theme;
-  storageKey?: string;
-}
-
-function _GraphiQLPlayground({
-  fetcher,
-  upstreamGraphQLEndpoint,
-  enableSchemaLiveUpdate,
-  jwtSourceHeader,
-  jwtSourceCookie,
-  schemaId,
-  initialQuery,
-  theme,
-  storageKey,
-}: _GraphiQLPlaygroundProps) {
   const { getTokenFn } = useContext(AuthContext);
 
-  const dataFetcher: Fetcher = async (graphQLParams: FetcherParams, opts?: FetcherOpts) => {
+  const dataFetcher: Fetcher = async (
+    graphQLParams: FetcherParams,
+    opts?: FetcherOpts
+  ) => {
     // Add a special header (`_exo_playground`) to the request to indicate that it's coming from the playground
     let additionalHeaders: Record<string, any> = {
       _exo_playground: "true",
@@ -113,7 +82,10 @@ function _GraphiQLPlayground({
     });
   };
 
-  const schemaFetcher: Fetcher = (graphQLParams: FetcherParams, opts?: FetcherOpts) => {
+  const schemaFetcher: Fetcher = (
+    graphQLParams: FetcherParams,
+    opts?: FetcherOpts
+  ) => {
     const additionalHeaders: Record<string, any> = {
       _exo_operation_kind: "schema_query",
     };
@@ -132,10 +104,15 @@ function _GraphiQLPlayground({
       enableSchemaLiveUpdate={enableSchemaLiveUpdate}
       schemaId={schemaId}
       initialQuery={initialQuery}
-      theme={theme}
       storageKey={storageKey}
     />
   );
+}
+
+interface GraphiQLPassThroughProps {
+  fetcher: Fetcher;
+  initialQuery?: string;
+  storageKey?: string;
 }
 
 function SchemaFetchingCore({
@@ -145,7 +122,6 @@ function SchemaFetchingCore({
   enableSchemaLiveUpdate,
   schemaId,
   initialQuery,
-  theme,
   storageKey,
 }: {
   schemaFetcher: Fetcher;
@@ -153,7 +129,9 @@ function SchemaFetchingCore({
   enableSchemaLiveUpdate: boolean;
   schemaId?: number;
 } & GraphiQLPassThroughProps) {
-  const [schema, setSchema] = useState<GraphQLSchema | SchemaError | null>(null);
+  const [schema, setSchema] = useState<GraphQLSchema | SchemaError | null>(
+    null
+  );
   const networkErrorCount = useRef(0);
 
   const fetchAndSetSchema = useCallback(async () => {
@@ -176,7 +154,8 @@ function SchemaFetchingCore({
   }, [schema, setSchema, schemaFetcher, enableSchemaLiveUpdate]);
 
   const unrecoverableNetworkError =
-    schema === "NetworkError" && (networkErrorCount.current >= 3 || !enableSchemaLiveUpdate);
+    schema === "NetworkError" &&
+    (networkErrorCount.current >= 3 || !enableSchemaLiveUpdate);
 
   // Reset the schema when the schemaId changes (another effect will re-fetch the schema)
   useEffect(() => {
@@ -218,7 +197,6 @@ function SchemaFetchingCore({
         initialQuery={initialQuery}
         fetcher={fetcher}
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
-        theme={theme}
         storageKey={storageKey}
       />
     );
@@ -229,7 +207,6 @@ function SchemaFetchingCore({
         initialQuery={initialQuery}
         fetcher={fetcher}
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
-        theme={theme}
         storageKey={storageKey}
       />
     );
@@ -254,16 +231,15 @@ function SchemaFetchingCore({
         initialQuery={initialQuery}
         fetcher={fetcher}
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
-        theme={theme}
         storageKey={storageKey}
       />
     );
   }
 
   return (
-    <div style={{ position: "relative", height: "100%" }}>
+    <div className="relative h-full flex flex-col">
       {errorMessage && <Overlay>{errorMessage}</Overlay>}
-      {core}
+      <div className="flex-1">{core}</div>
     </div>
   );
 }
@@ -275,14 +251,12 @@ function Core({
   initialQuery,
   fetcher,
   upstreamGraphQLEndpoint,
-  theme,
   storageKey,
 }: {
   upstreamGraphQLEndpoint?: string;
   schema: GraphQLSchema | null;
 } & GraphiQLPassThroughProps) {
-  const storedTheme = useTheme();
-  const effectiveTheme = theme || storedTheme;
+  const theme = useTheme();
 
   const storage = useMemo(() => {
     return createLocalStorage({
@@ -300,17 +274,15 @@ function Core({
       schema={schema}
       showPersistHeadersSettings={true}
       storage={storage}
+      forcedTheme={theme}
     >
-      <GraphiQL.Logo>
-        <Logo theme={effectiveTheme} />
-      </GraphiQL.Logo>
+      <GraphiQL.Logo>{null}</GraphiQL.Logo>
       <GraphiQL.Toolbar>
         {({ merge, prettify, copy }) => (
           <>
             {prettify}
             {merge}
             {copy}
-            <AuthToolbarButton />
           </>
         )}
       </GraphiQL.Toolbar>
@@ -340,7 +312,9 @@ function ErrorMessage(props: {
   return (
     <div className="error-message">
       <div className="error-title">{props.title}</div>
-      {props.message && <div className="error-description">{props.message}</div>}
+      {props.message && (
+        <div className="error-description">{props.message}</div>
+      )}
       {props.children}
     </div>
   );
@@ -371,7 +345,10 @@ function EmptySchema() {
 
 function NetworkError({ onRetry }: { onRetry: () => void }) {
   return (
-    <ErrorMessage title="Network error" message="Please ensure that the server is running.">
+    <ErrorMessage
+      title="Network error"
+      message="Please ensure that the server is running."
+    >
       <button className="graphiql-button reload-btn" onClick={() => onRetry()}>
         Retry
       </button>
@@ -380,5 +357,7 @@ function NetworkError({ onRetry }: { onRetry: () => void }) {
 }
 
 function Overlay(props: { children: React.ReactNode }) {
-  return <div className="overlay graphiql-dialog-overlay">{props.children}</div>;
+  return (
+    <div className="overlay graphiql-dialog-overlay">{props.children}</div>
+  );
 }

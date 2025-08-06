@@ -10,7 +10,7 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
 
-import { GraphiQLPlayground, Fetcher, createGraphiQLFetcher } from "exograph-playground-lib";
+import { Playground, Fetcher, createGraphiQLFetcher } from "exograph-playground-lib";
 import { PlaygroundConfig } from "./config";
 
 let playgroundConfig = (window as any).exoConfig as PlaygroundConfig;
@@ -23,7 +23,7 @@ const container = document.getElementById("root");
 const root = createRoot(container as HTMLElement);
 
 root.render(
-  <GraphiQLPlayground
+  <Playground
     fetcher={urlFetcher}
     oidcUrl={playgroundConfig.oidcUrl}
     upstreamGraphQLEndpoint={playgroundConfig.upstreamGraphQLEndpoint}
