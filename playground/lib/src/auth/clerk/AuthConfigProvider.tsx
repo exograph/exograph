@@ -3,8 +3,8 @@ import React, { useCallback, useContext, useEffect, useState } from "react";
 import { ClerkProvider, useAuth, useUser } from "@clerk/clerk-react";
 import { dark } from "@clerk/themes";
 
-import { AuthContext } from "../../AuthContext";
-import { useTheme } from "../../theme";
+import { AuthContext } from "../AuthContext";
+import { useTheme } from "../../util/theme";
 import { ClerkConfig } from "./ClerkConfig";
 
 type AuthConfig = {

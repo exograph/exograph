@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 import Editor from "@monaco-editor/react";
-import { useTheme } from "../../theme";
+import { useTheme } from "../../util/theme";
 
 import { AuthConfigContext } from "./AuthConfigProvider";
 import { SecretAuthContext } from "./SecretAuthProvider";
@@ -41,9 +41,9 @@ export function SignInPanel(props: { onDone: () => void }) {
         <input
           type="text"
           className={`w-full px-3 py-2 rounded-lg border font-mono text-sm ${
-            config.secret.readOnly 
-              ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed text-gray-500 dark:text-gray-400' 
-              : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+            config.secret.readOnly
+              ? "bg-gray-100 dark:bg-gray-700 cursor-not-allowed text-gray-500 dark:text-gray-400"
+              : "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           } border-gray-300 dark:border-gray-600 shadow-sm focus:outline-none`}
           placeholder="EXO_JWT_SECRET value"
           value={jwtSecret}
@@ -73,11 +73,12 @@ export function SignInPanel(props: { onDone: () => void }) {
               scrollBeyondLastLine: false,
               automaticLayout: true,
               fontSize: 14,
-              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+              fontFamily:
+                "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
               scrollbar: {
                 vertical: "hidden",
-                horizontal: "hidden"
-              }
+                horizontal: "hidden",
+              },
             }}
           />
         </div>
@@ -92,8 +93,8 @@ export function SignInPanel(props: { onDone: () => void }) {
         <button
           className={`px-4 py-2 rounded-md font-medium transition-colors ${
             enableSignIn
-              ? 'bg-blue-600 hover:bg-blue-700 text-white'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              ? "bg-blue-600 hover:bg-blue-700 text-white"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"
           }`}
           onClick={() => {
             onSignIn();
@@ -106,4 +107,3 @@ export function SignInPanel(props: { onDone: () => void }) {
     </div>
   );
 }
-

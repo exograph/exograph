@@ -1,7 +1,7 @@
 import { useTheme } from "./theme";
 
-import { default as DarkLogo } from "../public/logo-dark.svg";
-import { default as LightLogo } from "../public/logo-light.svg";
+import { default as DarkLogo } from "../../public/logo-dark.svg";
+import { default as LightLogo } from "../../public/logo-light.svg";
 
 export function Logo() {
   let theme = useTheme();

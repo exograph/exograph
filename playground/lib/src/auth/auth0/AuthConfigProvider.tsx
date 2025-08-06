@@ -1,7 +1,7 @@
 import React, { useCallback, useContext, useEffect, useState } from "react";
 
 import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
-import { AuthContext } from "../../AuthContext";
+import { AuthContext } from "../AuthContext";
 import { Auth0Config } from "./Auth0Config";
 
 type AuthConfig = {

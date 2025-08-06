@@ -1,4 +1,5 @@
-export { GraphiQLPlayground } from "./GraphiQLPlayground";
+import "./index.css";
+
 export { Playground } from "./Playground";
 export {
   Fetcher,

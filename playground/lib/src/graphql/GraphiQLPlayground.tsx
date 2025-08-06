@@ -24,13 +24,13 @@ import {
 } from "@graphiql/toolkit";
 import { GraphQLSchema } from "graphql";
 import { fetchSchema, SchemaError } from "./schema";
-import { AuthContext } from "./AuthContext";
+import { AuthContext } from "../auth/AuthContext";
 import { explorerPlugin } from "@graphiql/plugin-explorer";
 
 import "./index.css";
 import "graphiql/style.css";
 import "@graphiql/plugin-explorer/style.css";
-import { useTheme } from "./theme";
+import { useTheme } from "../util/theme";
 
 interface GraphiQLPlaygroundProps extends GraphiQLPassThroughProps {
   upstreamGraphQLEndpoint?: string;

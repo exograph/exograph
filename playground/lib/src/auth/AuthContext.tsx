@@ -1,9 +1,9 @@
 import React, { useCallback, useState, createContext } from "react";
-import { ClerkAuthPlugin } from "./auth/clerk";
-import { SecretAuthPlugin } from "./auth/secret";
-import { Auth0AuthPlugin } from "./auth/auth0";
+import { ClerkAuthPlugin } from "./clerk";
+import { SecretAuthPlugin } from "./secret";
+import { Auth0AuthPlugin } from "./auth0";
 import { AuthPlugin } from "./AuthPlugin";
-import { JwtSecret } from "./auth/secret/SecretConfig";
+import { JwtSecret } from "./secret/SecretConfig";
 
 type GetToken = () => Promise<string | null>;
 
@@ -54,15 +54,15 @@ export function AuthContextProvider({
     oidcUrl && oidcUrl.endsWith("auth0.com")
       ? "auth0"
       : oidcUrl && oidcUrl.endsWith("clerk.accounts.dev")
-      ? "clerk"
-      : "secret";
+        ? "clerk"
+        : "secret";
 
   const plugin: AuthPlugin<any> =
     authenticatorType === "clerk"
       ? new ClerkAuthPlugin()
       : authenticatorType === "auth0"
-      ? new Auth0AuthPlugin()
-      : new SecretAuthPlugin(jwtSecret);
+        ? new Auth0AuthPlugin()
+        : new SecretAuthPlugin(jwtSecret);
 
   const setTokenFnCb = useCallback(
     (f: GetToken | undefined) => {

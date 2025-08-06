@@ -7,12 +7,14 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-import { GraphiQLPlayground } from "./GraphiQLPlayground";
-import { Navbar } from "./Navbar";
-import { AuthContextProvider } from "./AuthContext";
-import { ThemeProvider } from "./theme";
+import { GraphiQLPlayground } from "./graphql/GraphiQLPlayground";
+import { AuthContextProvider } from "./auth/AuthContext";
+import { ThemeProvider } from "./util/theme";
 import { Fetcher } from "@graphiql/toolkit";
 import { JwtSecret } from "./auth/secret";
+import { AuthToolbarButton } from "./auth";
+import { Logo } from "./util/Logo";
+import { ThemeToggleButton } from "./util/ThemeToggleButton";
 
 export interface PlaygroundProps {
   fetcher: Fetcher;
@@ -43,5 +45,17 @@ export function Playground({
         </div>
       </AuthContextProvider>
     </ThemeProvider>
+  );
+}
+
+function Navbar() {
+  return (
+    <nav className="flex items-center justify-between px-3 py-2 border-b bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700 h-12 dark:text-gray-100">
+      <Logo />
+      <div className="flex items-center gap-2">
+        <AuthToolbarButton />
+        <ThemeToggleButton />
+      </div>
+    </nav>
   );
 }
