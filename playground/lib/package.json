@@ -10,9 +10,9 @@
     "public"
   ],
   "scripts": {
-    "build": "tsc --p ./tsconfig.json && postcss 'src/**/*.css' --base src --dir dist/",
+    "build": "tsc --p ./tsconfig.json && postcss \"src/**/*.css\" --base src --dir dist/",
     "lint": "eslint .",
-    "watch": "concurrently \"tsc --watch --p ./tsconfig.json\" \"postcss 'src/**/*.css' --base src --dir dist/ --watch\""
+    "watch": "concurrently \"tsc --watch --p ./tsconfig.json\" \"postcss \"src/**/*.css\" --base src --dir dist/ --watch\""
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.3.0",
