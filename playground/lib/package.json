@@ -15,16 +15,21 @@
     "watch": "concurrently \"tsc --watch --p ./tsconfig.json\" \"postcss \"src/**/*.css\" --base src --dir dist/ --watch\""
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^1.0.0",
+    "@ai-sdk/google": "^1.0.0",
+    "@ai-sdk/openai": "^1.0.0",
     "@auth0/auth0-react": "^2.3.0",
     "@clerk/clerk-react": "5.31.9",
     "@clerk/themes": "2.2.49",
     "@graphiql/plugin-explorer": "5.1.1",
     "@graphiql/toolkit": "0.11.3",
     "@monaco-editor/react": "^4.7.0",
+    "ai": "^4.2.0",
     "cross-env": "^7.0.3",
     "graphiql": "5.1.1",
     "graphql-ws": "^6.0.6",
     "jose": "5.9.6",
+    "lucide-react": "^0.536.0",
     "monaco-editor": "^0.52.2"
   },
   "peerDependencies": {
