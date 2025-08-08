@@ -7,24 +7,18 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-import React, { useState } from "react";
-import { ChatConversation } from "../providers/types";
-import { PROVIDERS } from "../providers/config";
-import { useChatConfig } from "../context/ChatConfigContext";
-import { useApiKeys } from "../context/ApiKeyContext";
-import { useConversations } from "../context/ConversationContext";
-import { ConfigurationModal } from "./ConfigurationModal";
-import { Plus, Settings, MessageCircle, Trash2 } from "lucide-react";
-
-interface ConversationSidebarProps {
-  mcpEndpoint: string;
-}
+import React from "react";
+import { ChatConversation } from "../../api/types/ChatConversation";
+import { useConversations } from "../../context/ConversationContext";
+import { useModelSettings } from "../../context/ModelSettingsContext";
+import { Plus, MessageCircle, Trash2 } from "lucide-react";
 
 interface ConversationItemProps {
   conversation: ChatConversation;
   isActive: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  modelDisplayName: string;
 }
 
 function ConversationItem({
@@ -32,8 +26,8 @@ function ConversationItem({
   isActive,
   onSelect,
   onDelete,
+  modelDisplayName,
 }: ConversationItemProps) {
-  const provider = PROVIDERS[conversation.provider];
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -66,8 +60,7 @@ function ConversationItem({
               {conversation.title}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {provider?.displayName || conversation.provider} •{" "}
-              {conversation.messages.length} messages
+              {modelDisplayName} • {conversation.messages.length} messages
             </div>
           </div>
         </div>
@@ -86,23 +79,16 @@ function ConversationItem({
 
       {conversation.messages.length > 0 && (
         <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 truncate">
-          {(() => {
-            const lastMessage =
-              conversation.messages[conversation.messages.length - 1]
-                ?.content || "";
-            return lastMessage.length > 60
-              ? lastMessage.substring(0, 60) + "..."
-              : lastMessage;
-          })()}
+          {conversation.messages[
+            conversation.messages.length - 1
+          ]?.generateTitle() || ""}
         </div>
       )}
     </div>
   );
 }
 
-export function ConversationSidebar({ mcpEndpoint }: ConversationSidebarProps) {
-  const { config } = useChatConfig();
-  const { hasApiKey } = useApiKeys();
+export function ConversationSection() {
   const {
     conversations,
     activeConversation,
@@ -110,19 +96,25 @@ export function ConversationSidebar({ mcpEndpoint }: ConversationSidebarProps) {
     createNewConversation,
     deleteConversation,
   } = useConversations();
-  const [collapsed, setCollapsed] = useState(false);
-  const [showConfigModal, setShowConfigModal] = useState(false);
+  const { availableModels } = useModelSettings();
 
   // Only show non-scratch pad conversations in the sidebar
   const sortedConversations = [...conversations]
     .filter((conv) => !conv.isScratchPad)
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
-  const handleNewConversation = () => {
-    const newConversation = createNewConversation(
-      config.provider,
-      config.model
+  const getModelDisplayName = (conversation: ChatConversation): string => {
+    const modelId = conversation.currentModelId;
+    if (!modelId) return 'New conversation';
+    
+    const model = availableModels.find(
+      (m) => m.providerId === modelId.provider && m.id === modelId.model
     );
+    return model?.name || `${modelId.provider}:${modelId.model}`;
+  };
+
+  const handleNewConversation = () => {
+    const newConversation = createNewConversation();
     setActiveConversation(newConversation);
   };
 
@@ -134,47 +126,13 @@ export function ConversationSidebar({ mcpEndpoint }: ConversationSidebarProps) {
     deleteConversation(id);
   };
 
-  if (collapsed) {
-    return (
-      <div
-        className={`w-12 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700`}
-      >
-        <div className="p-2 space-y-2">
-          <button
-            onClick={() => setCollapsed(false)}
-            className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400"
-            title="Expand sidebar"
-          >
-            →
-          </button>
-          <button
-            onClick={handleNewConversation}
-            className="w-8 h-8 rounded-lg bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center"
-            title="New conversation"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div
-      className={`w-80 h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0`}
-    >
+    <>
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             Conversations
           </h2>
-          <button
-            onClick={() => setCollapsed(true)}
-            className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-            title="Collapse sidebar"
-          >
-            ←
-          </button>
         </div>
         <button
           onClick={handleNewConversation}
@@ -204,48 +162,12 @@ export function ConversationSidebar({ mcpEndpoint }: ConversationSidebarProps) {
                 isActive={activeConversation?.id === conversation.id}
                 onSelect={() => handleSelectConversation(conversation)}
                 onDelete={() => handleDeleteConversation(conversation.id)}
+                modelDisplayName={getModelDisplayName(conversation)}
               />
             ))}
           </div>
         )}
       </div>
-
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
-        <div className="text-xs text-gray-500 dark:text-gray-400">
-          <div className="font-medium mb-1">MCP Endpoint</div>
-          <div className="break-all">{mcpEndpoint}</div>
-        </div>
-
-        <hr className="border-gray-200 dark:border-gray-700" />
-
-        <div className="text-xs text-gray-500 dark:text-gray-400">
-          <div className="font-medium mb-1">LLM Configuration</div>
-          <div>
-            {config.model} (
-            {PROVIDERS[config.provider]?.displayName || config.provider})
-          </div>
-          <div className="flex items-center gap-1 mt-1">
-            <div
-              className={`w-2 h-2 rounded-full ${hasApiKey(config.provider) ? "bg-green-500" : "bg-red-500"}`}
-            />
-            <span>
-              {hasApiKey(config.provider) ? "API Key Set" : "No API Key"}
-            </span>
-          </div>
-        </div>
-        <button
-          onClick={() => setShowConfigModal(true)}
-          className="w-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 py-2 px-3 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
-        >
-          <Settings className="w-4 h-4" />
-          Configure
-        </button>
-      </div>
-
-      <ConfigurationModal
-        open={showConfigModal}
-        onOpenChange={setShowConfigModal}
-      />
-    </div>
+    </>
   );
 }

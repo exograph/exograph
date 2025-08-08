@@ -38,14 +38,14 @@ const graphqlProps = {
   enableSchemaLiveUpdate: playgroundConfig.enableSchemaLiveUpdate,
 };
 
-const _mcpProps = playgroundConfig.mcpHttpPath
+const mcpProps = playgroundConfig.mcpHttpPath
   ? {
       tabType: "mcp" as const,
       mcpHttpPath: playgroundConfig.mcpHttpPath,
     }
   : undefined;
 
-const tabs = [graphqlProps].filter(
+const tabs = [mcpProps, graphqlProps].filter(
   (prop): prop is NonNullable<typeof prop> => prop !== undefined
 );
 

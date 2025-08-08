@@ -9,25 +9,23 @@
 
 import { PlaygroundMCPProps } from "./types";
 import { BasePlaygroundComponentProps } from "../util/component-types";
-import { ConversationSidebar } from "./components/ConversationSidebar";
-import { ChatInterface } from "./components/ChatInterface";
+import { ConversationSidebar } from "./components/sidebar/ConversationSidebar";
+import { ChatInterface } from "./components/chat/ChatInterface";
 import { useConversations } from "./context/ConversationContext";
-import { ChatConfigProvider, useChatConfig } from "./context/ChatConfigContext";
-import { ApiKeyProvider } from "./context/ApiKeyContext";
+import { ModelConfigProvider } from "./context/ModelSettingsContext";
+import { CurrentModelProvider } from "./context/CurrentModelContext";
+import { ProviderConfigProvider } from "./context/ProviderConfigContext";
 import { ConversationProvider } from "./context/ConversationContext";
-import { ModelProvider } from "./context/ModelContext";
+import { MCPClientProvider } from "./context/MCPClientContext";
 
 export interface MCPPlaygroundProps
-  extends BasePlaygroundComponentProps<PlaygroundMCPProps> {
-  // This interface intentionally extends the base props without additional members
-}
+  extends BasePlaygroundComponentProps<PlaygroundMCPProps> {}
 
 // Inner component that uses the context
 function MCPPlaygroundInner({ mcp }: { mcp: PlaygroundMCPProps }) {
-  const { loading: configLoading } = useChatConfig();
   const { loading: conversationsLoading } = useConversations();
 
-  if (conversationsLoading || configLoading) {
+  if (conversationsLoading) {
     return (
       <div className="flex items-center justify-center h-full bg-white dark:bg-gray-800">
         <div className="text-gray-600 dark:text-gray-300">
@@ -49,16 +47,18 @@ function MCPPlaygroundInner({ mcp }: { mcp: PlaygroundMCPProps }) {
 }
 
 // Main component wrapped with providers
-export function MCPPlayground({ tab: mcp, auth: _auth }: MCPPlaygroundProps) {
+export function MCPPlayground({ tab: mcp, auth }: MCPPlaygroundProps) {
   return (
-    <ApiKeyProvider>
-      <ChatConfigProvider>
-        <ModelProvider>
-          <ConversationProvider>
-            <MCPPlaygroundInner mcp={mcp} />
-          </ConversationProvider>
-        </ModelProvider>
-      </ChatConfigProvider>
-    </ApiKeyProvider>
+    <ProviderConfigProvider>
+      <ModelConfigProvider>
+        <CurrentModelProvider>
+          <MCPClientProvider endpoint={mcp.mcpHttpPath} auth={auth}>
+            <ConversationProvider>
+              <MCPPlaygroundInner mcp={mcp} />
+            </ConversationProvider>
+          </MCPClientProvider>
+        </CurrentModelProvider>
+      </ModelConfigProvider>
+    </ProviderConfigProvider>
   );
 }

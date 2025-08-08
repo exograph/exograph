@@ -10,8 +10,15 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { ANTHROPIC_PROVIDER, GOOGLE_PROVIDER, LLMProvider, OPENAI_PROVIDER, ModelCreationConfig } from './types';
+import { ANTHROPIC_PROVIDER, GOOGLE_PROVIDER, LLMProvider, OPENAI_PROVIDER } from './ModelId';
 import { LanguageModel } from 'ai';
+
+interface ModelCreationConfig {
+  apiKey: string;
+  model: string;
+  temperature?: number;
+  maxTokens?: number;
+}
 
 interface ModelInfo {
   id: string;
@@ -26,9 +33,8 @@ interface CreateModelOptions {
 
 type ModelFactory = (options: CreateModelOptions) => LanguageModel;
 
-interface ProviderInfo {
+export interface ProviderInfo {
   id: LLMProvider;
-  name: string;
   displayName: string;
   models: ModelInfo[];
   defaultModel: string;
@@ -36,10 +42,9 @@ interface ProviderInfo {
 }
 
 
-export const PROVIDERS: Record<string, ProviderInfo> = {
+export const PROVIDERS: Record<LLMProvider, ProviderInfo> = {
   openai: {
     id: OPENAI_PROVIDER,
-    name: 'OpenAI',
     displayName: 'OpenAI',
     defaultModel: 'gpt-4o',
     requiresApiKey: true,
@@ -53,8 +58,7 @@ export const PROVIDERS: Record<string, ProviderInfo> = {
     ],
   },
   anthropic: {
-    id: 'anthropic',
-    name: 'Anthropic',
+    id: ANTHROPIC_PROVIDER,
     displayName: 'Anthropic',
     defaultModel: 'claude-sonnet-4-20250514',
     requiresApiKey: true,
@@ -66,8 +70,7 @@ export const PROVIDERS: Record<string, ProviderInfo> = {
     ],
   },
   google: {
-    id: 'google',
-    name: 'Google',
+    id: GOOGLE_PROVIDER,
     displayName: 'Google',
     defaultModel: 'gemini-2.5-flash',
     requiresApiKey: true,
@@ -106,18 +109,4 @@ export const createModel: ModelFactory = ({ provider, config }) => {
     default:
       throw new Error(`Unsupported provider: ${provider}`);
   }
-};
-
-export const getDefaultConfig = (provider: string) => {
-  const providerInfo = PROVIDERS[provider];
-  if (!providerInfo) {
-    throw new Error(`Unknown provider: ${provider}`);
-  }
-
-  return {
-    provider: providerInfo.id,
-    model: providerInfo.defaultModel,
-    temperature: 0.7,
-    maxTokens: 2048,
-  };
 };

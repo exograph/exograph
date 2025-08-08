@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-import { LLMProvider } from "../providers/types";
+import { LLMProvider } from "../providers/ModelId";
 
 export type ApiKeyStorage =
   | { type: 'empty' }
