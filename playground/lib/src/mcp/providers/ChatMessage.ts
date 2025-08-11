@@ -202,7 +202,7 @@ export function deserializeMessage(data: any): BaseMessage {
         data.id,
         toolResult.toolName,
         toolResult.toolCallId,
-        toolResult.args,
+        data.args,
         toolResult.output,
         modelId,
         timestamp

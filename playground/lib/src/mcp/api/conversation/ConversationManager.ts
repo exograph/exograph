@@ -85,18 +85,33 @@ export class ConversationManager {
 
   deleteConversation(id: string): void {
     const wasActive = this.activeConversationId === id;
+
+    // Find the next conversation before removing the current one
+    let nextConversation: ChatConversation | null = null;
+    if (wasActive) {
+      const deletedIndex = this.conversations.findIndex((conv) => conv.id === id);
+
+      if (deletedIndex !== -1) {
+        // Remove the conversation and determine next conversation
+        const remainingConversations = this.conversations.filter((conv) => conv.id !== id);
+        if (remainingConversations.length > 0) {
+          // Select conversation at the same index, or the last one if index is out of bounds
+          const nextIndex = Math.min(deletedIndex, remainingConversations.length - 1);
+          nextConversation = remainingConversations[nextIndex];
+        }
+      }
+    }
+
+    // Remove the conversation
     this.conversations = this.conversations.filter((conv) => conv.id !== id);
 
     if (wasActive) {
-      const nonScratchPadConversations = this.conversations.filter((conv) => !conv.isScratchPad);
-
-      if (nonScratchPadConversations.length === 0) {
+      if (nextConversation) {
+        this.setActiveConversation(nextConversation);
+      } else {
         // No conversations left, create a new scratch pad
         const scratchPad = this.createNewConversation(true);
         this.setActiveConversation(scratchPad);
-      } else {
-        const nextConversation = this.findNextConversationAfterDelete(id);
-        this.setActiveConversation(nextConversation);
       }
     }
 
@@ -104,24 +119,6 @@ export class ConversationManager {
     this.notifyListeners();
   }
 
-  private findNextConversationAfterDelete(deletedId: string): ChatConversation | null {
-    const nonScratchPadConversations = this.conversations.filter((conv) => !conv.isScratchPad);
-
-    if (nonScratchPadConversations.length === 0) {
-      return null;
-    }
-
-    const deletedIndex = nonScratchPadConversations.findIndex(
-      (conv) => conv.id === deletedId
-    );
-
-    if (deletedIndex === -1) {
-      return nonScratchPadConversations[0];
-    }
-
-    const nextIndex = Math.min(deletedIndex, nonScratchPadConversations.length - 1);
-    return nonScratchPadConversations[nextIndex];
-  }
 
   addMessageToConversation(conversationId: string, message: BaseMessage): void {
     const conversationIndex = this.conversations.findIndex(
