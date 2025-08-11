@@ -10,7 +10,7 @@
 import { useState } from "react";
 import { Dialog } from "../../util/Dialog";
 import { LLMProvider, ModelId } from "../providers/ModelId";
-import { PROVIDERS } from "../providers/config";
+import { DEFAULT_PROVIDER, PROVIDERS } from "../providers/config";
 import { useProviderConfig } from "../context/ProviderConfigContext";
 import { useModelSettings } from "../context/ModelSettingsContext";
 import { Tooltip } from "../../util/Tooltip";
@@ -93,11 +93,13 @@ export function ProviderConfigurationModal({
   open,
   onOpenChange,
 }: ProviderConfigurationModalProps) {
-  const [selectedProvider, setSelectedProvider] = useState<LLMProvider>("openai");
+  const [selectedProvider, setSelectedProvider] =
+    useState<LLMProvider>(DEFAULT_PROVIDER);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
-  
+
   const currentProvider = PROVIDERS[selectedProvider];
-  const { getApiKey, setApiKey, hasApiKey, isStoringInLocalStorage } = useProviderConfig();
+  const { getApiKey, setApiKey, hasApiKey, isStoringInLocalStorage } =
+    useProviderConfig();
 
   const handleProviderChange = (provider: LLMProvider) => {
     setSelectedProvider(provider);
@@ -114,16 +116,11 @@ export function ProviderConfigurationModal({
   const closeModal = () => onOpenChange(false);
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={closeModal}
-      title="Settings"
-      size="lg"
-    >
+    <Dialog open={open} onOpenChange={closeModal} title="Settings" size="lg">
       <div className="space-y-4">
         <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Configure API keys for each provider and adjust settings for individual
-          models.
+          Configure API keys for each provider and adjust settings for
+          individual models.
         </div>
 
         {/* Provider Selection */}
@@ -238,7 +235,9 @@ export function ProviderConfigurationModal({
             </div>
 
             {selectedModel && (
-              <ModelSettings modelId={ModelId.create(selectedProvider, selectedModel)} />
+              <ModelSettings
+                modelId={ModelId.create(selectedProvider, selectedModel)}
+              />
             )}
           </div>
         )}

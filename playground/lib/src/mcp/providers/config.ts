@@ -43,42 +43,38 @@ export interface ProviderInfo {
 
 
 export const PROVIDERS: Record<LLMProvider, ProviderInfo> = {
-  openai: {
-    id: OPENAI_PROVIDER,
-    displayName: 'OpenAI',
-    defaultModel: 'gpt-4o',
-    requiresApiKey: true,
-    models: [
-      { id: 'gpt-4.1', name: 'GPT-4.1', description: 'Latest model with improved coding and instruction following (1M context)' },
-      { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini', description: 'Smaller, efficient version of GPT-4.1 (1M context)' },
-      { id: 'gpt-4o', name: 'GPT-4o', description: 'Multimodal model with vision capabilities' },
-      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Cost-efficient small model with vision' },
-      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Optimized for chat with 128K context' },
-      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast and cost-effective' },
-    ],
-  },
   anthropic: {
     id: ANTHROPIC_PROVIDER,
     displayName: 'Anthropic',
-    defaultModel: 'claude-sonnet-4-20250514',
+    defaultModel: 'claude-opus-4-1-20250805',
     requiresApiKey: true,
     models: [
       { id: 'claude-opus-4-1-20250805', name: 'Claude Opus 4.1', description: 'Most capable model with highest level of intelligence' },
       { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', description: 'High-performance model with reasoning and efficiency' },
-      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet v2', description: 'Upgraded Sonnet 3.5 with enhanced capabilities' },
-      { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', description: 'Fastest model with intelligence' },
+      { id: 'claude-3-7-sonnet-20250219', name: 'Claude Sonnet 3.7', description: 'High-performance model with extended thinking capabilities' },
+    ],
+  },
+  openai: {
+    id: OPENAI_PROVIDER,
+    displayName: 'OpenAI',
+    defaultModel: 'gpt-4.1',
+    requiresApiKey: true,
+    models: [
+      { id: 'gpt-4.1', name: 'GPT-4.1', description: 'Latest flagship model with improved coding and instruction following (1M context)' },
+      { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini', description: 'High-performance efficient model, beats GPT-4o (1M context)' },
+      { id: 'gpt-4.1-nano', name: 'GPT-4.1 Nano', description: 'Fastest and most cost-effective model (1M context)' },
+      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Optimized for chat with 128K context' },
     ],
   },
   google: {
     id: GOOGLE_PROVIDER,
     displayName: 'Google',
-    defaultModel: 'gemini-2.5-flash',
+    defaultModel: 'gemini-2.5-pro',
     requiresApiKey: true,
     models: [
-      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Most advanced multimodal model' },
-      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Fast, efficient multimodal model' },
-      { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', description: 'Most cost-efficient high throughput model' },
-      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash (Experimental)', description: 'Latest experimental model' },
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Most powerful thinking model with maximum response accuracy' },
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Best price-performance model with well-rounded capabilities' },
+      { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', description: 'Optimized for cost efficiency and high throughput' },
     ],
   },
 };
