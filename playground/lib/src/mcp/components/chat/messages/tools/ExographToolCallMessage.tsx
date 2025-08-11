@@ -59,34 +59,20 @@ export const ExographToolCallMessage = memo(function ExographToolCallMessage({
   isExpanded,
   onToggleExpanded,
 }: ExographToolCallMessageProps) {
-  // Use custom layout for better width control
   return (
     <div
-      className="mb-6"
+      className="mb-6 flex justify-start"
       role="article"
       aria-label="Tool call message"
-      style={{ 
-        display: 'flex',
-        justifyContent: 'flex-start',
-      }}
     >
-      <div 
-        style={{ 
-          display: 'flex',
-          flexDirection: 'row',
-          width: isExpanded ? 'min(90%, 1024px)' : 'min(80%, 800px)',
-        }}
-      >
+      <div className={`flex flex-row ${isExpanded ? 'w-[min(90%,_1024px)]' : 'w-[min(80%,_800px)]'}`}>
         <div
           className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium mr-3 bg-gray-300 dark:bg-gray-600"
           aria-hidden="true"
         >
           <ExographIcon className="w-5 h-5" />
         </div>
-        <div 
-          className="px-4 py-3 rounded-2xl bg-green-100 dark:bg-green-800 text-green-900 dark:text-green-100 rounded-bl-md"
-          style={{ flex: '1 1 0%' }}
-        >
+        <div className="flex-1 px-4 py-3 rounded-2xl bg-green-100 dark:bg-green-800 text-green-900 dark:text-green-100 rounded-bl-md">
           <button
             onClick={onToggleExpanded}
             className="flex items-center gap-2 text-green-700 dark:text-green-300 font-medium text-sm w-full text-left mb-2"

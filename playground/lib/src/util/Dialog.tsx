@@ -46,12 +46,6 @@ export function Dialog({
     }
   };
 
-  const handleEscapeKey = (e: React.KeyboardEvent<HTMLDialogElement>) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      onOpenChange(false);
-    }
-  };
 
   const sizeClasses = {
     sm: 'max-w-md',
@@ -66,7 +60,6 @@ export function Dialog({
       className={`bg-white dark:bg-gray-800 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 ${sizeClasses[size]} w-full ${className}`}
       onClose={() => onOpenChange(false)}
       onClick={handleDialogClick}
-      onKeyDown={handleEscapeKey}
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">

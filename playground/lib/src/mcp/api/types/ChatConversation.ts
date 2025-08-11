@@ -36,7 +36,7 @@ export class ChatConversation {
     return new ChatConversation(
       this.messages.length === 0 ? this.isScratchPad : false,
       this.id,
-      this.title || message.generateTitle(),
+      message.generateTitle(),
       [...this.messages, message],
       new Date()
     );

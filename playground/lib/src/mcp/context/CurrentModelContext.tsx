@@ -14,7 +14,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import { ModelId } from "../providers/ModelId";
+import { ModelId, LLMProvider } from "../providers/ModelId";
 import { PROVIDERS } from "../providers/config";
 import { useProviderConfig } from "./ProviderConfigContext";
 import { ModelAPI } from "../api";
@@ -49,12 +49,12 @@ export function CurrentModelProvider({ children }: CurrentModelProviderProps) {
     if (!modelAPI.validateModel(currentModel, hasApiKey).isValid) {
       // Find first provider with API key and use its default model
       const firstValidProvider = Object.entries(PROVIDERS).find(([providerId, provider]) => {
-        return !provider.requiresApiKey || hasApiKey(providerId as any);
+        return !provider.requiresApiKey || hasApiKey(providerId as LLMProvider);
       });
 
       if (firstValidProvider) {
         const [providerId, provider] = firstValidProvider;
-        const defaultModel = new ModelId(providerId as any, provider.defaultModel);
+        const defaultModel = new ModelId(providerId as LLMProvider, provider.defaultModel);
         setCurrentModel(defaultModel);
       }
     }
