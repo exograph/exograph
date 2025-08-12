@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 type SecretAuth = {
   signedIn: boolean;
@@ -10,7 +10,7 @@ export const SecretAuthContext = React.createContext<SecretAuth>(
 );
 
 export function SecretAuthProvider(props: { children: React.ReactNode }) {
-  const [signedIn, setSignedIn] = React.useState(false);
+  const [signedIn, setSignedIn] = useState(false);
 
   return (
     <SecretAuthContext.Provider value={{ signedIn, setSignedIn }}>

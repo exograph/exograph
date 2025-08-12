@@ -45,7 +45,7 @@ const mcpProps = playgroundConfig.mcpHttpPath
     }
   : undefined;
 
-const tabs = [graphqlProps, mcpProps].filter(
+const tabs = [mcpProps, graphqlProps].filter(
   (prop): prop is NonNullable<typeof prop> => prop !== undefined
 );
 
