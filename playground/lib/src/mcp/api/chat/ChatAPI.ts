@@ -16,8 +16,13 @@ const DEFAULT_MAX_STEPS = 10;
 export interface ToolCallInfo {
   toolName: string;
   toolCallId?: string;
-  args: any;
-  result: any;
+  args: Record<string, unknown>;
+  result: {
+    error?: any;
+    status?: number;
+    output?: any;
+    [key: string]: any;
+  } | null;
 }
 
 export interface ChatResponseWithSteps {
@@ -28,6 +33,18 @@ export interface ChatResponseWithSteps {
 export interface ChatGenerationOptions {
   maxSteps?: number;
   tools?: Record<string, any>;
+}
+
+// Type guard for checking if an object has an error property
+function hasError(obj: unknown): obj is { error: unknown } {
+  return typeof obj === 'object' && obj !== null && 'error' in obj;
+}
+
+// Type guard for step content with tool-error type
+function isToolErrorContent(item: unknown): item is { type: 'tool-error'; error: { status?: number; message?: string; name?: string } } {
+  return typeof item === 'object' && item !== null && 
+         'type' in item && (item as any).type === 'tool-error' &&
+         'error' in item && typeof (item as any).error === 'object';
 }
 
 export class ChatAPI {
@@ -42,7 +59,6 @@ export class ChatAPI {
         for (let i = 0; i < step.toolCalls.length; i++) {
           const toolCall = step.toolCalls[i];
           const toolResult = step.toolResults?.[i];
-          console.log('Tool call:', toolCall, 'Result:', toolResult);
 
           // Handle case where toolResult is undefined (error case)
           let result = toolResult;
@@ -56,8 +72,8 @@ export class ChatAPI {
 
             // Look for tool-error in the step content
             if (step.content && Array.isArray(step.content)) {
-              const toolError = step.content.find((item: any) => item.type === 'tool-error');
-              if (toolError?.error) {
+              const toolError = step.content.find(isToolErrorContent);
+              if (toolError) {
                 if (toolError.error.status) {
                   status = toolError.error.status;
                 }
@@ -75,9 +91,7 @@ export class ChatAPI {
               error: errorMessage,
               ...(status !== undefined ? { status } : {})
             };
-          } else if (toolResult?.error) {
-            console.log('Tool call error detected:', toolResult.error);
-
+          } else if (hasError(toolResult)) {
             result = {
               ...toolResult,
               error: toolResult.error
