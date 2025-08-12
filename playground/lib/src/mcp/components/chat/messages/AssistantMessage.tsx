@@ -8,6 +8,8 @@
 // by the Apache License, Version 2.0.
 
 import { memo } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { BaseMessage } from "../../../providers/ChatMessage";
 
 interface AssistantMessageProps {
@@ -33,6 +35,7 @@ const SingleAssistantMessage = memo(function SingleAssistantMessage({
     return null;
   }
 
+
   return (
     <div
       className="flex mb-6 justify-start"
@@ -51,8 +54,10 @@ const SingleAssistantMessage = memo(function SingleAssistantMessage({
         {!showAvatar && <div className="w-11 mr-3" />}{" "}
         {/* Spacer to align with avatar */}
         <div className="px-4 py-3 rounded-2xl bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-bl-md">
-          <div className="whitespace-pre-wrap break-words leading-relaxed">
-            {text}
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {text}
+            </ReactMarkdown>
           </div>
           <div className="text-xs mt-2 opacity-70 text-gray-500 dark:text-gray-400">
             {timestamp.toLocaleTimeString([], {
