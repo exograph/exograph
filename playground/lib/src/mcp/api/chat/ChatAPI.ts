@@ -42,11 +42,53 @@ export class ChatAPI {
         for (let i = 0; i < step.toolCalls.length; i++) {
           const toolCall = step.toolCalls[i];
           const toolResult = step.toolResults?.[i];
+          console.log('Tool call:', toolCall, 'Result:', toolResult);
+
+          // Handle case where toolResult is undefined (error case)
+          let result = toolResult;
+          if (!toolResult) {
+            // When tool execution fails, AI SDK might not provide toolResult
+            // Check if this step has any error information we can extract
+
+            // Try to extract error information from the step
+            let errorMessage = 'Tool execution failed';
+            let status = undefined;
+
+            // Look for tool-error in the step content
+            if (step.content && Array.isArray(step.content)) {
+              const toolError = step.content.find((item: any) => item.type === 'tool-error');
+              if (toolError?.error) {
+                if (toolError.error.status) {
+                  status = toolError.error.status;
+                }
+
+                // Update error message if available
+                if (toolError.error.message) {
+                  errorMessage = toolError.error.message;
+                } else if (toolError.error.name) {
+                  errorMessage = `${toolError.error.name}: HTTP error! status: ${status}`;
+                }
+              }
+            }
+
+            result = {
+              error: errorMessage,
+              ...(status !== undefined ? { status } : {})
+            };
+          } else if (toolResult?.error) {
+            console.log('Tool call error detected:', toolResult.error);
+
+            result = {
+              ...toolResult,
+              error: toolResult.error
+            };
+          }
+
           toolCalls.push({
             toolName: toolCall.toolName,
             toolCallId: toolCall.toolCallId,
             args: toolCall.input,
-            result: toolResult ? toolResult.output : undefined,
+            result: result,
           });
         }
       }
@@ -91,5 +133,4 @@ export class ChatAPI {
       );
     }
   }
-
 }

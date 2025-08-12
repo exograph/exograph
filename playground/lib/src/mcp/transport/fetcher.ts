@@ -1,13 +1,32 @@
 /**
+ * Result of a fetch operation as a discriminated union
+ */
+export type FetchResult =
+  | { type: 'success'; text: string; status: number }
+  | { type: 'failure'; error: Error; status?: number }
+  | { type: 'aborted' };
+
+/**
+ * HTTP error with status code information
+ */
+export class HttpError extends Error {
+  constructor(message: string, public status: number) {
+    super(message);
+    this.name = 'HttpError';
+  }
+}
+
+/**
  * Interface for abstracting the fetch operation in ExographTransport
  */
 export interface Fetcher {
   /**
    * Perform a fetch operation with the given request
+   * This method should never throw - all errors should be returned as FetchResult
    * @param request The request body as a string
-   * @returns The response text
+   * @returns A FetchResult indicating success, failure, or abort
    */
-  fetch(request: string): Promise<string>;
+  fetch(request: string): Promise<FetchResult>;
 
   /**
    * Cancel any ongoing fetch operations
@@ -15,9 +34,6 @@ export interface Fetcher {
   abort(): void;
 }
 
-/**
- * HTTP-based implementation of the Fetcher interface
- */
 export class HttpFetcher implements Fetcher {
   private endpoint: string;
   private headers: () => Promise<Record<string, string>>;
@@ -29,13 +45,14 @@ export class HttpFetcher implements Fetcher {
     this.abortController = new AbortController();
   }
 
-  async fetch(request: string): Promise<string> {
+  async fetch(request: string): Promise<FetchResult> {
     if (!this.abortController) {
-      throw new Error('Fetcher has been aborted');
+      return { type: 'aborted' };
     }
 
     try {
       let headers = await this.headers();
+
       const response = await globalThis.fetch(this.endpoint, {
         method: 'POST',
         headers: {
@@ -47,16 +64,25 @@ export class HttpFetcher implements Fetcher {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        return {
+          type: 'failure',
+          error: new HttpError(`HTTP error! status: ${response.status}`, response.status),
+          status: response.status
+        };
       }
 
-      return response.text();
+      const text = await response.text();
+      return { type: 'success', text, status: response.status };
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        // Convert HTTP-specific AbortError to a generic error
-        throw new Error('Request was cancelled');
+        return { type: 'aborted' };
       }
-      throw error;
+
+      // For other errors (network errors, etc.), return as failure
+      return {
+        type: 'failure',
+        error: error instanceof Error ? error : new Error(String(error))
+      };
     }
   }
 

@@ -15,9 +15,9 @@
     "watch": "concurrently \"tsc --watch --p ./tsconfig.json\" \"postcss \"src/**/*.css\" --base src --dir dist/ --watch\""
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^2.0.1",
-    "@ai-sdk/google": "^2.0.3",
-    "@ai-sdk/openai": "^2.0.5",
+    "@ai-sdk/anthropic": "^2.0.2",
+    "@ai-sdk/google": "^2.0.5",
+    "@ai-sdk/openai": "^2.0.11",
     "@auth0/auth0-react": "^2.3.0",
     "@clerk/clerk-react": "5.31.9",
     "@clerk/themes": "2.2.49",
@@ -26,7 +26,7 @@
     "@modelcontextprotocol/sdk": "^1.17.1",
     "@monaco-editor/react": "^4.7.0",
     "@tailwindcss/typography": "^0.5.16",
-    "ai": "^5.0.8",
+    "ai": "^5.0.11",
     "cross-env": "^7.0.3",
     "graphiql": "5.1.1",
     "graphql-ws": "^6.0.6",
