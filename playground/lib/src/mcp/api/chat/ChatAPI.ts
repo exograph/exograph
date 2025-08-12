@@ -16,8 +16,13 @@ const DEFAULT_MAX_STEPS = 10;
 export interface ToolCallInfo {
   toolName: string;
   toolCallId?: string;
-  args: any;
-  result: any;
+  args: Record<string, unknown>;
+  result: {
+    error?: any;
+    status?: number;
+    output?: any;
+    [key: string]: any;
+  } | null;
 }
 
 export interface ChatResponseWithSteps {
@@ -28,6 +33,18 @@ export interface ChatResponseWithSteps {
 export interface ChatGenerationOptions {
   maxSteps?: number;
   tools?: Record<string, any>;
+}
+
+// Type guard for checking if an object has an error property
+function hasError(obj: unknown): obj is { error: unknown } {
+  return typeof obj === 'object' && obj !== null && 'error' in obj;
+}
+
+// Type guard for step content with tool-error type
+function isToolErrorContent(item: unknown): item is { type: 'tool-error'; error: { status?: number; message?: string; name?: string } } {
+  return typeof item === 'object' && item !== null && 
+         'type' in item && (item as any).type === 'tool-error' &&
+         'error' in item && typeof (item as any).error === 'object';
 }
 
 export class ChatAPI {
@@ -42,11 +59,50 @@ export class ChatAPI {
         for (let i = 0; i < step.toolCalls.length; i++) {
           const toolCall = step.toolCalls[i];
           const toolResult = step.toolResults?.[i];
+
+          // Handle case where toolResult is undefined (error case)
+          let result = toolResult;
+          if (!toolResult) {
+            // When tool execution fails, AI SDK might not provide toolResult
+            // Check if this step has any error information we can extract
+
+            // Try to extract error information from the step
+            let errorMessage = 'Tool execution failed';
+            let status = undefined;
+
+            // Look for tool-error in the step content
+            if (step.content && Array.isArray(step.content)) {
+              const toolError = step.content.find(isToolErrorContent);
+              if (toolError) {
+                if (toolError.error.status) {
+                  status = toolError.error.status;
+                }
+
+                // Update error message if available
+                if (toolError.error.message) {
+                  errorMessage = toolError.error.message;
+                } else if (toolError.error.name) {
+                  errorMessage = `${toolError.error.name}: HTTP error! status: ${status}`;
+                }
+              }
+            }
+
+            result = {
+              error: errorMessage,
+              ...(status !== undefined ? { status } : {})
+            };
+          } else if (hasError(toolResult)) {
+            result = {
+              ...toolResult,
+              error: toolResult.error
+            };
+          }
+
           toolCalls.push({
             toolName: toolCall.toolName,
             toolCallId: toolCall.toolCallId,
             args: toolCall.input,
-            result: toolResult ? toolResult.output : undefined,
+            result: result,
           });
         }
       }
@@ -91,5 +147,4 @@ export class ChatAPI {
       );
     }
   }
-
 }

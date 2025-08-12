@@ -1,5 +1,5 @@
 import { Transport, TransportSendOptions } from '@modelcontextprotocol/sdk/shared/transport.js';
-import { JSONRPCMessage, MessageExtraInfo } from '@modelcontextprotocol/sdk/types.js';
+import { JSONRPCMessage, MessageExtraInfo, isJSONRPCRequest } from '@modelcontextprotocol/sdk/types.js';
 import { Fetcher } from './fetcher';
 
 /**
@@ -11,41 +11,91 @@ import { Fetcher } from './fetcher';
 export class ExographTransport implements Transport {
   private fetcher: Fetcher;
 
+  onclose?: (() => void) | undefined;
+  onerror?: ((error: Error) => void) | undefined;
+  onmessage?: ((message: JSONRPCMessage, extra?: MessageExtraInfo) => void) | undefined;
+  sessionId?: string | undefined;
+  setProtocolVersion?: ((version: string) => void) | undefined;
+
   constructor(fetcher: Fetcher) {
     this.fetcher = fetcher;
   }
 
   async start(): Promise<void> {
-    // Transport is ready - no initialization needed
   }
 
   async send(message: JSONRPCMessage, _options?: TransportSendOptions): Promise<void> {
-    const requestBody = JSON.stringify(message);
+    const requestBody: string = JSON.stringify(message);
 
-    try {
-      const text = await this.fetcher.fetch(requestBody);
+    const result = await this.fetcher.fetch(requestBody);
 
-      if (text.trim()) {
-        try {
-          const responseData = JSON.parse(text) as JSONRPCMessage;
-          this.handleMessage(responseData);
-        } catch (error) {
-          console.error('Failed to parse JSON response:', text);
-          throw new Error(`Invalid JSON response: ${text.substring(0, 100)}`);
+    // Check if this is a request that expects a response
+    const isRequest = isJSONRPCRequest(message);
+
+    switch (result.type) {
+      case 'success':
+        if (result.text.trim()) {
+          try {
+            const responseData = JSON.parse(result.text) as JSONRPCMessage;
+
+            // Check for JSON-RPC error in response
+            if ('error' in responseData && responseData.error) {
+              let errorMessage = 'Unknown error';
+              if (typeof responseData.error === 'object' && responseData.error !== null) {
+                if ('message' in responseData.error && typeof responseData.error.message === 'string') {
+                  errorMessage = responseData.error.message;
+                } else {
+                  errorMessage = JSON.stringify(responseData.error);
+                }
+              } else if (typeof responseData.error === 'string') {
+                errorMessage = responseData.error;
+              }
+
+              const error = new Error(errorMessage);
+              this.handleError(error);
+              if (isRequest) {
+                throw error;
+              }
+              return;
+            }
+
+            // Handle successful response
+            this.handleMessage(responseData);
+          } catch (error) {
+            const parseError = new Error(
+              `Failed to parse JSON response: ${result.text.substring(0, 100)}${result.text.length > 100 ? '...' : ''
+              }`
+            );
+            this.handleError(parseError);
+            if (isRequest) {
+              throw parseError;
+            }
+          }
+        } else {
+          // Empty response - error if this was a request expecting a response
+          if (isRequest) {
+            const requestId = message.id;
+            const emptyResponseError = new Error(
+              `Empty response received for request with id: ${requestId}`
+            );
+            this.handleError(emptyResponseError);
+            throw emptyResponseError;
+          }
         }
-      } else {
-        // Empty response - check if this was a request that needs a response
-        if ('id' in message && message.id !== undefined) {
-          console.warn('Empty response for request:', message);
+        break;
+
+      case 'failure':
+        // Report error via onerror callback
+        this.handleError(result.error);
+        // Throw for requests expecting responses
+        if (isRequest) {
+          throw result.error;
         }
-      }
-    } catch (error) {
-      if (error instanceof Error && error.message === 'Request was cancelled') {
-        // Request was cancelled, don't treat as error
-        return;
-      }
-      this.handleError(error as Error);
-      throw error;
+        break;
+
+      case 'aborted':
+        // Silently handle abort - this is expected during shutdown
+        break;
     }
   }
 
@@ -59,8 +109,7 @@ export class ExographTransport implements Transport {
 
   private handleMessage(message: JSONRPCMessage): void {
     if (this.onmessage) {
-      const extra: MessageExtraInfo = {};
-      this.onmessage(message, extra);
+      this.onmessage(message);
     }
   }
 
@@ -69,10 +118,4 @@ export class ExographTransport implements Transport {
       this.onerror(error);
     }
   }
-
-  onclose?: (() => void) | undefined;
-  onerror?: ((error: Error) => void) | undefined;
-  onmessage?: ((message: JSONRPCMessage, extra?: MessageExtraInfo) => void) | undefined;
-  sessionId?: string | undefined;
-  setProtocolVersion?: ((version: string) => void) | undefined;
 }
