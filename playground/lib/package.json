@@ -25,13 +25,16 @@
     "@graphiql/toolkit": "0.11.3",
     "@modelcontextprotocol/sdk": "^1.17.1",
     "@monaco-editor/react": "^4.7.0",
+    "@tailwindcss/typography": "^0.5.16",
     "ai": "^5.0.8",
     "cross-env": "^7.0.3",
     "graphiql": "5.1.1",
     "graphql-ws": "^6.0.6",
     "jose": "5.9.6",
     "lucide-react": "^0.536.0",
-    "monaco-editor": "^0.52.2"
+    "monaco-editor": "^0.52.2",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "peerDependencies": {
     "react": "19.1.0",
