@@ -161,6 +161,7 @@ fn apply_table_actions(
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct AlwaysDeferMigrationInteraction;
 
 impl MigrationInteraction for AlwaysDeferMigrationInteraction {

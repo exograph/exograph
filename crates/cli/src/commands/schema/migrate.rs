@@ -219,12 +219,11 @@ impl MigrationInteraction for UserMigrationInteraction {
             vec![MANUAL_HANDLE, RENAME_HANDLE, DELETE_HANDLE]
         };
 
-        if let Some(predefined_interaction) = &self.predefined_interaction {
-            if let Ok(action) =
+        if let Some(predefined_interaction) = &self.predefined_interaction
+            && let Ok(action) =
                 predefined_interaction.handle_table_delete(deleted_table, create_tables)
-            {
-                return Ok(action);
-            }
+        {
+            return Ok(action);
         }
 
         println!(

@@ -98,7 +98,9 @@ impl PrimitiveTypeProvider for primitive_type::FloatType {
                 .as_string()
                 .parse::<f64>();
 
-            if min.is_err() || max.is_err() {
+            if let (Ok(min_value), Ok(max_value)) = (&min, &max) {
+                range_hint = Some((*min_value, *max_value));
+            } else {
                 if min.is_err() {
                     errors.push(Diagnostic {
                         level: Level::Error,
@@ -123,8 +125,6 @@ impl PrimitiveTypeProvider for primitive_type::FloatType {
                         }],
                     });
                 }
-            } else {
-                range_hint = Some((min.unwrap(), max.unwrap()));
             }
         };
 

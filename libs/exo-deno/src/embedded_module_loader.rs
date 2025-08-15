@@ -45,19 +45,17 @@ impl ModuleLoader for EmbeddedModuleLoader {
         referrer: &str,
         _kind: ResolutionKind,
     ) -> Result<ModuleSpecifier, AnyError> {
-        if let Some(node_resolver) = &self.node_resolver {
-            if let Ok(referrer) = ModuleSpecifier::parse(referrer) {
-                if node_resolver.in_npm_package(&referrer) {
-                    if let Ok(res) = node_resolver.resolve(
-                        specifier,
-                        &referrer,
-                        NodeModuleKind::Esm,
-                        node_resolver::NodeResolutionMode::Execution,
-                    ) {
-                        return Ok(res.into_url());
-                    }
-                }
-            }
+        if let Some(node_resolver) = &self.node_resolver
+            && let Ok(referrer) = ModuleSpecifier::parse(referrer)
+            && node_resolver.in_npm_package(&referrer)
+            && let Ok(res) = node_resolver.resolve(
+                specifier,
+                &referrer,
+                NodeModuleKind::Esm,
+                node_resolver::NodeResolutionMode::Execution,
+            )
+        {
+            return Ok(res.into_url());
         }
 
         Ok(resolve_import(specifier, referrer)?)

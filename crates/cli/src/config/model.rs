@@ -55,14 +55,14 @@ impl ExographConfig {
         let current_tool_version = env!("CARGO_PKG_VERSION");
         let current_tool_version = Version::parse(current_tool_version)?;
 
-        if let Some(required_tool_version) = &self.version {
-            if !required_tool_version.matches(&current_tool_version) {
-                return Err(anyhow!(
-                    "Tool version mismatch. Config requires Exograph CLI version {}, but {} is installed.",
-                    required_tool_version,
-                    current_tool_version
-                ));
-            }
+        if let Some(required_tool_version) = &self.version
+            && !required_tool_version.matches(&current_tool_version)
+        {
+            return Err(anyhow!(
+                "Tool version mismatch. Config requires Exograph CLI version {}, but {} is installed.",
+                required_tool_version,
+                current_tool_version
+            ));
         }
 
         Ok(())

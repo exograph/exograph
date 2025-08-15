@@ -267,7 +267,7 @@ pub fn diff<'a>(
     changes
 }
 
-fn sorted_values<T: Ord + Eq + Hash>(values: Difference<T, RandomState>) -> Vec<&T> {
+fn sorted_values<T: Ord + Eq + Hash>(values: Difference<'_, T, RandomState>) -> Vec<&T> {
     let mut strings: Vec<_> = values.into_iter().collect();
     strings.sort();
     strings

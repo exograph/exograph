@@ -190,7 +190,7 @@ mod tests {
     fn single_dimensional() {
         let elems = vec![1, 2, 3];
 
-        fn array_entry(elem: &i32) -> ArrayEntry<i32> {
+        fn array_entry(elem: &i32) -> ArrayEntry<'_, i32> {
             ArrayEntry::Single(elem)
         }
 
@@ -227,7 +227,7 @@ mod tests {
             ]),
         ];
 
-        fn array_entry(elem: &Element) -> ArrayEntry<Element> {
+        fn array_entry(elem: &Element) -> ArrayEntry<'_, Element> {
             match elem {
                 Element::List(elems) => ArrayEntry::List(elems),
                 _ => ArrayEntry::Single(elem),
@@ -279,7 +279,7 @@ mod tests {
             ])]),
         ];
 
-        fn array_entry(elem: &Element) -> ArrayEntry<Element> {
+        fn array_entry(elem: &Element) -> ArrayEntry<'_, Element> {
             match elem {
                 Element::List(elems) => ArrayEntry::List(elems),
                 _ => ArrayEntry::Single(elem),

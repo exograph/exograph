@@ -51,24 +51,25 @@ pub fn build(resolved_env: &ResolvedTypeEnv) -> Result<Database, ModelBuildingEr
 
     // Ensure that all types have a primary key (skip JSON and unmanaged types)
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
-        if let ResolvedType::Composite(c) = &resolved_type {
-            if c.representation == EntityRepresentation::Managed && c.pk_fields().is_empty() {
-                let diagnostic = Diagnostic {
-                    level: Level::Error,
-                    message: format!(
-                        "Type '{}' has no primary key. Consider annotating one or more fields with @pk",
-                        c.name
-                    ),
-                    code: Some("C000".to_string()),
-                    spans: vec![SpanLabel {
-                        span: c.span,
-                        style: SpanStyle::Primary,
-                        label: None,
-                    }],
-                };
+        if let ResolvedType::Composite(c) = &resolved_type
+            && c.representation == EntityRepresentation::Managed
+            && c.pk_fields().is_empty()
+        {
+            let diagnostic = Diagnostic {
+                level: Level::Error,
+                message: format!(
+                    "Type '{}' has no primary key. Consider annotating one or more fields with @pk",
+                    c.name
+                ),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: c.span,
+                    style: SpanStyle::Primary,
+                    label: None,
+                }],
+            };
 
-                Err(ModelBuildingError::Diagnosis(vec![diagnostic]))?;
-            }
+            Err(ModelBuildingError::Diagnosis(vec![diagnostic]))?;
         }
     }
 
@@ -213,10 +214,10 @@ fn expand_type_relations(
             let field_type = resolved_env
                 .get_by_key(&field.typ.innermost().type_name)
                 .unwrap();
-            if let ResolvedType::Composite(ct) = field_type {
-                if ct.representation == EntityRepresentation::Json {
-                    return Ok(());
-                }
+            if let ResolvedType::Composite(ct) = field_type
+                && ct.representation == EntityRepresentation::Json
+            {
+                return Ok(());
             }
 
             if field.self_column {

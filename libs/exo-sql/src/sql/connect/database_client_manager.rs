@@ -36,10 +36,10 @@ impl DatabaseClientManager {
 
         let res = Ok(Self::Direct(creation));
 
-        if let Ok(ref res) = res {
-            if check_connection {
-                let _ = res.get_client().await?;
-            }
+        if let Ok(ref res) = res
+            && check_connection
+        {
+            let _ = res.get_client().await?;
         }
 
         res
@@ -61,10 +61,10 @@ impl DatabaseClientManager {
             DatabasePool::create(creation, Some(pool_size)).await?,
         ));
 
-        if let Ok(ref res) = res {
-            if check_connection {
-                let _ = res.get_client().await?;
-            }
+        if let Ok(ref res) = res
+            && check_connection
+        {
+            let _ = res.get_client().await?;
         }
 
         res
@@ -108,10 +108,10 @@ impl DatabaseClientManager {
         };
         let res = Ok(DatabaseClientManager::Direct(creation));
 
-        if let Ok(ref res) = res {
-            if check_connection {
-                let _ = res.get_client().await?;
-            }
+        if let Ok(ref res) = res
+            && check_connection
+        {
+            let _ = res.get_client().await?;
         }
 
         res
@@ -132,10 +132,10 @@ impl DatabaseClientManager {
             DatabasePool::create(creation, pool_size).await?,
         ));
 
-        if let Ok(ref res) = res {
-            if check_connection {
-                let _ = res.get_client().await?;
-            }
+        if let Ok(ref res) = res
+            && check_connection
+        {
+            let _ = res.get_client().await?;
         }
 
         res

@@ -442,15 +442,15 @@ fn validate_int_range(
     let mut min: Option<i64> = None;
     let mut max: Option<i64> = None;
     if let Some(range) = directives.iter().find(|x| x.node.name.node == "range") {
-        if let Some(x) = range.node.arguments.iter().find(|x| x.0.node == "min") {
-            if let ConstValue::Number(n) = &x.1.node {
-                min = n.to_owned().as_i64();
-            }
+        if let Some(x) = range.node.arguments.iter().find(|x| x.0.node == "min")
+            && let ConstValue::Number(n) = &x.1.node
+        {
+            min = n.to_owned().as_i64();
         }
-        if let Some(x) = range.node.arguments.iter().find(|x| x.0.node == "max") {
-            if let ConstValue::Number(n) = &x.1.node {
-                max = n.to_owned().as_i64();
-            }
+        if let Some(x) = range.node.arguments.iter().find(|x| x.0.node == "max")
+            && let ConstValue::Number(n) = &x.1.node
+        {
+            max = n.to_owned().as_i64();
         }
     }
 
@@ -465,15 +465,15 @@ fn validate_float_range(
     let mut min: Option<f64> = None;
     let mut max: Option<f64> = None;
     if let Some(range) = directives.iter().find(|x| x.node.name.node == "range") {
-        if let Some(x) = range.node.arguments.iter().find(|x| x.0.node == "min") {
-            if let ConstValue::Number(n) = &x.1.node {
-                min = n.to_owned().as_f64();
-            }
+        if let Some(x) = range.node.arguments.iter().find(|x| x.0.node == "min")
+            && let ConstValue::Number(n) = &x.1.node
+        {
+            min = n.to_owned().as_f64();
         }
-        if let Some(x) = range.node.arguments.iter().find(|x| x.0.node == "max") {
-            if let ConstValue::Number(n) = &x.1.node {
-                max = n.to_owned().as_f64();
-            }
+        if let Some(x) = range.node.arguments.iter().find(|x| x.0.node == "max")
+            && let ConstValue::Number(n) = &x.1.node
+        {
+            max = n.to_owned().as_f64();
         }
     }
 
@@ -489,25 +489,25 @@ where
     T: std::cmp::PartialOrd + std::fmt::Display,
 {
     let (min, max) = range;
-    if let Some(r) = min {
-        if r > value {
-            return Err(ValidationError::ValueOutOfRange {
-                value_name: "range".into(),
-                range_detail: format!("min = {}", r),
-                value_detail: format!("provided value = {}", value),
-                pos,
-            });
-        }
+    if let Some(r) = min
+        && r > value
+    {
+        return Err(ValidationError::ValueOutOfRange {
+            value_name: "range".into(),
+            range_detail: format!("min = {}", r),
+            value_detail: format!("provided value = {}", value),
+            pos,
+        });
     }
-    if let Some(r) = max {
-        if value > r {
-            return Err(ValidationError::ValueOutOfRange {
-                value_name: "range".into(),
-                range_detail: format!("max = {}", r),
-                value_detail: format!("provided value = {}", value),
-                pos,
-            });
-        }
+    if let Some(r) = max
+        && value > r
+    {
+        return Err(ValidationError::ValueOutOfRange {
+            value_name: "range".into(),
+            range_detail: format!("max = {}", r),
+            value_detail: format!("provided value = {}", value),
+            pos,
+        });
     }
 
     Ok(())
