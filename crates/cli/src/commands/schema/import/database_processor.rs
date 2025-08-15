@@ -102,10 +102,10 @@ impl ImportWriter for ModuleImport {
     fn write_to(self, writer: &mut (dyn Write + Send)) -> Result<()> {
         // Write @postgres annotation
         write!(writer, "@postgres")?;
-        if let Some(schema) = &self.schema {
-            if !self.is_fragment {
-                write!(writer, "(schema=\"{schema}\")")?;
-            }
+        if let Some(schema) = &self.schema
+            && !self.is_fragment
+        {
+            write!(writer, "(schema=\"{schema}\")")?;
         }
         writeln!(writer)?;
 

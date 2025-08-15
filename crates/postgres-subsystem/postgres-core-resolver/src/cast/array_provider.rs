@@ -43,7 +43,7 @@ impl CastProvider for ArrayCastProvider {
                         .with_unnest(),
                 ))
             } else {
-                fn array_entry(elem: &Val) -> ArrayEntry<Val> {
+                fn array_entry(elem: &Val) -> ArrayEntry<'_, Val> {
                     match elem {
                         Val::List(elems) => ArrayEntry::List(elems),
                         _ => ArrayEntry::Single(elem),

@@ -937,7 +937,7 @@ fn compute_column_info(
                                 }],
                             })
                         } else if user_supplied_column_mapping.is_some() {
-                            return Err(Diagnostic {
+                            Err(Diagnostic {
                                 level: Level::Error,
                                 message: "Cannot specify @column with a collection field"
                                     .to_string(),
@@ -947,7 +947,7 @@ fn compute_column_info(
                                     style: SpanStyle::Primary,
                                     label: None,
                                 }],
-                            });
+                            })
                         } else {
                             Ok(ColumnInfo {
                                 names: id_column_names(matching_field)?,

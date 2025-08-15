@@ -27,10 +27,10 @@ pub fn aggregate_type_name(type_name: &str) -> String {
 }
 
 fn needs_aggregate(resolved_type: &ResolvedType) -> bool {
-    if let ResolvedType::Composite(c) = resolved_type {
-        if c.representation == EntityRepresentation::Json {
-            return false;
-        }
+    if let ResolvedType::Composite(c) = resolved_type
+        && c.representation == EntityRepresentation::Json
+    {
+        return false;
     }
     true
 }

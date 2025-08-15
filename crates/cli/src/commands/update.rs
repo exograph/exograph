@@ -81,15 +81,15 @@ pub(crate) async fn report_update_needed(env: &dyn Environment) -> anyhow::Resul
     let current_version = env!("CARGO_PKG_VERSION");
     let latest_version = get_latest_version(false).await?;
 
-    if let Some(latest_version) = latest_version {
-        if current_version != latest_version {
-            println!(
-                "{}{}{}",
-                "A new version (".yellow(),
-                latest_version.green().bold(),
-                ") of Exograph is available. Run `exo update` to install the new version.".yellow()
-            );
-        }
+    if let Some(latest_version) = latest_version
+        && current_version != latest_version
+    {
+        println!(
+            "{}{}{}",
+            "A new version (".yellow(),
+            latest_version.green().bold(),
+            ") of Exograph is available. Run `exo update` to install the new version.".yellow()
+        );
     }
 
     Ok(())

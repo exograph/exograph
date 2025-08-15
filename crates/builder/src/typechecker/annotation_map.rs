@@ -31,7 +31,7 @@ pub trait AnnotationMapImpl {
 
     fn get(&self, name: &str) -> Option<&AstAnnotationParams<Typed>>;
 
-    fn iter(&self) -> hash_map::Iter<String, AstAnnotation<Typed>>;
+    fn iter(&self) -> hash_map::Iter<'_, String, AstAnnotation<Typed>>;
 
     fn pass(
         &mut self,
@@ -69,7 +69,7 @@ impl AnnotationMapImpl for AnnotationMap {
         self.annotations.get(name).map(|a| &a.params)
     }
 
-    fn iter(&self) -> hash_map::Iter<String, AstAnnotation<Typed>> {
+    fn iter(&self) -> hash_map::Iter<'_, String, AstAnnotation<Typed>> {
         self.annotations.iter()
     }
 

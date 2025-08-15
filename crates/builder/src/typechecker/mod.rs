@@ -278,19 +278,19 @@ pub fn build(
                 .get_by_key(ast_root_type.name.as_str())
                 .unwrap()
                 .clone();
-            if let Type::Composite(c) = &mut typ {
-                if c.kind != AstModelKind::Context {
-                    errors.push(Diagnostic {
-                        level: Level::Error,
-                        message: "Models and types are not permitted outside a module".to_string(),
-                        code: Some("C000".to_string()),
-                        spans: vec![SpanLabel {
-                            span: ast_root_type.span,
-                            style: SpanStyle::Primary,
-                            label: None,
-                        }],
-                    })
-                }
+            if let Type::Composite(c) = &mut typ
+                && c.kind != AstModelKind::Context
+            {
+                errors.push(Diagnostic {
+                    level: Level::Error,
+                    message: "Models and types are not permitted outside a module".to_string(),
+                    code: Some("C000".to_string()),
+                    spans: vec![SpanLabel {
+                        span: ast_root_type.span,
+                        style: SpanStyle::Primary,
+                        label: None,
+                    }],
+                })
             }
         }
 

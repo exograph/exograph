@@ -330,13 +330,12 @@ async fn reduce_primitive_expression<'a>(
                             .solve(request_context, new_input_value.as_ref(), expr)
                             .await?;
 
-                        if let AccessSolution::Solved(AbstractPredicateWrapper(p)) = solved_expr {
-                            if p == AbstractPredicate::True {
-                                result = SolvedPrecheckPrimitiveExpression::Common(Some(
-                                    Val::Bool(true),
-                                ));
-                                break;
-                            }
+                        if let AccessSolution::Solved(AbstractPredicateWrapper(p)) = solved_expr
+                            && p == AbstractPredicate::True
+                        {
+                            result =
+                                SolvedPrecheckPrimitiveExpression::Common(Some(Val::Bool(true)));
+                            break;
                         }
                     }
                     Ok(AccessSolution::Solved(result))

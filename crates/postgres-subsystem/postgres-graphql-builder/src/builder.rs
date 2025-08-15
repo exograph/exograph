@@ -62,10 +62,10 @@ pub trait Builder {
         building: &mut SystemContextBuilding,
     ) {
         for (_, resolved_type) in resolved_types.iter() {
-            if let ResolvedType::Composite(composite_type) = &resolved_type {
-                if self.needs_mutation_type(composite_type) {
-                    self.create_shallow_type(composite_type, resolved_types, building);
-                }
+            if let ResolvedType::Composite(composite_type) = &resolved_type
+                && self.needs_mutation_type(composite_type)
+            {
+                self.create_shallow_type(composite_type, resolved_types, building);
             }
         }
     }

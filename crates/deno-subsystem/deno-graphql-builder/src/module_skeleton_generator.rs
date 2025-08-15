@@ -407,12 +407,10 @@ fn generate_method_skeleton(
 
     out_file.write_all(")".as_bytes())?;
 
-    if is_typescript {
-        if let Some(return_type) = return_type {
-            out_file.write_all(": Promise<".as_bytes())?;
-            out_file.write_all(return_type.typescript_type().as_bytes())?;
-            out_file.write_all(">".as_bytes())?;
-        }
+    if is_typescript && let Some(return_type) = return_type {
+        out_file.write_all(": Promise<".as_bytes())?;
+        out_file.write_all(return_type.typescript_type().as_bytes())?;
+        out_file.write_all(">".as_bytes())?;
     }
 
     out_file.write_all(" {\n".as_bytes())?;

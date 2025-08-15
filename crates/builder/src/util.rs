@@ -26,11 +26,11 @@ pub fn join_strings(strs: &[impl AsRef<str>], last_sep: Option<&'static str>) ->
                 if i < strs.len() - 1 {
                     joined.push_str(COMMA);
                 }
-                if i == strs.len() - 2 {
-                    if let Some(last_sep) = last_sep {
-                        joined.push_str(last_sep);
-                        joined.push(' ');
-                    }
+                if i == strs.len() - 2
+                    && let Some(last_sep) = last_sep
+                {
+                    joined.push_str(last_sep);
+                    joined.push(' ');
                 }
             }
             joined

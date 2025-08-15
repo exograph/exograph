@@ -135,13 +135,11 @@ pub(super) fn launch_process(
     })?;
 
     if !status.success() {
-        if report_errors {
-            if let Some(stderr) = command.stderr.take() {
-                let stderr = std::io::BufReader::new(stderr);
-                stderr.lines().for_each(|line| {
-                    tracing::error!("{}: {}", name, line.unwrap());
-                });
-            }
+        if report_errors && let Some(stderr) = command.stderr.take() {
+            let stderr = std::io::BufReader::new(stderr);
+            stderr.lines().for_each(|line| {
+                tracing::error!("{}: {}", name, line.unwrap());
+            });
         }
         return Err(EphemeralDatabaseSetupError::Generic(format!(
             "Process {name} exited with non-zero status code {status}",

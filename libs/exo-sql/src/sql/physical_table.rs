@@ -99,7 +99,7 @@ impl PhysicalTable {
         }
     }
 
-    pub fn delete(&self, predicate: ConcretePredicate, returning: Vec<Column>) -> Delete {
+    pub fn delete(&self, predicate: ConcretePredicate, returning: Vec<Column>) -> Delete<'_> {
         Delete {
             table: self,
             predicate: predicate.into(),
