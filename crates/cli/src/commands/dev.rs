@@ -11,8 +11,9 @@ use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 use colored::Colorize;
-use common::env_const::{DeploymentMode, EXO_POSTGRES_READ_WRITE, load_env};
-use exo_env::MapEnvironment;
+use common::env_const::EXO_POSTGRES_READ_WRITE;
+use common::env_processing::EnvProcessing;
+use exo_env::{Environment, MapEnvironment};
 use exo_sql::schema::migration::{Migration, VerificationErrors};
 use exo_sql::{DatabaseClient, TransactionMode};
 use futures::FutureExt;
@@ -56,11 +57,17 @@ impl CommandDefinition for DevCommandDefinition {
             )
     }
 
-    /// Run local exograph server
-    async fn execute(&self, matches: &ArgMatches, config: &Config) -> Result<()> {
-        let mut env_vars =
-            MapEnvironment::new_with_fallback(Arc::new(load_env(&DeploymentMode::Dev)));
+    fn env_processing(&self, _env: &dyn Environment) -> EnvProcessing {
+        EnvProcessing::Process(Some("dev".to_string()))
+    }
 
+    /// Run local exograph server
+    async fn execute(
+        &self,
+        matches: &ArgMatches,
+        config: &Config,
+        env: Arc<dyn Environment>,
+    ) -> Result<()> {
         let root_path = PathBuf::from(".");
         ensure_exo_project_dir(&root_path)?;
 
@@ -70,7 +77,8 @@ impl CommandDefinition for DevCommandDefinition {
         let ignore_migration_errors: bool =
             get(matches, "ignore-migration-errors").unwrap_or(false);
 
-        let read_write_mode: bool = super::util::read_write_mode(matches, "read-write", &env_vars)?;
+        let read_write_mode: bool =
+            super::util::read_write_mode(matches, "read-write", env.as_ref())?;
 
         let transaction_mode = if read_write_mode {
             TransactionMode::ReadWrite
@@ -94,6 +102,8 @@ impl CommandDefinition for DevCommandDefinition {
 
         let migration_scope_str = migration_scope_value(matches);
 
+        let mut env_vars = MapEnvironment::new_with_fallback(env);
+
         // Create environment variables for the child server process
         setup_trusted_documents_enforcement(matches, &mut env_vars);
         super::util::set_dev_yolo_env_vars(&mut env_vars, false);
@@ -116,7 +126,7 @@ impl CommandDefinition for DevCommandDefinition {
                 let migration_scope = compute_migration_scope(migration_scope_str);
                 println!("{}", "\nVerifying new model...".blue().bold());
 
-                let db_client = util::open_database(None, transaction_mode).await?;
+                let db_client = util::open_database(None, transaction_mode, &env_vars).await?;
 
                 loop {
                     let database = util::extract_postgres_database(&model_file, None, false).await?;

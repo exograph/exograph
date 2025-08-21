@@ -12,11 +12,13 @@ use async_trait::async_trait;
 use builder::RealFileSystem;
 use builder::error::ParserError;
 use clap::{ArgMatches, Command};
+use common::env_processing::EnvProcessing;
 use core_model_builder::plugin::BuildMode;
 use core_plugin_interface::interface::SubsystemBuilder;
 use core_plugin_shared::profile::SchemaProfiles;
 use core_plugin_shared::serializable_system::SerializableSystem;
 use core_plugin_shared::system_serializer::SystemSerializer;
+use exo_env::Environment;
 
 use std::error::Error;
 use std::fmt::Display;
@@ -24,6 +26,7 @@ use std::fs::create_dir_all;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::{fs::File, io::BufWriter};
 
 use crate::commands::command::default_model_file;
@@ -43,8 +46,18 @@ impl CommandDefinition for BuildCommandDefinition {
         Command::new("build").about("Build exograph server binary")
     }
 
+    /// Build command does not process env files.
+    fn env_processing(&self, _env: &dyn Environment) -> EnvProcessing {
+        EnvProcessing::DoNotProcess
+    }
+
     /// Build exograph server binary
-    async fn execute(&self, _matches: &ArgMatches, config: &Config) -> Result<()> {
+    async fn execute(
+        &self,
+        _matches: &ArgMatches,
+        config: &Config,
+        _env: Arc<dyn Environment>,
+    ) -> Result<()> {
         build(true, config).await?;
 
         Ok(())

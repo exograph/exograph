@@ -9,11 +9,14 @@
 
 use std::{
     env,
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use anyhow::Result;
-use common::logging_tracing;
+use exo_env::SystemEnvironment;
 use tokio::sync::{
     Mutex,
     broadcast::{Receiver, Sender},
@@ -48,8 +51,6 @@ pub static EXIT_ON_SIGINT: AtomicBool = AtomicBool::new(true);
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    logging_tracing::init().await?;
-
     // register a sigint handler
     ctrlc::set_handler(move || {
         // set SIGINT event when receiving signal
@@ -89,7 +90,7 @@ async fn main() -> Result<()> {
 
     let config = config::load_config()?;
 
-    exo_deno::initialize();
-
-    subcommand_definition.execute(&matches, &config).await
+    subcommand_definition
+        .execute(&matches, &config, Arc::new(SystemEnvironment))
+        .await
 }

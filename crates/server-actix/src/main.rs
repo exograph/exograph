@@ -9,7 +9,8 @@
 
 use actix_web::{App, HttpServer, middleware, web};
 
-use common::env_const::{get_mcp_http_path, load_env};
+use common::env_const::get_mcp_http_path;
+use common::env_processing::EnvProcessing;
 use server_actix::configure_router;
 use thiserror::Error;
 use tracing_actix_web::TracingLogger;
@@ -40,8 +41,6 @@ enum ServerError {
     EnvError(#[from] exo_env::EnvError),
     #[error("{0}")]
     ServerInitError(#[from] server_common::ServerInitError),
-    #[error("Configuration error: {0}")]
-    ConfigError(String),
 }
 
 // A custom `Debug` implementation for `ServerError` (that delegate to the `Display` impl), so that
@@ -57,20 +56,7 @@ impl std::fmt::Debug for ServerError {
 async fn main() -> Result<(), ServerError> {
     let start_time = time::SystemTime::now();
 
-    let deployment_mode = match get_deployment_mode(&SystemEnvironment)? {
-        Some(mode) => mode,
-        None => {
-            let env_value = SystemEnvironment
-                .get("EXO_ENV")
-                .unwrap_or_else(|| "<unset>".to_string());
-            return Err(ServerError::ConfigError(format!(
-                "Cannot determine deployment mode. Must set EXO_ENV to one of 'yolo', 'dev', 'test', 'playground', or 'production', got: {}",
-                env_value
-            )));
-        }
-    };
-
-    let env = Arc::new(load_env(&deployment_mode));
+    let env = Arc::new(EnvProcessing::Process(SystemEnvironment.get("EXO_ENV")).load_env());
 
     let system_router = web::Data::new(server_common::init(env.clone()).await?);
 
@@ -99,11 +85,13 @@ async fn main() -> Result<(), ServerError> {
     let server = match server_host {
         Some(host) => server.bind((host, server_port)),
         None => {
-            match deployment_mode {
-                DeploymentMode::Dev
-                | DeploymentMode::Yolo
-                | DeploymentMode::Test
-                | DeploymentMode::Playground(_) => {
+            match get_deployment_mode(env.as_ref())? {
+                Some(
+                    DeploymentMode::Dev
+                    | DeploymentMode::Yolo
+                    | DeploymentMode::Test
+                    | DeploymentMode::Playground(_),
+                ) => {
                     // Bind to "localhost" (needed for development). By binding to "localhost" we
                     // bind to both IPv4 and IPv6 loopback addresses ([::1]:9876, 127.0.0.1:9876)
                     //
@@ -112,7 +100,7 @@ async fn main() -> Result<(), ServerError> {
                     // works fine, if we bind to IPv6 loopback address "::1").
                     server.bind(("localhost", server_port))
                 }
-                DeploymentMode::Production => {
+                Some(DeploymentMode::Production) | None => {
                     // Bind to "0.0.0.0" (all interfaces; needed for production; see the
                     // recommendation in `HttpServer::bind` documentation). This allows the server
                     // to be accessed from outside the host machine (e.g. when the server is in a

@@ -220,12 +220,11 @@ impl TypeValidationProvider for SerializableTypeHint {
         // Check if this is a FloatTypeHint
         else if let Some(float_hint) =
             hint_ref.downcast_ref::<crate::type_provider::FloatTypeHint>()
+            && let Some(r) = &float_hint.range
         {
-            if let Some(r) = &float_hint.range {
-                return Some(TypeValidation::Float {
-                    range: r.to_owned(),
-                });
-            }
+            return Some(TypeValidation::Float {
+                range: r.to_owned(),
+            });
         }
         None
     }

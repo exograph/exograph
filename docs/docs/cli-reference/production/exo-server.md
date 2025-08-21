@@ -15,7 +15,7 @@ You build the exo_ir using the `exo build` command. See [`exo build`](/cli-refer
 
 ## Serving the exo_ir
 
-You serve the exo_ir using the `exo-server` command. The command expects `target/index_exo_ir` as the location of the exo_ir file (which is the file created by the `exo build` command). The command also requires the `EXO_ENV` environment variable to be set (typically to `production`).
+You serve the exo_ir using the `exo-server` command. The command expects `target/index_exo_ir` as the location of the exo_ir file (which is the file created by the `exo build` command). The command processes [.env* files](/managing-env.md) based on the `EXO_ENV` environment variable to be set (typically to `production`).
 
 ```shell-session
 # shell-command-next-line

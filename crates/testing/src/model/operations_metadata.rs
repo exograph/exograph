@@ -89,8 +89,8 @@ pub fn build_operations_metadata(document: &ExecutableDocument) -> OperationMeta
         }
         DocumentOperations::Multiple(operations) => OperationMetadata::combine(
             operations
-                .iter()
-                .map(|(_, operation)| {
+                .values()
+                .map(|operation| {
                     let selection_set = &operation.node.selection_set.node;
                     process_selection_set(
                         selection_set,

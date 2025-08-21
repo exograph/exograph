@@ -7,11 +7,12 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::sync::Arc;
 use std::{io, path::PathBuf};
 
 use anyhow::anyhow;
 use colored::Colorize;
-use exo_env::SystemEnvironment;
+use exo_env::{Environment, SystemEnvironment};
 use exo_sql::SchemaObjectName;
 use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::migration::{
@@ -80,7 +81,12 @@ impl CommandDefinition for MigrateCommandDefinition {
     }
 
     /// Perform a database migration for a exograph model
-    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
+    async fn execute(
+        &self,
+        matches: &clap::ArgMatches,
+        _config: &Config,
+        env: Arc<dyn Environment>,
+    ) -> Result<()> {
         let model: PathBuf = default_model_file();
         let database_url = database_value(matches);
         let output: Option<PathBuf> = get(matches, "output");
@@ -114,7 +120,8 @@ impl CommandDefinition for MigrateCommandDefinition {
             }
         };
 
-        let db_client = open_database(database_url.as_deref(), transaction_mode).await?;
+        let db_client =
+            open_database(database_url.as_deref(), transaction_mode, env.as_ref()).await?;
         let mut db_client = db_client.get_client().await?;
 
         let scope = compute_migration_scope(scope);
@@ -212,12 +219,11 @@ impl MigrationInteraction for UserMigrationInteraction {
             vec![MANUAL_HANDLE, RENAME_HANDLE, DELETE_HANDLE]
         };
 
-        if let Some(predefined_interaction) = &self.predefined_interaction {
-            if let Ok(action) =
+        if let Some(predefined_interaction) = &self.predefined_interaction
+            && let Ok(action) =
                 predefined_interaction.handle_table_delete(deleted_table, create_tables)
-            {
-                return Ok(action);
-            }
+        {
+            return Ok(action);
         }
 
         println!(

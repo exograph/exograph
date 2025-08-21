@@ -314,7 +314,7 @@ impl DenoModule {
                 "",
                 deno_core::FastString::from(format!("mod.{function_name}")),
             )
-            .map_err(DenoInternalError::JsError)?;
+            .map_err(|e| DenoInternalError::JsError(Box::new(e)))?;
 
         let shim_objects: HashMap<_, _> = {
             let shim_objects_vals: Vec<_> = self
@@ -322,7 +322,7 @@ impl DenoModule {
                 .iter()
                 .map(|name| runtime.execute_script("", deno_core::FastString::from(name.clone())))
                 .collect::<Result<_, _>>()
-                .map_err(DenoInternalError::JsError)?;
+                .map_err(|e| DenoInternalError::JsError(Box::new(e)))?;
             self.shim_object_names
                 .iter()
                 .zip(shim_objects_vals.into_iter())
@@ -448,7 +448,7 @@ impl DenoModule {
             }
             _ => {
                 // generic error message
-                DenoError::JsError(js_error)
+                DenoError::JsError(Box::new(js_error))
             }
         }
     }

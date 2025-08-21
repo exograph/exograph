@@ -456,19 +456,18 @@ pub trait DataParamBuilder<D> {
             );
             if let (PostgresType::Composite(field_type), PostgresRelation::OneToMany { .. }) =
                 (&field_type, &field.relation)
+                && !expanding_one_to_many
             {
-                if !expanding_one_to_many {
-                    let expanded = self.expand_one_to_many(
-                        entity_type,
-                        field,
-                        field_type,
-                        building,
-                        top_level_type,
-                        Some(entity_type),
-                        true,
-                    )?;
-                    field_types.extend(expanded);
-                }
+                let expanded = self.expand_one_to_many(
+                    entity_type,
+                    field,
+                    field_type,
+                    building,
+                    top_level_type,
+                    Some(entity_type),
+                    true,
+                )?;
+                field_types.extend(expanded);
             }
         }
 

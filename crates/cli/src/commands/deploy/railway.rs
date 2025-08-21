@@ -8,11 +8,13 @@
 // by the Apache License, Version 2.0.
 
 use std::path::Path;
+use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::{Arg, Command};
 use colored::Colorize;
+use exo_env::Environment;
 
 use crate::commands::{command::CommandDefinition, deploy::util::write_template_file};
 use crate::config::Config;
@@ -31,7 +33,12 @@ impl CommandDefinition for RailwayCommandDefinition {
     }
 
     /// Create a Dockerfile. Then provide instructions on how to deploy the app to Railway.app.
-    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
+    async fn execute(
+        &self,
+        matches: &clap::ArgMatches,
+        _config: &Config,
+        _env: Arc<dyn Environment>,
+    ) -> Result<()> {
         let current_dir = std::env::current_dir()?;
 
         let use_railway_db: bool = match matches.get_one("use-railway-db") {

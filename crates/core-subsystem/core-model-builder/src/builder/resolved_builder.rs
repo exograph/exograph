@@ -105,52 +105,49 @@ fn resolve_contexts(
     let mut resolved_contexts: MappedArena<ResolvedContext> = MappedArena::default();
 
     for (_, typ) in types.iter() {
-        if let Type::Composite(ct) = typ {
-            if ct.kind == AstModelKind::Context {
-                let resolved_fields: Vec<_> = ct
-                    .fields
-                    .iter()
-                    .flat_map(|field| {
-                        let typ = match resolve_context_field_type(&field.typ.to_typ(types), types)
-                        {
-                            Ok(typ) => Some(typ),
-                            Err(e) => {
-                                errors.push(Diagnostic {
-                                    level: Level::Error,
-                                    message: e.to_string(),
-                                    code: Some("C000".to_string()),
-                                    spans: vec![SpanLabel {
-                                        span: field.span,
-                                        style: SpanStyle::Primary,
-                                        label: None,
-                                    }],
-                                });
-                                None
-                            }
-                        };
+        if let Type::Composite(ct) = typ
+            && ct.kind == AstModelKind::Context
+        {
+            let resolved_fields: Vec<_> = ct
+                .fields
+                .iter()
+                .flat_map(|field| {
+                    let typ = match resolve_context_field_type(&field.typ.to_typ(types), types) {
+                        Ok(typ) => Some(typ),
+                        Err(e) => {
+                            errors.push(Diagnostic {
+                                level: Level::Error,
+                                message: e.to_string(),
+                                code: Some("C000".to_string()),
+                                spans: vec![SpanLabel {
+                                    span: field.span,
+                                    style: SpanStyle::Primary,
+                                    label: None,
+                                }],
+                            });
+                            None
+                        }
+                    };
 
-                        typ.and_then(|typ| {
-                            extract_context_source(field, errors).map(|source| {
-                                ResolvedContextField {
-                                    name: field.name.clone(),
-                                    typ,
-                                    source,
-                                    doc_comments: field.doc_comments.clone(),
-                                }
-                            })
+                    typ.and_then(|typ| {
+                        extract_context_source(field, errors).map(|source| ResolvedContextField {
+                            name: field.name.clone(),
+                            typ,
+                            source,
+                            doc_comments: field.doc_comments.clone(),
                         })
                     })
-                    .collect();
+                })
+                .collect();
 
-                resolved_contexts.add(
-                    &ct.name,
-                    ResolvedContext {
-                        name: ct.name.clone(),
-                        fields: resolved_fields,
-                        doc_comments: ct.doc_comments.clone(),
-                    },
-                );
-            }
+            resolved_contexts.add(
+                &ct.name,
+                ResolvedContext {
+                    name: ct.name.clone(),
+                    fields: resolved_fields,
+                    doc_comments: ct.doc_comments.clone(),
+                },
+            );
         }
     }
 

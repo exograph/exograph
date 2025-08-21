@@ -9,9 +9,12 @@
 
 use async_trait::async_trait;
 use clap::{ArgMatches, Command};
-use std::process::Command as ProcessCommand;
+use exo_env::Environment;
+use std::{process::Command as ProcessCommand, sync::Arc};
 
 use colored::Colorize;
+
+use common::env_processing::EnvProcessing;
 
 use crate::{commands::command::CommandDefinition, config::Config};
 
@@ -23,7 +26,16 @@ impl CommandDefinition for UpdateCommandDefinition {
         Command::new("update").about("Updates the Exograph version")
     }
 
-    async fn execute(&self, _args: &ArgMatches, _config: &Config) -> anyhow::Result<()> {
+    fn env_processing(&self, _env: &dyn Environment) -> EnvProcessing {
+        EnvProcessing::DoNotProcess
+    }
+
+    async fn execute(
+        &self,
+        _args: &ArgMatches,
+        _config: &Config,
+        _env: Arc<dyn Environment>,
+    ) -> anyhow::Result<()> {
         let current_version = env!("CARGO_PKG_VERSION");
         let latest_version = get_latest_version(true).await?;
 
@@ -59,13 +71,8 @@ impl CommandDefinition for UpdateCommandDefinition {
     }
 }
 
-pub(crate) async fn report_update_needed() -> anyhow::Result<()> {
-    let skip_update_check = std::env::var("EXO_SKIP_UPDATE_CHECK")
-        .ok()
-        .unwrap_or("false".to_string())
-        .to_lowercase()
-        .as_str()
-        == "true";
+pub(crate) async fn report_update_needed(env: &dyn Environment) -> anyhow::Result<()> {
+    let skip_update_check = env.enabled("EXO_SKIP_UPDATE_CHECK", false)?;
 
     if skip_update_check {
         return Ok(());
@@ -74,15 +81,15 @@ pub(crate) async fn report_update_needed() -> anyhow::Result<()> {
     let current_version = env!("CARGO_PKG_VERSION");
     let latest_version = get_latest_version(false).await?;
 
-    if let Some(latest_version) = latest_version {
-        if current_version != latest_version {
-            println!(
-                "{}{}{}",
-                "A new version (".yellow(),
-                latest_version.green().bold(),
-                ") of Exograph is available. Run `exo update` to install the new version.".yellow()
-            );
-        }
+    if let Some(latest_version) = latest_version
+        && current_version != latest_version
+    {
+        println!(
+            "{}{}{}",
+            "A new version (".yellow(),
+            latest_version.green().bold(),
+            ") of Exograph is available. Run `exo update` to install the new version.".yellow()
+        );
     }
 
     Ok(())

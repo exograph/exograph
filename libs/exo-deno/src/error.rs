@@ -14,6 +14,7 @@ use deno_core::{
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum DenoError {
     // Explicit error thrown by a script (this should be propagated to the user)
     #[error("{0}")]
@@ -21,7 +22,7 @@ pub enum DenoError {
 
     // Non-explicit error thrown by the runtime (such as undefined variable)
     #[error("{0}")]
-    JsError(#[from] JsError),
+    JsError(#[from] Box<JsError>),
 
     #[error("{0}")]
     AnyError(#[from] AnyError),
@@ -62,5 +63,5 @@ pub enum DenoInternalError {
     CoreError(#[from] deno_core::error::CoreError),
 
     #[error("{0}")]
-    JsError(#[from] deno_core::error::JsError),
+    JsError(#[from] Box<deno_core::error::JsError>),
 }

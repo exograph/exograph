@@ -229,10 +229,10 @@ pub fn new_field_param(
     let field_entity_type =
         field_type_id.to_type(primitive_types.values_ref(), entity_types.values_ref());
 
-    if let PostgresType::Composite(ct) = &field_entity_type {
-        if ct.representation == EntityRepresentation::Json {
-            return None;
-        }
+    if let PostgresType::Composite(ct) = &field_entity_type
+        && ct.representation == EntityRepresentation::Json
+    {
+        return None;
     }
 
     let column_path_link = Some(entity_field.relation.column_path_link(database));

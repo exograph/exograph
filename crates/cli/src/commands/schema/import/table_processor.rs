@@ -473,12 +473,11 @@ impl TableSpecImportNaming for TableSpec {
 
                 // Add @index annotation if any of the FK columns have an index
                 // For FK fields, we need to check the foreign key column name (not the field name)
-                if let Some(fk_column) = references.first() {
-                    if let Some(index_annotation) =
+                if let Some(fk_column) = references.first()
+                    && let Some(index_annotation) =
                         self.generate_index_annotation(&fk_column.0.name)
-                    {
-                        annotations.push(index_annotation);
-                    }
+                {
+                    annotations.push(index_annotation);
                 }
 
                 fields.push(FieldImport {

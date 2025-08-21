@@ -1,6 +1,4 @@
-use std::sync::Arc;
-
-use exo_env::{CompositeEnvironment, DotEnvironment, EnvError, Environment, SystemEnvironment};
+use exo_env::{EnvError, Environment};
 
 pub const EXO_INTROSPECTION: &str = "EXO_INTROSPECTION";
 pub const EXO_INTROSPECTION_LIVE_UPDATE: &str = "EXO_INTROSPECTION_LIVE_UPDATE";
@@ -20,7 +18,10 @@ pub const EXO_CHECK_CONNECTION_ON_STARTUP: &str = "EXO_CHECK_CONNECTION_ON_START
 
 pub const EXO_SERVER_PORT: &str = "EXO_SERVER_PORT";
 
-pub const EXO_ENV: &str = "EXO_ENV"; // "yolo", "dev", "playground" or "prod" 
+pub const EXO_ENABLE_OTEL: &str = "EXO_ENABLE_OTEL";
+pub const EXO_LOG: &str = "EXO_LOG";
+
+pub const EXO_ENV: &str = "EXO_ENV"; // "yolo", "dev", "test", "playground" or "production" for standard deployment modes or any other value for non-standard deployment modes
 pub const _EXO_ENFORCE_TRUSTED_DOCUMENTS: &str = "_EXO_ENFORCE_TRUSTED_DOCUMENTS";
 
 pub const _EXO_UPSTREAM_ENDPOINT_URL: &str = "_EXO_UPSTREAM_ENDPOINT_URL";
@@ -63,12 +64,11 @@ impl DeploymentMode {
 pub fn get_deployment_mode(env: &dyn Environment) -> Result<Option<DeploymentMode>, EnvError> {
     let deployment_mode = env.get(EXO_ENV);
 
-    deployment_mode
-        .as_deref()
-        .map(|mode| match mode {
-            "yolo" => Ok(DeploymentMode::Yolo),
-            "dev" => Ok(DeploymentMode::Dev),
-            "test" => Ok(DeploymentMode::Test),
+    match deployment_mode {
+        Some(mode) => match mode.as_str() {
+            "yolo" => Ok(Some(DeploymentMode::Yolo)),
+            "dev" => Ok(Some(DeploymentMode::Dev)),
+            "test" => Ok(Some(DeploymentMode::Test)),
             "playground" => {
                 let endpoint_url = env.get(_EXO_UPSTREAM_ENDPOINT_URL).ok_or_else(|| {
                     let actual_value = env
@@ -80,39 +80,13 @@ pub fn get_deployment_mode(env: &dyn Environment) -> Result<Option<DeploymentMod
                         message: format!("Must be set to a valid URL, got: {}", actual_value),
                     }
                 })?;
-                Ok(DeploymentMode::Playground(endpoint_url))
+                Ok(Some(DeploymentMode::Playground(endpoint_url)))
             }
-            "production" => Ok(DeploymentMode::Production),
-            other => Err(EnvError::InvalidEnum {
-                env_key: EXO_ENV,
-                env_value: other.to_string(),
-                message: format!(
-                    "Must be one of 'yolo', 'dev', 'test', 'playground', or 'production', got: {}",
-                    other
-                ),
-            }),
-        })
-        .transpose()
-}
-
-pub fn load_env(mode: &DeploymentMode) -> impl Environment + Send + Sync + 'static {
-    let mode_key = mode.env_key();
-
-    // Files in order of precedence
-    let env_files = [
-        format!(".env.{}.local", mode_key),
-        ".env.local".to_string(),
-        format!(".env.{}", mode_key),
-        ".env".to_string(),
-    ];
-
-    let mut envs: Vec<Arc<dyn Environment>> = vec![Arc::new(SystemEnvironment)];
-
-    for env_file in env_files.iter() {
-        envs.push(Arc::new(DotEnvironment::new(env_file)));
+            "production" => Ok(Some(DeploymentMode::Production)),
+            _non_standard_mode => Ok(None),
+        },
+        None => Ok(None),
     }
-
-    CompositeEnvironment::new(envs)
 }
 
 pub fn is_production(env: &dyn Environment) -> bool {

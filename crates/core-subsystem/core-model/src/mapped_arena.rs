@@ -48,7 +48,7 @@ impl<V> MappedArena<V> {
         self.values.is_empty()
     }
 
-    pub fn keys(&self) -> Keys<String, SerializableSlabIndex<V>> {
+    pub fn keys(&self) -> Keys<'_, String, SerializableSlabIndex<V>> {
         self.map.keys()
     }
 
@@ -83,7 +83,7 @@ impl<V> MappedArena<V> {
         id
     }
 
-    pub fn iter(&self) -> typed_generational_arena::Iter<V, usize, IgnoreGeneration> {
+    pub fn iter(&self) -> typed_generational_arena::Iter<'_, V, usize, IgnoreGeneration> {
         self.values.iter()
     }
 }

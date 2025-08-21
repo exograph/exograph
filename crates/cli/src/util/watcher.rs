@@ -93,12 +93,11 @@ where
                     break;  // quit if channel closed
                 };
 
-                if let Ok(events) = events {
-                        if events.iter().map(|event| &event.path).any(|p| should_restart(p)) {
+                if let Ok(events) = events
+                        && events.iter().map(|event| &event.path).any(|p| should_restart(p)) {
                             println!("\nChange detected, rebuilding and restarting...");
                             server = build_and_start_server(server_port, config, watch_stage, &prestart_callback).await?;
-                        }
-                    };
+                        };
             }
 
             _ = ctrl_c_event => {

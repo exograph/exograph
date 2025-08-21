@@ -7,7 +7,7 @@ publish = false
 [features]
 default = []
 test-context = []
-test-support = ["colored", "wildmatch"]
+test-support = ["wildmatch"]
 opentelemetry = ["opentelemetry_sdk", "opentelemetry-otlp", "tonic"]
 
 [dependencies]
@@ -28,6 +28,7 @@ elsa = "1.8.1"
 async-graphql-value.workspace = true
 tokio-postgres.workspace = true
 zip.workspace = true
+colored.workspace = true
 
 exo-env = { path = "../../libs/exo-env" }
 exo-sql = { path = "../../libs/exo-sql" }
@@ -58,7 +59,6 @@ tonic = { version = "0.12.3", features = ["tls", "tls-roots"], optional = true }
 hyper-util = { version = "0.1.7" }
 tower = { version = "0.5", features = ["util"] }
 
-colored = { workspace = true, optional = true }
 wildmatch = { workspace = true, optional = true }
 
 [dev-dependencies]
