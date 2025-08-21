@@ -79,7 +79,7 @@ ctor = "0.2.9"
 http = "1"
 clap = "4.5.21"
 
-deno_core = "0.354.0"
+deno_core = "0.355.0"
 deno_error = "0.7.0"
 
 futures = "0.3.29"

@@ -25,6 +25,7 @@ use deno_runtime::worker::MainWorker;
 use deno_runtime::worker::WorkerOptions;
 use deno_runtime::worker::WorkerServiceOptions;
 use include_dir::Dir;
+use node_resolver::errors::PackageJsonLoadError;
 use tracing::error;
 
 use std::borrow::Cow;
@@ -48,7 +49,6 @@ use crate::error::DenoInternalError;
 
 use super::embedded_module_loader::EmbeddedModuleLoader;
 use deno_error::JsErrorBox;
-use node_resolver::errors::ClosestPkgJsonError;
 
 /// Minimal implementation of NodeRequireLoader
 /// Since we use the bundler approach, we don't need to load any files from the file system.
@@ -72,7 +72,7 @@ impl deno_runtime::deno_node::NodeRequireLoader for BasicNodeRequireLoader {
         Ok(deno_core::FastString::from(content))
     }
 
-    fn is_maybe_cjs(&self, _specifier: &deno_core::url::Url) -> Result<bool, ClosestPkgJsonError> {
+    fn is_maybe_cjs(&self, _specifier: &deno_core::url::Url) -> Result<bool, PackageJsonLoadError> {
         Ok(false)
     }
 }
