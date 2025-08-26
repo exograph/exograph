@@ -118,8 +118,12 @@ impl ModuleLoader for EmbeddedModuleLoader {
                 let source_code = match module_source.code {
                     deno_core::ModuleSourceCode::String(ref code) => code.as_str().to_string(),
                     deno_core::ModuleSourceCode::Bytes(ref bytes) => {
-                        String::from_utf8(bytes.to_vec())
-                            .expect("Failed to convert bytes to string")
+                        String::from_utf8(bytes.to_vec()).map_err(|e| {
+                            ModuleLoaderError::generic(format!(
+                                "Failed to convert bytes to UTF-8 string: {}",
+                                e
+                            ))
+                        })?
                     }
                 };
 

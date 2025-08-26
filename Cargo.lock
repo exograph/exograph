@@ -2195,6 +2195,7 @@ dependencies = [
  "serde_json",
  "subsystem-model-builder-util",
  "tempfile",
+ "tokio",
  "url",
 ]
 

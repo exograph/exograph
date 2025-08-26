@@ -41,11 +41,12 @@ const DENO_VERSION: &str = "2.4.5";
 async fn bundle_source(module_fs_path: &Path) -> Result<String, ModelBuildingError> {
     let deno_path = download_deno_if_needed().await?;
 
-    let output = std::process::Command::new(deno_path)
+    let output = tokio::process::Command::new(deno_path)
         .arg("bundle")
         .arg("--allow-import")
         .arg(module_fs_path.to_string_lossy().as_ref())
-        .output()?;
+        .output()
+        .await?;
 
     if !output.status.success() {
         return Err(ModelBuildingError::Generic(format!(
