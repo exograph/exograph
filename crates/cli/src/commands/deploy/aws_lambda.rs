@@ -22,7 +22,7 @@ use exo_env::Environment;
 use crate::commands::{build::build, command::CommandDefinition};
 use crate::config::Config;
 
-use common::download::download_if_needed;
+use common::download::download_file_if_needed;
 
 use super::{util::app_name_arg, util::app_name_from_args};
 
@@ -59,7 +59,7 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
         );
 
         let downloaded_file_path =
-            download_if_needed(&download_url, "Exograph AWS Distribution", None, false).await?;
+            download_file_if_needed(&download_url, "Exograph AWS Distribution").await?;
 
         let app_name: String = app_name_from_args(matches);
 
@@ -133,8 +133,8 @@ fn create_function_zip(distribution_zip_path: PathBuf) -> Result<()> {
 
     let mut zip_writer = zip::ZipWriter::new(zip_file);
 
-    let zip_options =
-        zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    let zip_options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
 
     zip_writer.raw_copy_file(distribution_zip_file.by_name("bootstrap")?)?;
 
@@ -152,7 +152,7 @@ fn append_file(
     zip_writer: &mut zip::ZipWriter<File>,
     file_name: &str,
     file_path: &PathBuf,
-    zip_options: zip::write::FileOptions,
+    zip_options: zip::write::SimpleFileOptions,
 ) -> Result<()> {
     zip_writer.start_file(file_name, zip_options)?;
 

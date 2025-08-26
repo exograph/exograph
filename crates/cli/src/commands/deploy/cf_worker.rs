@@ -15,7 +15,7 @@ use exo_env::Environment;
 use crate::commands::{build::build, command::CommandDefinition};
 use crate::config::Config;
 
-use common::download::download_if_needed;
+use common::download::download_file_if_needed;
 
 use super::util::{app_name_arg, app_name_from_args, write_template_file};
 
@@ -116,13 +116,8 @@ async fn extract_distribution(cf_worker_dir: &PathBuf) -> Result<()> {
         "https://github.com/exograph/exograph/releases/download/v{CURRENT_VERSION}/{download_file_name}"
     );
 
-    let distribution_zip_path = download_if_needed(
-        &download_url,
-        "Exograph Cloudflare Worker Distribution",
-        None,
-        false,
-    )
-    .await?;
+    let distribution_zip_path =
+        download_file_if_needed(&download_url, "Exograph Cloudflare Worker Distribution").await?;
 
     let mut distribution_zip_file = zip::ZipArchive::new(File::open(distribution_zip_path)?)?;
     distribution_zip_file.extract(cf_worker_dir)?;

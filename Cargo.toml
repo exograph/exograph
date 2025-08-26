@@ -122,7 +122,7 @@ multiplatform_test = "0.3.0"
 pluralizer = "0.5.0"
 tracing-subscriber = "0.3.19"
 toml = { version = "0.8.22", features = ["parse"] }
-zip = "0.6.6"
+zip = "4.5.0"
 
 # reduce binary size, does not affect stack traces
 [profile.dev]

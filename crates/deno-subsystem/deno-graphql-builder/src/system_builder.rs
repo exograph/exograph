@@ -7,10 +7,14 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{collections::HashMap, env, path::Path};
+use std::{
+    collections::HashMap,
+    env,
+    path::{Path, PathBuf},
+};
 
 use async_trait::async_trait;
-use common::download::{download_if_needed, exo_cache_root};
+use common::download::{download_dir_if_needed, exo_cache_root};
 use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use core_model_builder::{
     ast::ast_types::{AstExpr, AstModule},
@@ -35,41 +39,7 @@ use crate::module_skeleton_generator;
 const DENO_VERSION: &str = "2.4.5";
 
 async fn bundle_source(module_fs_path: &Path) -> Result<String, ModelBuildingError> {
-    let deno_path = exo_cache_root()
-        .map_err(|e| {
-            ModelBuildingError::Generic(format!("Failed to determine cache root directory: {}", e))
-        })?
-        .join("deno")
-        .join(DENO_VERSION)
-        .join("deno");
-
-    if !deno_path.exists() {
-        let target_os = env::consts::OS;
-        let target_arch = env::consts::ARCH;
-
-        let platform = match (target_os, target_arch) {
-            ("macos", "x86_64") => "x86_64-apple-darwin",
-            ("macos", "aarch64") => "aarch64-apple-darwin",
-            ("linux", "x86_64") => "x86_64-unknown-linux-gnu",
-            ("windows", "x86_64") => "x86_64-pc-windows-msvc",
-            (os, arch) => {
-                return Err(ModelBuildingError::Generic(format!(
-                    "Unsupported platform: {os}-{arch}"
-                )));
-            }
-        };
-
-        download_if_needed(
-            &format!(
-                "https://github.com/denoland/deno/releases/download/v{DENO_VERSION}/deno-{platform}.zip"
-            ),
-            "Deno",
-            Some(&format!("deno/{DENO_VERSION}")),
-            true,
-        )
-        .await
-        .map_err(|e| ModelBuildingError::Generic(format!("Failed to download Deno: {}", e)))?;
-    }
+    let deno_path = download_deno_if_needed().await?;
 
     let output = std::process::Command::new(deno_path)
         .arg("bundle")
@@ -87,6 +57,54 @@ async fn bundle_source(module_fs_path: &Path) -> Result<String, ModelBuildingErr
     String::from_utf8(output.stdout).map_err(|e| {
         ModelBuildingError::Generic(format!("Failed to parse bundled output as UTF-8: {}", e))
     })
+}
+
+async fn download_deno_if_needed() -> Result<PathBuf, ModelBuildingError> {
+    let deno_executable = if env::consts::OS == "windows" {
+        "deno.exe"
+    } else {
+        "deno"
+    };
+    let deno_path = exo_cache_root()
+        .map_err(|e| {
+            ModelBuildingError::Generic(format!("Failed to determine cache root directory: {}", e))
+        })?
+        .join("deno")
+        .join(DENO_VERSION)
+        .join(deno_executable);
+
+    let target_os = env::consts::OS;
+    let target_arch = env::consts::ARCH;
+
+    let platform = match (target_os, target_arch) {
+        ("macos", "x86_64") => "x86_64-apple-darwin",
+        ("macos", "aarch64") => "aarch64-apple-darwin",
+        ("linux", "x86_64") => "x86_64-unknown-linux-gnu",
+        ("windows", "x86_64") => "x86_64-pc-windows-msvc",
+        (os, arch) => {
+            return Err(ModelBuildingError::Generic(format!(
+                "Unsupported platform: {os}-{arch}"
+            )));
+        }
+    };
+
+    download_dir_if_needed(
+        &format!(
+            "https://github.com/denoland/deno/releases/download/v{DENO_VERSION}/deno-{platform}.zip"
+        ),
+        "Deno",
+        &format!("deno/{DENO_VERSION}"),
+    )
+    .await
+    .map_err(|e| ModelBuildingError::Generic(format!("Failed to download Deno: {}", e)))?;
+
+    if !deno_path.exists() {
+        return Err(ModelBuildingError::Generic(
+            "Deno executable not found after download".to_string(),
+        ));
+    }
+
+    Ok(deno_path)
 }
 
 pub struct ModelDenoSystemWithInterceptors {
