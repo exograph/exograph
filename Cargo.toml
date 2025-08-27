@@ -63,6 +63,11 @@ default-members = [
 resolver = "2"
 
 [workspace.dependencies]
+# Force consistent brotli version to match Deno's choice and avoid linking conflicts
+async-compression = "0.4.11"
+brotli = "6.0.0"
+brotli-decompressor = "4.0.1"
+
 colored = "2.2"
 anyhow = "1.0"
 async-graphql-parser = "7.0.6"
