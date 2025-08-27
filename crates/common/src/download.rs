@@ -79,7 +79,7 @@ pub async fn download_dir_if_needed(
         return Ok(download_dir);
     }
 
-    let temp_download_dir = tempdir_in(exo_cache_root)?.into_path();
+    let temp_download_dir = tempdir_in(exo_cache_root)?.keep();
 
     let download_file_path = temp_download_dir.join(relative_cache_dir.replace('/', "_") + ".zip");
 
