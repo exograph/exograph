@@ -1,7 +1,9 @@
-error: Expected '}', got '<eof>' at src/todo.ts:2:3
+error: [0m[1m[31merror[0m: Expected '}', got '<eof>' at src/todo.ts:2:3
 
   	5
    ~
+[0m[1m[31merror[0m: bundling failed
+
 
 Error: Parser error: Could not parse TypeScript/JavaScript files
 

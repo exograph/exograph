@@ -38,6 +38,8 @@ use crate::module_skeleton_generator;
 
 const DENO_VERSION: &str = "2.4.5";
 
+const DENO_BUNDLE_WARNING: &[u8] = b"is experimental and subject to changes";
+
 async fn bundle_source(module_fs_path: &Path) -> Result<String, ModelBuildingError> {
     let deno_path = download_deno_if_needed().await?;
 
@@ -47,18 +49,48 @@ async fn bundle_source(module_fs_path: &Path) -> Result<String, ModelBuildingErr
         .arg("--node-modules-dir=auto")
         .arg(module_fs_path.to_string_lossy().as_ref())
         .output()
-        .await?;
+        .await;
 
-    if !output.status.success() {
-        return Err(ModelBuildingError::Generic(format!(
-            "Failed to bundle Deno: {}",
-            String::from_utf8_lossy(&output.stderr)
-        )));
+    fn simplify_error(output: &[u8]) -> String {
+        // remove the "experimental" warning by looking for DENO_BUNDLE_WARNING and stripping that out
+        let output = output
+            .split(|b| *b == b'\n')
+            .filter(|line| !line.ends_with(DENO_BUNDLE_WARNING))
+            .collect::<Vec<_>>()
+            .join(&b'\n');
+
+        let output_str = String::from_utf8_lossy(&output).to_string();
+
+        // Deno bundle output shows the full path to source file, so we drop the current directory portions
+        let current_dir_url = Url::from_directory_path(
+            std::fs::canonicalize(std::env::current_dir().unwrap()).unwrap(),
+        )
+        .unwrap()
+        .to_string();
+
+        output_str.replace(&current_dir_url, "")
     }
 
-    String::from_utf8(output.stdout).map_err(|e| {
-        ModelBuildingError::Generic(format!("Failed to parse bundled output as UTF-8: {}", e))
-    })
+    match output {
+        Ok(output) => {
+            if !output.status.success() {
+                Err(ModelBuildingError::TSJSParsingError(simplify_error(
+                    &output.stderr,
+                )))
+            } else {
+                String::from_utf8(output.stdout).map_err(|e| {
+                    ModelBuildingError::Generic(format!(
+                        "Failed to parse bundled output as UTF-8: {}",
+                        e
+                    ))
+                })
+            }
+        }
+        Err(e) => Err(ModelBuildingError::Generic(format!(
+            "Failed to execute Deno: {}",
+            e
+        ))),
+    }
 }
 
 async fn download_deno_if_needed() -> Result<PathBuf, ModelBuildingError> {
