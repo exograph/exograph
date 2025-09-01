@@ -27,16 +27,13 @@ cookie = "0.18.1"
 elsa = "1.8.1"
 async-graphql-value.workspace = true
 tokio-postgres.workspace = true
-zip.workspace = true
 colored.workspace = true
 
 exo-env = { path = "../../libs/exo-env" }
 exo-sql = { path = "../../libs/exo-sql" }
 
 anyhow.workspace = true
-home = "0.5.11"
 indicatif = "0.17.11"
-tempfile.workspace = true
 
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["registry", "env-filter"] }
@@ -60,6 +57,11 @@ hyper-util = { version = "0.1.7" }
 tower = { version = "0.5", features = ["util"] }
 
 wildmatch = { workspace = true, optional = true }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+zip.workspace = true
+tempfile.workspace = true
+home = "0.5.11"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }

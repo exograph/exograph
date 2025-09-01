@@ -9,7 +9,6 @@ codemap.workspace = true
 serde.workspace = true
 codemap-diagnostic.workspace = true
 thiserror.workspace = true
-url.workspace = true
 
 core-model = { path = "../core-model" }
 core-plugin-shared = { path = "../core-plugin-shared" }
