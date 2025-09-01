@@ -46,6 +46,7 @@ async fn bundle_source(module_fs_path: &Path) -> Result<String, ModelBuildingErr
     let output = tokio::process::Command::new(deno_path)
         .arg("bundle")
         .arg("--allow-import")
+        .arg("--quiet")
         .arg("--node-modules-dir=auto")
         .arg(module_fs_path.to_string_lossy().as_ref())
         .output()
