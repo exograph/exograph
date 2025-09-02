@@ -9,7 +9,9 @@
 
 #![cfg(target_os = "linux")]
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::LazyLock};
+
+use tokio::sync::Mutex;
 
 use common::{TestRequest, TestResponse};
 use serde_json::json;
@@ -28,8 +30,16 @@ const WHATS_MY_IP_QUERY: &str = r#"query {
     whatsMyIp
 }"#;
 
+// When bundling with `deno bundle`, Deno downloads esbuild if it doesn't exists.
+// If multiple tests download it in parallel, it can lead to errors  (the second test
+// trying to move the file that the first already has, for example).
+// This lock ensures that only one test can run at a time, preventing conflicts.
+static TEST_SERIAL_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+
 #[tokio::test]
 async fn whats_my_ip() {
+    let _lock = TEST_SERIAL_LOCK.lock().await;
+
     common::test_query(
         TestRequest {
             query: WHATS_MY_IP_QUERY,
@@ -56,6 +66,8 @@ async fn whats_my_ip() {
 
 #[tokio::test]
 async fn no_headers() {
+    let _lock = TEST_SERIAL_LOCK.lock().await;
+
     common::test_query(
         TestRequest {
             query: REQUEST_CONTEXT_QUERY,
@@ -85,6 +97,8 @@ async fn no_headers() {
 
 #[tokio::test]
 async fn with_request_headers() {
+    let _lock = TEST_SERIAL_LOCK.lock().await;
+
     common::test_query(
         TestRequest {
             query: REQUEST_CONTEXT_QUERY,
@@ -114,6 +128,8 @@ async fn with_request_headers() {
 
 #[tokio::test]
 async fn with_request_cookies() {
+    let _lock = TEST_SERIAL_LOCK.lock().await;
+
     common::test_query(
         TestRequest {
             query: REQUEST_CONTEXT_QUERY,
@@ -143,6 +159,8 @@ async fn with_request_cookies() {
 
 #[tokio::test]
 async fn add_response_header() {
+    let _lock = TEST_SERIAL_LOCK.lock().await;
+
     common::test_query(
         TestRequest {
             query: "{ addResponseHeader(name: \"x-test\", value: \"x-test-value\") }",
@@ -168,6 +186,8 @@ async fn add_response_header() {
 
 #[tokio::test]
 async fn set_cookie() {
+    let _lock = TEST_SERIAL_LOCK.lock().await;
+
     common::test_query(
         TestRequest {
             query: "{ addResponseCookie(name: \"x-test-cookie\", value: \"x-test-cookie-value\") }",

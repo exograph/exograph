@@ -11,7 +11,6 @@ use super::command::SubcommandDefinition;
 
 mod aws_lambda;
 mod cf_worker;
-mod download;
 mod fly;
 mod railway;
 mod util;

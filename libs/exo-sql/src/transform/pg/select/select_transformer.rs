@@ -111,7 +111,7 @@ impl SelectTransformer for Postgres {
         name = "SelectTransformer::to_select for Postgres"
         skip(self, database)
         )]
-    fn to_select<'a>(&self, abstract_select: AbstractSelect, database: &'a Database) -> Select {
+    fn to_select(&self, abstract_select: AbstractSelect, database: &Database) -> Select {
         self.compute_select(abstract_select, &SelectionLevel::TopLevel, false, database)
     }
 

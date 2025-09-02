@@ -12,17 +12,14 @@ use deno_core::ModuleSource;
 use deno_core::ModuleSpecifier;
 use deno_core::RequestedModuleType;
 use deno_core::ResolutionKind;
-use deno_core::error::AnyError;
+use deno_core::error::ModuleLoaderError;
 use deno_core::futures::FutureExt;
 use deno_core::resolve_import;
 use deno_core::url::Url;
-use deno_runtime::deno_node::NodeResolver;
-use node_resolver::NodeModuleKind;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::sync::Arc;
 
 use include_dir::Dir;
 
@@ -35,7 +32,6 @@ pub(super) struct EmbeddedModuleLoader {
     #[allow(unused)]
     pub embedded_dirs: HashMap<String, &'static Dir<'static>>,
     pub source_code_map: Rc<RefCell<HashMap<Url, ResolvedModule>>>,
-    pub node_resolver: Option<Arc<NodeResolver>>,
 }
 
 impl ModuleLoader for EmbeddedModuleLoader {
@@ -44,21 +40,8 @@ impl ModuleLoader for EmbeddedModuleLoader {
         specifier: &str,
         referrer: &str,
         _kind: ResolutionKind,
-    ) -> Result<ModuleSpecifier, AnyError> {
-        if let Some(node_resolver) = &self.node_resolver
-            && let Ok(referrer) = ModuleSpecifier::parse(referrer)
-            && node_resolver.in_npm_package(&referrer)
-            && let Ok(res) = node_resolver.resolve(
-                specifier,
-                &referrer,
-                NodeModuleKind::Esm,
-                node_resolver::NodeResolutionMode::Execution,
-            )
-        {
-            return Ok(res.into_url());
-        }
-
-        Ok(resolve_import(specifier, referrer)?)
+    ) -> Result<ModuleSpecifier, ModuleLoaderError> {
+        resolve_import(specifier, referrer).map_err(ModuleLoaderError::from_err)
     }
 
     fn load(
@@ -70,17 +53,7 @@ impl ModuleLoader for EmbeddedModuleLoader {
     ) -> deno_core::ModuleLoadResponse {
         let borrowed_map = self.source_code_map.borrow();
 
-        #[allow(unused_mut)]
-        let mut module_specifier_unix = module_specifier.clone();
-        #[cfg(target_os = "windows")]
-        {
-            module_specifier_unix =
-                ModuleSpecifier::parse(&module_specifier_unix.as_str().replace(
-                    "/C:/EXOGRAPH_NPM_MODULES_SNAPSHOT",
-                    "/EXOGRAPH_NPM_MODULES_SNAPSHOT",
-                ))
-                .unwrap();
-        }
+        let module_specifier_unix = module_specifier.clone();
 
         let mut resolved = borrowed_map.get(&module_specifier_unix);
         while let Some(ResolvedModule::Redirect(to)) = resolved {
@@ -91,32 +64,8 @@ impl ModuleLoader for EmbeddedModuleLoader {
         let module_specifier = module_specifier.clone();
 
         if let Some(script) = resolved {
-            #[allow(unused, unused_mut)]
-            if let ResolvedModule::Module(
-                mut script,
-                module_type,
-                mut final_specifier,
-                requires_rewrite,
-            ) = script.clone()
+            if let ResolvedModule::Module(script, module_type, final_specifier, _) = script.clone()
             {
-                // on windows, we need to rewrite the absolute path to use C:\\ instead of /
-                #[cfg(target_os = "windows")]
-                if requires_rewrite {
-                    script = script.replace(
-                        "/EXOGRAPH_NPM_MODULES_SNAPSHOT",
-                        "C:\\\\EXOGRAPH_NPM_MODULES_SNAPSHOT",
-                    );
-                }
-
-                #[cfg(target_os = "windows")]
-                {
-                    final_specifier = ModuleSpecifier::parse(&final_specifier.as_str().replace(
-                        "/EXOGRAPH_NPM_MODULES_SNAPSHOT",
-                        "C:\\EXOGRAPH_NPM_MODULES_SNAPSHOT",
-                    ))
-                    .unwrap();
-                }
-
                 let module_source = ModuleSource::new_with_redirect(
                     module_type,
                     deno_core::ModuleSourceCode::String(script.into()),
@@ -169,7 +118,12 @@ impl ModuleLoader for EmbeddedModuleLoader {
                 let source_code = match module_source.code {
                     deno_core::ModuleSourceCode::String(ref code) => code.as_str().to_string(),
                     deno_core::ModuleSourceCode::Bytes(ref bytes) => {
-                        String::from_utf8(bytes.to_vec())?
+                        String::from_utf8(bytes.to_vec()).map_err(|e| {
+                            ModuleLoaderError::generic(format!(
+                                "Failed to convert bytes to UTF-8 string: {}",
+                                e
+                            ))
+                        })?
                     }
                 };
 

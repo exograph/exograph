@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 use anyhow::{Result, anyhow};
 use exo_deno::{
-    Arg, DenoModule, DenoModuleSharedState, UserCode,
+    Arg, DenoModule, UserCode,
     deno_core::{ModuleType, url::Url},
     deno_executor_pool::{DenoScriptDefn, ResolvedModule},
 };
@@ -56,14 +56,11 @@ pub async fn create_introspection_deno_module() -> Result<DenoModule> {
                 )]
                 .into_iter()
                 .collect(),
-                npm_snapshot: None,
             },
         },
-        "ExographTest",
         vec![],
         vec![],
         vec![],
-        DenoModuleSharedState::default(),
         Some("Error"),
         Some(HashMap::from([(
             "graphql".to_string(),

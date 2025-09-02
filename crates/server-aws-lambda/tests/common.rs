@@ -67,12 +67,20 @@ pub async fn test_query(test_request: TestRequest<'_>, expected: TestResponse<'_
 
     let context = lambda_runtime::Context::default();
 
+    let static_builders: Vec<
+        Box<dyn core_plugin_interface::interface::SubsystemBuilder + Send + Sync>,
+    > = vec![
+        Box::new(postgres_builder::PostgresSubsystemBuilder::default()),
+        Box::new(deno_builder::DenoSubsystemBuilder::default()),
+        Box::new(wasm_builder::WasmSubsystemBuilder::default()),
+    ];
+
     let model_system = builder::build_system(
         model_path,
         &builder::RealFileSystem,
         None::<&Path>,
         None,
-        vec![],
+        static_builders,
         BuildMode::Build,
     )
     .await

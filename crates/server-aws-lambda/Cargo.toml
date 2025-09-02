@@ -27,6 +27,10 @@ exo-env = { path = "../../libs/exo-env" }
 [target.'cfg(target_os = "linux")'.dev-dependencies]
 builder = { path = "../builder" }
 core-model-builder = { path = "../core-subsystem/core-model-builder" }
+deno-builder = { path = "../deno-subsystem/deno-builder" }
+wasm-builder = { path = "../wasm-subsystem/wasm-builder" }
+postgres-builder = { path = "../postgres-subsystem/postgres-builder" }
+core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 
 [features]
 static-postgres-resolver = ["server-common/static-postgres-resolver"]

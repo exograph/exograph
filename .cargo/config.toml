@@ -2,6 +2,8 @@
 # and the comment before that (if we were to restrict the target only to clippy, 
 # caches for clippy and normal build will clobber each other).
 [target.'cfg(all())']
-rustflags = [
-  "-Dclippy::wildcard_imports"
-]
+rustflags = ["-Dclippy::wildcard_imports"]
+
+# Configure getrandom for wasm32 targets
+[target.wasm32-unknown-unknown]
+rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]

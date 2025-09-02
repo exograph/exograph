@@ -12,23 +12,24 @@ default = []
 typescript-loader = ["dep:deno_ast"]
 
 [build-dependencies]
-deno.workspace = true
-deno_core.workspace = true
-deno_runtime = { workspace = true, features = ["hmr"] }
+deno_runtime = { version = "0.222.0", features = [
+  "include_js_files_for_snapshotting",
+  "only_snapshotted_js_sources",
+  "snapshot",
+] }
+
 
 [dependencies]
 thiserror.workspace = true
 async-trait.workspace = true
-deno.workspace = true
-deno_runtime.workspace = true
+deno_runtime = "0.222.0"
 deno_core.workspace = true
-deno_fs.workspace = true
-deno_virtual_fs.workspace = true
-deno_ast = { workspace = true, features = ["transpiling"], optional = true }
-deno_semver.workspace = true
-deno_npm.workspace = true
-node_resolver.workspace = true
-deno_terminal = "0.2.0"
+deno_error.workspace = true
+deno_fs = "0.124.0"
+deno_resolver = "0.45.0"
+node_resolver = "0.52.0"
+sys_traits = "0.1.17"
+deno_ast = { version = "0.49.0", features = ["transpiling"], optional = true }
 tokio.workspace = true
 reqwest = { workspace = true, features = ["blocking"] }
 futures.workspace = true

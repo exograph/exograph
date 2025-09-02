@@ -9,7 +9,7 @@
 
 use futures::pin_mut;
 
-use crate::deno_error::DenoError;
+use crate::error::DenoError;
 
 use super::{deno_actor::DenoActor, deno_module::Arg};
 use async_trait::async_trait;

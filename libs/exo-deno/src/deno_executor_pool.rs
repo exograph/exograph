@@ -10,18 +10,16 @@
 use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
 use deno_core::{Extension, ModuleType, url::Url};
-use deno_npm::resolution::SerializedNpmResolutionSnapshot;
-use deno_virtual_fs::virtual_fs::VirtualDirectory;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::Mutex;
 
-use crate::{Arg, deno_error::DenoError};
+use crate::{Arg, error::DenoError};
 
 use super::{
     deno_actor::DenoActor,
     deno_executor::{CallbackProcessor, DenoExecutor},
-    deno_module::{DenoModule, DenoModuleSharedState, UserCode},
+    deno_module::{DenoModule, UserCode},
 };
 
 use std::fmt::Debug;
@@ -39,41 +37,30 @@ pub enum ResolvedModule {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DenoScriptDefn {
     pub modules: HashMap<Url, ResolvedModule>,
-    pub npm_snapshot: Option<(
-        SerializedNpmResolutionSnapshot,
-        VirtualDirectory,
-        Vec<Vec<u8>>,
-    )>,
 }
 
 pub struct DenoExecutorConfig<C> {
-    user_agent_name: &'static str,
     shims: Vec<(&'static str, &'static [&'static str])>,
     additional_code: Vec<&'static str>,
     explicit_error_class_name: Option<&'static str>,
     create_extensions: fn() -> Vec<Extension>,
     process_call_context: fn(&mut DenoModule, C) -> (),
-    shared_state: DenoModuleSharedState,
 }
 
 impl<C> DenoExecutorConfig<C> {
     pub fn new(
-        user_agent_name: &'static str,
         shims: Vec<(&'static str, &'static [&'static str])>,
         additional_code: Vec<&'static str>,
         explicit_error_class_name: Option<&'static str>,
         create_extensions: fn() -> Vec<Extension>,
         process_call_context: fn(&mut DenoModule, C) -> (),
-        shared_state: DenoModuleSharedState,
     ) -> Self {
         Self {
-            user_agent_name,
             shims,
             additional_code,
             explicit_error_class_name,
             create_extensions,
             process_call_context,
-            shared_state,
         }
     }
 }
@@ -105,22 +92,18 @@ impl<C: Sync + Send + Debug + 'static, M: Sync + Send + 'static, R: Sync + Send 
     DenoExecutorPool<C, M, R>
 {
     pub fn new(
-        user_agent_name: &'static str,
         shims: Vec<(&'static str, &'static [&'static str])>,
         additional_code: Vec<&'static str>,
         explicit_error_class_name: Option<&'static str>,
         create_extensions: fn() -> Vec<Extension>,
         process_call_context: fn(&mut DenoModule, C) -> (),
-        shared_state: DenoModuleSharedState,
     ) -> Self {
         Self::new_from_config(DenoExecutorConfig::new(
-            user_agent_name,
             shims,
             additional_code,
             explicit_error_class_name,
             create_extensions,
             process_call_context,
-            shared_state,
         ))
     }
 
@@ -209,12 +192,10 @@ impl<C: Sync + Send + Debug + 'static, M: Sync + Send + 'static, R: Sync + Send 
                 path: script_path.to_owned(),
                 script,
             },
-            self.config.user_agent_name,
             self.config.shims.clone(),
             self.config.additional_code.clone(),
             self.config.create_extensions,
             self.config.explicit_error_class_name,
-            self.config.shared_state.clone(),
             self.config.process_call_context,
         )
     }
@@ -223,7 +204,7 @@ impl<C: Sync + Send + Debug + 'static, M: Sync + Send + 'static, R: Sync + Send 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::deno_module::{Arg, DenoModuleSharedState};
+    use crate::deno_module::Arg;
     use deno_core::ModuleSpecifier;
     use serde_json::Value;
 
@@ -234,15 +215,8 @@ mod tests {
         let module_path = "file://test_js/direct.js";
         let module_script = include_str!("test_js/direct.js").to_string();
 
-        let executor_pool = DenoExecutorPool::<(), (), ()>::new(
-            "ExoDenoTest",
-            vec![],
-            vec![],
-            None,
-            Vec::new,
-            |_, _| {},
-            DenoModuleSharedState::default(),
-        );
+        let executor_pool =
+            DenoExecutorPool::<(), (), ()>::new(vec![], vec![], None, Vec::new, |_, _| {});
 
         let res = executor_pool
             .execute(
@@ -259,7 +233,6 @@ mod tests {
                     )]
                     .into_iter()
                     .collect(),
-                    npm_snapshot: None,
                 },
                 "addAndDouble",
                 vec![Arg::Serde(2.into()), Arg::Serde(3.into())],
@@ -276,15 +249,7 @@ mod tests {
         let module_path = "file://test_js/direct.js";
         let module_script = include_str!("test_js/direct.js").to_string();
 
-        let executor_pool = DenoExecutorPool::new(
-            "ExoDenoTest",
-            vec![],
-            vec![],
-            None,
-            Vec::new,
-            |_, _| {},
-            DenoModuleSharedState::default(),
-        );
+        let executor_pool = DenoExecutorPool::new(vec![], vec![], None, Vec::new, |_, _| {});
 
         let total_futures = 10;
 
@@ -311,7 +276,7 @@ mod tests {
                     )]
                     .into_iter()
                     .collect(),
-                    npm_snapshot: None,
+                    // npm_snapshot: None,
                 },
                 method_name,
                 arguments,

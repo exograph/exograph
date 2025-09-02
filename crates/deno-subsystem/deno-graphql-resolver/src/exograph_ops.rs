@@ -7,8 +7,11 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use anyhow::{Result, anyhow, bail};
-use exo_deno::deno_core::{OpState, error::AnyError, op2};
+use anyhow::Result;
+use exo_deno::{
+    deno_core::{self, OpState, op2},
+    deno_error,
+};
 
 use core_resolver::system_resolver::SystemResolutionError;
 use serde_json::Value;
@@ -30,7 +33,7 @@ pub async fn op_exograph_execute_query_helper(
     query_string: Value,
     variables: Option<Value>,
     context_override: Value,
-) -> Result<Value, AnyError> {
+) -> Result<Value, DenoExecutionError> {
     let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
 
     let sender = {
@@ -47,18 +50,18 @@ pub async fn op_exograph_execute_query_helper(
         })
         .await
         .map_err(|err| {
-            anyhow!(
+            DenoExecutionError::Generic(format!(
                 "Could not send request from op_exograph_execute_query ({})",
                 err
-            )
+            ))
         })?;
 
     if let ResponseForDenoMessage::ExographExecute(result) =
         response_receiver.await.map_err(|err| {
-            anyhow!(
+            DenoExecutionError::Generic(format!(
                 "Could not receive result in op_exograph_execute_query ({})",
                 err
-            )
+            ))
         })?
     {
         let result = process_execution_error(result)?;
@@ -66,13 +69,31 @@ pub async fn op_exograph_execute_query_helper(
         for (header, value) in result.headers.into_iter() {
             let mut state = state.borrow_mut();
 
-            add_header(&mut state, header, value)?
+            add_header(&mut state, header, value);
         }
 
         Ok(result.body.to_json()?)
     } else {
-        bail!("Wrong response type for op_exograph_execute_query")
+        Err(DenoExecutionError::Generic(
+            "Wrong response type for op_exograph_execute_query".to_string(),
+        ))
     }
+}
+
+#[derive(Debug, thiserror::Error, deno_error::JsError)]
+pub enum DenoExecutionError {
+    #[error("SystemResolutionError: {0}")]
+    #[class("SystemResolutionError")]
+    SystemResolutionError(#[from] SystemResolutionError),
+    #[error("SerdeError: {0}")]
+    #[class("SerdeError")]
+    SerdeError(#[from] serde_json::Error),
+    #[error("{0}")]
+    #[class("GenericError")]
+    Generic(String),
+    #[error("{0}")]
+    #[class("ExographError")]
+    Explicit(String),
 }
 
 #[op2(async)]
@@ -81,7 +102,7 @@ pub async fn op_exograph_execute_query(
     state: Rc<RefCell<OpState>>,
     #[serde] query_string: serde_json::Value,
     #[serde] variables: Option<serde_json::Value>,
-) -> Result<serde_json::Value, AnyError> {
+) -> Result<serde_json::Value, DenoExecutionError> {
     op_exograph_execute_query_helper(state, query_string, variables, Value::Null).await
 }
 
@@ -92,7 +113,7 @@ pub async fn op_exograph_execute_query_priv(
     #[serde] query_string: serde_json::Value,
     #[serde] variables: Option<serde_json::Value>,
     #[serde] context_override: serde_json::Value,
-) -> Result<serde_json::Value, AnyError> {
+) -> Result<serde_json::Value, DenoExecutionError> {
     op_exograph_execute_query_helper(state, query_string, variables, context_override).await
 }
 
@@ -104,22 +125,26 @@ pub fn op_exograph_version() -> &'static str {
 
 #[op2]
 #[string]
-pub fn op_operation_name(state: &mut OpState) -> Result<String, AnyError> {
+pub fn op_operation_name(state: &mut OpState) -> Result<String, DenoExecutionError> {
     // try to read the intercepted operation name out of Deno's GothamStorage
     if let Some(InterceptedOperationInfo { name, .. }) = state.borrow() {
         Ok(name.clone())
     } else {
-        Err(anyhow!("no stored operation name"))
+        Err(DenoExecutionError::Generic(
+            "no stored operation name".to_string(),
+        ))
     }
 }
 
 #[op2]
 #[serde]
-pub fn op_operation_query(state: &mut OpState) -> Result<serde_json::Value, AnyError> {
+pub fn op_operation_query(state: &mut OpState) -> Result<serde_json::Value, DenoExecutionError> {
     if let Some(InterceptedOperationInfo { query, .. }) = state.borrow() {
         Ok(query.to_owned())
     } else {
-        Err(anyhow!("no stored operation query"))
+        Err(DenoExecutionError::Generic(
+            "no stored operation query".to_string(),
+        ))
     }
 }
 
@@ -127,7 +152,7 @@ pub fn op_operation_query(state: &mut OpState) -> Result<serde_json::Value, AnyE
 #[serde]
 pub async fn op_operation_proceed(
     state: Rc<RefCell<OpState>>,
-) -> Result<serde_json::Value, AnyError> {
+) -> Result<serde_json::Value, DenoExecutionError> {
     let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
 
     let sender = {
@@ -138,28 +163,42 @@ pub async fn op_operation_proceed(
     sender
         .send(RequestFromDenoMessage::InterceptedOperationProceed { response_sender })
         .await
-        .map_err(|err| anyhow!("Could not send request from op_operation_proceed ({})", err))?;
+        .map_err(|err| {
+            DenoExecutionError::Generic(format!(
+                "Could not send request from op_operation_proceed ({})",
+                err
+            ))
+        })?;
 
-    if let ResponseForDenoMessage::InterceptedOperationProceed(result) = response_receiver
-        .await
-        .map_err(|err| anyhow!("Could not receive result in op_operation_proceed ({})", err))?
+    if let ResponseForDenoMessage::InterceptedOperationProceed(result) =
+        response_receiver.await.map_err(|err| {
+            DenoExecutionError::Generic(format!(
+                "Could not receive result in op_operation_proceed ({})",
+                err
+            ))
+        })?
     {
         let result = process_execution_error(result)?;
 
         for (header, value) in result.headers.into_iter() {
             let mut state = state.borrow_mut();
-            add_header(&mut state, header, value)?
+            add_header(&mut state, header, value);
         }
 
-        Ok(result.body.to_json()?)
+        Ok(result
+            .body
+            .to_json()
+            .map_err(DenoExecutionError::SerdeError)?)
     } else {
-        bail!("Wrong response type for op_operation_proceed")
+        Err(DenoExecutionError::Generic(
+            "Wrong response type for op_operation_proceed".to_string(),
+        ))
     }
 }
 
 // add a header to ExographMethodResponse;
 // this is eventually returned to Exograph through execute_and_get_r
-pub fn add_header(state: &mut OpState, header: String, value: String) -> Result<(), AnyError> {
+pub fn add_header(state: &mut OpState, header: String, value: String) {
     // get response object out of GothamStorage
     // if no object exists, create one
     let mut response: ExographMethodResponse = state.try_take().unwrap_or_default();
@@ -169,17 +208,15 @@ pub fn add_header(state: &mut OpState, header: String, value: String) -> Result<
 
     // put back response object
     state.put(response);
-
-    Ok(())
 }
 
-#[op2]
+#[op2(fast)]
 #[serde]
 pub fn op_exograph_add_header(
     state: &mut OpState,
     #[string] header: String,
     #[string] value: String,
-) -> Result<(), AnyError> {
+) {
     add_header(state, header, value)
 }
 
@@ -187,9 +224,11 @@ pub fn op_exograph_add_header(
 // thrown using ExographError) and if so, we throw a custom error with the message.
 //
 // Without this logic, the original error will be lost and a generic "Internal server error" will be sent to the client.
-fn process_execution_error<T>(result: Result<T, SystemResolutionError>) -> Result<T, AnyError> {
+fn process_execution_error<T>(
+    result: Result<T, SystemResolutionError>,
+) -> Result<T, DenoExecutionError> {
     result.map_err(|err| match err.explicit_message() {
-        Some(msg) => anyhow!(deno_core::error::custom_error("ExographError", msg)),
-        None => anyhow!(err),
+        Some(msg) => DenoExecutionError::Explicit(msg.to_string()),
+        None => DenoExecutionError::Generic(err.to_string()),
     })
 }

@@ -8,43 +8,24 @@
 // by the Apache License, Version 2.0.
 
 use deno_core::Extension;
+use deno_core::ModuleLoader;
 use deno_core::ModuleSpecifier;
 use deno_core::ModuleType;
-use deno_core::anyhow::bail;
 use deno_core::error::AnyError;
 use deno_core::error::JsError;
 use deno_core::serde_json;
 use deno_core::serde_v8;
 use deno_core::url::Url;
 use deno_core::v8;
-use deno_fs::FileSystem;
-use deno_npm::NpmPackageCacheFolderId;
-use deno_npm::resolution::NpmResolutionSnapshot;
-use deno_npm::resolution::SerializedNpmResolutionSnapshot;
-use deno_runtime::BootstrapOptions;
-use deno_runtime::WorkerExecutionMode;
-use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
-use deno_runtime::deno_io::Stdio;
-use deno_runtime::deno_node::DenoFsNodeResolverEnv;
-use deno_runtime::deno_node::NodeExtInitServices;
-use deno_runtime::deno_node::NodeRequireResolver;
+use deno_resolver::npm::DenoInNpmPackageChecker;
+use deno_resolver::npm::NpmResolver;
 use deno_runtime::deno_permissions::PermissionsContainer;
-use deno_runtime::deno_web::BlobStore;
-use deno_runtime::ops::process::NpmProcessStateProvider;
 use deno_runtime::permissions::RuntimePermissionDescriptorParser;
 use deno_runtime::worker::MainWorker;
 use deno_runtime::worker::WorkerOptions;
 use deno_runtime::worker::WorkerServiceOptions;
-use deno_semver::Version;
-use deno_semver::package::PackageNv;
-use deno_virtual_fs::file_system::DenoCompileFileSystem;
-use deno_virtual_fs::virtual_fs::FileBackedVfs;
-use deno_virtual_fs::virtual_fs::VfsRoot;
 use include_dir::Dir;
-use node_resolver::errors::PackageFolderResolveErrorKind;
-use node_resolver::errors::ReferrerNotFoundError;
-use node_resolver::errors::{PackageFolderResolveError, PackageNotFoundError};
-use node_resolver::{NodeResolver, NpmResolver};
+use node_resolver::errors::PackageJsonLoadError;
 use tracing::error;
 
 use std::borrow::Cow;
@@ -60,16 +41,40 @@ use std::fs;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use crate::deno_error::DenoDiagnosticError;
-use crate::deno_error::DenoError;
-use crate::deno_error::DenoInternalError;
 use crate::deno_executor_pool::DenoScriptDefn;
 use crate::deno_executor_pool::ResolvedModule;
+use crate::error::DenoDiagnosticError;
+use crate::error::DenoError;
+use crate::error::DenoInternalError;
 
 use super::embedded_module_loader::EmbeddedModuleLoader;
+use deno_error::JsErrorBox;
 
-fn get_error_class_name(e: &AnyError) -> &'static str {
-    deno_runtime::errors::get_error_class_name(e).unwrap_or("Error")
+/// Minimal implementation of NodeRequireLoader
+/// Since we use the bundler approach, we don't need to load any files from the file system.
+struct BasicNodeRequireLoader;
+
+impl deno_runtime::deno_node::NodeRequireLoader for BasicNodeRequireLoader {
+    fn ensure_read_permission<'a>(
+        &self,
+        _permissions: &mut dyn deno_runtime::deno_node::NodePermissions,
+        path: Cow<'a, std::path::Path>,
+    ) -> Result<Cow<'a, std::path::Path>, JsErrorBox> {
+        Ok(path)
+    }
+
+    fn load_text_file_lossy(
+        &self,
+        path: &std::path::Path,
+    ) -> Result<deno_core::FastString, JsErrorBox> {
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| JsErrorBox::generic(format!("Failed to read file: {}", e)))?;
+        Ok(deno_core::FastString::from(content))
+    }
+
+    fn is_maybe_cjs(&self, _specifier: &deno_core::url::Url) -> Result<bool, PackageJsonLoadError> {
+        Ok(false)
+    }
 }
 
 #[derive(Debug)]
@@ -86,131 +91,6 @@ pub struct DenoModule {
     shim_object_names: Vec<String>,
     user_code: UserCode,
     explicit_error_class_name: Option<&'static str>,
-}
-
-#[derive(Debug)]
-struct SnapshotNpmResolver {
-    registry_base: PathBuf,
-    snapshot: NpmResolutionSnapshot,
-}
-
-impl SnapshotNpmResolver {
-    pub fn new(registry_base: PathBuf, serialized: SerializedNpmResolutionSnapshot) -> Self {
-        let snapshot = NpmResolutionSnapshot::new(serialized.into_valid().unwrap());
-        Self {
-            registry_base,
-            snapshot,
-        }
-    }
-}
-
-impl NpmResolver for SnapshotNpmResolver {
-    // given a specifier and the module it is being loaded inside, load it
-    fn resolve_package_folder_from_package(
-        &self,
-        specifier: &str,
-        referrer: &ModuleSpecifier,
-    ) -> Result<PathBuf, PackageFolderResolveError> {
-        if let Ok(referrer_path) = referrer.to_file_path() {
-            if let Ok(without_registry) = referrer_path.strip_prefix(&self.registry_base) {
-                let mut without_registry_vec = without_registry.iter().collect::<Vec<_>>();
-                let mut namespace_prefix = "".to_string();
-
-                // Skip npm namespaces where the without_registry starts with @ (such as "@react-email/render/0.0.9/dist/index.js")
-                if without_registry
-                    .iter()
-                    .next()
-                    .unwrap() // safe because we know without_registry is either with namespace or at least the package name
-                    .to_str()
-                    .unwrap()
-                    .starts_with('@')
-                {
-                    namespace_prefix =
-                        format!("{}/", without_registry_vec.remove(0).to_str().unwrap());
-                }
-
-                // inside the registry, the module is in a folder NAME/VERSION(_INDEX)
-                let first_two = without_registry_vec.iter().take(2).collect::<Vec<_>>();
-                let version_maybe_index = first_two[1].to_str().unwrap();
-                let split = version_maybe_index.split('_').collect::<Vec<_>>();
-
-                // figure out which package is requesting the import
-                let referrer_id = NpmPackageCacheFolderId {
-                    nv: PackageNv {
-                        name: namespace_prefix + first_two[0].to_str().unwrap(),
-                        version: Version::parse_standard(split[0]).unwrap(),
-                    },
-                    copy_index: if split.len() > 1 {
-                        split[1].parse::<u8>().unwrap()
-                    } else {
-                        0
-                    },
-                };
-
-                let resolved = self
-                    .snapshot
-                    .resolve_package_from_package(specifier, &referrer_id)
-                    .map_err(|e| {
-                        PackageFolderResolveError(Box::new(
-                            PackageFolderResolveErrorKind::ReferrerNotFound(
-                                ReferrerNotFoundError {
-                                    referrer: referrer.clone(),
-                                    referrer_extra: Some(e.to_string()),
-                                },
-                            ),
-                        ))
-                    })?;
-
-                Ok(self
-                    .registry_base
-                    .join(&resolved.id.nv.name)
-                    .join(resolved.id.nv.version.to_string()))
-            } else {
-                Err(PackageNotFoundError {
-                    package_name: specifier.to_string(),
-                    referrer: referrer.clone(),
-                    referrer_extra: None,
-                }
-                .into())
-            }
-        } else {
-            Err(PackageNotFoundError {
-                package_name: specifier.to_string(),
-                referrer: referrer.clone(),
-                referrer_extra: None,
-            }
-            .into())
-        }
-    }
-
-    fn in_npm_package(&self, specifier: &ModuleSpecifier) -> bool {
-        specifier
-            .to_file_path()
-            .is_ok_and(|p| p.starts_with(&self.registry_base))
-    }
-}
-
-impl NodeRequireResolver for SnapshotNpmResolver {
-    fn ensure_read_permission<'a>(
-        &self,
-        _permissions: &mut dyn deno_runtime::deno_node::NodePermissions,
-        path: &'a std::path::Path,
-    ) -> Result<Cow<'a, std::path::Path>, AnyError> {
-        if path.starts_with(&self.registry_base) {
-            Ok(Cow::Borrowed(path))
-        } else {
-            bail!("Expected path to be in the registry")
-        }
-    }
-}
-
-#[derive(Debug)]
-struct NpmProcessStateProviderImpl;
-
-impl NpmProcessStateProvider for NpmProcessStateProviderImpl {
-    fn get_npm_process_state(&self) -> String {
-        String::new()
-    }
 }
 
 /// A Deno-based runner for JavaScript.
@@ -239,11 +119,9 @@ impl DenoModule {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
         mut user_code: UserCode,
-        user_agent_name: &str,
         shims: Vec<(&str, &[&str])>,
         additional_code: Vec<&'static str>,
         extensions: Vec<Extension>,
-        shared_state: DenoModuleSharedState,
         explicit_error_class_name: Option<&'static str>,
         embedded_script_dirs: Option<HashMap<String, &'static Dir<'static>>>,
         extra_sources: Option<Vec<(&str, String)>>,
@@ -280,21 +158,18 @@ impl DenoModule {
         let main_module_specifier = "file:///main.js".to_string();
         let main_specifier_parsed = ModuleSpecifier::parse(&main_module_specifier)?;
 
-        let (mut script_modules, npm_snapshot) = match &mut user_code {
-            UserCode::LoadFromFs(_) => (
-                vec![(
-                    main_specifier_parsed.clone(),
-                    ResolvedModule::Module(
-                        source_code,
-                        ModuleType::JavaScript,
-                        main_specifier_parsed,
-                        false,
-                    ),
-                )]
-                .into_iter()
-                .collect::<HashMap<ModuleSpecifier, ResolvedModule>>(),
-                None,
-            ),
+        let mut script_modules = match &mut user_code {
+            UserCode::LoadFromFs(_) => vec![(
+                main_specifier_parsed.clone(),
+                ResolvedModule::Module(
+                    source_code,
+                    ModuleType::JavaScript,
+                    main_specifier_parsed,
+                    false,
+                ),
+            )]
+            .into_iter()
+            .collect::<HashMap<ModuleSpecifier, ResolvedModule>>(),
             UserCode::LoadFromMemory { script, .. } => {
                 let mut out = vec![(
                     main_specifier_parsed.clone(),
@@ -310,7 +185,7 @@ impl DenoModule {
                     out.push((specifier.clone(), resolved.clone()));
                 }
 
-                (out.into_iter().collect(), script.npm_snapshot.take())
+                out.into_iter().collect()
             }
         };
 
@@ -329,115 +204,39 @@ impl DenoModule {
             }
         }
 
-        let create_web_worker_cb = Arc::new(|_| {
-            todo!("Web workers are not supported");
-        });
-
-        let (fs, npm_resolver): (Arc<dyn FileSystem>, Option<Arc<SnapshotNpmResolver>>) =
-            if let Some((resolution, vfs, contents)) = npm_snapshot {
-                #[cfg(target_os = "windows")]
-                let absolute_root = PathBuf::from("C:\\EXOGRAPH_NPM_MODULES_SNAPSHOT");
-
-                #[cfg(not(target_os = "windows"))]
-                let absolute_root = PathBuf::from("/EXOGRAPH_NPM_MODULES_SNAPSHOT");
-
-                (
-                    Arc::new(DenoCompileFileSystem::new(FileBackedVfs::new(
-                        contents.into_iter().flatten().collect(),
-                        VfsRoot {
-                            dir: vfs,
-                            root_path: absolute_root.clone(),
-                            start_file_offset: 0,
-                        },
-                    ))),
-                    Some(Arc::new(SnapshotNpmResolver::new(
-                        absolute_root,
-                        resolution,
-                    ))),
-                )
-            } else {
-                (Arc::new(deno_fs::RealFs), None)
-            };
-
-        let node_resolver: Option<Arc<_>> = npm_resolver.as_ref().map(|npm_resolver| {
-            NodeResolver::new(DenoFsNodeResolverEnv::new(fs.clone()), npm_resolver.clone()).into()
-        });
-
         let module_loader = Rc::new(EmbeddedModuleLoader {
             source_code_map: Rc::new(RefCell::new(script_modules)),
             embedded_dirs: embedded_script_dirs.unwrap_or_default(),
-            node_resolver: node_resolver.clone(),
         });
 
-        let options = WorkerOptions {
-            bootstrap: BootstrapOptions {
-                deno_version: deno::version::DENO_VERSION_INFO.deno.to_string(),
-                args: vec![],
-                cpu_count: 1,
-                log_level: Default::default(),
-                enable_testing_features: false,
-                location: None,
-                no_color: false,
-                color_level: deno_terminal::colors::get_color_level(),
-                mode: WorkerExecutionMode::None,
-                is_stdout_tty: false,
-                is_stderr_tty: false,
-                user_agent: user_agent_name.to_string(),
-                inspect: false,
-                locale: "en".to_string(),
-                has_node_modules_dir: false,
-                enable_op_summary_metrics: false,
-                unstable_features: vec![],
-                node_ipc_fd: None,
-                argv0: None,
-                serve_host: None,
-                serve_port: None,
-                node_debug: None,
-            },
-            create_params: None,
-            extensions,
-            unsafely_ignore_certificate_errors: None,
-            seed: None,
-            create_web_worker_cb,
-            maybe_inspector_server: None,
-            should_break_on_first_statement: false,
-            get_error_class_fn: Some(&get_error_class_name),
-            origin_storage_dir: None,
-            format_js_error_fn: None,
-            stdio: Stdio::default(),
-            cache_storage_dir: None,
-            should_wait_for_inspector_session: false,
+        let worker_options = WorkerOptions {
             startup_snapshot: Some(crate::deno_snapshot()),
-            skip_op_registration: false,
-            strace_ops: None,
+            extensions,
+            ..Default::default()
         };
 
         let main_module = deno_core::resolve_url(&main_module_specifier)?;
-        let permission_desc_parser = Arc::new(RuntimePermissionDescriptorParser::new(fs.clone()));
-        let permissions = PermissionsContainer::allow_all(permission_desc_parser);
 
-        let services = WorkerServiceOptions {
-            root_cert_store_provider: None,
-            module_loader,
-            fs,
-            node_services: (npm_resolver.zip(node_resolver)).map(
-                |(npm_resolver, node_resolver)| NodeExtInitServices {
-                    node_require_resolver: npm_resolver.clone(),
-                    node_resolver: node_resolver.clone(),
-                    npm_resolver: npm_resolver.clone(),
-                },
-            ),
-            npm_process_state_provider: Some(Arc::new(NpmProcessStateProviderImpl)),
-            blob_store: shared_state.blob_store,
-            broadcast_channel: shared_state.broadcast_channel.clone(),
-            shared_array_buffer_store: None,
-            compiled_wasm_module_store: None,
-            feature_checker: Default::default(),
-            permissions,
-            v8_code_cache: None,
-        };
+        let services = Self::worker_service_options(module_loader);
 
-        let mut worker = MainWorker::bootstrap_from_options(main_module.clone(), services, options);
+        let mut worker = MainWorker::bootstrap_from_options(&main_module, services, worker_options);
+
+        // Ensure sys_traits::impls::RealSys is available in the op_state before any operations
+        // Needed for Node code (such as in deno-stripe integration tests)
+        {
+            let runtime = &mut worker.js_runtime;
+            let op_state_ref = runtime.op_state();
+            let mut op_state = op_state_ref
+                .try_borrow_mut()
+                .map_err(DenoDiagnosticError::BorrowMutError)?;
+
+            op_state.put(sys_traits::impls::RealSys);
+
+            // Add a basic NodeRequireLoader implementation to satisfy deno_node requirements
+            let node_require_loader: Rc<dyn deno_runtime::deno_node::NodeRequireLoader> =
+                Rc::new(BasicNodeRequireLoader);
+            op_state.put(node_require_loader);
+        }
 
         worker.execute_main_module(&main_module).await?;
 
@@ -459,6 +258,36 @@ impl DenoModule {
         };
 
         Ok(deno_module)
+    }
+
+    fn worker_service_options(
+        module_loader: Rc<dyn ModuleLoader>,
+    ) -> WorkerServiceOptions<
+        DenoInNpmPackageChecker,
+        NpmResolver<sys_traits::impls::RealSys>,
+        sys_traits::impls::RealSys,
+    > {
+        let permission_desc_parser = Arc::new(RuntimePermissionDescriptorParser::new(
+            sys_traits::impls::RealSys,
+        ));
+        let fs = Arc::new(deno_fs::RealFs);
+
+        WorkerServiceOptions {
+            deno_rt_native_addon_loader: None,
+            module_loader,
+            permissions: PermissionsContainer::allow_all(permission_desc_parser),
+            blob_store: Default::default(),
+            broadcast_channel: Default::default(),
+            feature_checker: Default::default(),
+            node_services: Default::default(),
+            npm_process_state_provider: Default::default(),
+            root_cert_store_provider: Default::default(),
+            fetch_dns_resolver: Default::default(),
+            shared_array_buffer_store: Default::default(),
+            compiled_wasm_module_store: Default::default(),
+            v8_code_cache: Default::default(),
+            fs,
+        }
     }
 
     /// Execute a function in the Deno runtime.
@@ -485,7 +314,7 @@ impl DenoModule {
                 "",
                 deno_core::FastString::from(format!("mod.{function_name}")),
             )
-            .map_err(DenoInternalError::Any)?;
+            .map_err(|e| DenoInternalError::JsError(Box::new(e)))?;
 
         let shim_objects: HashMap<_, _> = {
             let shim_objects_vals: Vec<_> = self
@@ -493,7 +322,7 @@ impl DenoModule {
                 .iter()
                 .map(|name| runtime.execute_script("", deno_core::FastString::from(name.clone())))
                 .collect::<Result<_, _>>()
-                .map_err(DenoInternalError::Any)?;
+                .map_err(|e| DenoInternalError::JsError(Box::new(e)))?;
             self.shim_object_names
                 .iter()
                 .zip(shim_objects_vals.into_iter())
@@ -563,17 +392,18 @@ impl DenoModule {
         {
             #[allow(deprecated)]
             // Deno's code also uses the deprecated function in their tests. We will reconsider this when their code remove this function.
-            let value = runtime.resolve_value(global).await.map_err(|err| {
-                // got some AnyError from Deno internals...
-                error!(%err);
+            // See: https://github.com/denoland/deno_core/blob/main/core/benches/ops/async.rs
+            let value = runtime
+                .resolve_value(global)
+                .await
+                .map_err(|err| match *err.0 {
+                    deno_core::error::CoreErrorKind::Js(js_error) => {
+                        error!(%js_error, "Exception executing function");
 
-                // If the function is async, we will get access to the error here. If it is an JsError, we process
-                // it to define the error returned to the user (just like we do for the sync case above).
-                match err.downcast::<JsError>() {
-                    Ok(err) => Self::process_js_error(self.explicit_error_class_name, err),
-                    Err(err) => DenoError::AnyError(err),
-                }
-            })?;
+                        Self::process_js_error(self.explicit_error_class_name, js_error)
+                    }
+                    _ => DenoError::AnyError(err.into()),
+                })?;
 
             let scope = &mut runtime.handle_scope();
             let res = v8::Local::new(scope, value);
@@ -618,22 +448,10 @@ impl DenoModule {
             }
             _ => {
                 // generic error message
-                js_error.into()
+                DenoError::JsError(Box::new(js_error))
             }
         }
     }
-}
-
-/// Set of shared resources between DenoModules.
-/// Cloning one DenoModuleSharedState and providing it to a set of DenoModules will
-/// give them all access to the state through Arc<>s!
-#[derive(Clone, Default)]
-pub struct DenoModuleSharedState {
-    pub blob_store: Arc<BlobStore>,
-    pub broadcast_channel: InMemoryBroadcastChannel,
-    // TODO
-    //  shared_array_buffer_store
-    //  compiled_wasm_module_store
 }
 
 /// Argument to a DenoModule function.
@@ -666,11 +484,9 @@ mod tests {
                     .join("direct.js")
                     .to_owned(),
             ),
-            "deno_module",
             vec![],
             vec![],
             vec![],
-            DenoModuleSharedState::default(),
             None,
             None,
             None,
@@ -701,11 +517,9 @@ mod tests {
                     .join("direct.js")
                     .to_owned(),
             ),
-            "deno_module",
             vec![],
             vec![],
             vec![],
-            DenoModuleSharedState::default(),
             None,
             None,
             None,
@@ -744,11 +558,9 @@ mod tests {
                     .join("through_shim.js")
                     .to_owned(),
             ),
-            "deno_module",
             vec![GET_JSON_SHIM],
             vec![],
             vec![],
-            DenoModuleSharedState::default(),
             None,
             None,
             None,
@@ -794,11 +606,9 @@ mod tests {
                     .join("through_shim.js")
                     .to_owned(),
             ),
-            "deno_module",
             vec![GET_JSON_SHIM],
             vec![],
             vec![],
-            DenoModuleSharedState::default(),
             None,
             None,
             None,
@@ -840,14 +650,14 @@ mod tests {
 
     #[op2]
     #[string]
-    fn op_rust_impl(#[string] arg: String) -> Result<String, AnyError> {
-        Ok(format!("Register Op: {arg}"))
+    fn op_rust_impl(#[string] arg: String) -> String {
+        format!("Register Op: {arg}")
     }
 
     #[op2(async)]
     #[string]
-    async fn op_async_rust_impl(#[string] arg: String) -> Result<String, AnyError> {
-        Ok(format!("Register Async Op: {arg}"))
+    async fn op_async_rust_impl(#[string] arg: String) -> String {
+        format!("Register Async Op: {arg}")
     }
 
     deno_core::extension!(
@@ -870,11 +680,9 @@ mod tests {
                     .join("through_rust_fn.js")
                     .to_owned(),
             ),
-            "deno_module",
             vec![],
             vec![],
-            vec![test::init_ops_and_esm()],
-            DenoModuleSharedState::default(),
+            vec![test::init()],
             None,
             None,
             None,
@@ -901,11 +709,9 @@ mod tests {
                     .join("through_rust_fn.js")
                     .to_owned(),
             ),
-            "deno_module",
             vec![],
             vec![],
-            vec![test::init_ops_and_esm()],
-            DenoModuleSharedState::default(),
+            vec![test::init()],
             None,
             None,
             None,

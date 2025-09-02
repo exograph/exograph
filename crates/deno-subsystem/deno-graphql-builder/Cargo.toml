@@ -5,25 +5,18 @@ edition.workspace = true
 publish = false
 
 [dependencies]
-async-recursion.workspace = true
-
+async-trait.workspace = true
 core-model = { path = "../../core-subsystem/core-model" }
 core-model-builder = { path = "../../core-subsystem/core-model-builder" }
 subsystem-model-builder-util = { path = "../../subsystem-util/subsystem-model-builder-util" }
 deno-graphql-model = { path = "../deno-graphql-model" }
 exo-deno = { path = "../../../libs/exo-deno" }
-url.workspace = true
-tokio.workspace = true
+common = { path = "../../common" }
 
-deno.workspace = true
+url.workspace = true
 deno_core.workspace = true
-deno_ast = { workspace = true, features = ["transpiling"] }
-deno_graph.workspace = true
-deno_npm.workspace = true
-deno_virtual_fs.workspace = true
-deno_runtime.workspace = true
-deno_config = { version = "=0.37.1", features = ["workspace", "sync"] }
 serde_json.workspace = true
+tokio.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

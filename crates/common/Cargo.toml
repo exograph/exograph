@@ -13,7 +13,7 @@ opentelemetry = ["opentelemetry_sdk", "opentelemetry-otlp", "tonic"]
 [dependencies]
 thiserror.workspace = true
 tokio.workspace = true
-reqwest.workspace = true
+reqwest = { workspace = true, features = ["stream"] }
 http.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["preserve_order"] }
@@ -31,6 +31,9 @@ colored.workspace = true
 
 exo-env = { path = "../../libs/exo-env" }
 exo-sql = { path = "../../libs/exo-sql" }
+
+anyhow.workspace = true
+indicatif = "0.17.11"
 
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["registry", "env-filter"] }
@@ -54,6 +57,11 @@ hyper-util = { version = "0.1.7" }
 tower = { version = "0.5", features = ["util"] }
 
 wildmatch = { workspace = true, optional = true }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+zip.workspace = true
+tempfile.workspace = true
+home = "0.5.11"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }

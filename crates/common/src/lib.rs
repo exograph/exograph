@@ -9,6 +9,7 @@
 
 pub mod context;
 pub mod cors;
+pub mod download;
 pub mod env_const;
 pub mod env_processing;
 pub mod http;

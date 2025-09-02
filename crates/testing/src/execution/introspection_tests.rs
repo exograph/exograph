@@ -15,7 +15,7 @@ use common::{
     operation_payload::OperationsPayload,
 };
 use core_plugin_shared::serializable_system::SerializableSystem;
-use exo_deno::{Arg, deno_error::DenoError};
+use exo_deno::{Arg, error::DenoError};
 use exo_env::MapEnvironment;
 use serde_json::Value;
 use std::{collections::HashMap, path::Path, sync::Arc};

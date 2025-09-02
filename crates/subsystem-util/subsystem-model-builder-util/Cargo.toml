@@ -8,6 +8,7 @@ publish = false
 serde.workspace = true
 codemap-diagnostic.workspace = true
 codemap.workspace = true
+async-trait.workspace = true
 
 core-model = { path = "../../core-subsystem/core-model" }
 core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }

@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use async_trait::async_trait;
 use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use core_model_builder::{
     ast::ast_types::{AstExpr, AstModule},
@@ -77,8 +78,9 @@ pub async fn build(
 
 struct WasmScriptProcessor {}
 
+#[async_trait]
 impl ScriptProcessor for WasmScriptProcessor {
-    fn process_script(
+    async fn process_script(
         &self,
         _module: &AstModule<Typed>,
         _base_system: &BaseModelSystem,
