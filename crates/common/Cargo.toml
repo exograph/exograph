@@ -13,7 +13,7 @@ opentelemetry = ["opentelemetry_sdk", "opentelemetry-otlp", "tonic"]
 [dependencies]
 thiserror.workspace = true
 tokio.workspace = true
-reqwest.workspace = true
+reqwest = { workspace = true, features = ["stream"] }
 http.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["preserve_order"] }
