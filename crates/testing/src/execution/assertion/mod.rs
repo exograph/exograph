@@ -7,7 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use anyhow::{Result, anyhow};
 use exo_deno::{
@@ -15,6 +18,7 @@ use exo_deno::{
     deno_core::{ModuleType, url::Url},
     deno_executor_pool::{DenoScriptDefn, ResolvedModule},
 };
+use exo_env::MapEnvironment;
 
 const ASSERT_JS: &str = include_str!("./assert.js");
 
@@ -159,6 +163,7 @@ async fn create_deno_module(script: String) -> Result<DenoModule> {
         Some("ExographError"),
         None,
         None,
+        Arc::new(MapEnvironment::default()),
     )
     .await?;
 

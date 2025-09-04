@@ -15,4 +15,8 @@ impl Environment for SystemEnvironment {
     fn get(&self, key: &str) -> Option<String> {
         std::env::var(key).ok()
     }
+
+    fn non_system_envs(&self) -> Box<dyn Iterator<Item = (String, String)> + '_> {
+        Box::new(std::iter::empty())
+    }
 }

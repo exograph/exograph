@@ -7,7 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::sync::Arc;
+
 use deno_core::Extension;
+use exo_env::Environment;
 use tokio::sync::oneshot;
 
 use async_trait::async_trait;
@@ -137,7 +140,9 @@ deno_core::extension!(
     ]
 );
 
-pub fn exo_config() -> DenoExecutorConfig<Option<InterceptedOperationInfo>> {
+pub fn exo_config(
+    env: Arc<dyn Environment>,
+) -> DenoExecutorConfig<Option<InterceptedOperationInfo>> {
     fn create_extensions() -> Vec<Extension> {
         vec![exograph::init()]
     }
@@ -148,12 +153,14 @@ pub fn exo_config() -> DenoExecutorConfig<Option<InterceptedOperationInfo>> {
         EXPLICIT_ERROR_CLASS_NAME,
         create_extensions,
         process_call_context,
+        env,
     )
 }
 
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
+    use exo_env::MapEnvironment;
+    use std::{path::Path, sync::Arc};
     use test_log::test;
 
     use super::exograph;
@@ -186,6 +193,7 @@ mod tests {
             None,
             None,
             None,
+            Arc::new(MapEnvironment::default()),
         )
         .await
         .unwrap();

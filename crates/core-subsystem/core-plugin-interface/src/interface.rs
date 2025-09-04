@@ -145,7 +145,7 @@ pub trait SubsystemLoader {
     async fn init(
         &mut self,
         serialized_subsystem: SerializableSubsystem,
-        env: &dyn Environment,
+        env: Arc<dyn Environment>,
     ) -> Result<Box<SubsystemResolver>, SubsystemLoadingError>;
 }
 

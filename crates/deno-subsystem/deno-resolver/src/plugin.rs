@@ -34,14 +34,14 @@ impl SubsystemLoader for DenoSubsystemLoader {
     async fn init(
         &mut self,
         serialized_subsystem: SerializableSubsystem,
-        _env: &dyn Environment,
+        env: Arc<dyn Environment>,
     ) -> Result<Box<SubsystemResolver>, SubsystemLoadingError> {
         exo_deno::initialize();
 
         let graphql = match serialized_subsystem.graphql {
             Some(graphql) => {
                 let subsystem = DenoSubsystem::deserialize(graphql.0)?;
-                let executor = DenoExecutorPool::new_from_config(exo_config());
+                let executor = DenoExecutorPool::new_from_config(exo_config(env.clone()));
                 Ok::<_, SubsystemLoadingError>(Some(Arc::new(DenoSubsystemResolver {
                     id: self.id(),
                     subsystem,

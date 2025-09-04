@@ -56,3 +56,8 @@ module TodoModule {
     // An example of using a type from a Postgrs module
     @access(true) export mutation publishFoo(): FooDatabase.Foo
 }
+
+@deno("env.ts")
+module EnvModule {
+    @access(true) query getEnv(key: String): String?
+}

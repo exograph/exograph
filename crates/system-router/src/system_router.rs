@@ -288,7 +288,7 @@ pub async fn create_system_resolvers(
         let mut loader = get_loader(&mut static_loaders, subsystem.id.clone())?;
 
         let resolver = loader
-            .init(subsystem, env.as_ref())
+            .init(subsystem, env.clone())
             .await
             .map_err(SystemLoadingError::SubsystemLoadingError)?;
 

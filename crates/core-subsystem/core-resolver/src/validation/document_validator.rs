@@ -910,7 +910,7 @@ mod tests {
         postgres_resolver::PostgresSubsystemLoader {
             existing_client: Some(client),
         }
-        .init(subsystem, &MapEnvironment::from([]))
+        .init(subsystem, Arc::new(MapEnvironment::default()))
         .await
         .expect("Failed to initialize postgres subsystem")
     }

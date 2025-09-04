@@ -20,6 +20,8 @@ pub use system::SystemEnvironment;
 pub trait Environment: Send + Sync {
     fn get(&self, key: &str) -> Option<String>;
 
+    fn non_system_envs(&self) -> Box<dyn Iterator<Item = (String, String)> + '_>;
+
     fn enabled(&self, key: &str, default_value: bool) -> Result<bool, EnvError> {
         match self.get(key) {
             Some(value) => match value.to_lowercase().as_str() {

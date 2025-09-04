@@ -10,6 +10,7 @@
 use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
 use deno_core::{Extension, ModuleType, url::Url};
+use exo_env::Environment;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::Mutex;
@@ -45,6 +46,7 @@ pub struct DenoExecutorConfig<C> {
     explicit_error_class_name: Option<&'static str>,
     create_extensions: fn() -> Vec<Extension>,
     process_call_context: fn(&mut DenoModule, C) -> (),
+    additional_env: Arc<dyn Environment>,
 }
 
 impl<C> DenoExecutorConfig<C> {
@@ -54,6 +56,7 @@ impl<C> DenoExecutorConfig<C> {
         explicit_error_class_name: Option<&'static str>,
         create_extensions: fn() -> Vec<Extension>,
         process_call_context: fn(&mut DenoModule, C) -> (),
+        additional_env: Arc<dyn Environment>,
     ) -> Self {
         Self {
             shims,
@@ -61,6 +64,7 @@ impl<C> DenoExecutorConfig<C> {
             explicit_error_class_name,
             create_extensions,
             process_call_context,
+            additional_env,
         }
     }
 }
@@ -97,6 +101,7 @@ impl<C: Sync + Send + Debug + 'static, M: Sync + Send + 'static, R: Sync + Send 
         explicit_error_class_name: Option<&'static str>,
         create_extensions: fn() -> Vec<Extension>,
         process_call_context: fn(&mut DenoModule, C) -> (),
+        additional_env: Arc<dyn Environment>,
     ) -> Self {
         Self::new_from_config(DenoExecutorConfig::new(
             shims,
@@ -104,6 +109,7 @@ impl<C: Sync + Send + Debug + 'static, M: Sync + Send + 'static, R: Sync + Send 
             explicit_error_class_name,
             create_extensions,
             process_call_context,
+            additional_env,
         ))
     }
 
@@ -197,6 +203,7 @@ impl<C: Sync + Send + Debug + 'static, M: Sync + Send + 'static, R: Sync + Send 
             self.config.create_extensions,
             self.config.explicit_error_class_name,
             self.config.process_call_context,
+            self.config.additional_env.clone(),
         )
     }
 }
@@ -206,6 +213,7 @@ mod tests {
     use super::*;
     use crate::deno_module::Arg;
     use deno_core::ModuleSpecifier;
+    use exo_env::MapEnvironment;
     use serde_json::Value;
 
     use futures::future::join_all;
@@ -215,8 +223,14 @@ mod tests {
         let module_path = "file://test_js/direct.js";
         let module_script = include_str!("test_js/direct.js").to_string();
 
-        let executor_pool =
-            DenoExecutorPool::<(), (), ()>::new(vec![], vec![], None, Vec::new, |_, _| {});
+        let executor_pool = DenoExecutorPool::<(), (), ()>::new(
+            vec![],
+            vec![],
+            None,
+            Vec::new,
+            |_, _| {},
+            Arc::new(MapEnvironment::default()),
+        );
 
         let res = executor_pool
             .execute(
@@ -249,7 +263,14 @@ mod tests {
         let module_path = "file://test_js/direct.js";
         let module_script = include_str!("test_js/direct.js").to_string();
 
-        let executor_pool = DenoExecutorPool::new(vec![], vec![], None, Vec::new, |_, _| {});
+        let executor_pool = DenoExecutorPool::new(
+            vec![],
+            vec![],
+            None,
+            Vec::new,
+            |_, _| {},
+            Arc::new(MapEnvironment::default()),
+        );
 
         let total_futures = 10;
 

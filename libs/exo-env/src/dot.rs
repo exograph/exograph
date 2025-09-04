@@ -41,4 +41,9 @@ impl Environment for DotEnvironment {
         let vars = self.load_vars();
         vars.get(key).cloned()
     }
+
+    fn non_system_envs(&self) -> Box<dyn Iterator<Item = (String, String)> + '_> {
+        let vars = self.load_vars();
+        Box::new(vars.iter().map(|(k, v)| (k.clone(), v.clone())))
+    }
 }

@@ -105,6 +105,7 @@ type Query {
   Get the aggregate value of the selected fields over all `Foo`s given the provided `where` filter
   """
   foosAgg(where: FooFilter): FooAgg!
+  getEnv(key: String!): String
   shimQuery: Int!
   todo(id: Int!): Todo!
   todos: Todos!

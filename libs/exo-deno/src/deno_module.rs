@@ -24,6 +24,7 @@ use deno_runtime::permissions::RuntimePermissionDescriptorParser;
 use deno_runtime::worker::MainWorker;
 use deno_runtime::worker::WorkerOptions;
 use deno_runtime::worker::WorkerServiceOptions;
+use exo_env::Environment;
 use include_dir::Dir;
 use node_resolver::errors::PackageJsonLoadError;
 use tracing::error;
@@ -125,6 +126,7 @@ impl DenoModule {
         explicit_error_class_name: Option<&'static str>,
         embedded_script_dirs: Option<HashMap<String, &'static Dir<'static>>>,
         extra_sources: Option<Vec<(&str, String)>>,
+        additional_env: Arc<dyn Environment>,
     ) -> Result<Self, AnyError> {
         let shim_source_code = {
             let shims_source_codes: Vec<_> = shims
@@ -236,6 +238,19 @@ impl DenoModule {
             let node_require_loader: Rc<dyn deno_runtime::deno_node::NodeRequireLoader> =
                 Rc::new(BasicNodeRequireLoader);
             op_state.put(node_require_loader);
+        }
+
+        // Make environment variables that we loaded from the config (.env.*) available to Deno
+        //
+        // To avoid the theoretical possibility of JS injection risk we need to ensure that the keys and values are properly escaped.
+        // Note that this is not really important, since environment variables are not user-controlled (they are developer controlled).
+        for (key, value) in additional_env.non_system_envs() {
+            let env_setting_script = format!(
+                "Deno.env.set({}, {});",
+                serde_json::to_string(&key)?,
+                serde_json::to_string(&value)?
+            );
+            worker.execute_script("", env_setting_script.into())?;
         }
 
         worker.execute_main_module(&main_module).await?;
@@ -470,6 +485,7 @@ mod tests {
     use std::path::Path;
 
     use deno_core::op2;
+    use exo_env::MapEnvironment;
     use serde_json::json;
     use test_log::test;
 
@@ -490,6 +506,7 @@ mod tests {
             None,
             None,
             None,
+            Arc::new(MapEnvironment::default()),
         )
         .await
         .unwrap();
@@ -523,6 +540,7 @@ mod tests {
             None,
             None,
             None,
+            Arc::new(MapEnvironment::default()),
         )
         .await
         .unwrap();
@@ -564,6 +582,7 @@ mod tests {
             None,
             None,
             None,
+            Arc::new(MapEnvironment::default()),
         )
         .await
         .unwrap();
@@ -612,6 +631,7 @@ mod tests {
             None,
             None,
             None,
+            Arc::new(MapEnvironment::default()),
         )
         .await
         .unwrap();
@@ -686,6 +706,7 @@ mod tests {
             None,
             None,
             None,
+            Arc::new(MapEnvironment::default()),
         )
         .await
         .unwrap();
@@ -715,6 +736,7 @@ mod tests {
             None,
             None,
             None,
+            Arc::new(MapEnvironment::default()),
         )
         .await
         .unwrap();

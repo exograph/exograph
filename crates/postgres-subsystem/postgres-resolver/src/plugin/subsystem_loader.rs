@@ -44,10 +44,10 @@ impl SubsystemLoader for PostgresSubsystemLoader {
     async fn init(
         &mut self,
         subsystem: SerializableSubsystem,
-        env: &dyn Environment,
+        env: Arc<dyn Environment>,
     ) -> Result<Box<SubsystemResolver>, SubsystemLoadingError> {
         let executor = Arc::new(
-            create_database_executor(self.existing_client.take(), env)
+            create_database_executor(self.existing_client.take(), env.as_ref())
                 .await
                 .map_err(|e| SubsystemLoadingError::BoxedError(Box::new(e)))?,
         );
@@ -82,7 +82,7 @@ impl SubsystemLoader for PostgresSubsystemLoader {
                 let mut subsystem = PostgresRestSubsystemWithRouter::new(subsystem)?;
                 subsystem.core_subsystem = core_subsystem.clone();
 
-                let api_path_prefix = format!("{}/", get_rest_http_path(env));
+                let api_path_prefix = format!("{}/", get_rest_http_path(env.as_ref()));
 
                 Ok::<_, SubsystemLoadingError>(Box::new(PostgresSubsystemRestResolver {
                     id: self.id(),
@@ -99,7 +99,7 @@ impl SubsystemLoader for PostgresSubsystemLoader {
                 let subsystem = PostgresRpcSubsystem::deserialize(rpc.0)?;
                 let mut subsystem = PostgresRpcSubsystemWithRouter::new(subsystem)?;
                 subsystem.core_subsystem = core_subsystem.clone();
-                let api_path_prefix = get_rpc_http_path(env).to_string();
+                let api_path_prefix = get_rpc_http_path(env.as_ref()).to_string();
                 Ok::<_, SubsystemLoadingError>(Box::new(PostgresSubsystemRpcResolver {
                     id: self.id(),
                     subsystem,

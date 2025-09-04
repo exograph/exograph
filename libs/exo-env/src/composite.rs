@@ -19,6 +19,10 @@ impl Environment for CompositeEnvironment {
     fn get(&self, key: &str) -> Option<String> {
         self.envs.iter().find_map(|e| e.get(key))
     }
+
+    fn non_system_envs(&self) -> Box<dyn Iterator<Item = (String, String)> + '_> {
+        Box::new(self.envs.iter().flat_map(|env| env.non_system_envs()))
+    }
 }
 
 impl CompositeEnvironment {
