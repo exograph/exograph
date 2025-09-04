@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use anyhow::{Result, anyhow};
 use exo_deno::{
@@ -15,6 +15,7 @@ use exo_deno::{
     deno_core::{ModuleType, url::Url},
     deno_executor_pool::{DenoScriptDefn, ResolvedModule},
 };
+use exo_env::MapEnvironment;
 use include_dir::{Dir, include_dir};
 use serde_json::Value;
 
@@ -84,6 +85,7 @@ pub async fn create_introspection_deno_module() -> Result<DenoModule> {
                 .unwrap()
                 .replace("process.env.NODE_ENV === 'production'", "false"),
         )]),
+        Arc::new(MapEnvironment::default()),
     )
     .await
 }

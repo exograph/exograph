@@ -8,6 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use deno_core::Extension;
+use exo_env::Environment;
 use futures::pin_mut;
 use serde_json::Value;
 use std::fmt::Debug;
@@ -96,6 +97,7 @@ where
         extension_ops: fn() -> Vec<Extension>,
         explicit_error_class_name: Option<&'static str>,
         process_call_context: fn(&mut DenoModule, C) -> (),
+        additional_env: Arc<dyn Environment>,
     ) -> Result<DenoActor<C, M, R>, DenoError> {
         let (callback_sender, callback_receiver) = tokio::sync::mpsc::channel(1);
 
@@ -128,6 +130,7 @@ where
                     explicit_error_class_name,
                     None,
                     None,
+                    additional_env,
                 )
                 .await;
 
@@ -267,6 +270,7 @@ impl<C, M, R> Clone for DenoActor<C, M, R> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use exo_env::MapEnvironment;
     use std::path::Path;
     use tokio::sync::mpsc::channel;
 
@@ -282,6 +286,7 @@ mod tests {
             Vec::new,
             EXPLICIT_ERROR_CLASS_NAME,
             |_, _| {},
+            Arc::new(MapEnvironment::default()),
         )
         .unwrap();
 

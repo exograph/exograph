@@ -38,6 +38,8 @@ serde_json.workspace = true
 tracing.workspace = true
 include_dir.workspace = true
 
+exo-env = { path = "../exo-env" }
+
 [dev-dependencies]
 ctor.workspace = true
 test-log.workspace = true

@@ -24,6 +24,16 @@ impl Environment for MapEnvironment {
             .cloned()
             .or_else(|| self.fallback.as_ref().and_then(|fb| fb.get(key)))
     }
+
+    fn non_system_envs(&self) -> Box<dyn Iterator<Item = (String, String)> + '_> {
+        let local_iter = self.values.iter().map(|(k, v)| (k.clone(), v.clone()));
+
+        if let Some(fallback) = &self.fallback {
+            Box::new(local_iter.chain(fallback.non_system_envs()))
+        } else {
+            Box::new(local_iter)
+        }
+    }
 }
 
 impl From<HashMap<String, String>> for MapEnvironment {

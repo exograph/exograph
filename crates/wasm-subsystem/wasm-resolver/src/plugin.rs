@@ -32,7 +32,7 @@ impl SubsystemLoader for WasmSubsystemLoader {
     async fn init(
         &mut self,
         serialized_subsystem: SerializableSubsystem,
-        _env: &dyn Environment,
+        _env: Arc<dyn Environment>,
     ) -> Result<Box<SubsystemResolver>, SubsystemLoadingError> {
         let executor = WasmExecutorPool::default();
 

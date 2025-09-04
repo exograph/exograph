@@ -17,6 +17,7 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 exo-deno = { path = "../../../libs/exo-deno" }
+exo-env = { path = "../../../libs/exo-env" }
 core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 core-resolver = { path = "../../core-subsystem/core-resolver" }
 core-model = { path = "../../core-subsystem/core-model" }

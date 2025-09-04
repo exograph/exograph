@@ -30,4 +30,8 @@ impl Environment for WorkerEnvironment {
             .map(|binding| binding.to_string())
             .or(self.additional_envs.get(key).cloned())
     }
+
+    fn non_system_envs(&self) -> Box<dyn Iterator<Item = (String, String)> + '_> {
+        Box::new(self.additional_envs.clone().into_iter())
+    }
 }
