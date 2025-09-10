@@ -302,6 +302,7 @@ impl DenoModule {
             compiled_wasm_module_store: Default::default(),
             v8_code_cache: Default::default(),
             fs,
+            bundle_provider: None,
         }
     }
 
@@ -329,7 +330,7 @@ impl DenoModule {
                 "",
                 deno_core::FastString::from(format!("mod.{function_name}")),
             )
-            .map_err(|e| DenoInternalError::JsError(Box::new(e)))?;
+            .map_err(|e| DenoInternalError::JsError(Box::new(*e)))?;
 
         let shim_objects: HashMap<_, _> = {
             let shim_objects_vals: Vec<_> = self
@@ -337,7 +338,7 @@ impl DenoModule {
                 .iter()
                 .map(|name| runtime.execute_script("", deno_core::FastString::from(name.clone())))
                 .collect::<Result<_, _>>()
-                .map_err(|e| DenoInternalError::JsError(Box::new(e)))?;
+                .map_err(|e| DenoInternalError::JsError(Box::new(*e)))?;
             self.shim_object_names
                 .iter()
                 .zip(shim_objects_vals.into_iter())
@@ -396,7 +397,7 @@ impl DenoModule {
 
                     return Err(Self::process_js_error(
                         self.explicit_error_class_name,
-                        js_error,
+                        *js_error,
                     ));
                 }
             };
@@ -415,7 +416,7 @@ impl DenoModule {
                     deno_core::error::CoreErrorKind::Js(js_error) => {
                         error!(%js_error, "Exception executing function");
 
-                        Self::process_js_error(self.explicit_error_class_name, js_error)
+                        Self::process_js_error(self.explicit_error_class_name, *js_error)
                     }
                     _ => DenoError::AnyError(err.into()),
                 })?;
