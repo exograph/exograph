@@ -16,7 +16,7 @@ core-plugin-shared = { path = "../core-plugin-shared" }
 exo-env = { path = "../../../libs/exo-env" }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
-libloading = "0.8.5"
+libloading = "0.8.8"
 
 [dev-dependencies]
 

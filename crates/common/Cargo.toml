@@ -33,7 +33,7 @@ exo-env = { path = "../../libs/exo-env" }
 exo-sql = { path = "../../libs/exo-sql" }
 
 anyhow.workspace = true
-indicatif = "0.17.11"
+indicatif = "0.18.0"
 
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["registry", "env-filter"] }

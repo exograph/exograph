@@ -21,8 +21,8 @@ use exo_sql::schema::spec::{MigrationScope, MigrationScopeMatches, NameMatching}
 use rand::Rng;
 
 pub(super) fn generate_random_string() -> String {
-    rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
+    rand::rng()
+        .sample_iter(&rand::distr::Alphanumeric)
         .take(15)
         .map(char::from)
         .map(|c| c.to_ascii_lowercase())

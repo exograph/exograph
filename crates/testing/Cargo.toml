@@ -28,7 +28,7 @@ tokio.workspace = true
 async-graphql-parser.workspace = true
 async-graphql-value.workspace = true
 http.workspace = true
-md5 = "0.7"
+md5 = "0.8.0"
 wildmatch.workspace = true
 
 common = { path = "../common" }
