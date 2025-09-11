@@ -22,7 +22,7 @@ use exo_sql::testing::db::EphemeralDatabaseServer;
 use futures::FutureExt;
 use futures::future::OptionFuture;
 use jsonwebtoken::{EncodingKey, Header, encode};
-use rand::{Rng, distributions::Alphanumeric};
+use rand::{Rng, distr::Alphanumeric};
 use regex::Regex;
 use serde_json::{Map, Value, json};
 use system_router::{SystemRouter, create_system_router_from_file};
@@ -114,7 +114,7 @@ impl IntegrationTest {
         // iterate through our tests
         let mut ctx = {
             // generate a JWT secret
-            let jwtsecret: String = rand::thread_rng()
+            let jwtsecret: String = rand::rng()
                 .sample_iter(&Alphanumeric)
                 .take(30)
                 .map(char::from)
