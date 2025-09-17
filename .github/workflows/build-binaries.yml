@@ -53,10 +53,6 @@ jobs:
       matrix:
         # For these target platforms
         include:
-          - os: macos-13
-            deps-script: HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew install protobuf postgresql@14 pgvector
-            target: x86_64-apple-darwin
-            bin_extension: ""
           - os: macos-14
             deps-script: brew install protobuf postgresql@14 pgvector
             target: aarch64-apple-darwin

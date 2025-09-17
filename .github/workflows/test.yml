@@ -60,9 +60,6 @@ jobs:
               sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
               sudo apt-get install -y protobuf-compiler postgresql-14-pgvector
             target: x86_64-unknown-linux-gnu
-          - os: macos-13
-            deps-script: HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew install protobuf postgresql@14 pgvector
-            target: x86_64-apple-darwin
           - os: macos-14
             deps-script: brew install protobuf postgresql@14 pgvector
             target: aarch64-apple-darwin
@@ -142,7 +139,7 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 20
-          
+
       - name: Get wasm-bindgen version
         id: wasm-bindgen-version
         run: echo "VERSION=$(cargo pkgid wasm-bindgen-shared | cut -d '@' -f2)" >> "$GITHUB_OUTPUT"
@@ -162,4 +159,4 @@ jobs:
           --exclude subsystem-model-builder-util
           --exclude server-common --exclude server-actix --exclude server-aws-lambda
           --exclude testing
-          --exclude exo-deno --exclude exo-wasm --exclude mcp-router --exclude introspection-util 
+          --exclude exo-deno --exclude exo-wasm --exclude mcp-router --exclude introspection-util
