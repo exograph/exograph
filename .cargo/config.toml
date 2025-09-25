@@ -1,8 +1,18 @@
 # See https://github.com/rust-lang/cargo/issues/5034#issuecomment-1050225208
-# and the comment before that (if we were to restrict the target only to clippy, 
+# and the comment before that (if we were to restrict the target only to clippy,
 # caches for clippy and normal build will clobber each other).
 [target.'cfg(all())']
 rustflags = ["-Dclippy::wildcard_imports"]
+
+[target.'cfg(windows)']
+rustflags = [
+  "-C",
+  "debuginfo=0",
+  "-C",
+  "link-arg=/DEBUG:NONE",
+  "-C",
+  "link-arg=/NODEFAULTLIB:libcmt.lib",
+]
 
 # Configure getrandom for wasm32 targets
 [target.wasm32-unknown-unknown]
@@ -16,6 +26,8 @@ rustflags = [
   "debuginfo=0",
   "-C",
   "link-arg=/DEBUG:NONE",
+  "-C",
+  "link-arg=/NODEFAULTLIB:libcmt.lib",
 ]
 
 [target.'cfg(all(windows, debug_assertions))']
