@@ -13,11 +13,15 @@ rustflags = [
   "-C",
   "target-feature=+crt-static",
   "-C",
-  "debuginfo=0",
+  "symbol-mangling-version=v0",
+]
+
+[target.'cfg(all(windows, debug_assertions))']
+rustflags = [
   "-C",
-  "link-arg=/DEBUG:NONE",
+  "target-feature=+crt-static",
   "-C",
-  "link-arg=/NODEFAULTLIB:libcmt.lib",
-  "-C",
-  "link-arg=/OPT:REF",
+  # increase the stack size to prevent overflowing the
+  # stack in debug when launching sub commands
+  "link-arg=/STACK:4194304",
 ]
