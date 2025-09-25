@@ -138,6 +138,9 @@ zip = "5.1.1"
 [profile.dev]
 debug = 1
 
+[profile.dev.package.exo-deno]
+debug = 0
+
 [profile.release]
 lto = true
 codegen-units = 1
