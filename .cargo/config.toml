@@ -10,8 +10,6 @@ rustflags = [
   "debuginfo=0",
   "-C",
   "link-arg=/DEBUG:NONE",
-  "-C",
-  "link-arg=/NODEFAULTLIB:libcmt.lib",
 ]
 
 # Configure getrandom for wasm32 targets
@@ -26,8 +24,6 @@ rustflags = [
   "debuginfo=0",
   "-C",
   "link-arg=/DEBUG:NONE",
-  "-C",
-  "link-arg=/NODEFAULTLIB:libcmt.lib",
 ]
 
 [target.'cfg(all(windows, debug_assertions))']
