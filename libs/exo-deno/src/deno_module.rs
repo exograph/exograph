@@ -302,6 +302,7 @@ impl DenoModule {
             compiled_wasm_module_store: Default::default(),
             v8_code_cache: Default::default(),
             fs,
+            bundle_provider: None,
         }
     }
 
@@ -322,22 +323,19 @@ impl DenoModule {
         args: Vec<Arg>,
     ) -> Result<Value, DenoError> {
         let worker = &mut self.worker;
-        let runtime = &mut worker.js_runtime;
+        let mut runtime = &mut worker.js_runtime;
 
-        let func_value = runtime
-            .execute_script(
-                "",
-                deno_core::FastString::from(format!("mod.{function_name}")),
-            )
-            .map_err(|e| DenoInternalError::JsError(Box::new(e)))?;
+        let func_value = runtime.execute_script(
+            "",
+            deno_core::FastString::from(format!("mod.{function_name}")),
+        )?;
 
         let shim_objects: HashMap<_, _> = {
             let shim_objects_vals: Vec<_> = self
                 .shim_object_names
                 .iter()
                 .map(|name| runtime.execute_script("", deno_core::FastString::from(name.clone())))
-                .collect::<Result<_, _>>()
-                .map_err(|e| DenoInternalError::JsError(Box::new(e)))?;
+                .collect::<Result<_, _>>()?;
             self.shim_object_names
                 .iter()
                 .zip(shim_objects_vals.into_iter())
@@ -345,63 +343,58 @@ impl DenoModule {
         };
 
         let global = {
-            let scope = &mut runtime.handle_scope();
-
-            let mut tc_scope = v8::TryCatch::new(scope);
-            let tc_scope_ref = &mut tc_scope;
+            deno_core::scope!(scope, &mut runtime);
+            v8::tc_scope!(scope, scope);
 
             let args: Vec<_> = args
                 .into_iter()
                 .map(|v| match v {
                     Arg::Serde(v) => {
-                        Ok(serde_v8::to_v8(tc_scope_ref, v).map_err(DenoInternalError::Serde)?)
+                        Ok(serde_v8::to_v8(scope, v).map_err(DenoInternalError::Serde)?)
                     }
                     Arg::Shim(name) => Ok(shim_objects
                         .get(&name)
                         .ok_or(DenoDiagnosticError::MissingShim(name))?
-                        .open(tc_scope_ref)
-                        .to_object(tc_scope_ref)
+                        .open(scope)
+                        .to_object(scope)
                         .unwrap()
                         .into()),
                 })
                 .collect::<Result<Vec<_>, DenoError>>()?;
 
-            let func_obj = func_value
-                .open(tc_scope_ref)
-                .to_object(tc_scope_ref)
-                .ok_or_else(|| {
-                    DenoDiagnosticError::MissingFunction(
-                        function_name.to_owned(),
-                        match &self.user_code {
-                            UserCode::LoadFromMemory { path, .. } => path,
-                            UserCode::LoadFromFs(path) => path.to_str().unwrap(),
-                        }
-                        .to_owned(),
-                    )
-                })?;
+            let func_obj = func_value.open(scope).to_object(scope).ok_or_else(|| {
+                DenoDiagnosticError::MissingFunction(
+                    function_name.to_owned(),
+                    match &self.user_code {
+                        UserCode::LoadFromMemory { path, .. } => path,
+                        UserCode::LoadFromFs(path) => path.to_str().unwrap(),
+                    }
+                    .to_owned(),
+                )
+            })?;
             let func = v8::Local::<v8::Function>::try_from(func_obj)
                 .map_err(DenoInternalError::DataError)?;
 
-            let undefined = v8::undefined(tc_scope_ref);
-            let local = func.call(tc_scope_ref, undefined.into(), &args);
+            let undefined = v8::undefined(scope);
+            let local = func.call(scope, undefined.into(), &args);
 
             let local = match local {
                 Some(value) => value,
                 None => {
                     // We will get the exception here for sync functions
-                    let exception = tc_scope_ref.exception().unwrap();
-                    let js_error = JsError::from_v8_exception(tc_scope_ref, exception);
+                    let exception = scope.exception().unwrap();
+                    let js_error = JsError::from_v8_exception(scope, exception);
 
                     error!(%js_error, "Exception executing function");
 
                     return Err(Self::process_js_error(
                         self.explicit_error_class_name,
-                        js_error,
+                        *js_error,
                     ));
                 }
             };
 
-            v8::Global::new(tc_scope_ref, local)
+            v8::Global::new(scope, local)
         };
 
         {
@@ -415,12 +408,12 @@ impl DenoModule {
                     deno_core::error::CoreErrorKind::Js(js_error) => {
                         error!(%js_error, "Exception executing function");
 
-                        Self::process_js_error(self.explicit_error_class_name, js_error)
+                        Self::process_js_error(self.explicit_error_class_name, *js_error)
                     }
                     _ => DenoError::AnyError(err.into()),
                 })?;
 
-            let scope = &mut runtime.handle_scope();
+            deno_core::scope!(scope, &mut runtime);
             let res = v8::Local::new(scope, value);
             let res: Value = serde_v8::from_v8(scope, res).map_err(DenoInternalError::Serde)?;
             Ok(res)
