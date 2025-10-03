@@ -8,8 +8,6 @@ rustflags = ["-Dclippy::wildcard_imports"]
 rustflags = [
   "-C",
   "debuginfo=0",
-  "-C",
-  "link-arg=/DEBUG:NONE",
 ]
 
 # Configure getrandom for wasm32 targets
@@ -19,17 +17,11 @@ rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]
 [target.x86_64-pc-windows-msvc]
 rustflags = [
   "-C",
-  "target-feature=+crt-static",
-  "-C",
   "debuginfo=0",
-  "-C",
-  "link-arg=/DEBUG:NONE",
 ]
 
 [target.'cfg(all(windows, debug_assertions))']
 rustflags = [
-  "-C",
-  "target-feature=+crt-static",
   "-C",
   # increase the stack size to prevent overflowing the
   # stack in debug when launching sub commands
