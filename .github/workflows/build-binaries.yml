@@ -12,6 +12,7 @@
 name: Build Binaries
 
 on:
+  pull_request: # temporary, to test release build on PRs as well
   push:
     branches: ["main"]
     tags:
@@ -98,6 +99,8 @@ jobs:
         with:
           key: ${{ matrix.target }}
       - name: Build
+        env:
+          RUSTFLAGS: ${{ runner.os == 'Windows' && '-C target-feature=+crt-static -C symbol-mangling-version=v0 -Dclippy::wildcard_imports' || '' }}
         run: |
           cargo build -p cli -p server-actix -p lsp -p mcp-bridge --target ${{ matrix.target }} --release
       - name: Add Postgres to PATH
