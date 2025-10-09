@@ -18,6 +18,8 @@ rustflags = [
   "incremental=false",
   "-C",
   "debuginfo=0",
+  "-C",
+  "link-arg=/DEBUG:NONE",
 ]
 
 [target.'cfg(all(windows, debug_assertions))']
@@ -28,4 +30,6 @@ rustflags = [
   "link-arg=/STACK:4194304",
   "-C",
   "debuginfo=0",
+  "-C",
+  "link-arg=/DEBUG:NONE",
 ]
