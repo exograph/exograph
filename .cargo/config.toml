@@ -15,8 +15,6 @@ rustflags = [
   "target-feature=+crt-static",
   "-C",
   "symbol-mangling-version=v0",
-  "-C",
-  "incremental=false",
 ]
 
 [target.'cfg(all(windows, debug_assertions))']
