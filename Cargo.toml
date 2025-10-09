@@ -137,10 +137,6 @@ zip = "5.1.1"
 # reduce binary size, does not affect stack traces
 [profile.dev]
 debug = 1
-split-debuginfo = "packed"
-
-[profile.dev.build-override]
-debug = false
 
 [profile.release]
 lto = true
