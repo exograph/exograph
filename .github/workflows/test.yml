@@ -61,7 +61,7 @@ jobs:
               sudo apt-get install -y protobuf-compiler postgresql-14-pgvector
             target: x86_64-unknown-linux-gnu
           - os: macos-14
-            deps-script: brew install protobuf postgresql@14 pgvector
+            deps-script: brew install protobuf postgresql@17 pgvector
             target: aarch64-apple-darwin
           - os: windows-2022
             deps-script: choco install protoc

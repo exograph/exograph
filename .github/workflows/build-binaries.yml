@@ -54,7 +54,7 @@ jobs:
         # For these target platforms
         include:
           - os: macos-14
-            deps-script: brew install protobuf postgresql@14 pgvector
+            deps-script: brew install protobuf postgresql@17 pgvector
             target: aarch64-apple-darwin
             bin_extension: ""
           - os: ubuntu-22.04
