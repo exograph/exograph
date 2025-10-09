@@ -1,5 +1,5 @@
 # See https://github.com/rust-lang/cargo/issues/5034#issuecomment-1050225208
-# and the comment before that (if we were to restrict the target only to clippy, 
+# and the comment before that (if we were to restrict the target only to clippy,
 # caches for clippy and normal build will clobber each other).
 [target.'cfg(all())']
 rustflags = ["-Dclippy::wildcard_imports"]
@@ -7,3 +7,20 @@ rustflags = ["-Dclippy::wildcard_imports"]
 # Configure getrandom for wasm32 targets
 [target.wasm32-unknown-unknown]
 rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]
+
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld"
+rustflags = [
+  "-C",
+  "target-feature=+crt-static",
+  "-C",
+  "symbol-mangling-version=v0",
+]
+
+[target.'cfg(all(windows, debug_assertions))']
+rustflags = [
+  "-C",
+  "target-feature=+crt-static",
+  "-C",
+  "link-arg=/STACK:4194304",
+]
