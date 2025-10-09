@@ -9,6 +9,7 @@ rustflags = ["-Dclippy::wildcard_imports"]
 rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]
 
 [target.x86_64-pc-windows-msvc]
+linker = "rust-lld"
 rustflags = [
   "-C",
   "target-feature=+crt-static",
@@ -16,10 +17,6 @@ rustflags = [
   "symbol-mangling-version=v0",
   "-C",
   "incremental=false",
-  "-C",
-  "debuginfo=0",
-  "-C",
-  "link-arg=/DEBUG:NONE",
 ]
 
 [target.'cfg(all(windows, debug_assertions))']
@@ -28,8 +25,4 @@ rustflags = [
   "target-feature=+crt-static",
   "-C",
   "link-arg=/STACK:4194304",
-  "-C",
-  "debuginfo=0",
-  "-C",
-  "link-arg=/DEBUG:NONE",
 ]
