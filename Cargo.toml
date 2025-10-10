@@ -144,6 +144,9 @@ debug = 1
 lto = true
 codegen-units = 1
 strip = true
+# Use minimal debug info (line tables only) to avoid MSVC linker PDB complexity errors (LNK1318)
+# on Windows when building the exo-deno-snapshot build script. This matches Deno's approach.
+debug = "line-tables-only"
 
 [profile.release.package.server-cf-worker]
 opt-level = "s" # optimize for size in release builds
