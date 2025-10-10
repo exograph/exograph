@@ -9,16 +9,17 @@ rustflags = ["-Dclippy::wildcard_imports"]
 rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]
 
 # Windows configuration with static CRT linking.
-# We can use +crt-static because the V8 snapshot build complexity is isolated
-# in the exo-deno-snapshot crate. By separating the snapshot creation into its
-# own workspace crate (matching Deno's architecture), the build script is built
-# and cached separately, avoiding MSVC linker PDB complexity errors (LNK1318).
+# Use rust-lld (LLVM linker) instead of MSVC's link.exe to avoid PDB complexity
+# errors (LNK1318) when linking the exo-deno-snapshot build script with hundreds
+# of dependencies. rust-lld ships with Rust and handles large builds better.
 [target.x86_64-pc-windows-msvc]
 rustflags = [
   "-C",
   "target-feature=+crt-static",
   "-C",
-  "symbol-mangling-version=v0",
+  "link-arg=/subsystem:console",
+  "-C",
+  "linker=rust-lld",
 ]
 
 [target.'cfg(all(windows, debug_assertions))']
@@ -27,4 +28,6 @@ rustflags = [
   "target-feature=+crt-static",
   "-C",
   "link-arg=/STACK:4194304",
+  "-C",
+  "linker=rust-lld",
 ]
