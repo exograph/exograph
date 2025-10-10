@@ -140,14 +140,22 @@ zip = "5.1.1"
 [profile.dev]
 debug = 1
 
+# Disable debug info for build scripts to avoid MSVC linker PDB complexity errors (LNK1318).
+# Build scripts don't need debug info anyway.
+[profile.dev.build-override]
+debug = false
+
 [profile.release]
 lto = true
 codegen-units = 1
 strip = true
-# Use minimal debug info (line tables only) for backtraces. This matches Deno's approach.
-# On Windows, we use rust-lld (configured in .cargo/config.toml) to avoid MSVC linker
-# PDB complexity errors (LNK1318) when linking the exo-deno-snapshot build script.
+# Match Deno's debug configuration. split-debuginfo helps reduce PDB complexity.
+# We also disable debug info for build scripts via build-override below.
+split-debuginfo = "packed"
 debug = "line-tables-only"
+
+[profile.release.build-override]
+debug = false
 
 [profile.release.package.server-cf-worker]
 opt-level = "s" # optimize for size in release builds

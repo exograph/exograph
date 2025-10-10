@@ -8,18 +8,13 @@ rustflags = ["-Dclippy::wildcard_imports"]
 [target.wasm32-unknown-unknown]
 rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]
 
-# Windows configuration with static CRT linking.
-# Use rust-lld (LLVM linker) instead of MSVC's link.exe to avoid PDB complexity
-# errors (LNK1318) when linking the exo-deno-snapshot build script with hundreds
-# of dependencies. rust-lld ships with Rust and handles large builds better.
+# Windows configuration with static CRT linking, matching Deno's approach.
 [target.x86_64-pc-windows-msvc]
 rustflags = [
   "-C",
   "target-feature=+crt-static",
   "-C",
-  "link-arg=/subsystem:console",
-  "-C",
-  "linker=rust-lld",
+  "symbol-mangling-version=v0",
 ]
 
 [target.'cfg(all(windows, debug_assertions))']
@@ -28,6 +23,4 @@ rustflags = [
   "target-feature=+crt-static",
   "-C",
   "link-arg=/STACK:4194304",
-  "-C",
-  "linker=rust-lld",
 ]
