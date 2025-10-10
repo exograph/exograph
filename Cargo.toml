@@ -145,8 +145,6 @@ lto = true
 codegen-units = 1
 strip = true
 # Use minimal debug info (line tables only) for backtraces, matching Deno's approach.
-# On Windows, we use rust-lld (configured in .cargo/config.toml) which doesn't have
-# the PDB complexity limits of MSVC's link.exe.
 debug = "line-tables-only"
 
 [profile.release.package.server-cf-worker]
