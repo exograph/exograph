@@ -29,10 +29,8 @@ mod typescript_module_loader;
 
 pub use deno_core;
 
-static RUNTIME_SNAPSHOT: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/RUNTIME_SNAPSHOT.bin"));
-
 pub(crate) fn deno_snapshot() -> &'static [u8] {
-    RUNTIME_SNAPSHOT
+    exo_deno_snapshot::snapshot()
 }
 
 #[cfg(test)]

@@ -4201,6 +4201,7 @@ dependencies = [
  "deno_fs",
  "deno_resolver",
  "deno_runtime",
+ "exo-deno-snapshot",
  "exo-env",
  "futures",
  "include_dir",
@@ -4213,6 +4214,13 @@ dependencies = [
  "thiserror 2.0.16",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "exo-deno-snapshot"
+version = "0.25.0"
+dependencies = [
+ "deno_runtime",
 ]
 
 [[package]]

@@ -8,8 +8,8 @@ rustflags = ["-Dclippy::wildcard_imports"]
 [target.wasm32-unknown-unknown]
 rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]
 
+# Windows configuration with static CRT linking, matching Deno's approach.
 [target.x86_64-pc-windows-msvc]
-linker = "rust-lld"
 rustflags = [
   "-C",
   "target-feature=+crt-static",
