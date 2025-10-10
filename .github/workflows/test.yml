@@ -106,13 +106,10 @@ jobs:
           key: ${{ matrix.target }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Build
-        env:
-          CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER: ${{ runner.os == 'Windows' && 'rust-lld' || '' }}
         run: cargo build --target ${{ matrix.target }}
       - name: Run tests
         env:
           RUST_BACKTRACE: 1
-          CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER: ${{ runner.os == 'Windows' && 'rust-lld' || '' }}
         run: cargo test --workspace --target ${{ matrix.target }}
       - name: Run integration tests
         env:

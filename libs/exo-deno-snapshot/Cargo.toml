@@ -1,0 +1,15 @@
+[package]
+name = "exo-deno-snapshot"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+doctest = false
+
+[build-dependencies]
+deno_runtime = { version = "0.226.0", features = [
+  "include_js_files_for_snapshotting",
+  "only_snapshotted_js_sources",
+  "snapshot",
+] }

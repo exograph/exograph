@@ -11,15 +11,8 @@ doctest = false
 default = []
 typescript-loader = ["dep:deno_ast"]
 
-[build-dependencies]
-deno_runtime = { version = "0.226.0", features = [
-  "include_js_files_for_snapshotting",
-  "only_snapshotted_js_sources",
-  "snapshot",
-] }
-
-
 [dependencies]
+exo-deno-snapshot = { path = "../exo-deno-snapshot" }
 thiserror.workspace = true
 async-trait.workspace = true
 deno_runtime = "0.226.0"
