@@ -100,9 +100,8 @@ jobs:
           key: ${{ matrix.target }}
       - name: Build
         env:
-          # Disable debug symbols on Windows to avoid MSVC linker PDB complexity errors (LNK1318)
-          # when linking build scripts with hundreds of dependencies. Matches Deno's CI approach.
-          CARGO_PROFILE_DEV_DEBUG: ${{ runner.os == 'Windows' && '0' || '' }}
+          # Disable debug symbols in CI builds (not useful, speeds up builds, avoids Windows PDB limits).
+          CARGO_PROFILE_DEV_DEBUG: 0
         run: |
           cargo build -p cli -p server-actix -p lsp -p mcp-bridge --target ${{ matrix.target }} --release
       - name: Add Postgres to PATH
