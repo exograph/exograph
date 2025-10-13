@@ -8,13 +8,14 @@ rustflags = ["-Dclippy::wildcard_imports"]
 [target.wasm32-unknown-unknown]
 rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]
 
+# Windows configuration with static CRT linking.
+# Disable debug info to avoid MSVC linker PDB complexity errors (LNK1318).
 [target.x86_64-pc-windows-msvc]
-linker = "rust-lld"
 rustflags = [
   "-C",
   "target-feature=+crt-static",
   "-C",
-  "symbol-mangling-version=v0",
+  "debuginfo=0",
 ]
 
 [target.'cfg(all(windows, debug_assertions))']
@@ -23,4 +24,6 @@ rustflags = [
   "target-feature=+crt-static",
   "-C",
   "link-arg=/STACK:4194304",
+  "-C",
+  "debuginfo=0",
 ]
