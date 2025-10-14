@@ -15,7 +15,7 @@ use colored::Colorize;
 use common::env_const::EXO_SERVER_PORT;
 use exo_env::MapEnvironment;
 use futures::{FutureExt, future::BoxFuture};
-use notify_debouncer_mini::notify::RecursiveMode;
+use notify_debouncer_full::notify::RecursiveMode;
 use tokio::process::Child;
 
 use crate::config::Config;
@@ -57,17 +57,18 @@ where
 
     let (watcher_tx, mut watcher_rx) = tokio::sync::mpsc::channel(1);
     let mut debouncer =
-        notify_debouncer_mini::new_debouncer(Duration::from_millis(200), move |res| {
+        notify_debouncer_full::new_debouncer(Duration::from_millis(200), None, move |res| {
             let _ = watcher_tx.blocking_send(res);
         })?;
-    debouncer
-        .watcher()
-        .watch(root_path, RecursiveMode::Recursive)?;
+    debouncer.watch(root_path, RecursiveMode::Recursive)?;
 
     // Given a path, determine if the model should be rebuilt and the server restarted.
     let should_restart = |path: &Path| -> bool {
         path.strip_prefix(&canonical_root_path)
-            .map(|p| p.starts_with("src") || p.starts_with(default_trusted_documents_dir()))
+            .map(|p| {
+                p.is_file()
+                    && (p.starts_with("src") || p.starts_with(default_trusted_documents_dir()))
+            })
             .unwrap_or(false)
     };
 
@@ -93,8 +94,9 @@ where
                     break;  // quit if channel closed
                 };
 
+                // inotify implementation (default on Linux) notifies even on access events, we want to ignore those (using !event.kind.is_access())
                 if let Ok(events) = events
-                        && events.iter().map(|event| &event.path).any(|p| should_restart(p)) {
+                        && events.iter().any(|event| !event.kind.is_access() && event.paths.iter().any(|path| should_restart(path))) {
                             println!("\nChange detected, rebuilding and restarting...");
                             server = build_and_start_server(server_port, config, watch_stage, &prestart_callback).await?;
                         };
