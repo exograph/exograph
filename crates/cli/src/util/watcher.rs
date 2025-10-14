@@ -62,16 +62,6 @@ where
         })?;
     debouncer.watch(root_path, RecursiveMode::Recursive)?;
 
-    // Given a path, determine if the model should be rebuilt and the server restarted.
-    let should_restart = |path: &Path| -> bool {
-        path.strip_prefix(&canonical_root_path)
-            .map(|p| {
-                p.is_file()
-                    && (p.starts_with("src") || p.starts_with(default_trusted_documents_dir()))
-            })
-            .unwrap_or(false)
-    };
-
     let mut server =
         build_and_start_server(server_port, config, watch_stage, &prestart_callback).await?;
 
@@ -95,11 +85,22 @@ where
                 };
 
                 // inotify implementation (default on Linux) notifies even on access events, we want to ignore those (using !event.kind.is_access())
-                if let Ok(events) = events
-                        && events.iter().any(|event| !event.kind.is_access() && event.paths.iter().any(|path| should_restart(path))) {
-                            println!("\nChange detected, rebuilding and restarting...");
-                            server = build_and_start_server(server_port, config, watch_stage, &prestart_callback).await?;
-                        };
+                if let Ok(events) = events {
+                    // Given a path, determine if the model should be rebuilt and the server restarted.
+                    let is_watched_path = |path: &Path| -> bool {
+                        path.strip_prefix(&canonical_root_path)
+                            .map(|p| p.starts_with("src") || p.starts_with(default_trusted_documents_dir()))
+                            .unwrap_or(false)
+                    };
+                    let needs_restart = events.iter().any(|event| {
+                        !event.kind.is_access() && event.paths.iter().any(|path| is_watched_path(path))
+                    });
+
+                    if needs_restart {
+                        println!("\nChange detected, rebuilding and restarting...");
+                        server = build_and_start_server(server_port, config, watch_stage, &prestart_callback).await?;
+                    }
+                }
             }
 
             _ = ctrl_c_event => {
