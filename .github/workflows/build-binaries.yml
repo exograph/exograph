@@ -127,16 +127,28 @@ jobs:
           cd dist/
           7z a exograph-${{matrix.target}}.zip *
           cd ..
-      - name: Generate SHA256 checksum
+      - name: Generate SHA256 checksum (Windows)
+        if: runner.os == 'Windows'
         run: |
           cd dist/
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            certutil -hashfile exograph-${{matrix.target}}.zip SHA256 | findstr /v "hash" > exograph-${{matrix.target}}.zip.sha256
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-            shasum -a 256 exograph-${{matrix.target}}.zip | awk '{print $1}' > exograph-${{matrix.target}}.zip.sha256
-          else
-            sha256sum exograph-${{matrix.target}}.zip | awk '{print $1}' > exograph-${{matrix.target}}.zip.sha256
-          fi
+          $hash = (Get-FileHash -Algorithm SHA256 exograph-${{matrix.target}}.zip).Hash.ToLower()
+          $hash | Out-File -FilePath exograph-${{matrix.target}}.zip.sha256 -Encoding ascii -NoNewline
+          Get-Content exograph-${{matrix.target}}.zip.sha256
+          cd ..
+        shell: pwsh
+      - name: Generate SHA256 checksum (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          cd dist/
+          shasum -a 256 exograph-${{matrix.target}}.zip | awk '{print $1}' > exograph-${{matrix.target}}.zip.sha256
+          cat exograph-${{matrix.target}}.zip.sha256
+          cd ..
+        shell: bash
+      - name: Generate SHA256 checksum (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cd dist/
+          sha256sum exograph-${{matrix.target}}.zip | awk '{print $1}' > exograph-${{matrix.target}}.zip.sha256
           cat exograph-${{matrix.target}}.zip.sha256
           cd ..
         shell: bash
