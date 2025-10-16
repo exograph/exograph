@@ -23,7 +23,7 @@ futures.workspace = true
 rand.workspace = true
 ctrlc = "3.4"
 zip.workspace = true
-inquire = "0.8.0"
+inquire = "0.9.1"
 reqwest = { workspace = true, features = ["stream"] }
 serde.workspace = true
 serde_json.workspace = true
