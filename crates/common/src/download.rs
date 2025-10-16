@@ -102,7 +102,7 @@ pub async fn download_dir_if_needed(
     Ok(download_dir)
 }
 
-async fn download(url: &str, info_name: &str, download_file_path: &PathBuf) -> Result<()> {
+async fn download(url: &str, info_name: &str, download_file_path: &Path) -> Result<()> {
     let download_dir = download_file_path
         .parent()
         .ok_or(anyhow!("Failed to get parent directory"))?;
@@ -163,7 +163,7 @@ pub async fn download_with_checksum(
     url: &str,
     checksum_url: &str,
     info_name: &str,
-    download_file_path: &PathBuf,
+    download_file_path: &Path,
 ) -> Result<()> {
     use colored::Colorize;
 
@@ -196,9 +196,7 @@ pub async fn download_with_checksum(
     };
 
     // Parse the checksum directly from response
-    let checksum_bytes = checksum_response.bytes().await?;
-    let checksum_text = String::from_utf8(checksum_bytes.to_vec())
-        .map_err(|_| anyhow!("Invalid UTF-8 in checksum file"))?;
+    let checksum_text = checksum_response.text().await?;
 
     let expected_checksum = checksum_text
         .split_whitespace()
@@ -248,7 +246,7 @@ pub fn exo_cache_root() -> Result<PathBuf> {
 /// # Returns
 /// * `Ok(())` on success
 /// * `Err` if any operation fails
-pub fn atomic_dir_swap(temp_dir: &PathBuf, target_dir: &PathBuf) -> Result<()> {
+pub fn atomic_dir_swap(temp_dir: &Path, target_dir: &Path) -> Result<()> {
     let target_backup = target_dir
         .parent()
         .ok_or(anyhow!("Failed to get parent directory"))?
@@ -279,7 +277,7 @@ pub fn atomic_dir_swap(temp_dir: &PathBuf, target_dir: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-pub async fn take_file_lock(lock_file_path: &PathBuf) -> Result<File> {
+pub async fn take_file_lock(lock_file_path: &Path) -> Result<File> {
     use std::fs::OpenOptions;
     use std::time::Duration;
 
@@ -328,9 +326,9 @@ pub async fn take_file_lock(lock_file_path: &PathBuf) -> Result<File> {
 }
 
 fn verify_checksum(file_path: &Path, expected: &str) -> Result<()> {
-    let data = fs::read(file_path)?;
+    let mut file = File::open(file_path)?;
     let mut hasher = Sha256::new();
-    hasher.update(&data);
+    std::io::copy(&mut file, &mut hasher)?;
     let result = hasher.finalize();
     let actual = format!("{:x}", result);
 
