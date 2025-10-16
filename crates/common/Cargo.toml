@@ -34,6 +34,7 @@ exo-sql = { path = "../../libs/exo-sql" }
 
 anyhow.workspace = true
 indicatif = "0.18.0"
+sha2 = "0.10"
 
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["registry", "env-filter"] }

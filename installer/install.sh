@@ -13,7 +13,11 @@ if [ "$OS" = "Windows_NT" ]; then
 	target="x86_64-pc-windows-msvc"
 else
 	case $(uname -sm) in
-	"Darwin x86_64") target="x86_64-apple-darwin" ;;
+	"Darwin x86_64")
+		echo "Error: Intel Macs (x86_64) are no longer supported." 1>&2
+		echo "Exograph now requires Apple Silicon (but you can build it yourself from sources)." 1>&2
+		exit 1
+		;;
 	"Darwin arm64") target="aarch64-apple-darwin" ;;
 	"Linux aarch64")
 		echo "Error: Official Exograph builds for Linux aarch64 are not yet available." 1>&2
@@ -39,10 +43,10 @@ fi
 
 curl --fail --location --progress-bar --output "$exe.zip" "$exograph_uri"
 unzip -d "$bin_dir" -o "$exe.zip"
-chmod +x "$exe"
+chmod +x "$bin_dir"/exo*
 rm "$exe.zip"
 
-echo "Exgoraph was installed successfully to $exe"
+echo "Exograph was installed successfully to $exe"
 if command -v exo >/dev/null; then
 	echo "Run 'exo --help' to get started"
 else
