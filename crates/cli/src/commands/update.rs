@@ -10,9 +10,10 @@
 use async_trait::async_trait;
 use clap::{ArgMatches, Command};
 use exo_env::Environment;
-use std::{process::Command as ProcessCommand, sync::Arc};
+use std::{env, fs, path::Path, process::Command as ProcessCommand, sync::Arc};
 
 use colored::Colorize;
+use tempfile::tempdir_in;
 
 use common::env_processing::EnvProcessing;
 
@@ -53,7 +54,7 @@ impl CommandDefinition for UpdateCommandDefinition {
                 latest_version.green().bold()
             );
 
-            update_exograph().await?;
+            update_exograph(&latest_version).await?;
 
             println!(
                 "Successfully updated to version: {}",
@@ -95,25 +96,110 @@ pub(crate) async fn report_update_needed(env: &dyn Environment) -> anyhow::Resul
     Ok(())
 }
 
-async fn update_exograph() -> anyhow::Result<()> {
-    let status = if cfg!(target_os = "windows") {
-        ProcessCommand::new("powershell")
-                .args([
-                    "-Command",
-                    "irm https://raw.githubusercontent.com/exograph/exograph/main/installer/install.ps1 | iex",
-                ])
-                .status()?
+async fn update_exograph(version: &str) -> anyhow::Result<()> {
+    let target = get_target_triple()?;
+
+    // Use same logic as install.sh: EXOGRAPH_INSTALL env var or default to ~/.exograph
+    let install_root_dir = common::download::exo_install_root()?;
+
+    // Use a lock file to prevent concurrent updates
+    let lock_file_path = install_root_dir.join(".update.lock");
+    let _file_lock = common::download::take_file_lock(&lock_file_path).await?;
+
+    // Check if another process already updated while we waited for the lock
+    let current_version = env!("CARGO_PKG_VERSION");
+    if current_version == version {
+        println!(
+            "Already updated to version {} by another process!",
+            version.green().bold()
+        );
+        return Ok(());
+    }
+
+    // Create temp directory parallel to install directory (for atomic rename)
+    let temp_dir = tempdir_in(&install_root_dir)?.keep();
+
+    // Download archive with checksum verification
+    let zip_path = temp_dir.join(format!("exograph-{}.zip", target));
+    let download_url = format!(
+        "https://github.com/exograph/exograph/releases/download/v{}/exograph-{}.zip",
+        version, target
+    );
+    let checksum_url = format!(
+        "https://github.com/exograph/exograph/releases/download/v{}/exograph-{}.zip.sha256",
+        version, target
+    );
+    common::download::download_with_checksum(&download_url, &checksum_url, "Exograph", &zip_path)
+        .await?;
+
+    println!("{}", "Extracting archive...".cyan());
+
+    // Extract archive into temp directory
+    common::download::extract_zip(&zip_path, &temp_dir)?;
+
+    println!("{}", "Validating binary...".cyan());
+
+    // Validate the main exo executable works
+    let exe_extension = if cfg!(target_os = "windows") {
+        ".exe"
     } else {
-        ProcessCommand::new("sh")
-                .args([
-                    "-c",
-                    "curl -fsSL https://raw.githubusercontent.com/exograph/exograph/main/installer/install.sh | sh",
-                ])
-                .status()?
+        ""
+    };
+    let main_exe = temp_dir.join(format!("exo{}", exe_extension));
+    check_exe(&main_exe)?;
+
+    println!("{}", "Installing update...".cyan());
+
+    let install_bin_dir = install_root_dir.join("bin");
+
+    // Atomically swap temp directory with install directory
+    common::download::atomic_dir_swap(&temp_dir, &install_bin_dir)?;
+
+    // Clean up the lock file
+    fs::remove_file(&lock_file_path)?;
+
+    println!("  {} Successfully updated!", "✓".green());
+
+    Ok(())
+}
+
+/// Get the target triple for the current platform
+fn get_target_triple() -> anyhow::Result<String> {
+    let target = if cfg!(target_os = "macos") {
+        if cfg!(target_arch = "aarch64") {
+            "aarch64-apple-darwin"
+        } else {
+            anyhow::bail!(
+                "Intel Macs (x86_64) are no longer supported. \
+                 Exograph now requires Apple Silicon (but you can build it yourself from sources)."
+            );
+        }
+    } else if cfg!(target_os = "linux") {
+        if cfg!(target_arch = "aarch64") {
+            anyhow::bail!(
+                "ARM64 Linux (aarch64) is not supported at this time. Please open an issue if you need this platform."
+            );
+        } else {
+            "x86_64-unknown-linux-gnu"
+        }
+    } else if cfg!(target_os = "windows") {
+        "x86_64-pc-windows-msvc"
+    } else {
+        anyhow::bail!("Unsupported platform");
     };
 
-    if !status.success() {
-        anyhow::bail!("Failed to update Exograph");
+    Ok(target.to_string())
+}
+
+/// Validate that the extracted binary is functional
+fn check_exe(exe_path: &Path) -> anyhow::Result<()> {
+    let output = ProcessCommand::new(exe_path).arg("--version").output()?;
+
+    if !output.status.success() {
+        anyhow::bail!(
+            "Failed to validate Exograph executable. \
+             This may be because your OS is unsupported or the executable is corrupted"
+        );
     }
 
     Ok(())

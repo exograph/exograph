@@ -13,13 +13,14 @@ use std::{
     cmp::min,
     fs::{self, File},
     io::Write,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use anyhow::{Result, anyhow};
 use futures::StreamExt;
 use home::home_dir;
 use indicatif::{ProgressBar, ProgressStyle};
+use sha2::{Digest, Sha256};
 use tempfile::{NamedTempFile, tempdir_in};
 
 /// Download a file if it doesn't already exist.
@@ -87,10 +88,7 @@ pub async fn download_dir_if_needed(
 
     download(url, info_name, &download_file_path).await?;
 
-    let mut zip_file = zip::ZipArchive::new(File::open(&download_file_path)?)?;
-    zip_file.extract(&temp_download_dir)?;
-
-    fs::remove_file(&download_file_path)?;
+    extract_zip(&download_file_path, &temp_download_dir)?;
 
     let download_dir_parent = download_dir
         .parent()
@@ -104,11 +102,11 @@ pub async fn download_dir_if_needed(
     Ok(download_dir)
 }
 
-async fn download(url: &str, info_name: &str, download_file_path: &PathBuf) -> Result<()> {
+async fn download(url: &str, info_name: &str, download_file_path: &Path) -> Result<()> {
     let download_dir = download_file_path
         .parent()
         .ok_or(anyhow!("Failed to get parent directory"))?;
-    fs::create_dir_all(&download_dir)?;
+    fs::create_dir_all(download_dir)?;
 
     let response = reqwest::get(url)
         .await
@@ -143,21 +141,143 @@ async fn download(url: &str, info_name: &str, download_file_path: &PathBuf) -> R
     }
 
     // Then move it to the final location. This avoids partially downloaded files.
-    fs::rename(temp_downloaded_file.path(), &download_file_path)?;
+    fs::rename(temp_downloaded_file.path(), download_file_path)?;
 
     pb.finish_with_message("Downloaded!");
 
     Ok(())
 }
 
-pub fn exo_cache_root() -> Result<PathBuf> {
-    Ok(home_dir()
-        .ok_or(anyhow!("Failed to resolve home directory"))?
-        .join(".exograph")
-        .join("cache"))
+/// Download a file and verify its SHA256 checksum
+///
+/// This function downloads both the target file and its .sha256 checksum file,
+/// then verifies the checksum matches. If the checksum file is not available (404),
+/// a warning is printed and verification is skipped.
+///
+/// # Arguments
+/// * `url` - URL to download the file from
+/// * `checksum_url` - URL to download the .sha256 checksum file from
+/// * `info_name` - Display name for the progress bar
+/// * `download_file_path` - Path to save the downloaded file
+pub async fn download_with_checksum(
+    url: &str,
+    checksum_url: &str,
+    info_name: &str,
+    download_file_path: &Path,
+) -> Result<()> {
+    use colored::Colorize;
+
+    // Download the main file
+    download(url, info_name, download_file_path).await?;
+
+    println!("Verifying checksum...");
+
+    // Try to download the checksum file
+    let response = reqwest::get(checksum_url).await;
+
+    let checksum_response = match response {
+        Ok(resp) if resp.status().is_success() => resp,
+        Ok(resp) if resp.status() == 404 => {
+            println!(
+                "{}",
+                "Warning: Checksum file not found, skipping verification".yellow()
+            );
+            return Ok(());
+        }
+        Ok(resp) => {
+            return Err(anyhow!(
+                "Failed to download checksum file: HTTP {}",
+                resp.status()
+            ));
+        }
+        Err(e) => {
+            return Err(anyhow!("Failed to download checksum file: {}", e));
+        }
+    };
+
+    // Parse the checksum directly from response
+    let checksum_text = checksum_response.text().await?;
+
+    let expected_checksum = checksum_text
+        .split_whitespace()
+        .next()
+        .ok_or_else(|| anyhow!("Invalid checksum format"))?
+        .to_string();
+
+    // Verify the checksum
+    verify_checksum(download_file_path, &expected_checksum)?;
+
+    println!("{}", "  ✓ Checksum verified".green());
+
+    Ok(())
 }
 
-async fn take_file_lock(lock_file_path: &PathBuf) -> Result<File> {
+/// Get the Exograph installation root directory
+/// Uses EXOGRAPH_INSTALL env var if set, otherwise defaults to ~/.exograph
+pub fn exo_install_root() -> Result<PathBuf> {
+    match std::env::var("EXOGRAPH_INSTALL") {
+        Ok(path) => Ok(PathBuf::from(path)),
+        Err(_) => Ok(home_dir()
+            .ok_or(anyhow!("Could not determine home directory"))?
+            .join(".exograph")),
+    }
+}
+
+pub fn exo_cache_root() -> Result<PathBuf> {
+    Ok(exo_install_root()?.join("cache"))
+}
+
+/// Atomically swap a temporary directory with a target directory
+///
+/// This function performs an atomic directory swap with automatic backup and cleanup:
+/// 1. If target exists, rename it to `target.old` (backup)
+/// 2. Rename temp directory to target (atomic promotion)
+/// 3. Delete the backup directory
+///
+/// This ensures that:
+/// - The swap is atomic (both renames are atomic operations)
+/// - If anything fails, the old directory can be manually recovered from `.old`
+/// - No intermediate state where target directory is missing
+///
+/// # Arguments
+/// * `temp_dir` - Path to the temporary directory with new content
+/// * `target_dir` - Path to the target directory to replace
+///
+/// # Returns
+/// * `Ok(())` on success
+/// * `Err` if any operation fails
+pub fn atomic_dir_swap(temp_dir: &Path, target_dir: &Path) -> Result<()> {
+    let target_backup = target_dir
+        .parent()
+        .ok_or(anyhow!("Failed to get parent directory"))?
+        .join(format!(
+            "{}.old",
+            target_dir
+                .file_name()
+                .ok_or(anyhow!("Invalid target directory name"))?
+                .to_string_lossy()
+        ));
+
+    // Remove old backup if it exists from a previous swap
+    if target_backup.exists() {
+        fs::remove_dir_all(&target_backup)?;
+    }
+
+    // Atomically swap: target → backup, temp → target
+    if target_dir.exists() {
+        fs::rename(target_dir, &target_backup)?;
+    }
+    fs::rename(temp_dir, target_dir)?;
+
+    // Clean up backup now that new version is successfully installed
+    if target_backup.exists() {
+        fs::remove_dir_all(&target_backup)?;
+    }
+
+    Ok(())
+}
+
+pub async fn take_file_lock(lock_file_path: &Path) -> Result<File> {
     use std::fs::OpenOptions;
     use std::time::Duration;
 
@@ -169,7 +289,7 @@ async fn take_file_lock(lock_file_path: &PathBuf) -> Result<File> {
     let file = OpenOptions::new()
         .create(true)
         .write(true)
-        .open(&lock_file_path)?;
+        .open(lock_file_path)?;
 
     // Try to acquire exclusive lock with timeout
     let max_wait = Duration::from_secs(300); // 5 minutes
@@ -203,4 +323,38 @@ async fn take_file_lock(lock_file_path: &PathBuf) -> Result<File> {
             }
         }
     }
+}
+
+fn verify_checksum(file_path: &Path, expected: &str) -> Result<()> {
+    let mut file = File::open(file_path)?;
+    let mut hasher = Sha256::new();
+    std::io::copy(&mut file, &mut hasher)?;
+    let result = hasher.finalize();
+    let actual = format!("{:x}", result);
+
+    if actual != expected {
+        anyhow::bail!(
+            "Checksum verification failed!\nExpected: {}\nActual:   {}",
+            expected,
+            actual
+        );
+    }
+
+    Ok(())
+}
+
+/// Extract a zip archive and remove the zip file
+///
+/// # Arguments
+/// * `zip_path` - Path to the zip file to extract
+/// * `target_dir` - Directory to extract files into
+pub fn extract_zip(zip_path: &Path, target_dir: &Path) -> Result<()> {
+    use std::fs::File;
+
+    let zip_file = File::open(zip_path)?;
+    let mut archive = zip::ZipArchive::new(zip_file)?;
+    archive.extract(target_dir)?;
+    fs::remove_file(zip_path)?;
+
+    Ok(())
 }

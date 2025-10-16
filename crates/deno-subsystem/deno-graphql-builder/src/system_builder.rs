@@ -112,7 +112,11 @@ async fn download_deno_if_needed() -> Result<PathBuf, ModelBuildingError> {
     let target_arch = env::consts::ARCH;
 
     let platform = match (target_os, target_arch) {
-        ("macos", "x86_64") => "x86_64-apple-darwin",
+        ("macos", "x86_64") => {
+            return Err(ModelBuildingError::Generic(
+                "Intel Macs (x86_64) are no longer supported.".to_string(),
+            ));
+        }
         ("macos", "aarch64") => "aarch64-apple-darwin",
         ("linux", "x86_64") => "x86_64-unknown-linux-gnu",
         ("windows", "x86_64") => "x86_64-pc-windows-msvc",
