@@ -53,7 +53,7 @@ pub enum ResponseForDenoMessage {
 }
 
 pub type FnExographInterceptorProceed<'a> =
-    (dyn Fn() -> BoxFuture<'a, Result<QueryResponse, SystemResolutionError>> + 'a + Send + Sync);
+    dyn Fn() -> BoxFuture<'a, Result<QueryResponse, SystemResolutionError>> + 'a + Send + Sync;
 
 pub struct ExoCallbackProcessor<'a, 'b> {
     pub exograph_execute_query: &'a ExographExecuteQueryFn<'a>,
