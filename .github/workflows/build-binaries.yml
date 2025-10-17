@@ -29,7 +29,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
-          fetch-depth: 0  # Fetch all history and tags
+          fetch-depth: 0 # Fetch all history and tags
 
       - name: Find previous semantic version tag
         id: previous_tag
@@ -77,7 +77,7 @@ jobs:
           gh release create "${{ github.ref_name }}" \
             --draft \
             --notes "${{ steps.changelog.outputs.changelog }}" \
-            --title "Release ${{ github.ref_name }}"
+            --title "${{ github.ref_name }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -260,6 +260,7 @@ jobs:
       - name: Upload zip to release
         if: startsWith(github.ref, 'refs/tags/')
         run: |
+          git config --global --add safe.directory /__w/exograph/exograph
           gh release upload "${{ github.ref_name }}" dist/exograph-${{ env.ARCH }}.zip --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
