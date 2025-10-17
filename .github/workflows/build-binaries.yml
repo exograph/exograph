@@ -17,37 +17,73 @@ on:
     tags:
       - "*"
 
+permissions:
+  contents: write
+
 jobs:
-  # Create draft release with auto-generated notes (only for tags)
+  # Create draft release with custom-formatted notes (only for tags)
   create-release:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # Fetch all history and tags
 
-      - name: Create draft release with auto-generated notes
+      - name: Find previous semantic version tag
+        id: previous_tag
         run: |
+          set -x  # Enable debug mode to see all commands
+
           # Get the previous semantic version tag
+          echo "Current tag: ${{ github.ref_name }}"
+          echo "All tags:"
+          git tag --list --sort=-version:refname
+
           PREVIOUS_TAG=$(git tag --list --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -2 | tail -1)
 
+          # Check if there are any commits between previous and current tag
           if [ -n "$PREVIOUS_TAG" ]; then
-            gh release create "${{ github.ref_name }}" \
-              --draft \
-              --generate-notes \
-              --notes-start-tag "$PREVIOUS_TAG" \
-              --title "Release ${{ github.ref_name }}"
-          else
-            gh release create "${{ github.ref_name }}" \
-              --draft \
-              --generate-notes \
-              --title "Release ${{ github.ref_name }}"
+            COMMIT_COUNT=$(git rev-list --count "$PREVIOUS_TAG".."${{ github.ref_name }}" 2>/dev/null || echo "0")
+            echo "Commits between $PREVIOUS_TAG and ${{ github.ref_name }}: $COMMIT_COUNT"
+
+            if [ "$COMMIT_COUNT" = "0" ]; then
+              echo "No commits between tags, generating notes from all history"
+              PREVIOUS_TAG=""
+            fi
           fi
+
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "Previous tag found: $PREVIOUS_TAG"
+            echo "tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+          else
+            echo "No previous tag found or no commits between tags"
+            echo "tag=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate release notes with custom format
+        id: changelog
+        uses: mikepenz/release-changelog-builder-action@v5
+        with:
+          configuration: .github/release-notes-config.json
+          fromTag: ${{ steps.previous_tag.outputs.tag }}
+          toTag: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create draft release with custom notes
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --draft \
+            --notes "${{ steps.changelog.outputs.changelog }}" \
+            --title "Release ${{ github.ref_name }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Build and package all the things
   build-artifacts:
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
@@ -159,24 +195,19 @@ jobs:
           path: dist/exograph-${{matrix.target}}.zip
       - name: Upload zip to release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/exograph-${{matrix.target}}.zip
-          asset_name: exograph-${{matrix.target}}.zip
-          tag: ${{ github.ref }}
-          make_latest: false
+        run: |
+          gh release upload "${{ github.ref_name }}" dist/exograph-${{matrix.target}}.zip --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload checksum to release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/exograph-${{matrix.target}}.zip.sha256
-          asset_name: exograph-${{matrix.target}}.zip.sha256
-          tag: ${{ github.ref }}
-          make_latest: false
+        run: |
+          gh release upload "${{ github.ref_name }}" dist/exograph-${{matrix.target}}.zip.sha256 --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-aws-lambda:
+    needs: create-release
     runs-on: ubuntu-latest
     container: amazonlinux:2023
     env:
@@ -225,15 +256,13 @@ jobs:
           path: dist/exograph-${{ env.ARCH }}.zip
       - name: Upload zip to release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/exograph-${{ env.ARCH }}.zip
-          asset_name: exograph-${{ env.ARCH }}.zip
-          tag: ${{ github.ref }}
-          make_latest: false
+        run: |
+          gh release upload "${{ github.ref_name }}" dist/exograph-${{ env.ARCH }}.zip --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-cf-worker:
+    needs: create-release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -263,10 +292,7 @@ jobs:
 
       - name: Upload zip to release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/exograph-cf-worker-wasm.zip
-          asset_name: exograph-cf-worker-wasm.zip
-          tag: ${{ github.ref }}
-          make_latest: false
+        run: |
+          gh release upload "${{ github.ref_name }}" target/exograph-cf-worker-wasm.zip --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
