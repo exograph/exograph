@@ -35,7 +35,7 @@ pub struct RequestContext<'a> {
 pub struct SystemRequestContext<'a> {
     pub env: &'a dyn Environment,
     pub jwt_authenticator: &'a Option<JwtAuthenticator>,
-    pub system_router: &'a (dyn for<'request> Router<PlainRequestPayload<'request>>),
+    pub system_router: &'a dyn for<'request> Router<PlainRequestPayload<'request>>,
     pub transaction_holder: Arc<Mutex<TransactionHolder>>,
 }
 
@@ -43,7 +43,7 @@ impl<'a> RequestContext<'a> {
     pub fn new(
         request: &'a (dyn RequestPayload + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
-        system_router: &'a (dyn for<'request> Router<PlainRequestPayload<'request>>),
+        system_router: &'a dyn for<'request> Router<PlainRequestPayload<'request>>,
         jwt_authenticator: &'a Option<JwtAuthenticator>,
         env: &'a dyn Environment,
     ) -> RequestContext<'a> {
