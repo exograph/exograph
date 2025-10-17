@@ -83,7 +83,6 @@ jobs:
 
   # Build and package all the things
   build-artifacts:
-    needs: create-release
     strategy:
       fail-fast: false
       matrix:
@@ -207,7 +206,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-aws-lambda:
-    needs: create-release
     runs-on: ubuntu-latest
     container: amazonlinux:2023
     env:
@@ -262,7 +260,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-cf-worker:
-    needs: create-release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
