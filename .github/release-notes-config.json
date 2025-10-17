@@ -1,0 +1,70 @@
+{
+  "template": "#{{CHANGELOG}}",
+  "pr_template": "- #{{TITLE}} ##{{NUMBER}}",
+  "categories": [
+    {
+      "title": "## 🚨 Breaking Changes",
+      "labels": ["breaking", "breaking-change"]
+    },
+    {
+      "title": "## 🎉 Features",
+      "labels": ["feat", "feature", "enhancement"]
+    },
+    {
+      "title": "## 🐛 Bug Fixes",
+      "labels": ["bug", "fix", "bugfix"]
+    },
+    {
+      "title": "## 🔒 Security",
+      "labels": ["security"]
+    },
+    {
+      "title": "## 📚 Documentation",
+      "labels": ["documentation", "docs"]
+    },
+    {
+      "title": "## 🎨 Style",
+      "labels": ["style"]
+    },
+    {
+      "title": "## ⚡ Performance",
+      "labels": ["performance", "perf"]
+    },
+    {
+      "title": "## 🏗️ Refactoring",
+      "labels": ["refactor", "refactoring"]
+    },
+    {
+      "title": "## 🧪 Testing",
+      "labels": ["test", "testing"]
+    },
+    {
+      "title": "## 🔨 Build System",
+      "labels": ["build"]
+    },
+    {
+      "title": "## 👷 CI/CD",
+      "labels": ["ci", "cd"]
+    },
+    {
+      "title": "## 🔧 Maintenance",
+      "labels": ["chore", "dependencies", "maintenance"]
+    },
+    {
+      "title": "## ⏪ Reverts",
+      "labels": ["revert"]
+    },
+    {
+      "title": "## 🚀 Other Changes",
+      "labels": []
+    }
+  ],
+  "label_extractor": [
+    {
+      "pattern": ".*",
+      "on_property": "title"
+    }
+  ],
+  "ignore_labels": ["ignore-for-release", "release"],
+  "ignore_authors": ["dependabot", "dependabot[bot]"]
+}
