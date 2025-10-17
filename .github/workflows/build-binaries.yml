@@ -221,6 +221,11 @@ jobs:
           unzip protoc-3.15.8-linux-x86_64.zip -d /root/.local
           echo "/root/.local/bin" >> $GITHUB_PATH
 
+          # Install gh CLI (needed for release uploads)
+          dnf install -y 'dnf-command(config-manager)'
+          dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+          dnf install -y gh
+
           # Need to install Rust manually (not through yum, which is a bit older version
           # and since it doesn't install rustup, it doesn't respect rust-toolchain.toml settings)
           curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none --profile minimal -y
