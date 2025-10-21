@@ -71,9 +71,14 @@ impl PhysicalColumnTypeSerializer for EnumColumnTypeSerializer {
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-        let (t, _): (EnumColumnType, _) =
-            bincode::serde::decode_from_slice(data, bincode::config::standard())
-                .map_err(|e| format!("Failed to deserialize Enum: {}", e))?;
+        let (t, size) = bincode::serde::decode_from_slice::<EnumColumnType, _>(
+            data,
+            bincode::config::standard(),
+        )
+        .map_err(|e| format!("Failed to deserialize Enum: {}", e))?;
+        if size != data.len() {
+            return Err("Did not consume all bytes during deserialization of Enum".to_string());
+        }
         Ok(Box::new(t) as Box<dyn PhysicalColumnType>)
     }
 }

@@ -154,9 +154,14 @@ impl SystemSerializer for SerializableSystem {
             .read_exact(&mut header_bytes)
             .map_err(|e| error("Failed to read the exo_ir file header", Some(e)))?;
 
-        let (header, _): (Header, _) =
-            bincode::serde::decode_from_slice(&header_bytes, bincode::config::standard())
-                .map_err(ModelSerializationError::Deserialize)?;
+        let (header, size) = bincode::serde::decode_from_slice::<Header, _>(
+            &header_bytes,
+            bincode::config::standard(),
+        )
+        .map_err(ModelSerializationError::Deserialize)?;
+        if size != header_bytes.len() {
+            return Err(error("Incomplete header deserialization", None));
+        }
         let current_header = Header::new(vec![]);
         current_header
             .check_header(header)

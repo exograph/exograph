@@ -123,9 +123,14 @@ impl PhysicalColumnTypeSerializer for ArrayColumnTypeSerializer {
             typ: super::SerializedPhysicalColumnType,
         }
 
-        let (array_data, _): (ArrayData, _) =
-            bincode::serde::decode_from_slice(data, bincode::config::standard())
+        let (array_data, size) =
+            bincode::serde::decode_from_slice::<ArrayData, _>(data, bincode::config::standard())
                 .map_err(|e| format!("Failed to deserialize ArrayColumnType structure: {}", e))?;
+        if size != data.len() {
+            return Err(
+                "Did not consume all bytes during deserialization of ArrayColumnType".to_string(),
+            );
+        }
 
         // Look up the inner type in the registry
         let entry = PHYSICAL_COLUMN_TYPE_REGISTRY
