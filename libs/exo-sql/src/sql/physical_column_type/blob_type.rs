@@ -60,13 +60,15 @@ impl PhysicalColumnTypeSerializer for BlobColumnTypeSerializer {
             .downcast_ref::<BlobColumnType>()
             .ok_or_else(|| "Expected BlobColumnType".to_string())
             .and_then(|t| {
-                bincode::serialize(t).map_err(|e| format!("Failed to serialize Blob: {}", e))
+                bincode::serde::encode_to_vec(t, bincode::config::standard())
+                    .map_err(|e| format!("Failed to serialize Blob: {}", e))
             })
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-        bincode::deserialize::<BlobColumnType>(data)
-            .map(|t| Box::new(t) as Box<dyn PhysicalColumnType>)
-            .map_err(|e| format!("Failed to deserialize Blob: {}", e))
+        let (t, _): (BlobColumnType, _) =
+            bincode::serde::decode_from_slice(data, bincode::config::standard())
+                .map_err(|e| format!("Failed to deserialize Blob: {}", e))?;
+        Ok(Box::new(t) as Box<dyn PhysicalColumnType>)
     }
 }

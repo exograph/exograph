@@ -79,13 +79,15 @@ impl PhysicalColumnTypeSerializer for FloatColumnTypeSerializer {
             .downcast_ref::<FloatColumnType>()
             .ok_or_else(|| "Expected FloatColumnType".to_string())
             .and_then(|t| {
-                bincode::serialize(t).map_err(|e| format!("Failed to serialize Float: {}", e))
+                bincode::serde::encode_to_vec(t, bincode::config::standard())
+                    .map_err(|e| format!("Failed to serialize Float: {}", e))
             })
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-        bincode::deserialize::<FloatColumnType>(data)
-            .map(|t| Box::new(t) as Box<dyn PhysicalColumnType>)
-            .map_err(|e| format!("Failed to deserialize Float: {}", e))
+        let (t, _): (FloatColumnType, _) =
+            bincode::serde::decode_from_slice(data, bincode::config::standard())
+                .map_err(|e| format!("Failed to deserialize Float: {}", e))?;
+        Ok(Box::new(t) as Box<dyn PhysicalColumnType>)
     }
 }

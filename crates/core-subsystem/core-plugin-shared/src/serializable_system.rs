@@ -120,7 +120,7 @@ impl SystemSerializer for SerializableSystem {
                 Some(e) => format!("{msg}: {e}"),
                 None => msg.to_string(),
             };
-            ModelSerializationError::Deserialize(bincode::ErrorKind::Custom(msg).into())
+            ModelSerializationError::Deserialize(bincode::error::DecodeError::OtherString(msg))
         }
         {
             // Check the file prefix
@@ -147,23 +147,23 @@ impl SystemSerializer for SerializableSystem {
                 None,
             )
         })?;
-        // Check the header
+        // To allow each exo_ir version to have different header sizes, we read the header for the exact bytes specified by header_len.
         let mut header_bytes = vec![0_u8; header_len];
+
         reader
             .read_exact(&mut header_bytes)
             .map_err(|e| error("Failed to read the exo_ir file header", Some(e)))?;
-        let header: Header = bincode::deserialize(&header_bytes).map_err(|e| {
-            error(
-                &format!("Failed to deserialize the exo_ir file header: {e}"),
-                None,
-            )
-        })?;
+
+        let (header, _): (Header, _) =
+            bincode::serde::decode_from_slice(&header_bytes, bincode::config::standard())
+                .map_err(ModelSerializationError::Deserialize)?;
         let current_header = Header::new(vec![]);
         current_header
             .check_header(header)
             .map_err(|e| error(&e, None))?;
 
-        bincode::deserialize_from(reader).map_err(ModelSerializationError::Deserialize)
+        bincode::serde::decode_from_std_read(&mut reader, bincode::config::standard())
+            .map_err(ModelSerializationError::Deserialize)
     }
 }
 
@@ -171,15 +171,17 @@ fn serialize_header_and_system(
     header: &Header,
     system: &SerializableSystem,
 ) -> Result<Vec<u8>, ModelSerializationError> {
-    let header: Vec<u8> = bincode::serialize(header).map_err(ModelSerializationError::Serialize)?;
+    let header: Vec<u8> = bincode::serde::encode_to_vec(header, bincode::config::standard())
+        .map_err(ModelSerializationError::Serialize)?;
     let header_len: u64 = u64::try_from(header.len()).map_err(|e| {
-        ModelSerializationError::Serialize(Box::new(bincode::ErrorKind::Custom(format!(
+        ModelSerializationError::Serialize(bincode::error::EncodeError::OtherString(format!(
             "Failed to convert header len to u64 {e:?}"
-        ))))
+        )))
     })?;
 
     let header_len: Vec<u8> = header_len.to_le_bytes().to_vec();
-    let system = bincode::serialize(system).map_err(ModelSerializationError::Serialize)?;
+    let system = bincode::serde::encode_to_vec(system, bincode::config::standard())
+        .map_err(ModelSerializationError::Serialize)?;
     Ok([PREFIX_TAG.to_vec(), header_len, header, system].concat())
 }
 

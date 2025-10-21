@@ -81,13 +81,15 @@ impl PhysicalColumnTypeSerializer for NumericColumnTypeSerializer {
             .downcast_ref::<NumericColumnType>()
             .ok_or_else(|| "Expected NumericColumnType".to_string())
             .and_then(|t| {
-                bincode::serialize(t).map_err(|e| format!("Failed to serialize Numeric: {}", e))
+                bincode::serde::encode_to_vec(t, bincode::config::standard())
+                    .map_err(|e| format!("Failed to serialize Numeric: {}", e))
             })
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-        bincode::deserialize::<NumericColumnType>(data)
-            .map(|t| Box::new(t) as Box<dyn PhysicalColumnType>)
-            .map_err(|e| format!("Failed to deserialize Numeric: {}", e))
+        let (t, _): (NumericColumnType, _) =
+            bincode::serde::decode_from_slice(data, bincode::config::standard())
+                .map_err(|e| format!("Failed to deserialize Numeric: {}", e))?;
+        Ok(Box::new(t) as Box<dyn PhysicalColumnType>)
     }
 }
