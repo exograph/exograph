@@ -44,12 +44,14 @@ impl SystemSerializer for PostgresRpcSubsystem {
     type Underlying = Self;
 
     fn serialize(&self) -> Result<Vec<u8>, ModelSerializationError> {
-        bincode::serialize(self).map_err(ModelSerializationError::Serialize)
+        bincode::serde::encode_to_vec(self, bincode::config::standard())
+            .map_err(ModelSerializationError::Serialize)
     }
 
     fn deserialize_reader(
-        reader: impl std::io::Read,
+        mut reader: impl std::io::Read,
     ) -> Result<Self::Underlying, ModelSerializationError> {
-        bincode::deserialize_from(reader).map_err(ModelSerializationError::Deserialize)
+        bincode::serde::decode_from_std_read(&mut reader, bincode::config::standard())
+            .map_err(ModelSerializationError::Deserialize)
     }
 }

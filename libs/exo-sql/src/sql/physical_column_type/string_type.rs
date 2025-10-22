@@ -74,13 +74,20 @@ impl PhysicalColumnTypeSerializer for StringColumnTypeSerializer {
             .downcast_ref::<StringColumnType>()
             .ok_or_else(|| "Expected StringColumnType".to_string())
             .and_then(|t| {
-                bincode::serialize(t).map_err(|e| format!("Failed to serialize String: {}", e))
+                bincode::serde::encode_to_vec(t, bincode::config::standard())
+                    .map_err(|e| format!("Failed to serialize String: {}", e))
             })
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-        bincode::deserialize::<StringColumnType>(data)
-            .map(|t| Box::new(t) as Box<dyn PhysicalColumnType>)
-            .map_err(|e| format!("Failed to deserialize String: {}", e))
+        let (t, size) = bincode::serde::decode_from_slice::<StringColumnType, _>(
+            data,
+            bincode::config::standard(),
+        )
+        .map_err(|e| format!("Failed to deserialize String: {}", e))?;
+        if size != data.len() {
+            return Err("Did not consume all bytes during deserialization of String".to_string());
+        }
+        Ok(Box::new(t) as Box<dyn PhysicalColumnType>)
     }
 }

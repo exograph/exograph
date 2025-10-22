@@ -62,13 +62,20 @@ impl PhysicalColumnTypeSerializer for VectorColumnTypeSerializer {
             .downcast_ref::<VectorColumnType>()
             .ok_or_else(|| "Expected VectorColumnType".to_string())
             .and_then(|t| {
-                bincode::serialize(t).map_err(|e| format!("Failed to serialize Vector: {}", e))
+                bincode::serde::encode_to_vec(t, bincode::config::standard())
+                    .map_err(|e| format!("Failed to serialize Vector: {}", e))
             })
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-        bincode::deserialize::<VectorColumnType>(data)
-            .map(|t| Box::new(t) as Box<dyn PhysicalColumnType>)
-            .map_err(|e| format!("Failed to deserialize Vector: {}", e))
+        let (t, size) = bincode::serde::decode_from_slice::<VectorColumnType, _>(
+            data,
+            bincode::config::standard(),
+        )
+        .map_err(|e| format!("Failed to deserialize Vector: {}", e))?;
+        if size != data.len() {
+            return Err("Did not consume all bytes during deserialization of Vector".to_string());
+        }
+        Ok(Box::new(t) as Box<dyn PhysicalColumnType>)
     }
 }

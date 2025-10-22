@@ -60,13 +60,20 @@ impl PhysicalColumnTypeSerializer for DateColumnTypeSerializer {
             .downcast_ref::<DateColumnType>()
             .ok_or_else(|| "Expected DateColumnType".to_string())
             .and_then(|t| {
-                bincode::serialize(t).map_err(|e| format!("Failed to serialize Date: {}", e))
+                bincode::serde::encode_to_vec(t, bincode::config::standard())
+                    .map_err(|e| format!("Failed to serialize Date: {}", e))
             })
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-        bincode::deserialize::<DateColumnType>(data)
-            .map(|t| Box::new(t) as Box<dyn PhysicalColumnType>)
-            .map_err(|e| format!("Failed to deserialize Date: {}", e))
+        let (t, size) = bincode::serde::decode_from_slice::<DateColumnType, _>(
+            data,
+            bincode::config::standard(),
+        )
+        .map_err(|e| format!("Failed to deserialize Date: {}", e))?;
+        if size != data.len() {
+            return Err("Did not consume all bytes during deserialization of Date".to_string());
+        }
+        Ok(Box::new(t) as Box<dyn PhysicalColumnType>)
     }
 }
