@@ -10,6 +10,7 @@
 use deno_ast::EmitOptions;
 use deno_ast::MediaType;
 use deno_ast::ParseParams;
+use deno_core::ModuleLoadReferrer;
 use deno_core::ModuleLoader;
 use deno_core::ModuleSource;
 use deno_core::ModuleSourceCode;
@@ -43,7 +44,7 @@ impl ModuleLoader for TypescriptLoader {
     fn load(
         &self,
         module_specifier: &ModuleSpecifier,
-        _maybe_referrer: Option<&ModuleSpecifier>,
+        _maybe_referrer: Option<&ModuleLoadReferrer>,
         _is_dyn_import: bool,
         _requested_module_type: RequestedModuleType,
     ) -> deno_core::ModuleLoadResponse {

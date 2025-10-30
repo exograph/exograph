@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use deno_core::ModuleLoadReferrer;
 use deno_core::ModuleLoader;
 use deno_core::ModuleSource;
 use deno_core::ModuleSpecifier;
@@ -47,7 +48,7 @@ impl ModuleLoader for EmbeddedModuleLoader {
     fn load(
         &self,
         module_specifier: &ModuleSpecifier,
-        maybe_referrer: Option<&ModuleSpecifier>,
+        maybe_referrer: Option<&ModuleLoadReferrer>,
         is_dynamic: bool,
         _requested_module_type: RequestedModuleType,
     ) -> deno_core::ModuleLoadResponse {
