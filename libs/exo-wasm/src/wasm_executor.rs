@@ -62,6 +62,7 @@ impl WasmExecutor {
             wasmtime::Val::ExternRef(_) => Err(WasmError::UnsupportedType("ExternRef".to_string())),
             wasmtime::Val::AnyRef(_) => Err(WasmError::UnsupportedType("AnyRef".to_string())),
             wasmtime::Val::ExnRef(_) => Err(WasmError::UnsupportedType("ExnRef".to_string())),
+            wasmtime::Val::ContRef(_) => Err(WasmError::UnsupportedType("ContRef".to_string())),
         }
     }
 }
