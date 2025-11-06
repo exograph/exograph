@@ -191,7 +191,7 @@ jobs:
           cd ..
         shell: bash
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: exograph-${{matrix.target}}.zip
           path: dist/exograph-${{matrix.target}}.zip
@@ -256,7 +256,7 @@ jobs:
           zip exograph-${{ env.ARCH }}.zip *
           cd ..
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: exograph-${{ env.ARCH }}.zip
           path: dist/exograph-${{ env.ARCH }}.zip
@@ -291,7 +291,7 @@ jobs:
         run: sh ./build-cf-worker.sh
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: exograph-cf-worker-wasm.zip
           path: target/exograph-cf-worker-wasm.zip
