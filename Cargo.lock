@@ -6351,9 +6351,9 @@ checksum = "0e7465ac9959cc2b1404e8e2367b43684a6d13790fe23056cc8c6c5a6b7bcb94"
 
 [[package]]
 name = "matchit"
-version = "0.8.6"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f926ade0c4e170215ae43342bf13b9310a437609c81f29f86c5df6657582ef9"
+checksum = "9ea5f97102eb9e54ab99fb70bb175589073f554bdadfb74d9bd656482ea73e2a"
 
 [[package]]
 name = "maybe-owned"
@@ -7776,7 +7776,7 @@ dependencies = [
  "core-plugin-shared",
  "exo-sql",
  "http 1.3.1",
- "matchit 0.8.6",
+ "matchit 0.9.0",
  "postgres-core-model",
  "serde",
 ]
