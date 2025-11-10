@@ -8,7 +8,7 @@ publish = false
 serde.workspace = true
 bincode.workspace = true
 http.workspace = true
-matchit = "0.8.5"
+matchit = "0.9.0"
 
 common = { path = "../../common" }
 exo-sql = { path = "../../../libs/exo-sql" }
