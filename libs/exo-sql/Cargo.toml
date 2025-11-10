@@ -35,7 +35,7 @@ tokio-postgres = { workspace = true, features = [
 rustls = { workspace = true, optional = true, default-features = false, features = [
   "ring",
 ] }
-rustls-pki-types = { version = "1.11.0", optional = true }
+rustls-pki-types = { version = "1.13.0", optional = true }
 tokio-postgres-rustls = { version = "0.13.0", optional = true }
 rustls-native-certs = { version = "0.8.0", optional = true }
 rustls-pemfile = { version = "2.2.0", optional = true }
