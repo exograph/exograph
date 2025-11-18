@@ -122,8 +122,8 @@ tree-sitter-generate = { git = "https://github.com/exograph/tree-sitter-c2rust.g
 typed-generational-arena = { version = "0.2.6", features = ["serde"] }
 uuid = "1.18.1"
 url = "2.3.1"
-wasmtime = "38.0.3"
-wasi-common = "38.0.3"
+wasmtime = "38.0.4"
+wasi-common = "38.0.4"
 wildmatch = "2.4.0"
 which = "8.0.0"
 wasm-bindgen-test = "0.3.55"
