@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: Swatinem/rust-cache@v2
@@ -72,7 +72,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Clear up some disk space from the runner
         if: ${{ runner.os != 'Windows' }}
         run: |
@@ -125,7 +125,7 @@ jobs:
   test-wasm:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Clear up some disk space from the runner
         run: |
           bash ${PWD}/.github/workflows/clear-disk-space.sh
