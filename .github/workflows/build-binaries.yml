@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Fetch all history and tags
 
@@ -110,7 +110,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Clear up some disk space from the runner
         if: ${{ runner.os != 'Windows' }}
         run: |
@@ -234,7 +234,7 @@ jobs:
           curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none --profile minimal -y
           echo "/github/home/.cargo/bin" >> $GITHUB_PATH
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -271,7 +271,7 @@ jobs:
   build-cf-worker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Clear up some disk space from the runner
         run: |
           bash ${PWD}/.github/workflows/clear-disk-space.sh

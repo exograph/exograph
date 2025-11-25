@@ -35,7 +35,7 @@ jobs:
           - image: dev
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Log in to the Container registry
         uses: docker/login-action@v3
