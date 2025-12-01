@@ -609,7 +609,7 @@ dependencies = [
  "axum-core",
  "bytes",
  "futures-util",
- "http 1.3.1",
+ "http 1.4.0",
  "http-body 1.0.1",
  "http-body-util",
  "itoa",
@@ -635,7 +635,7 @@ dependencies = [
  "async-trait",
  "bytes",
  "futures-util",
- "http 1.3.1",
+ "http 1.4.0",
  "http-body 1.0.1",
  "http-body-util",
  "mime",
@@ -1498,7 +1498,7 @@ dependencies = [
  "exo-sql",
  "futures",
  "home",
- "http 1.3.1",
+ "http 1.4.0",
  "hyper-util",
  "indicatif",
  "jsonwebtoken",
@@ -1748,7 +1748,7 @@ dependencies = [
  "exo-env",
  "exo-sql",
  "futures",
- "http 1.3.1",
+ "http 1.4.0",
  "insta",
  "postgres-builder",
  "postgres-resolver",
@@ -2494,7 +2494,7 @@ dependencies = [
  "deno_core",
  "deno_error",
  "futures",
- "http 1.3.1",
+ "http 1.4.0",
  "http-body 1.0.1",
  "http-body-util",
  "hyper 1.7.0",
@@ -2525,7 +2525,7 @@ dependencies = [
  "deno_error",
  "deno_media_type",
  "deno_path_util",
- "http 1.3.1",
+ "http 1.4.0",
  "indexmap 2.12.1",
  "log",
  "once_cell",
@@ -2753,7 +2753,7 @@ dependencies = [
  "error_reporter",
  "h2 0.4.12",
  "hickory-resolver",
- "http 1.3.1",
+ "http 1.4.0",
  "http-body-util",
  "hyper 1.7.0",
  "hyper-rustls",
@@ -2848,7 +2848,7 @@ dependencies = [
  "deno_websocket",
  "flate2",
  "http 0.2.12",
- "http 1.3.1",
+ "http 1.4.0",
  "httparse",
  "hyper 0.14.32",
  "hyper 1.7.0",
@@ -2920,7 +2920,7 @@ dependencies = [
  "denokv_remote",
  "denokv_sqlite",
  "faster-hex",
- "http 1.3.1",
+ "http 1.4.0",
  "http-body-util",
  "log",
  "num-bigint",
@@ -3069,7 +3069,7 @@ dependencies = [
  "faster-hex",
  "h2 0.4.12",
  "hkdf",
- "http 1.3.1",
+ "http 1.4.0",
  "http-body-util",
  "hyper 1.7.0",
  "hyper-util",
@@ -3361,7 +3361,7 @@ dependencies = [
  "deno_webstorage",
  "encoding_rs",
  "fastwebsockets",
- "http 1.3.1",
+ "http 1.4.0",
  "http-body-util",
  "hyper 1.7.0",
  "hyper-util",
@@ -3591,7 +3591,7 @@ dependencies = [
  "deno_tls",
  "fastwebsockets",
  "h2 0.4.12",
- "http 1.3.1",
+ "http 1.4.0",
  "http-body-util",
  "hyper 1.7.0",
  "hyper-util",
@@ -3653,7 +3653,7 @@ dependencies = [
  "deno_error",
  "denokv_proto",
  "futures",
- "http 1.3.1",
+ "http 1.4.0",
  "log",
  "prost",
  "rand 0.8.5",
@@ -4877,7 +4877,7 @@ dependencies = [
  "core-resolver",
  "core-router",
  "exo-env",
- "http 1.3.1",
+ "http 1.4.0",
  "introspection-resolver",
  "tracing",
 ]
@@ -4932,7 +4932,7 @@ dependencies = [
  "fnv",
  "futures-core",
  "futures-sink",
- "http 1.3.1",
+ "http 1.4.0",
  "indexmap 2.12.1",
  "slab",
  "tokio",
@@ -5160,12 +5160,11 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "1.3.1"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4a85d31aea989eead29a3aaf9e1115a180df8282431156e533de47660892565"
+checksum = "e3ba2a386d7f85a81f119ad7498ebe444d2e22c2af0b86b069416ace48b3311a"
 dependencies = [
  "bytes",
- "fnv",
  "itoa",
 ]
 
@@ -5187,7 +5186,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1efedce1fb8e6913f23e0c92de8e62cd5b772a67e7b3946df930a62566c93184"
 dependencies = [
  "bytes",
- "http 1.3.1",
+ "http 1.4.0",
 ]
 
 [[package]]
@@ -5198,7 +5197,7 @@ checksum = "b021d93e26becf5dc7e1b75b1bed1fd93124b374ceb73f43d4d4eafec896a64a"
 dependencies = [
  "bytes",
  "futures-core",
- "http 1.3.1",
+ "http 1.4.0",
  "http-body 1.0.1",
  "pin-project-lite",
 ]
@@ -5209,7 +5208,7 @@ version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f056c8559e3757392c8d091e796416e4649d8e49e88b8d76df6c002f05027fd"
 dependencies = [
- "http 1.3.1",
+ "http 1.4.0",
  "serde",
 ]
 
@@ -5260,7 +5259,7 @@ dependencies = [
  "futures-channel",
  "futures-core",
  "h2 0.4.12",
- "http 1.3.1",
+ "http 1.4.0",
  "http-body 1.0.1",
  "httparse",
  "httpdate",
@@ -5278,7 +5277,7 @@ version = "0.27.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3c93eb611681b207e1fe55d5a71ecf91572ec8a6705cdb6857f7d8d5242cf58"
 dependencies = [
- "http 1.3.1",
+ "http 1.4.0",
  "hyper 1.7.0",
  "hyper-util",
  "rustls",
@@ -5313,7 +5312,7 @@ dependencies = [
  "futures-channel",
  "futures-core",
  "futures-util",
- "http 1.3.1",
+ "http 1.4.0",
  "http-body 1.0.1",
  "hyper 1.7.0",
  "ipnet",
@@ -5995,7 +5994,7 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "futures",
- "http 1.3.1",
+ "http 1.4.0",
  "http-body-util",
  "http-serde",
  "hyper 1.7.0",
@@ -6019,7 +6018,7 @@ dependencies = [
  "bytes",
  "futures-channel",
  "futures-util",
- "http 1.3.1",
+ "http 1.4.0",
  "http-body 1.0.1",
  "http-body-util",
  "hyper 1.7.0",
@@ -6389,7 +6388,7 @@ dependencies = [
  "core-router",
  "exo-env",
  "graphql-router",
- "http 1.3.1",
+ "http 1.4.0",
  "introspection-util",
  "serde",
  "serde_json",
@@ -7028,7 +7027,7 @@ checksum = "10a8a7f5f6ba7c1b286c2fbca0454eaba116f63bbe69ed250b642d36fbb04d80"
 dependencies = [
  "async-trait",
  "bytes",
- "http 1.3.1",
+ "http 1.4.0",
  "opentelemetry",
  "reqwest",
 ]
@@ -7041,7 +7040,7 @@ checksum = "91cf61a1868dacc576bf2b2a1c3e9ab150af7272909e80085c3173384fe11f76"
 dependencies = [
  "async-trait",
  "futures-core",
- "http 1.3.1",
+ "http 1.4.0",
  "opentelemetry",
  "opentelemetry-http",
  "opentelemetry-proto",
@@ -7476,7 +7475,7 @@ dependencies = [
  "async-trait",
  "common",
  "exo-env",
- "http 1.3.1",
+ "http 1.4.0",
  "include_dir",
  "mime_guess",
  "serde",
@@ -7694,7 +7693,7 @@ dependencies = [
  "exo-env",
  "exo-sql",
  "futures",
- "http 1.3.1",
+ "http 1.4.0",
  "indexmap 2.12.1",
  "postgres-builder",
  "postgres-core-model",
@@ -7775,7 +7774,7 @@ dependencies = [
  "core-plugin-interface",
  "core-plugin-shared",
  "exo-sql",
- "http 1.3.1",
+ "http 1.4.0",
  "matchit 0.9.0",
  "postgres-core-model",
  "serde",
@@ -7789,7 +7788,7 @@ dependencies = [
  "common",
  "core-resolver",
  "exo-sql",
- "http 1.3.1",
+ "http 1.4.0",
  "postgres-core-resolver",
  "postgres-rest-model",
 ]
@@ -7825,7 +7824,7 @@ dependencies = [
  "common",
  "core-resolver",
  "exo-sql",
- "http 1.3.1",
+ "http 1.4.0",
  "postgres-core-model",
  "postgres-core-resolver",
  "postgres-rpc-model",
@@ -8340,7 +8339,7 @@ dependencies = [
  "futures-channel",
  "futures-core",
  "futures-util",
- "http 1.3.1",
+ "http 1.4.0",
  "http-body 1.0.1",
  "http-body-util",
  "hyper 1.7.0",
@@ -8385,7 +8384,7 @@ dependencies = [
  "common",
  "core-resolver",
  "exo-env",
- "http 1.3.1",
+ "http 1.4.0",
  "tracing",
 ]
 
@@ -8457,7 +8456,7 @@ dependencies = [
  "common",
  "core-resolver",
  "exo-env",
- "http 1.3.1",
+ "http 1.4.0",
  "serde_json",
  "tracing",
 ]
@@ -9053,7 +9052,7 @@ dependencies = [
  "actix-web",
  "common",
  "exo-env",
- "http 1.3.1",
+ "http 1.4.0",
  "reqwest",
  "serde_json",
  "server-common",
@@ -9075,7 +9074,7 @@ dependencies = [
  "deno-builder",
  "exo-env",
  "futures",
- "http 1.3.1",
+ "http 1.4.0",
  "lambda_runtime",
  "postgres-builder",
  "serde_json",
@@ -9094,7 +9093,7 @@ dependencies = [
  "core-plugin-shared",
  "exo-env",
  "exo-sql",
- "http 1.3.1",
+ "http 1.4.0",
  "postgres-resolver",
  "serde_json",
  "system-router",
@@ -10031,7 +10030,7 @@ dependencies = [
  "core-router",
  "exo-env",
  "graphql-router",
- "http 1.3.1",
+ "http 1.4.0",
  "mcp-router",
  "playground-router",
  "rest-router",
@@ -10135,7 +10134,7 @@ dependencies = [
  "exo-env",
  "exo-sql",
  "futures",
- "http 1.3.1",
+ "http 1.4.0",
  "insta",
  "introspection-util",
  "jsonwebtoken",
@@ -10544,7 +10543,7 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "h2 0.4.12",
- "http 1.3.1",
+ "http 1.4.0",
  "http-body 1.0.1",
  "http-body-util",
  "hyper 1.7.0",
@@ -10611,7 +10610,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-util",
- "http 1.3.1",
+ "http 1.4.0",
  "http-body 1.0.1",
  "http-body-util",
  "iri-string",
@@ -11815,7 +11814,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fb650c577c46254d16041c7fe0dc9901d9a42df3f46e77e9d05d1b3c17294b19"
 dependencies = [
  "bytes",
- "http 1.3.1",
+ "http 1.4.0",
  "thiserror 2.0.17",
  "url",
 ]
@@ -12530,7 +12529,7 @@ dependencies = [
  "chrono",
  "futures-channel",
  "futures-util",
- "http 1.3.1",
+ "http 1.4.0",
  "http-body 1.0.1",
  "js-sys",
  "matchit 0.7.3",
