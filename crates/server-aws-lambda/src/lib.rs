@@ -102,7 +102,7 @@ pub async fn resolve(
                 .into_iter()
                 .partition(|(name, _)| name == "set-cookie");
 
-            let cookie_headers = cookie_headers.into_iter().map(|(_, v)| (v.to_string()));
+            let cookie_headers = cookie_headers.into_iter().map(|(_, v)| v.to_string());
 
             let all_headers: Vec<(String, String)> = headers
                 .into_iter()
