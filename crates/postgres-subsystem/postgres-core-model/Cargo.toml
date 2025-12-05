@@ -24,7 +24,7 @@ exo-sql = { path = "../../../libs/exo-sql", features = [
   "testing",
   "interactive-migration",
 ] }
-sqlparser = "0.58.0"
+sqlparser = "0.59.0"
 colored.workspace = true
 
 common = { path = "../../common", features = ["test-support"] }

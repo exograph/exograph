@@ -61,4 +61,4 @@ exo-sql = { path = "../../libs/exo-sql", features = ["test-support"] }
 common = { path = "../common", features = ["test-support"] }
 
 [target.'cfg(unix)'.dev-dependencies]
-rexpect = "0.6.1"
+rexpect = "0.6.2"
