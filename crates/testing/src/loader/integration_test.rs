@@ -34,7 +34,7 @@ struct TestfileStage {
     pub response: Option<String>,
     pub invariants: Option<Vec<TestfileStageInvariant>>,
     #[serde(flatten)]
-    pub extra: HashMap<String, serde_yaml::Value>,
+    pub extra: HashMap<String, serde_json::Value>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -155,9 +155,9 @@ impl IntegrationTest {
             .context("Could not read test file to string")?;
 
         let deserialized_testfile_multiple_stages: Result<TestfileMultipleStages, _> =
-            serde_yaml::from_str(&contents);
+            serde_saphyr::from_str(&contents);
         let deserialized_testfile_single_stage: Result<TestfileSingleStage, _> =
-            serde_yaml::from_str(&contents);
+            serde_saphyr::from_str(&contents);
 
         let (stages, common) = if let Ok(testfile) = deserialized_testfile_multiple_stages {
             (testfile.stages, testfile.common)
