@@ -4217,6 +4217,7 @@ dependencies = [
  "deno_fs",
  "deno_resolver",
  "deno_runtime",
+ "deno_subprocess_windows",
  "exo-env",
  "futures",
  "include_dir",
