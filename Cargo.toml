@@ -89,8 +89,8 @@ ctor = "0.6.3"
 http = "1"
 clap = "4.5.53"
 
-deno_core = "0.363.0"
-deno_error = "0.7.0"
+deno_core = "0.372.0"
+deno_error = "0.7.1"
 
 futures = "0.3.29"
 heck = "0.5.0"

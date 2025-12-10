@@ -7,11 +7,11 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use deno_core::ModuleLoadOptions;
 use deno_core::ModuleLoadReferrer;
 use deno_core::ModuleLoader;
 use deno_core::ModuleSource;
 use deno_core::ModuleSpecifier;
-use deno_core::RequestedModuleType;
 use deno_core::ResolutionKind;
 use deno_core::error::ModuleLoaderError;
 use deno_core::futures::FutureExt;
@@ -49,8 +49,7 @@ impl ModuleLoader for EmbeddedModuleLoader {
         &self,
         module_specifier: &ModuleSpecifier,
         maybe_referrer: Option<&ModuleLoadReferrer>,
-        is_dynamic: bool,
-        _requested_module_type: RequestedModuleType,
+        options: ModuleLoadOptions,
     ) -> deno_core::ModuleLoadResponse {
         let borrowed_map = self.source_code_map.borrow();
 
@@ -99,12 +98,8 @@ impl ModuleLoader for EmbeddedModuleLoader {
                 let loader = deno_core::FsModuleLoader;
 
                 // use the configured loader to load the script from an external source
-                let module_load_response = loader.load(
-                    &module_specifier,
-                    maybe_referrer.as_ref(),
-                    is_dynamic,
-                    _requested_module_type,
-                );
+                let module_load_response =
+                    loader.load(&module_specifier, maybe_referrer.as_ref(), options);
 
                 let module_source = match module_load_response {
                     deno_core::ModuleLoadResponse::Sync(module_source) => module_source?,

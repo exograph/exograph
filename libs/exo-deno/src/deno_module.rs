@@ -58,7 +58,7 @@ struct BasicNodeRequireLoader;
 impl deno_runtime::deno_node::NodeRequireLoader for BasicNodeRequireLoader {
     fn ensure_read_permission<'a>(
         &self,
-        _permissions: &mut dyn deno_runtime::deno_node::NodePermissions,
+        _permissions: &mut PermissionsContainer,
         path: Cow<'a, std::path::Path>,
     ) -> Result<Cow<'a, std::path::Path>, JsErrorBox> {
         Ok(path)
