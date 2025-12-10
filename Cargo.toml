@@ -134,6 +134,26 @@ tracing-subscriber = "0.3.20"
 toml = { version = "0.9.5", features = ["parse"] }
 zip = "6.0.0"
 
+# Needed for Deno (to enable appropriate features)
+windows-sys = { version = "0.59.0", features = [
+  "Win32_Foundation",
+  "Win32_Media",
+  "Win32_Storage_FileSystem",
+  "Win32_System_IO",
+  "Win32_System_WindowsProgramming",
+  "Wdk",
+  "Wdk_System",
+  "Wdk_System_SystemInformation",
+  "Win32_Security",
+  "Win32_System_Pipes",
+  "Wdk_Storage_FileSystem",
+  "Win32_System_Registry",
+  "Win32_System_Kernel",
+  "Win32_System_Threading",
+  "Win32_UI",
+  "Win32_UI_Shell",
+] }
+
 # reduce binary size, does not affect stack traces
 [profile.dev]
 debug = 1
