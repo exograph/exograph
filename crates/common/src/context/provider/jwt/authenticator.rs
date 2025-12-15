@@ -9,11 +9,12 @@ use exo_env::Environment;
 use crate::context::error::ContextExtractionError;
 use crate::context::provider::cookie::CookieExtractor;
 use crate::env_const::{
-    EXO_JWT_SECRET, EXO_JWT_SOURCE_COOKIE, EXO_JWT_SOURCE_HEADER, EXO_OIDC_URL,
+    EXO_JWT_SECRET, EXO_JWT_SOURCE_COOKIE, EXO_JWT_SOURCE_HEADER, EXO_OIDC_URL, EXO_OIDC_URLS, EXO_JWKS_URLS,
 };
 use crate::http::RequestHead;
 
 use super::oidc::Oidc;
+use super::jwks::JwksValidator;
 
 const TOKEN_PREFIX: &str = "Bearer ";
 
@@ -29,10 +30,17 @@ enum AuthenticatorSource {
 }
 
 /// Authenticator with information about how to validate JWT tokens
-/// It can be either a secret or a OIDC url
+/// It can be either a secret, OIDC url(s), JWKS url(s), or a mix of OIDC and JWKS
 enum JwtAuthenticatorStyle {
     Secret(String),
     Oidc(Oidc),
+    MultiOidc(Vec<Oidc>),
+    Jwks(JwksValidator),
+    MultiJwks(Vec<JwksValidator>),
+    Mixed {
+        oidc: Vec<Oidc>,
+        jwks: Vec<JwksValidator>,
+    },
 }
 
 #[derive(Debug, Error)]
@@ -63,14 +71,145 @@ impl JwtAuthenticator {
     ) -> Result<Option<Self>, JwtConfigurationError> {
         let secret = env.get(EXO_JWT_SECRET);
         let oidc_url = env.get(EXO_OIDC_URL);
+        let oidc_urls = env.get(EXO_OIDC_URLS);
+        let jwks_urls = env.get(EXO_JWKS_URLS);
 
-        let style = match (secret, oidc_url) {
-            (Some(secret), None) => Ok(JwtAuthenticatorStyle::Secret(secret)),
-            (None, Some(oidc_url)) => Ok(JwtAuthenticatorStyle::Oidc(Oidc::new(oidc_url).await?)),
-            (Some(_), Some(_)) => Err(JwtConfigurationError::InvalidSetup(format!(
-                "Both {EXO_JWT_SECRET} and {EXO_OIDC_URL} are set. Only one of them can be set at a time"
+        let style = match (secret, oidc_url, oidc_urls, jwks_urls) {
+            (Some(secret), None, None, None) => Ok(JwtAuthenticatorStyle::Secret(secret)),
+            (None, Some(oidc_url), None, None) => Ok(JwtAuthenticatorStyle::Oidc(Oidc::new(oidc_url).await?)),
+            (None, None, Some(oidc_urls_str), None) => {
+                // Parse comma-separated OIDC URLs
+                let urls: Vec<String> = oidc_urls_str
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+                
+                if urls.is_empty() {
+                    return Err(JwtConfigurationError::InvalidSetup(
+                        format!("{EXO_OIDC_URLS} is set but contains no valid URLs")
+                    ));
+                }
+                
+                // Initialize all OIDC validators
+                let mut oidc_validators = Vec::new();
+                for (idx, url) in urls.iter().enumerate() {
+                    match Oidc::new(url.clone()).await {
+                        Ok(validator) => {
+                            tracing::info!("Initialized OIDC provider {}: {}", idx + 1, url);
+                            oidc_validators.push(validator);
+                        }
+                        Err(e) => {
+                            return Err(JwtConfigurationError::Configuration {
+                                message: format!("Failed to initialize OIDC provider '{}': {}", url, e),
+                                source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e))),
+                            });
+                        }
+                    }
+                }
+                
+                Ok(JwtAuthenticatorStyle::MultiOidc(oidc_validators))
+            },
+            (None, None, None, Some(jwks_urls_str)) => {
+                // Parse comma-separated JWKS URLs (for Hasura/Nhost)
+                let urls: Vec<String> = jwks_urls_str
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+                
+                if urls.is_empty() {
+                    return Err(JwtConfigurationError::InvalidSetup(
+                        format!("{EXO_JWKS_URLS} is set but contains no valid URLs")
+                    ));
+                }
+                
+                // Initialize all JWKS validators
+                let mut jwks_validators = Vec::new();
+                for (idx, url) in urls.iter().enumerate() {
+                    match JwksValidator::new(url.clone()).await {
+                        Ok(validator) => {
+                            tracing::info!("Initialized JWKS provider {}: {}", idx + 1, url);
+                            jwks_validators.push(validator);
+                        }
+                        Err(e) => {
+                            return Err(JwtConfigurationError::Configuration {
+                                message: format!("Failed to initialize JWKS provider '{}': {}", url, e),
+                                source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e))),
+                            });
+                        }
+                    }
+                }
+                
+                Ok(JwtAuthenticatorStyle::MultiJwks(jwks_validators))
+            },
+            (Some(_), _, _, _) => Err(JwtConfigurationError::InvalidSetup(format!(
+                "{EXO_JWT_SECRET} cannot be used with any other JWT configuration"
             ))),
-            (None, None) => return Ok(None),
+            (None, Some(_), Some(_), _) => Err(JwtConfigurationError::InvalidSetup(format!(
+                "Both {EXO_OIDC_URL} and {EXO_OIDC_URLS} are set. Use only {EXO_OIDC_URLS} for multiple providers"
+            ))),
+            (None, _, Some(oidc_urls_str), Some(jwks_urls_str)) => {
+                // Mixed mode: both OIDC and JWKS providers
+                let oidc_urls: Vec<String> = oidc_urls_str
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+                
+                let jwks_urls: Vec<String> = jwks_urls_str
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+                
+                if oidc_urls.is_empty() && jwks_urls.is_empty() {
+                    return Err(JwtConfigurationError::InvalidSetup(
+                        "Both EXO_OIDC_URLS and EXO_JWKS_URLS are set but empty".to_string()
+                    ));
+                }
+                
+                let mut oidc_validators = Vec::new();
+                for (idx, url) in oidc_urls.iter().enumerate() {
+                    match Oidc::new(url.clone()).await {
+                        Ok(validator) => {
+                            tracing::info!("Initialized OIDC provider {}: {}", idx + 1, url);
+                            oidc_validators.push(validator);
+                        }
+                        Err(e) => {
+                            return Err(JwtConfigurationError::Configuration {
+                                message: format!("Failed to initialize OIDC provider '{}': {}", url, e),
+                                source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e))),
+                            });
+                        }
+                    }
+                }
+                
+                let mut jwks_validators = Vec::new();
+                for (idx, url) in jwks_urls.iter().enumerate() {
+                    match JwksValidator::new(url.clone()).await {
+                        Ok(validator) => {
+                            tracing::info!("Initialized JWKS provider {}: {}", idx + 1, url);
+                            jwks_validators.push(validator);
+                        }
+                        Err(e) => {
+                            return Err(JwtConfigurationError::Configuration {
+                                message: format!("Failed to initialize JWKS provider '{}': {}", url, e),
+                                source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e))),
+                            });
+                        }
+                    }
+                }
+                
+                Ok(JwtAuthenticatorStyle::Mixed {
+                    oidc: oidc_validators,
+                    jwks: jwks_validators,
+                })
+            },
+            (None, Some(_), _, Some(_)) => Err(JwtConfigurationError::InvalidSetup(format!(
+                "Both {EXO_OIDC_URL} and {EXO_JWKS_URLS} are set. Use {EXO_OIDC_URLS} for multiple OIDC providers"
+            ))),
+            (None, None, None, None) => return Ok(None),
         }?;
 
         let jwt_source_header = env.get(EXO_JWT_SOURCE_HEADER);
@@ -124,6 +263,87 @@ impl JwtAuthenticator {
                         JwtAuthenticationError::Invalid
                     }
                 })
+            }
+
+            JwtAuthenticatorStyle::MultiOidc(oidc_validators) => {
+                // Try each OIDC provider in sequence until one succeeds
+                let mut last_error = None;
+                
+                for oidc in oidc_validators {
+                    match oidc.validate(token).await {
+                        Ok(claims) => return Ok(claims),
+                        Err(err) => {
+                            // Store the last error for reporting if all fail
+                            last_error = Some(err);
+                        }
+                    }
+                }
+                
+                // All validators failed, return the last error
+                Err(match last_error {
+                    Some(oidc_jwt_validator::ValidationError::ValidationFailed(err)) => {
+                        map_jwt_error(err)
+                    }
+                    Some(err) => {
+                        error!("Error validating JWT with all providers: {}", err);
+                        JwtAuthenticationError::Invalid
+                    }
+                    None => JwtAuthenticationError::Invalid,
+                })
+            }
+
+            JwtAuthenticatorStyle::Jwks(jwks) => {
+                jwks.validate(token).await.map_err(|err| match err {
+                    super::jwks::JwtValidationError::Expired => JwtAuthenticationError::Expired,
+                    super::jwks::JwtValidationError::Invalid => JwtAuthenticationError::Invalid,
+                })
+            }
+
+            JwtAuthenticatorStyle::MultiJwks(jwks_validators) => {
+                // Try each JWKS provider in sequence until one succeeds
+                let mut last_error = None;
+                
+                for jwks in jwks_validators {
+                    match jwks.validate(token).await {
+                        Ok(claims) => return Ok(claims),
+                        Err(err) => {
+                            // Store the last error for reporting if all fail
+                            last_error = Some(err);
+                        }
+                    }
+                }
+                
+                // All validators failed, return the last error
+                Err(match last_error {
+                    Some(super::jwks::JwtValidationError::Expired) => JwtAuthenticationError::Expired,
+                    Some(super::jwks::JwtValidationError::Invalid) => {
+                        error!("Error validating JWT with all JWKS providers");
+                        JwtAuthenticationError::Invalid
+                    }
+                    None => JwtAuthenticationError::Invalid,
+                })
+            }
+            
+            JwtAuthenticatorStyle::Mixed { oidc, jwks } => {
+                // Try OIDC providers first
+                for oidc_validator in oidc {
+                    match oidc_validator.validate(token).await {
+                        Ok(claims) => return Ok(claims),
+                        Err(_) => {} // Continue to next provider
+                    }
+                }
+                
+                // Try JWKS providers
+                for jwks_validator in jwks {
+                    match jwks_validator.validate(token).await {
+                        Ok(claims) => return Ok(claims),
+                        Err(_) => {} // Continue to next provider
+                    }
+                }
+                
+                // All validators failed
+                error!("Error validating JWT with all providers (OIDC + JWKS)");
+                Err(JwtAuthenticationError::Invalid)
             }
         }
     }

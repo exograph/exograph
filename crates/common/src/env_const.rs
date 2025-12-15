@@ -7,6 +7,8 @@ pub const EXO_CORS_DOMAINS: &str = "EXO_CORS_DOMAINS";
 
 pub const EXO_JWT_SECRET: &str = "EXO_JWT_SECRET";
 pub const EXO_OIDC_URL: &str = "EXO_OIDC_URL";
+pub const EXO_OIDC_URLS: &str = "EXO_OIDC_URLS"; // Comma-separated list of OIDC URLs
+pub const EXO_JWKS_URLS: &str = "EXO_JWKS_URLS"; // Comma-separated list of direct JWKS URLs (for providers without OIDC discovery)
 pub const EXO_JWT_SOURCE_HEADER: &str = "EXO_JWT_SOURCE_HEADER";
 pub const EXO_JWT_SOURCE_COOKIE: &str = "EXO_JWT_SOURCE_COOKIE";
 

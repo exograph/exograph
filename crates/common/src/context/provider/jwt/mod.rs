@@ -9,6 +9,7 @@
 
 mod authenticator;
 mod extractor;
+mod jwks;
 mod oidc;
 
 pub use authenticator::JwtAuthenticator;

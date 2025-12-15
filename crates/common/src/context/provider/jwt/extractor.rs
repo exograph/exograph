@@ -68,14 +68,27 @@ impl ContextExtractor for JwtExtractor {
             })
             .await?;
 
-        let current_value = key.split('.').fold(Some(claims), |value, part| {
+        // Debug: Log the full JWT claims structure
+        eprintln!("[JWT Extractor] Full JWT claims: {}", serde_json::to_string_pretty(&claims).unwrap_or_else(|_| "<invalid json>".to_string()));
+        eprintln!("[JWT Extractor] Extracting key: {}", key);
+
+        // Support both '.' and '/' as path separators
+        // '/' is preferred when keys contain dots (e.g., "claims.jwt.hasura.io")
+        let separator = if key.contains('/') { '/' } else { '.' };
+        eprintln!("[JWT Extractor] Using separator: {:?}", separator);
+        
+        let current_value = key.split(separator).fold(Some(claims), |value, part| {
+            eprintln!("[JWT Extractor] Navigating to part: {}", part);
             if let Some(value) = value {
-                value.get(part)
+                let result = value.get(part);
+                eprintln!("[JWT Extractor] Result: {:?}", result);
+                result
             } else {
                 None
             }
         });
 
+        eprintln!("[JWT Extractor] Final value for key '{}': {:?}", key, current_value);
         Ok(current_value.cloned())
     }
 }
