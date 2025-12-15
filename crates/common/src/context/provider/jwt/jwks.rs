@@ -122,13 +122,19 @@ impl JwksValidator {
         validation.validate_exp = true;
         validation.validate_nbf = false;
         
-        // Don't validate issuer/audience - let Hasura handle that in claims
+        // Don't validate issuer/audience - let Hasura handle that in claims  
         validation.validate_aud = false;
+        validation.set_required_spec_claims::<&str>(&[]); // Don't require iss, exp, etc.
 
         // Decode and validate token
+        eprintln!("[JWKS Validator] Attempting to validate with kid: {}", kid);
+        eprintln!("[JWKS Validator] Validation settings: exp={}, nbf={}, aud={}", validation.validate_exp, validation.validate_nbf, validation.validate_aud);
+        
         let token_data = decode::<Value>(token, decoding_key, &validation).map_err(|e| {
+            eprintln!("[JWKS Validator] Validation failed: {:?}", e);
             match e.kind() {
                 jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
+                    error!("JWT validation failed: expired signature");
                     JwtValidationError::Expired
                 }
                 _ => {
@@ -137,6 +143,8 @@ impl JwksValidator {
                 }
             }
         })?;
+        
+        eprintln!("[JWKS Validator] Validation successful!");
 
         Ok(token_data.claims)
     }
