@@ -231,6 +231,22 @@ fn coerce_primitive(value: Val, typ: &PrimitiveType) -> Result<Val, ContextExtra
     match typ {
         PrimitiveType::Plain(primitive_type) => {
             let type_name = primitive_type.name();
+
+            if type_name == primitive_type::JsonType::NAME {
+                return match value {
+                    Val::String(_)
+                    | Val::List(_)
+                    | Val::Object(_)
+                    | Val::Bool(_)
+                    | Val::Number(_)
+                    | Val::Null => Ok(value),
+                    _ => Err(ContextExtractionError::TypeMismatch {
+                        expected: typ.name(),
+                        actual: value.to_string(),
+                    }),
+                };
+            }
+
             match (&value, type_name) {
                 // Direct matches for compatible types
                 (Val::String(_), _type_name)

@@ -30,7 +30,7 @@ use postgres_graphql_model::{
 };
 
 use crate::{
-    auth_util::check_access,
+    auth_util::{check_access, AccessCheckOutcome},
     sql_mapper::{SQLMapper, SQLOperationKind},
     util::get_argument_field,
 };
@@ -285,7 +285,11 @@ async fn compute_nested_update_object_arg<'a>(
         aliases: HashMap::new(),
     });
 
-    let (precheck_predicate, entity_predicate) = check_access(
+    let AccessCheckOutcome {
+        precheck_predicate,
+        entity_predicate,
+        ..
+    } = check_access(
         &subsystem.core_subsystem.entity_types[field_entity_type.entity_id],
         &[],
         &SQLOperationKind::Update,
@@ -514,7 +518,11 @@ async fn compute_nested_delete_object_arg<'a>(
         aliases: HashMap::new(),
     });
 
-    let (precheck_predicate, entity_predicate) = check_access(
+    let AccessCheckOutcome {
+        precheck_predicate,
+        entity_predicate,
+        ..
+    } = check_access(
         &subsystem.core_subsystem.entity_types[field_mutation_type.entity_id],
         &[],
         &SQLOperationKind::Delete,

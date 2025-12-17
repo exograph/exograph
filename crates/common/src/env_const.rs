@@ -9,6 +9,10 @@ pub const EXO_JWT_SECRET: &str = "EXO_JWT_SECRET";
 pub const EXO_OIDC_URL: &str = "EXO_OIDC_URL";
 pub const EXO_OIDC_URLS: &str = "EXO_OIDC_URLS"; // Comma-separated list of OIDC URLs
 pub const EXO_JWKS_URLS: &str = "EXO_JWKS_URLS"; // Comma-separated list of direct JWKS URLs (for providers without OIDC discovery)
+pub const EXO_JWT_AUDIENCES: &str = "EXO_JWT_AUDIENCES"; // Comma-separated list of allowed JWT audiences
+pub const EXO_JWT_PUBLIC_KEY_PEM: &str = "EXO_JWT_PUBLIC_KEY_PEM"; // Optional PEM-encoded RSA public key for JWT validation
+pub const EXO_JWT_PUBLIC_KEY_PEM_ENVS: &str = "EXO_JWT_PUBLIC_KEY_PEM_ENVS"; // Comma-separated list of env vars containing PEM-encoded public keys
+pub const EXO_JWT_PUBLIC_KEY_KID: &str = "EXO_JWT_PUBLIC_KEY_KID"; // Optional kid for the direct PEM key
 pub const EXO_JWT_SOURCE_HEADER: &str = "EXO_JWT_SOURCE_HEADER";
 pub const EXO_JWT_SOURCE_COOKIE: &str = "EXO_JWT_SOURCE_COOKIE";
 

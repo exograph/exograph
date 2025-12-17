@@ -1,108 +1,188 @@
-import { useContext, useEffect, useState } from "react";
-import Editor from "@monaco-editor/react";
-import { useTheme } from "../../util/theme";
+import { useContext, useMemo } from "react";
 
 import { AuthConfigContext } from "./AuthConfigProvider";
 import { SecretAuthContext } from "./SecretAuthProvider";
+import { AuthProfileMode } from "./SecretConfig";
+
+type RoleInfo = {
+  availableRoles: string[];
+  defaultRole: string;
+};
+
+function decodeRolesFromClaims(claims: string): RoleInfo | null {
+  try {
+    const parsed = JSON.parse(claims);
+    const hasuraClaims =
+      parsed["https://hasura.io/jwt/claims"] || parsed["claims.jwt.hasura.io"];
+    if (hasuraClaims) {
+      return {
+        availableRoles: hasuraClaims["x-hasura-allowed-roles"] || [],
+        defaultRole: hasuraClaims["x-hasura-default-role"] || "",
+      };
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return null;
+}
+
+function decodeRolesFromToken(token: string): RoleInfo | null {
+  if (!token) {
+    return null;
+  }
+
+  const parts = token.split(".");
+  if (parts.length < 2) {
+    return null;
+  }
+
+  try {
+    const padded = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = atob(padded);
+    return decodeRolesFromClaims(json);
+  } catch {
+    return null;
+  }
+}
 
 export function SignInPanel(props: { onDone: () => void }) {
   const { config, setConfig } = useContext(AuthConfigContext);
-  const { setSignedIn } = useContext(SecretAuthContext);
-  const theme = useTheme();
+  const { signedIn, setSignedIn } = useContext(SecretAuthContext);
 
-  const [jwtSecret, setJwtSecret] = useState(config.secret.value);
-  const [claims, setClaims] = useState(config.claims || "");
-  const [claimsError, setClaimsError] = useState<string | undefined>(undefined);
+  const activeProfile = useMemo(
+    () =>
+      config.profiles.find(
+        (profile) => profile.id === config.activeProfileId
+      ),
+    [config]
+  );
 
-  useEffect(() => {
-    try {
-      JSON.parse(claims);
-      setClaimsError(undefined);
-    } catch (e) {
-      setClaimsError((e as Error).message);
-      return;
-    }
-  }, [claims]);
+  const roleInfo =
+    config.mode === "static"
+      ? decodeRolesFromToken(config.secret.value)
+      : decodeRolesFromClaims(config.claims);
 
-  const enableSignIn = !claimsError && jwtSecret && claims ? true : false;
+  const activeRole =
+    config.headers["x-hasura-role"] || roleInfo?.defaultRole || "";
 
-  function onSignIn() {
-    setConfig(config.updated(jwtSecret, claims));
-    setSignedIn(true);
-    props.onDone();
-  }
+  const modeLabel: Record<AuthProfileMode, string> = {
+    static: "Static JWT token",
+    generated: "Generated token (HS256 secret + claims)",
+  };
 
   return (
     <div className="flex flex-col w-full space-y-4">
       <div>
         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-          Secret
+          Profile
         </label>
-        <input
-          type="text"
-          className={`w-full px-3 py-2 rounded-lg border font-mono text-sm ${
-            config.secret.readOnly
-              ? "bg-gray-100 dark:bg-gray-700 cursor-not-allowed text-gray-500 dark:text-gray-400"
-              : "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          } border-gray-300 dark:border-gray-600 shadow-sm focus:outline-none`}
-          placeholder="EXO_JWT_SECRET value"
-          value={jwtSecret}
-          readOnly={config.secret.readOnly}
-          onChange={(e) => setJwtSecret(e.target.value)}
-        />
+        <select
+          className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 shadow-sm focus:outline-none"
+          value={config.activeProfileId}
+          onChange={(event) =>
+            setConfig((current) =>
+              current.withActiveProfile(event.target.value)
+            )
+          }
+        >
+          {config.profiles.map((profile) => (
+            <option key={profile.id} value={profile.id}>
+              {profile.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-          Claims
+        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+          Mode
         </label>
-        <div className="rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm overflow-hidden">
-          <Editor
-            height="5rem"
-            defaultLanguage="json"
-            value={claims}
-            onChange={(value) => setClaims(value || "")}
-            theme={theme === "dark" ? "vs-dark" : "vs"}
-            options={{
-              minimap: { enabled: false },
-              lineNumbers: "off",
-              folding: false,
-              glyphMargin: false,
-              lineDecorationsWidth: 0,
-              lineNumbersMinChars: 0,
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
-              fontSize: 14,
-              fontFamily:
-                "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-              scrollbar: {
-                vertical: "hidden",
-                horizontal: "hidden",
-              },
-            }}
-          />
-        </div>
-        {claimsError && (
-          <div className="text-red-600 text-sm mt-1 min-h-[1.5rem]">
-            {claimsError}
-          </div>
-        )}
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          {modeLabel[config.mode]}
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Use the <span className="font-semibold">Auth</span> tab to edit profile details.
+        </p>
       </div>
 
-      <div className="flex justify-end pt-2">
-        <button
-          className={`px-4 py-2 rounded-md font-medium transition-colors ${
-            enableSignIn
-              ? "bg-blue-600 hover:bg-blue-700 text-white"
-              : "bg-gray-300 text-gray-500 cursor-not-allowed"
-          }`}
-          onClick={() => {
-            onSignIn();
-          }}
-          disabled={!enableSignIn}
-        >
-          Sign In
-        </button>
+      {roleInfo && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 space-y-2">
+          <div className="text-sm">
+            <span className="font-semibold text-gray-700 dark:text-gray-300">
+              Available Roles:{" "}
+            </span>
+            <span className="text-gray-600 dark:text-gray-400">
+              {roleInfo.availableRoles.join(", ") || "None"}
+            </span>
+          </div>
+          <div className="text-sm">
+            <span className="font-semibold text-gray-700 dark:text-gray-300">
+              Default Role:{" "}
+            </span>
+            <span className="text-gray-600 dark:text-gray-400">
+              {roleInfo.defaultRole || "None"}
+            </span>
+          </div>
+          <div className="text-sm">
+            <span className="font-semibold text-gray-700 dark:text-gray-300">
+              Active Role:{" "}
+            </span>
+            <span className="font-mono text-blue-600 dark:text-blue-400">
+              {activeRole || "None"}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {activeProfile?.headers && Object.keys(activeProfile.headers).length > 0 && (
+        <div className="text-sm text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+          <h3 className="font-semibold text-gray-700 dark:text-gray-200 mb-2">
+            Custom Headers
+          </h3>
+          <dl className="space-y-1">
+            {Object.entries(activeProfile.headers).map(([key, value]) => (
+              <div key={key} className="flex items-center justify-between">
+                <dt className="font-medium text-gray-700 dark:text-gray-300">
+                  {key}
+                </dt>
+                <dd className="font-mono text-xs text-gray-600 dark:text-gray-400 overflow-hidden text-ellipsis max-w-[60%]">
+                  {value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
+
+      <div className="flex justify-end pt-2 gap-2">
+        {signedIn ? (
+          <button
+            className="px-4 py-2 rounded-md font-medium transition-colors bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200"
+            onClick={() => {
+              setSignedIn(false);
+              props.onDone();
+            }}
+          >
+            Sign Out
+          </button>
+        ) : (
+          <button
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${
+              config.canSignIn()
+                ? "bg-blue-600 hover:bg-blue-700 text-white"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
+            onClick={() => {
+              if (config.canSignIn()) {
+                setSignedIn(true);
+                props.onDone();
+              }
+            }}
+            disabled={!config.canSignIn()}
+          >
+            Sign In
+          </button>
+        )}
       </div>
     </div>
   );

@@ -25,6 +25,7 @@ import {
 import { GraphQLSchema } from "graphql";
 import { fetchSchema, SchemaError } from "./schema";
 import { AuthContext } from "../auth/AuthContext";
+import { AuthConfigContext } from "../auth/secret/AuthConfigProvider";
 import { explorerPlugin } from "@graphiql/plugin-explorer";
 import { PlaygroundGraphQLProps as GraphiQLProps } from "./types";
 import { BasePlaygroundComponentProps } from "../util/component-types";
@@ -40,6 +41,8 @@ export function GraphiQLPlayground({ tab: graphql, auth }: GraphiQLPlaygroundPro
   const { fetcher } = graphql;
   const { jwtSourceHeader, jwtSourceCookie } = auth;
   const { getTokenFn } = useContext(AuthContext);
+  const authConfigContext = useContext(AuthConfigContext);
+  const customHeaders = authConfigContext?.config?.headers || {};
 
   const dataFetcher: Fetcher = async (
     graphQLParams: FetcherParams,
@@ -48,20 +51,22 @@ export function GraphiQLPlayground({ tab: graphql, auth }: GraphiQLPlaygroundPro
     // Add a special header (`_exo_playground`) to the request to indicate that it's coming from the playground
     let additionalHeaders: Record<string, any> = {
       _exo_playground: "true",
+      ...customHeaders, // Include custom headers from config
     };
 
     if (getTokenFn) {
       let authToken = await getTokenFn();
 
-      if (jwtSourceCookie) {
-        document.cookie = `${jwtSourceCookie}=${authToken}`;
-      } else {
-        let authHeader = jwtSourceHeader || "Authorization";
-
-        additionalHeaders = {
-          ...additionalHeaders,
-          [authHeader]: `Bearer ${authToken}`,
-        };
+      if (authToken) {
+        if (jwtSourceCookie) {
+          document.cookie = `${jwtSourceCookie}=${authToken}`;
+        } else {
+          const authHeader = jwtSourceHeader || "Authorization";
+          additionalHeaders = {
+            ...additionalHeaders,
+            [authHeader]: `Bearer ${authToken}`,
+          };
+        }
       }
     }
 

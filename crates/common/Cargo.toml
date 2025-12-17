@@ -22,6 +22,7 @@ futures.workspace = true
 async-trait.workspace = true
 async-recursion.workspace = true
 jsonwebtoken.workspace = true
+base64 = "0.21"
 oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", branch = "exograph" }
 cookie = "0.18.1"
 elsa = "1.8.1"

@@ -93,6 +93,7 @@ impl SelectionElement {
                 Column::physical(column_id, foreign_table_alias)
             }
             SelectionElement::Function(function) => Column::Function(function.clone()),
+            SelectionElement::Null => Column::Null,
             SelectionElement::Constant(s) => Column::Constant(s.clone()),
             SelectionElement::Object(elements) => {
                 let elements = elements

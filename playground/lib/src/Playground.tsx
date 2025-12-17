@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { GraphiQLPlayground } from "./graphql/GraphiQLPlayground";
 import { MCPPlayground } from "./mcp/MCPPlayground";
 import { AuthContextProvider } from "./auth/AuthContext";
@@ -18,6 +18,7 @@ import { Logo } from "./util/Logo";
 import { ThemeToggleButton } from "./util/ThemeToggleButton";
 import { PlaygroundTab, PlaygroundTabProps } from "./types";
 import { getGraphQLProps, getMCPProps } from "./util/playground-helpers";
+import { AuthProfilesTab } from "./auth/AuthProfilesTab";
 
 export interface PlaygroundProps {
   auth: JWTAuthentication;
@@ -28,27 +29,45 @@ export function Playground({
   auth,
   tabs,
 }: PlaygroundProps) {
-  const [activeTab, setActiveTab] = useState<PlaygroundTab>(
-    tabs[0]?.tabType || "graphql"
-  );
-
   const graphqlProps = getGraphQLProps(tabs);
   const mcpProps = getMCPProps(tabs);
+
+  const navTabs = useMemo(() => {
+    const result: PlaygroundTab[] = [];
+    if (graphqlProps) {
+      result.push("graphql");
+    }
+    if (mcpProps) {
+      result.push("mcp");
+    }
+    result.push("auth");
+    return result;
+  }, [graphqlProps, mcpProps]);
+
+  const [activeTab, setActiveTab] = useState<PlaygroundTab>(
+    navTabs[0] ?? "auth"
+  );
+
+  const resolvedActiveTab = navTabs.includes(activeTab)
+    ? activeTab
+    : navTabs[0] ?? "auth";
 
   return (
     <ThemeProvider>
       <AuthContextProvider oidcUrl={auth.oidcUrl} jwtSecret={auth.jwtSecret}>
         <div className="h-screen flex flex-col overflow-hidden">
           <Navbar
-            activeTab={activeTab}
+            activeTab={resolvedActiveTab}
             onTabChange={setActiveTab}
-            tabs={tabs}
+            tabs={navTabs}
           />
           <div className="flex-1 min-h-0 overflow-hidden">
-            {activeTab === "graphql" ? (
+            {resolvedActiveTab === "graphql" ? (
               graphqlProps && <GraphiQLPlayground tab={graphqlProps} auth={auth} />
-            ) : (
+            ) : resolvedActiveTab === "mcp" ? (
               mcpProps && <MCPPlayground tab={mcpProps} auth={auth} />
+            ) : (
+              <AuthProfilesTab />
             )}
           </div>
         </div>
@@ -60,7 +79,7 @@ export function Playground({
 interface NavbarProps {
   activeTab: PlaygroundTab;
   onTabChange: (tab: PlaygroundTab) => void;
-  tabs: PlaygroundTabProps[];
+  tabs: PlaygroundTab[];
 }
 
 function Navbar({
@@ -71,9 +90,9 @@ function Navbar({
   const tabLabels: Record<PlaygroundTab, string> = {
     graphql: "GraphQL",
     mcp: "MCP",
+    auth: "Auth",
   };
 
-  const enabledTabs = tabs.map(tab => tab.tabType);
   const showTabs = tabs.length > 1;
 
   return (
@@ -82,7 +101,7 @@ function Navbar({
         <Logo />
         {showTabs && (
           <div className="flex ml-8 h-full">
-            {enabledTabs.map((tab) => (
+            {tabs.map((tab) => (
               <button
                 key={tab}
                 className={`px-4 h-full font-medium transition-colors border-b-2 ${

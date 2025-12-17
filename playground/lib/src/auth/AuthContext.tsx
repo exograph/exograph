@@ -64,6 +64,8 @@ export function AuthContextProvider({
         ? new Auth0AuthPlugin()
         : new SecretAuthPlugin(jwtSecret);
 
+  const AuthConfigProvider = plugin.getAuthConfigProvider();
+
   const setTokenFnCb = useCallback(
     (f: GetToken | undefined) => {
       setTokenFn(() => f);
@@ -92,7 +94,7 @@ export function AuthContextProvider({
         setUserInfo,
       }}
     >
-      {children}
+      <AuthConfigProvider>{children}</AuthConfigProvider>
     </AuthContext.Provider>
   );
 }

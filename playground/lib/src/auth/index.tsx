@@ -5,7 +5,6 @@ import { AuthContext } from "./AuthContext";
 export function AuthToolbarButton() {
   const [showAuthPanel, setShowAuthPanel] = useState(false);
   const { plugin, isSignedIn, userInfo } = useContext(AuthContext);
-  const AuthConfigProvider = plugin.getAuthConfigProvider();
 
   const getUserIcon = () => {
     if (isSignedIn) {
@@ -29,31 +28,29 @@ export function AuthToolbarButton() {
   };
 
   return (
-    <AuthConfigProvider>
-      <div className="relative">
-        <button
-          title={getTooltip()}
-          onClick={() => setShowAuthPanel(!showAuthPanel)}
-          className="relative flex items-center justify-center w-8 h-8 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+    <div className="relative">
+      <button
+        title={getTooltip()}
+        onClick={() => setShowAuthPanel(!showAuthPanel)}
+        className="relative flex items-center justify-center w-8 h-8 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+      >
+        <svg
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth="1.5"
+          stroke="currentColor"
+          className="w-4 h-4"
         >
-          <svg
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth="1.5"
-            stroke="currentColor"
-            className="w-4 h-4"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"
-            />
-          </svg>
-          <div className="absolute -right-1 -bottom-1">{getUserIcon()}</div>
-        </button>
-        <AuthPanel open={showAuthPanel} onOpenChange={setShowAuthPanel} />
-      </div>
-    </AuthConfigProvider>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"
+          />
+        </svg>
+        <div className="absolute -right-1 -bottom-1">{getUserIcon()}</div>
+      </button>
+      <AuthPanel open={showAuthPanel} onOpenChange={setShowAuthPanel} />
+    </div>
   );
 }
 

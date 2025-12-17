@@ -49,6 +49,8 @@ pub enum SelectionElement {
     Physical(ColumnId),
     /// A function such as `SUM(price)`
     Function(Function),
+    /// A null literal
+    Null,
     /// A json object such as `{"name": "concerts"."name", "price": "concerts"."price"}`
     Object(Vec<(String, SelectionElement)>),
     /// A constant such as `"hello"` (useful to supply it to database and get back the same value). Useful for `__typename` field.

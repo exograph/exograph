@@ -7,7 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use super::{auth_util::check_access, sql_mapper::SQLOperationKind};
+use super::{
+    auth_util::{check_access, AccessCheckOutcome},
+    sql_mapper::SQLOperationKind,
+};
 
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 
@@ -22,6 +25,7 @@ use exo_sql::{
     SelectionElement,
 };
 use futures::StreamExt;
+use std::collections::HashSet;
 use postgres_core_model::{relation::PostgresRelation, types::EntityType};
 use postgres_graphql_model::{query::AggregateQuery, subsystem::PostgresGraphQLSubsystem};
 
@@ -33,7 +37,11 @@ impl OperationSelectionResolver for AggregateQuery {
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresGraphQLSubsystem,
     ) -> Result<AbstractSelect, PostgresExecutionError> {
-        let (_precheck_predicate, entity_predicate) = check_access(
+        let AccessCheckOutcome {
+            precheck_predicate: _,
+            entity_predicate,
+            unauthorized_fields,
+        } = check_access(
             self.return_type.typ(&subsystem.core_subsystem.entity_types),
             &field.subfields,
             &SQLOperationKind::Retrieve,
@@ -55,9 +63,12 @@ impl OperationSelectionResolver for AggregateQuery {
 
         let root_physical_table_id = return_postgres_type.table_id;
 
+        let unauthorized_set = unauthorized_fields.iter().cloned().collect::<HashSet<_>>();
+
         let content_object = content_select(
             &self.return_type,
             &field.subfields,
+            &unauthorized_set,
             subsystem,
             request_context,
         )
@@ -78,11 +89,21 @@ impl OperationSelectionResolver for AggregateQuery {
 async fn content_select<'content>(
     return_type: &OperationReturnType<EntityType>,
     fields: &'content [ValidatedField],
+    unauthorized_fields: &HashSet<String>,
     subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<Vec<AliasedSelectionElement>, PostgresExecutionError> {
     futures::stream::iter(fields.iter())
-        .then(|field| async { map_field(return_type, field, subsystem, request_context).await })
+        .then(|field| async {
+            map_field(
+                return_type,
+                field,
+                unauthorized_fields,
+                subsystem,
+                request_context,
+            )
+            .await
+        })
         .collect::<Vec<Result<_, _>>>()
         .await
         .into_iter()
@@ -92,10 +113,15 @@ async fn content_select<'content>(
 async fn map_field<'content>(
     return_type: &OperationReturnType<EntityType>,
     field: &'content ValidatedField,
+    unauthorized_fields: &HashSet<String>,
     subsystem: &'content PostgresGraphQLSubsystem,
     _request_context: &'content RequestContext<'content>,
 ) -> Result<AliasedSelectionElement, PostgresExecutionError> {
-    let selection_elem = if field.name == "__typename" {
+    let output_name = field.output_name();
+
+    let selection_elem = if unauthorized_fields.contains(output_name.as_str()) {
+        SelectionElement::Null
+    } else if field.name == "__typename" {
         SelectionElement::Constant(return_type.type_name().to_string())
     } else {
         let entity_type = &return_type.typ(&subsystem.core_subsystem.entity_types);
@@ -135,7 +161,7 @@ async fn map_field<'content>(
     };
 
     Ok(AliasedSelectionElement::new(
-        field.output_name(),
+        output_name,
         selection_elem,
     ))
 }

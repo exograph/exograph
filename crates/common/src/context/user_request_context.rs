@@ -84,6 +84,10 @@ impl<'a> UserRequestContext<'a> {
         let value: &'a Option<Val> = match cached_value {
             Some(value) => value,
             None => {
+                eprintln!(
+                    "[ContextDebug] extracting field '{}' via annotation '{}'",
+                    key, annotation
+                );
                 let raw_field_value = self
                     .extract_context_field_from_source(annotation, key, request_context)
                     .await;

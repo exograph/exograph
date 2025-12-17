@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-export type PlaygroundTab = "graphql" | "mcp";
+export type PlaygroundTab = "graphql" | "mcp" | "auth";
 
 export interface PlaygroundTabProps {
   readonly tabType: PlaygroundTab;

@@ -31,6 +31,7 @@ impl<'request> ContextExtractor for QueryExtractor {
         key: &str,
         request_context: &RequestContext,
     ) -> Result<Option<serde_json::Value>, ContextExtractionError> {
+        eprintln!("[QueryExtractor] executing @query field '{key}'");
         let query = format!("query {{ {} }}", key.to_owned());
 
         let operation_payload = OperationsPayload {
@@ -54,6 +55,14 @@ impl<'request> ContextExtractor for QueryExtractor {
         let new_request_context = request_context.with_request(&request);
 
         let response_payload = request_context.route(&new_request_context).await;
+        eprintln!(
+            "[QueryExtractor] routed internal query '{}', got response: {}",
+            key,
+            response_payload
+                .as_ref()
+                .map(|_| "Some")
+                .unwrap_or("None")
+        );
 
         let mut response_body_value = match response_payload {
             Some(response_payload) => {
@@ -63,6 +72,10 @@ impl<'request> ContextExtractor for QueryExtractor {
                             .to_string(),
                     )
                 })?;
+                eprintln!(
+                    "[QueryExtractor] raw response for '{}': {}",
+                    key, response_body
+                );
                 Ok(response_body)
             }
             None => Err(ContextExtractionError::Generic(
@@ -82,6 +95,10 @@ impl<'request> ContextExtractor for QueryExtractor {
         let mut response_body_data = response_body_value["data"].take();
 
         if response_body_data.is_null() {
+            eprintln!(
+                "[QueryExtractor] response missing data for field '{}'",
+                key
+            );
             return Err(ContextExtractionError::Generic(
                 "No data in response from system router".to_string(),
             ));
@@ -90,6 +107,10 @@ impl<'request> ContextExtractor for QueryExtractor {
         let matching_result = response_body_data[key].take();
 
         if matching_result.is_null() {
+            eprintln!(
+                "[QueryExtractor] field '{}' missing in GraphQL response",
+                key
+            );
             return Err(ContextExtractionError::Generic(format!(
                 "Could not find {key} in results while processing @query context"
             )));

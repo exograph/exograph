@@ -1,4 +1,11 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, {
+  Dispatch,
+  SetStateAction,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { AuthContext } from "../AuthContext";
 import { SecretConfig } from "./SecretConfig";
 import * as jose from "jose";
@@ -6,7 +13,7 @@ import { SecretAuthContext, SecretAuthProvider } from "./SecretAuthProvider";
 
 type AuthConfig = {
   config: SecretConfig;
-  setConfig: (config: SecretConfig) => void;
+  setConfig: Dispatch<SetStateAction<SecretConfig>>;
 };
 
 export const AuthConfigContext = React.createContext<AuthConfig>(
@@ -15,7 +22,14 @@ export const AuthConfigContext = React.createContext<AuthConfig>(
 
 export function AuthConfigProvider(props: { children: React.ReactNode }) {
   const { plugin } = useContext(AuthContext);
-  const [config, setConfig] = useState(SecretConfig.loadConfig(plugin.config));
+  const [config, setConfig] = useState(() =>
+    SecretConfig.loadConfig(plugin.config)
+  );
+
+  // Auto-save config to localStorage whenever it changes
+  useEffect(() => {
+    config.save();
+  }, [config]);
 
   return (
     <AuthConfigContext.Provider
@@ -36,28 +50,51 @@ function ContextInitializer(props: { children: React.ReactNode }) {
   const { signedIn, setSignedIn } = useContext(SecretAuthContext);
   const { setTokenFn, setIsSignedIn, setUserInfo, setSignOutFn } =
     useContext(AuthContext);
+  const activeProfile = useMemo(() => {
+    return config.profiles.find(
+      (profile) => profile.id === config.activeProfileId
+    );
+  }, [config]);
 
   useEffect(() => {
-    const claims = config.claims;
+    const produceToken = async (): Promise<string | null> => {
+      if (config.mode === "static") {
+        return config.secret.value ? config.secret.value.trim() : null;
+      }
 
-    setTokenFn &&
-      setTokenFn(
-        signedIn
-          ? () =>
-              Promise.resolve(
-                createJwtToken(JSON.parse(claims), config.secret.value)
-              )
-          : undefined
-      );
-    setIsSignedIn && setIsSignedIn(signedIn);
-    setUserInfo && setUserInfo(claims);
-    setSignOutFn &&
-      setSignOutFn(() => {
-        setSignedIn(!signedIn);
-        return Promise.resolve();
+      try {
+        const parsedClaims = JSON.parse(config.claims);
+        return await createJwtToken(parsedClaims, config.secret.value);
+      } catch (error) {
+        console.warn("Failed to create JWT token from claims:", error);
+        return null;
+      }
+    };
+
+    if (setTokenFn) {
+      setTokenFn(signedIn ? produceToken : undefined);
+    }
+
+    if (setIsSignedIn) {
+      setIsSignedIn(signedIn);
+    }
+
+    if (setUserInfo) {
+      if (activeProfile) {
+        setUserInfo(`${activeProfile.name} (${config.mode})`);
+      } else {
+        setUserInfo(undefined);
+      }
+    }
+
+    if (setSignOutFn) {
+      setSignOutFn(async () => {
+        setSignedIn(false);
       });
+    }
   }, [
     config,
+    activeProfile,
     setTokenFn,
     setIsSignedIn,
     setUserInfo,

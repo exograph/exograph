@@ -9,7 +9,7 @@ async-trait.workspace = true
 
 deno-graphql-resolver = { path = "../deno-graphql-resolver" }
 deno-graphql-model = { path = "../deno-graphql-model" }
-exo-deno = { path = "../../../libs/exo-deno" }
+exo-deno = { path = "../../../libs/exo-deno", features = ["typescript-loader"] }
 exo-env = { path = "../../../libs/exo-env" }
 core-resolver = { path = "../../core-subsystem/core-resolver" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }

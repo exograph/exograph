@@ -73,6 +73,10 @@ impl ModuleLoader for EmbeddedModuleLoader {
                     &final_specifier,
                     None,
                 );
+                println!(
+                    "[DenoLoader] loaded module (cached) {}",
+                    module_specifier.as_str()
+                );
                 // TODO: Can we use Sync here?
                 deno_core::ModuleLoadResponse::Async(async move { Ok(module_source) }.boxed_local())
             } else {
@@ -127,6 +131,8 @@ impl ModuleLoader for EmbeddedModuleLoader {
                     }
                 };
 
+                let log_spec = module_specifier.to_string();
+
                 map.insert(
                     module_specifier.clone(),
                     ResolvedModule::Module(
@@ -135,6 +141,11 @@ impl ModuleLoader for EmbeddedModuleLoader {
                         module_specifier,
                         false,
                     ),
+                );
+
+                println!(
+                    "[DenoLoader] loaded module {} (through FsModuleLoader)",
+                    log_spec
                 );
 
                 Ok(module_source)

@@ -9,7 +9,11 @@
 
 use std::collections::HashMap;
 
-use super::{auth_util::check_access, sql_mapper::SQLOperationKind, util::find_arg};
+use super::{
+    auth_util::{check_access, AccessCheckOutcome},
+    sql_mapper::SQLOperationKind,
+    util::find_arg,
+};
 
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 
@@ -131,7 +135,11 @@ async fn delete_operation<'content>(
 ) -> Result<AbstractDelete, PostgresExecutionError> {
     let table_id = subsystem.core_subsystem.entity_types[return_type.typ_id()].table_id;
 
-    let (precheck_predicate, entity_predicate) = check_access(
+    let AccessCheckOutcome {
+        precheck_predicate,
+        entity_predicate,
+        ..
+    } = check_access(
         return_type.typ(&subsystem.core_subsystem.entity_types),
         &field.subfields,
         &SQLOperationKind::Delete,
@@ -173,7 +181,11 @@ async fn update_operation<'content>(
         ignore_missing_value: true,
         aliases: HashMap::new(),
     });
-    let (precheck_predicate, entity_predicate) = check_access(
+    let AccessCheckOutcome {
+        precheck_predicate,
+        entity_predicate,
+        ..
+    } = check_access(
         return_type.typ(&subsystem.core_subsystem.entity_types),
         &field.subfields,
         &SQLOperationKind::Update,

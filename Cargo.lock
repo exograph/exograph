@@ -1525,6 +1525,7 @@ dependencies = [
  "async-graphql-value",
  "async-recursion",
  "async-trait",
+ "base64 0.21.7",
  "bytes",
  "colored",
  "cookie 0.18.1",

@@ -1,0 +1,10 @@
+diff --git a/crates/deno-subsystem/deno-resolver/src/module_loader.rs b/crates/deno-subsystem/deno-resolver/src/module_loader.rs
+index 1234567..89abcde 100644
+--- a/crates/deno-subsystem/deno-resolver/src/module_loader.rs
++++ b/crates/deno-subsystem/deno-resolver/src/module_loader.rs
+@@
+-        let module = self.load_module(specifier).await?;
+-        Ok(module)
++        let module = self.load_module(specifier).await?;
++        println!("[DenoLoader] module loaded: {}", specifier);
++        Ok(module)

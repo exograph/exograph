@@ -29,6 +29,17 @@ use core_resolver::{access_solver::AccessSolver, validation::field::ValidatedFie
 use exo_sql::{AbstractPredicate, Predicate};
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
+pub(crate) struct AccessCheckOutcome {
+    pub precheck_predicate: AbstractPredicate,
+    pub entity_predicate: AbstractPredicate,
+    pub unauthorized_fields: Vec<String>,
+}
+
+struct SelectionAccessOutcome {
+    predicate: AbstractPredicate,
+    unauthorized_fields: Vec<String>,
+}
+
 pub(crate) async fn check_access<'a>(
     return_type: &'a EntityType,
     selection: &'a [ValidatedField],
@@ -36,8 +47,8 @@ pub(crate) async fn check_access<'a>(
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
     input_value: Option<&AccessInput<'a>>,
-) -> Result<(AbstractPredicate, AbstractPredicate), PostgresExecutionError> {
-    let (precheck_predicate, entity_predicate) = {
+) -> Result<AccessCheckOutcome, PostgresExecutionError> {
+    let (precheck_predicate, entity_predicate, unauthorized_fields) = {
         match kind {
             SQLOperationKind::Create => {
                 let entity_access = check_create_access(
@@ -65,7 +76,7 @@ pub(crate) async fn check_access<'a>(
                     } else {
                         let precheck_predicate =
                             AbstractPredicate::and(entity_access, field_access_predicate);
-                        Ok((precheck_predicate, AbstractPredicate::True))
+                        Ok((precheck_predicate, AbstractPredicate::True, vec![]))
                     }
                 }?
             }
@@ -81,17 +92,18 @@ pub(crate) async fn check_access<'a>(
                     // Short circuit this common case
                     Err(PostgresExecutionError::Authorization)
                 } else {
-                    let field_access_predicate =
+                    let SelectionAccessOutcome {
+                        predicate: field_access_predicate,
+                        unauthorized_fields,
+                    } =
                         check_selection_access(selection, return_type, subsystem, request_context)
                             .await?;
-                    if field_access_predicate == AbstractPredicate::False {
-                        Err(PostgresExecutionError::Authorization)
-                    } else {
-                        Ok((
-                            AbstractPredicate::True,
-                            AbstractPredicate::and(entity_access, field_access_predicate),
-                        ))
-                    }
+
+                    Ok((
+                        AbstractPredicate::True,
+                        AbstractPredicate::and(entity_access, field_access_predicate),
+                        unauthorized_fields,
+                    ))
                 }?
             }
             SQLOperationKind::Update => {
@@ -123,18 +135,20 @@ pub(crate) async fn check_access<'a>(
                     } else {
                         let database_predicate =
                             AbstractPredicate::and(entity_predicate, field_access_predicate);
-                        Ok((precheck_predicate, database_predicate))
+                        Ok((precheck_predicate, database_predicate, vec![]))
                     }
                 }?
             }
             SQLOperationKind::Delete => {
-                check_delete_access(
+                let (precheck_predicate, entity_predicate) = check_delete_access(
                     &subsystem.core_subsystem.database_access_expressions
                         [return_type.access.delete],
                     subsystem,
                     request_context,
                 )
-                .await?
+                .await?;
+
+                (precheck_predicate, entity_predicate, vec![])
             }
         }
     };
@@ -143,7 +157,11 @@ pub(crate) async fn check_access<'a>(
         // Hard failure, no need to proceed to restrict the predicate in SQL
         Err(PostgresExecutionError::Authorization)
     } else {
-        Ok((precheck_predicate, entity_predicate))
+        Ok(AccessCheckOutcome {
+            precheck_predicate,
+            entity_predicate,
+            unauthorized_fields,
+        })
     }
 }
 
@@ -244,11 +262,14 @@ async fn check_selection_access<'a>(
     return_type: &'a EntityType,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<AbstractPredicate, PostgresExecutionError> {
+) -> Result<SelectionAccessOutcome, PostgresExecutionError> {
     futures::stream::iter(selection.iter().map(Ok))
         .try_fold(
-            AbstractPredicate::True,
-            |access_predicate, selection_field| async {
+            SelectionAccessOutcome {
+                predicate: AbstractPredicate::True,
+                unauthorized_fields: vec![],
+            },
+            |mut acc, selection_field| async {
                 let postgres_field = return_type.field_by_name(&selection_field.name);
 
                 let field_access_predicate = match postgres_field {
@@ -278,12 +299,13 @@ async fn check_selection_access<'a>(
                 }?;
 
                 if field_access_predicate == AbstractPredicate::False {
-                    Err(PostgresExecutionError::Authorization)
+                    acc.unauthorized_fields
+                        .push(selection_field.output_name());
+                    Ok(acc)
                 } else {
-                    Ok(AbstractPredicate::and(
-                        access_predicate,
-                        field_access_predicate,
-                    ))
+                    acc.predicate =
+                        AbstractPredicate::and(acc.predicate, field_access_predicate);
+                    Ok(acc)
                 }
             },
         )
