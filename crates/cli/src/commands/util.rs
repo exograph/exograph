@@ -137,20 +137,18 @@ pub(crate) fn read_write_mode(
     let cli_arg_source = matches.value_source(flag_id);
     let env_arg_val = env_vars.get(EXO_POSTGRES_READ_WRITE);
 
-    if cli_arg_source == Some(ValueSource::CommandLine)
-        && env_arg_val.is_some()
-        && cli_flag != env_flag
-    {
-        anyhow::bail!(
-            "Conflicting values for the --{} flag ({}) and the {} env var ({})",
-            flag_id,
-            cli_flag,
-            EXO_POSTGRES_READ_WRITE,
-            env_arg_val.unwrap()
-        );
+    match (cli_arg_source, env_arg_val) {
+        (Some(ValueSource::CommandLine), Some(env_arg_val)) if cli_flag != env_flag => {
+            anyhow::bail!(
+                "Conflicting values for the --{} flag ({}) and the {} env var ({})",
+                flag_id,
+                cli_flag,
+                EXO_POSTGRES_READ_WRITE,
+                env_arg_val
+            );
+        }
+        _ => Ok(cli_flag || env_flag),
     }
-
-    Ok(cli_flag || env_flag)
 }
 
 #[cfg(test)]
