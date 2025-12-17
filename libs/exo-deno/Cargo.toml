@@ -41,7 +41,7 @@ include_dir.workspace = true
 exo-env = { path = "../exo-env" }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { workspace = true, features = [
+windows-sys = { version = "0.59.0", features = [
   "Win32_System_SystemInformation",
 ] }
 
