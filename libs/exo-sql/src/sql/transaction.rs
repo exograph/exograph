@@ -202,6 +202,11 @@ async fn run_query(
         .collect();
 
     info!("Executing SQL operation: {}", stmt);
+    println!("[debug] SQL: {}", stmt);
+    println!(
+        "[debug] Params: {:?}",
+        params.iter().map(|(p, _)| p).collect::<Vec<_>>()
+    );
 
     client.query_typed(&stmt, &params[..]).await.map_err(|e| {
         error!("Failed to execute query: {e:?}");

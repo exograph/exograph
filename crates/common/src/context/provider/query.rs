@@ -58,10 +58,7 @@ impl<'request> ContextExtractor for QueryExtractor {
         eprintln!(
             "[QueryExtractor] routed internal query '{}', got response: {}",
             key,
-            response_payload
-                .as_ref()
-                .map(|_| "Some")
-                .unwrap_or("None")
+            response_payload.as_ref().map(|_| "Some").unwrap_or("None")
         );
 
         let mut response_body_value = match response_payload {
@@ -95,10 +92,7 @@ impl<'request> ContextExtractor for QueryExtractor {
         let mut response_body_data = response_body_value["data"].take();
 
         if response_body_data.is_null() {
-            eprintln!(
-                "[QueryExtractor] response missing data for field '{}'",
-                key
-            );
+            eprintln!("[QueryExtractor] response missing data for field '{}'", key);
             return Err(ContextExtractionError::Generic(
                 "No data in response from system router".to_string(),
             ));

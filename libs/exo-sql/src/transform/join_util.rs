@@ -30,17 +30,24 @@ pub fn compute_join(
         selection_level: &SelectionLevel,
         database: &Database,
         top_level: bool,
+        forced_alias: Option<String>,
     ) -> Table {
         // We don't use the alias for the top level table in predicate, so match the behavior here
         let init_table = {
-            Table::physical(
-                dependency.table_id,
+            let alias = forced_alias.or_else(|| {
                 if top_level {
                     selection_level.self_referencing_table_alias(dependency.table_id, database)
                 } else {
                     Some(selection_level.alias((dependency.table_id, None), database))
-                },
-            )
+                }
+            });
+
+            Table::physical(dependency.table_id, alias)
+        };
+
+        let current_alias = match &init_table {
+            Table::Physical { alias, .. } => alias.clone(),
+            _ => None,
         };
 
         dependency.dependencies.into_iter().fold(
@@ -64,7 +71,10 @@ pub fn compute_join(
                                 ConcretePredicate::and(
                                     acc,
                                     ConcretePredicate::Eq(
-                                        Column::physical(column_pair.self_column_id, None),
+                                        Column::physical(
+                                            column_pair.self_column_id,
+                                            current_alias.clone(),
+                                        ),
                                         Column::physical(
                                             column_pair.foreign_column_id,
                                             Some(new_alias.clone()),
@@ -80,15 +90,13 @@ pub fn compute_join(
                     }
                 };
 
-                let join_table_query =
-                    from_dependency(dependency, selection_level, database, false);
-
-                let join_table_query = match join_table_query {
-                    Table::Physical { table_id, .. } => {
-                        Table::physical(table_id, Some(linked_table_alias))
-                    }
-                    _ => join_table_query,
-                };
+                let join_table_query = from_dependency(
+                    dependency,
+                    selection_level,
+                    database,
+                    false,
+                    Some(linked_table_alias.clone()),
+                );
 
                 Table::Join(Box::new(LeftJoin::new(
                     acc,
@@ -104,7 +112,7 @@ pub fn compute_join(
         dependencies: vec![],
     });
 
-    from_dependency(table_tree, selection_level, database, true)
+    from_dependency(table_tree, selection_level, database, true, None)
 }
 
 #[cfg(test)]

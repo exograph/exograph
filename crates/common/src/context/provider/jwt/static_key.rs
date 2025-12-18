@@ -97,7 +97,7 @@ impl StaticKeyValidator {
                     );
                     JwtValidationError::Invalid
                 }
-        })
+            })
     }
 }
 

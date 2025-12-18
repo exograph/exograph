@@ -348,14 +348,14 @@ impl PhysicalColumnPath {
     ///
     /// Picks the linked_table_alias for the penultimate link in the path
     pub fn alias(&self) -> Option<String> {
-        self.0.iter().fold(None, |acc, link| match link {
-            ColumnPathLink::Relation(RelationLink {
+        for link in self.0.iter().rev() {
+            if let ColumnPathLink::Relation(RelationLink {
                 linked_table_alias, ..
-            }) => match linked_table_alias {
-                Some(linked_table_alias) => Some(linked_table_alias.clone()),
-                None => acc,
-            },
-            ColumnPathLink::Leaf(_) => acc,
-        })
+            }) = link
+            {
+                return linked_table_alias.clone();
+            }
+        }
+        None
     }
 }

@@ -1,0 +1,114 @@
+---
+source: crates/postgres-subsystem/postgres-core-builder/src/access/precheck_builder.rs
+assertion_line: 778
+expression: predicate
+---
+RelationalOp:
+  Eq:
+    - Function:
+        - column_path:
+            - Relation:
+                column_pairs:
+                  - self_column_id:
+                      table_id:
+                        index: 1
+                        generation: ~
+                      column_index: 0
+                    foreign_column_id:
+                      table_id:
+                        index: 0
+                        generation: ~
+                      column_index: 2
+                self_table_id:
+                  index: 1
+                  generation: ~
+                linked_table_id:
+                  index: 0
+                  generation: ~
+                linked_table_alias: ~
+                _phantom: ~
+          field_path:
+            Normal:
+              - - issues
+              - ~
+        - name: some
+          parameter_name: i
+          expr:
+            RelationalOp:
+              Eq:
+                - Function:
+                    - column_path:
+                        - Relation:
+                            column_pairs:
+                              - self_column_id:
+                                  table_id:
+                                    index: 0
+                                    generation: ~
+                                  column_index: 2
+                                foreign_column_id:
+                                  table_id:
+                                    index: 1
+                                    generation: ~
+                                  column_index: 0
+                            self_table_id:
+                              index: 0
+                              generation: ~
+                            linked_table_id:
+                              index: 1
+                              generation: ~
+                            linked_table_alias: assignees
+                            _phantom: ~
+                        - Relation:
+                            column_pairs:
+                              - self_column_id:
+                                  table_id:
+                                    index: 1
+                                    generation: ~
+                                  column_index: 0
+                                foreign_column_id:
+                                  table_id:
+                                    index: 0
+                                    generation: ~
+                                  column_index: 2
+                            self_table_id:
+                              index: 1
+                              generation: ~
+                            linked_table_id:
+                              index: 0
+                              generation: ~
+                            linked_table_alias: ~
+                            _phantom: ~
+                      field_path:
+                        Pk:
+                          lead:
+                            - assignee
+                          lead_default: ~
+                          pk_fields:
+                            - id
+                    - name: some
+                      parameter_name: j
+                      expr:
+                        RelationalOp:
+                          Eq:
+                            - Path:
+                                - column_path:
+                                    - Leaf:
+                                        table_id:
+                                          index: 0
+                                          generation: ~
+                                        column_index: 1
+                                  field_path:
+                                    Normal:
+                                      - - title
+                                      - ~
+                                - j
+                            - Common:
+                                ContextSelection:
+                                  context_name: AuthContext
+                                  path:
+                                    - title
+                                    - []
+                - Common:
+                    BooleanLiteral: true
+    - Common:
+        BooleanLiteral: true

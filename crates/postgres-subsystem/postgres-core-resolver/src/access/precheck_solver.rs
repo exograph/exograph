@@ -827,9 +827,25 @@ fn compute_function_expr(
                     parameter_name.clone(),
                 ))
             }
-            PrecheckAccessPrimitiveExpression::Function(_, _) => Err(AccessSolverError::Generic(
-                "Cannot have a function call inside another function call".into(),
-            )),
+            PrecheckAccessPrimitiveExpression::Function(nested_lead_path, nested_call) => {
+                let updated_lead_path =
+                    update_function_path(lead_path, function_param_name.clone(), nested_lead_path)?;
+
+                let updated_expr = compute_function_expr(
+                    &updated_lead_path,
+                    nested_call.parameter_name.clone(),
+                    &nested_call.expr,
+                )?;
+
+                Ok(PrecheckAccessPrimitiveExpression::Function(
+                    updated_lead_path,
+                    FunctionCall {
+                        name: nested_call.name.clone(),
+                        parameter_name: nested_call.parameter_name.clone(),
+                        expr: updated_expr,
+                    },
+                ))
+            }
             expr => Ok(expr),
         }
     }
@@ -877,4 +893,14 @@ fn compute_function_expr(
             Ok(AccessPredicateExpression::BooleanLiteral(*value))
         }
     }
+}
+
+fn update_function_path(
+    lead_path: &AccessPrimitiveExpressionPath,
+    function_param_name: String,
+    nested_path: AccessPrimitiveExpressionPath,
+) -> Result<AccessPrimitiveExpressionPath, AccessSolverError> {
+    lead_path
+        .clone()
+        .with_function_context(nested_path, function_param_name)
 }

@@ -29,7 +29,7 @@ use postgres_graphql_model::{
 };
 
 use crate::{
-    auth_util::{check_access, AccessCheckOutcome},
+    auth_util::{AccessCheckOutcome, check_access},
     sql_mapper::{SQLMapper, SQLOperationKind},
 };
 
@@ -110,8 +110,7 @@ async fn map_single<'a>(
     request_context: &'a RequestContext<'a>,
 ) -> Result<(InsertionRow, Vec<AbstractPredicate>), PostgresExecutionError> {
     let AccessCheckOutcome {
-        precheck_predicate,
-        ..
+        precheck_predicate, ..
     } = check_access(
         &subsystem.core_subsystem.entity_types[data_type.entity_id],
         &[],

@@ -95,9 +95,8 @@ pub(crate) async fn check_access<'a>(
                     let SelectionAccessOutcome {
                         predicate: field_access_predicate,
                         unauthorized_fields,
-                    } =
-                        check_selection_access(selection, return_type, subsystem, request_context)
-                            .await?;
+                    } = check_selection_access(selection, return_type, subsystem, request_context)
+                        .await?;
 
                     Ok((
                         AbstractPredicate::True,
@@ -299,12 +298,10 @@ async fn check_selection_access<'a>(
                 }?;
 
                 if field_access_predicate == AbstractPredicate::False {
-                    acc.unauthorized_fields
-                        .push(selection_field.output_name());
+                    acc.unauthorized_fields.push(selection_field.output_name());
                     Ok(acc)
                 } else {
-                    acc.predicate =
-                        AbstractPredicate::and(acc.predicate, field_access_predicate);
+                    acc.predicate = AbstractPredicate::and(acc.predicate, field_access_predicate);
                     Ok(acc)
                 }
             },

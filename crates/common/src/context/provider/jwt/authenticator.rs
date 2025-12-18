@@ -18,9 +18,9 @@ use crate::http::RequestHead;
 use super::jwks::{JwksValidator, JwtValidationError};
 use super::oidc::Oidc;
 use super::static_key::StaticKeyValidator;
-use std::sync::OnceLock;
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use std::sync::OnceLock;
 
 const TOKEN_PREFIX: &str = "Bearer ";
 
@@ -277,9 +277,7 @@ impl JwtAuthenticator {
             jwks_debug_snapshot.push((
                 validator.debug_source().to_string(),
                 validator.debug_known_kids(),
-                validator
-                    .debug_allowed_audiences()
-                    .map(|aud| aud.to_vec()),
+                validator.debug_allowed_audiences().map(|aud| aud.to_vec()),
             ));
         }
 
@@ -363,9 +361,7 @@ impl JwtAuthenticator {
             static_debug_snapshot.push((
                 validator.debug_name().to_string(),
                 validator.debug_kid().map(|s| s.to_string()),
-                validator
-                    .debug_allowed_audiences()
-                    .map(|aud| aud.to_vec()),
+                validator.debug_allowed_audiences().map(|aud| aud.to_vec()),
             ));
         }
 
@@ -413,9 +409,7 @@ impl JwtAuthenticator {
                     jwt_debug_log(|| {
                         format!(
                             "JWKS[{idx}] source='{}', kids={:?}, audience_filter={:?}",
-                            source,
-                            kids,
-                            auds
+                            source, kids, auds
                         )
                     });
                 }
@@ -426,9 +420,7 @@ impl JwtAuthenticator {
                     jwt_debug_log(|| {
                         format!(
                             "StaticKey[{idx}] name='{}', kid={:?}, audience_filter={:?}",
-                            name,
-                            kid,
-                            auds
+                            name, kid, auds
                         )
                     });
                 }
@@ -461,7 +453,12 @@ impl JwtAuthenticator {
         let mut saw_expired = false;
         let mut had_non_kid_error = false;
 
-        jwt_debug_log(|| format!("Attempting validation via {} OIDC provider(s)", validators.len()));
+        jwt_debug_log(|| {
+            format!(
+                "Attempting validation via {} OIDC provider(s)",
+                validators.len()
+            )
+        });
 
         for (idx, validator) in validators.iter().enumerate() {
             match validator.validate(token).await {
@@ -488,11 +485,7 @@ impl JwtAuthenticator {
                         tracing::debug!("OIDC provider {} validation failed: {}", idx + 1, inner);
                         had_non_kid_error = true;
                         jwt_debug_log(|| {
-                            format!(
-                                "OIDC provider {} validation failed: {}",
-                                idx + 1,
-                                inner
-                            )
+                            format!("OIDC provider {} validation failed: {}", idx + 1, inner)
                         })
                     }
                 }
@@ -528,7 +521,12 @@ impl JwtAuthenticator {
         let mut saw_expired = false;
         let mut had_non_kid_error = false;
 
-        jwt_debug_log(|| format!("Attempting validation via {} JWKS provider(s)", validators.len()));
+        jwt_debug_log(|| {
+            format!(
+                "Attempting validation via {} JWKS provider(s)",
+                validators.len()
+            )
+        });
 
         for (idx, validator) in validators.iter().enumerate() {
             match validator.validate(token).await {
@@ -596,7 +594,12 @@ impl JwtAuthenticator {
         let mut saw_expired = false;
         let mut had_non_kid_error = false;
 
-        jwt_debug_log(|| format!("Attempting validation via {} static public key(s)", validators.len()));
+        jwt_debug_log(|| {
+            format!(
+                "Attempting validation via {} static public key(s)",
+                validators.len()
+            )
+        });
 
         for (idx, validator) in validators.iter().enumerate() {
             match validator.validate(token) {
@@ -859,19 +862,21 @@ impl JwtAuthenticator {
         match jwt_token {
             Some(jwt_token) => {
                 jwt_debug_log(|| format!("JWT token extracted ({} characters)", jwt_token.len()));
-                self.validate_jwt(&jwt_token).await.map_err(|err| {
-                    jwt_debug_log(|| format!("JWT validation error: {:?}", err));
-                    match &err {
-                        JwtAuthenticationError::Invalid => ContextExtractionError::Unauthorized,
-                        JwtAuthenticationError::Expired => {
-                            ContextExtractionError::ExpiredAuthentication
+                self.validate_jwt(&jwt_token)
+                    .await
+                    .map_err(|err| {
+                        jwt_debug_log(|| format!("JWT validation error: {:?}", err));
+                        match &err {
+                            JwtAuthenticationError::Invalid => ContextExtractionError::Unauthorized,
+                            JwtAuthenticationError::Expired => {
+                                ContextExtractionError::ExpiredAuthentication
+                            }
+                            JwtAuthenticationError::Delegate(delegate_err) => {
+                                error!("Error validating JWT: {}", delegate_err);
+                                ContextExtractionError::Unauthorized
+                            }
                         }
-                        JwtAuthenticationError::Delegate(delegate_err) => {
-                            error!("Error validating JWT: {}", delegate_err);
-                            ContextExtractionError::Unauthorized
-                        }
-                    }
-                })
+                    })
                     .map(|claims| {
                         jwt_debug_log(|| {
                             if let Some(obj) = claims.as_object() {

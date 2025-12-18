@@ -107,7 +107,16 @@ impl Database {
     ) -> Vec<ColumnId> {
         column_names
             .iter()
-            .map(|column_name| self.get_column_id(table_id, column_name).unwrap())
+            .map(|column_name| {
+                self.get_column_id(table_id, column_name)
+                    .unwrap_or_else(|| {
+                        let table_name = self.tables[table_id].name.fully_qualified_name();
+                        panic!(
+                            "Column '{}' not found in table '{}'",
+                            column_name, table_name
+                        )
+                    })
+            })
             .collect()
     }
 

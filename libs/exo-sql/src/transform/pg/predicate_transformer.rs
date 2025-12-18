@@ -155,15 +155,36 @@ fn to_subselect_predicate(
     selection_level: &SelectionLevel,
     database: &Database,
 ) -> ConcretePredicate {
+    let debug = std::env::var("EXO_DEBUG_PREDICATE").is_ok();
+    if debug {
+        println!("[predicate-debug] entering to_subselect_predicate: {predicate:?}");
+    }
     match attempt_subselect_predicate(predicate) {
         Some((relation_link, subselect_predicate)) => {
+            if debug {
+                println!(
+                    "[predicate-debug] subselect via relation {relation_link:?} predicate {subselect_predicate:?}"
+                );
+            }
             form_subselect(relation_link, subselect_predicate, database, transformer)
         }
         None => match predicate {
-            AbstractPredicate::And(p1, p2) => ConcretePredicate::and(
-                to_subselect_predicate(transformer, p1, selection_level, database),
-                to_subselect_predicate(transformer, p2, selection_level, database),
-            ),
+            AbstractPredicate::And(p1, p2) => {
+                if let (Some((link_l, pred_l)), Some((link_r, pred_r))) = (
+                    attempt_subselect_predicate(p1),
+                    attempt_subselect_predicate(p2),
+                ) {
+                    if link_l == link_r {
+                        let combined = AbstractPredicate::and(pred_l, pred_r);
+                        return form_subselect(link_l, combined, database, transformer);
+                    }
+                }
+
+                ConcretePredicate::and(
+                    to_subselect_predicate(transformer, p1, selection_level, database),
+                    to_subselect_predicate(transformer, p2, selection_level, database),
+                )
+            }
 
             AbstractPredicate::Or(p1, p2) => ConcretePredicate::or(
                 to_subselect_predicate(transformer, p1, selection_level, database),
@@ -386,7 +407,7 @@ fn attempt_subselect_predicate(
         })
     }
 
-    match predicate {
+    let result = match predicate {
         AbstractPredicate::True | AbstractPredicate::False => None,
         AbstractPredicate::Eq(l, r) => binary_operator(l, r, AbstractPredicate::Eq),
         AbstractPredicate::Neq(l, r) => binary_operator(l, r, AbstractPredicate::Neq),
@@ -434,7 +455,9 @@ fn attempt_subselect_predicate(
         AbstractPredicate::Or(l, r) => logical_binary_op(l, r, AbstractPredicate::Or),
         AbstractPredicate::Not(p) => attempt_subselect_predicate(p)
             .map(|(p_link, p_path)| (p_link, AbstractPredicate::Not(Box::new(p_path)))),
-    }
+    };
+
+    result
 }
 
 #[cfg(test)]

@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use super::{
-    auth_util::{check_access, AccessCheckOutcome},
+    auth_util::{AccessCheckOutcome, check_access},
     sql_mapper::SQLOperationKind,
 };
 
@@ -25,9 +25,9 @@ use exo_sql::{
     SelectionElement,
 };
 use futures::StreamExt;
-use std::collections::HashSet;
 use postgres_core_model::{relation::PostgresRelation, types::EntityType};
 use postgres_graphql_model::{query::AggregateQuery, subsystem::PostgresGraphQLSubsystem};
+use std::collections::HashSet;
 
 #[async_trait]
 impl OperationSelectionResolver for AggregateQuery {
@@ -160,8 +160,5 @@ async fn map_field<'content>(
         }
     };
 
-    Ok(AliasedSelectionElement::new(
-        output_name,
-        selection_elem,
-    ))
+    Ok(AliasedSelectionElement::new(output_name, selection_elem))
 }

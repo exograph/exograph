@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use tracing::{error, warn};
 
-use super::authenticator::{jwt_debug_enabled, jwt_debug_log, JwtConfigurationError};
+use super::authenticator::{JwtConfigurationError, jwt_debug_enabled, jwt_debug_log};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Jwks {

@@ -678,6 +678,44 @@ mod tests {
         assert_precheck_predicate(expr, "Employee", "hof_call_predicate")
     }
 
+    #[test]
+    fn nested_hof_call_predicate() -> Result<(), ModelBuildingError> {
+        // self.issues.some(i => i.assignee.issues.some(j => j.title == AuthContext.title))
+        let outer_selection = FieldSelection::Select(
+            Box::new(create_field_selection("self.issues")),
+            FieldSelectionElement::HofCall {
+                span: null_span(),
+                name: Identifier("some".to_string(), null_span()),
+                param_name: Identifier("i".to_string(), null_span()),
+                expr: Box::new(AstExpr::FieldSelection(FieldSelection::Select(
+                    Box::new(create_field_selection("i.assignee.issues")),
+                    FieldSelectionElement::HofCall {
+                        span: null_span(),
+                        name: Identifier("some".to_string(), null_span()),
+                        param_name: Identifier("j".to_string(), null_span()),
+                        expr: Box::new(AstExpr::RelationalOp(RelationalOp::Eq(
+                            Box::new(AstExpr::FieldSelection(create_field_selection("j.title"))),
+                            Box::new(AstExpr::FieldSelection(create_field_selection(
+                                "AuthContext.title",
+                            ))),
+                            Type::Defer,
+                        ))),
+                        typ: Type::Defer,
+                    },
+                    null_span(),
+                    Type::Defer,
+                ))),
+                typ: Type::Defer,
+            },
+            null_span(),
+            Type::Defer,
+        );
+
+        let expr = AstExpr::FieldSelection(outer_selection);
+
+        assert_precheck_predicate(expr, "Employee", "nested_hof_call_predicate")
+    }
+
     fn assert_precheck_selection(
         selection: FieldSelection<Typed>,
         entity_name: &str,

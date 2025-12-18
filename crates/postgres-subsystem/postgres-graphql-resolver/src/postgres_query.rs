@@ -9,7 +9,7 @@
 
 use super::predicate_mapper::compute_predicate;
 use super::{
-    auth_util::{check_access, AccessCheckOutcome},
+    auth_util::{AccessCheckOutcome, check_access},
     sql_mapper::SQLOperationKind,
     util::Arguments,
 };
@@ -29,7 +29,6 @@ use exo_sql::{
 };
 use exo_sql::{Function, SQLParamContainer};
 use futures::StreamExt;
-use std::collections::HashSet;
 use postgres_core_model::vector_distance::VectorDistanceField;
 use postgres_core_model::{
     aggregate::AggregateField,
@@ -43,6 +42,7 @@ use postgres_graphql_model::{
     query::{CollectionQuery, CollectionQueryParameters},
     subsystem::PostgresGraphQLSubsystem,
 };
+use std::collections::HashSet;
 
 #[async_trait]
 impl OperationSelectionResolver for UniqueQuery {
@@ -240,10 +240,7 @@ async fn map_field<'content>(
         }
     };
 
-    Ok(AliasedSelectionElement::new(
-        output_name,
-        selection_elem,
-    ))
+    Ok(AliasedSelectionElement::new(output_name, selection_elem))
 }
 
 async fn map_persistent_field<'content>(

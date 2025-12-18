@@ -20,6 +20,7 @@ import {
   Fetcher,
   FetcherOpts,
   FetcherParams,
+  Storage,
   createLocalStorage,
 } from "@graphiql/toolkit";
 import { GraphQLSchema } from "graphql";
@@ -220,10 +221,48 @@ function Core({
 >) {
   const theme = useTheme();
 
-  const storage = useMemo(() => {
-    return createLocalStorage({
+  const storage = useMemo<Storage>(() => {
+    const baseStorage = createLocalStorage({
       namespace: `exograph-playground:${storageKey || ""}`,
     });
+
+    // Avoid persisting the hidden state for the variables/headers panel so it always re-opens.
+    const isHiddenSecondaryEditor = (key: string, value: string | null) =>
+      key === "secondaryEditorFlex" && value === "hide-second";
+
+    const getFallbackValue = (key: string, value: string | null) => {
+      if (key === "variables" && (value === null || value.trim() === "")) {
+        return "{}";
+      }
+      return value;
+    };
+
+    return {
+      getItem(key) {
+        const storedValue = baseStorage.getItem(key);
+        if (isHiddenSecondaryEditor(key, storedValue)) {
+          baseStorage.removeItem(key);
+          return null;
+        }
+        return getFallbackValue(key, storedValue);
+      },
+      setItem(key, value) {
+        if (isHiddenSecondaryEditor(key, value)) {
+          baseStorage.removeItem(key);
+          return;
+        }
+        baseStorage.setItem(key, value);
+      },
+      removeItem(key) {
+        baseStorage.removeItem(key);
+      },
+      clear() {
+        baseStorage.clear();
+      },
+      get length() {
+        return baseStorage.length;
+      },
+    };
   }, [storageKey]);
 
   return (
@@ -231,7 +270,7 @@ function Core({
       fetcher={fetcher}
       defaultQuery={initialQuery}
       plugins={plugins}
-      defaultEditorToolsVisibility={true}
+      defaultEditorToolsVisibility="variables"
       isHeadersEditorEnabled={true}
       schema={schema}
       showPersistHeadersSettings={true}

@@ -25,12 +25,51 @@ use core_resolver::access_solver::{
     AccessInput, AccessPredicate, AccessSolution, AccessSolver, AccessSolverError, eq_values,
     neq_values, reduce_common_primitive_expression,
 };
-use exo_sql::{AbstractPredicate, ColumnPath, PhysicalColumnPath, SQLParamContainer};
+use exo_sql::{
+    AbstractPredicate, ColumnPath, ColumnPathLink, PhysicalColumnPath, SQLParamContainer,
+};
 use postgres_core_model::{
     access::DatabaseAccessPrimitiveExpression, subsystem::PostgresCoreSubsystem,
 };
 
 use crate::cast;
+
+fn normalize_column_path(mut column_path: PhysicalColumnPath) -> PhysicalColumnPath {
+    let mut segments = Vec::new();
+    let mut remaining = Some(column_path.clone());
+
+    while let Some(current) = remaining {
+        let (head, tail) = current.split_head();
+        segments.push(head);
+        remaining = tail;
+    }
+
+    if segments.is_empty() {
+        return column_path;
+    }
+
+    let last = segments.pop().unwrap();
+    let normalized_last = match last {
+        ColumnPathLink::Relation(relation) if relation.column_pairs.len() == 1 => {
+            ColumnPathLink::Leaf(relation.column_pairs[0].self_column_id)
+        }
+        other => other,
+    };
+
+    let mut iter = segments.into_iter();
+    let rebuilt = match iter.next() {
+        Some(first) => {
+            let mut path = PhysicalColumnPath::init(first);
+            for segment in iter {
+                path = path.push(segment);
+            }
+            path.push(normalized_last)
+        }
+        None => PhysicalColumnPath::init(normalized_last),
+    };
+
+    rebuilt
+}
 
 // Only to get around the orphan rule while implementing AccessSolver
 #[derive(Debug)]
@@ -96,7 +135,9 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                     AccessSolution::Solved(SolvedPrimitiveExpression::Common(primitive_expr))
                 }
                 DatabaseAccessPrimitiveExpression::Column(column_path, _) => {
-                    AccessSolution::Solved(SolvedPrimitiveExpression::Column(column_path.clone()))
+                    AccessSolution::Solved(SolvedPrimitiveExpression::Column(
+                        normalize_column_path(column_path.clone()),
+                    ))
                 }
                 DatabaseAccessPrimitiveExpression::Function(_, _) => {
                     // TODO: Fix this through better types

@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 
 use super::{
-    auth_util::{check_access, AccessCheckOutcome},
+    auth_util::{AccessCheckOutcome, check_access},
     sql_mapper::SQLOperationKind,
     util::find_arg,
 };

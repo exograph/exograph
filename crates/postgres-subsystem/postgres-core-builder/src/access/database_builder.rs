@@ -7,7 +7,13 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashMap;
+use std::{
+    collections::{
+        HashMap,
+        hash_map::{DefaultHasher, Entry},
+    },
+    hash::{Hash, Hasher},
+};
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::{
@@ -36,6 +42,12 @@ use crate::resolved_type::ResolvedTypeEnv;
 
 use super::common::{compute_logical_op, compute_relational_op};
 
+#[derive(Clone)]
+pub struct FunctionContextEntry<'a> {
+    entity_type: Option<&'a EntityType>,
+    path: Option<PhysicalColumnPath>,
+}
+
 enum DatabasePathSelection<'a> {
     Column(
         PhysicalColumnPath,
@@ -52,7 +64,7 @@ enum DatabasePathSelection<'a> {
 pub fn compute_predicate_expression(
     expr: &AstExpr<Typed>,
     self_type_info: &EntityType,
-    function_context: HashMap<String, &EntityType>,
+    function_context: HashMap<String, FunctionContextEntry>,
     resolved_env: &ResolvedTypeEnv,
     subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &MappedArena<EntityType>,
@@ -64,7 +76,7 @@ pub fn compute_predicate_expression(
                 selection,
                 self_type_info,
                 resolved_env,
-                function_context,
+                function_context.clone(),
                 subsystem_primitive_types,
                 subsystem_entity_types,
                 database,
@@ -105,10 +117,24 @@ pub fn compute_predicate_expression(
                             "Only `some` function is supported".to_string(),
                         ))
                     } else {
+                        let mut updated_context = function_context.clone();
+                        match updated_context.entry(function_call.parameter_name.clone()) {
+                            Entry::Occupied(mut entry) => {
+                                entry.get_mut().path = Some(column_path.clone());
+                            }
+                            Entry::Vacant(entry) => {
+                                entry.insert(FunctionContextEntry {
+                                    entity_type: None,
+                                    path: Some(column_path.clone()),
+                                });
+                            }
+                        }
+
                         compute_function_expr(
                             column_path,
                             function_call.parameter_name,
                             function_call.expr,
+                            updated_context,
                         )
                     }
                 }
@@ -178,7 +204,7 @@ fn compute_primitive_db_expr(
     expr: &AstExpr<Typed>,
     self_type_info: &EntityType,
     resolved_env: &ResolvedTypeEnv,
-    function_context: HashMap<String, &EntityType>,
+    function_context: HashMap<String, FunctionContextEntry>,
     subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &MappedArena<EntityType>,
     database: &Database,
@@ -234,7 +260,7 @@ fn compute_column_selection<'a>(
     selection: &FieldSelection<Typed>,
     self_type_info: &'a EntityType,
     resolved_env: &'a ResolvedTypeEnv<'a>,
-    function_context: HashMap<String, &'a EntityType>,
+    function_context: HashMap<String, FunctionContextEntry<'a>>,
     subsystem_primitive_types: &'a MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &'a MappedArena<EntityType>,
     database: &Database,
@@ -261,6 +287,7 @@ fn compute_column_selection<'a>(
 
     #[allow(clippy::type_complexity)]
     let compute_column_path = |lead_type: &'a EntityType,
+                               base_path: Option<PhysicalColumnPath>,
                                selection_elems: &[FieldSelectionElement<Typed>]|
      -> (
         Option<&'a EntityType>,
@@ -268,7 +295,7 @@ fn compute_column_selection<'a>(
         Option<&'a FieldType<PostgresFieldType<EntityType>>>,
     ) {
         selection_elems.iter().fold(
-            (Some(lead_type), None::<PhysicalColumnPath>, None),
+            (Some(lead_type), base_path, None),
             |(lead_type, column_path, _field_type), selection_elem| {
                 let lead_type = lead_type.expect("Type for the access selection is not defined");
 
@@ -306,10 +333,21 @@ fn compute_column_selection<'a>(
     match path_head {
         FieldSelectionElement::Identifier(value, _, _) => {
             if value == "self" || function_context.contains_key(value) {
-                let (lead_type, parameter_name) = if value == "self" {
-                    (&self_type_info, Option::<String>::None)
+                let (lead_type, parameter_name, base_path) = if value == "self" {
+                    (self_type_info, Option::<String>::None, None)
                 } else {
-                    (function_context.get(value).unwrap(), Some(value.clone()))
+                    let entry = function_context.get(value).unwrap_or_else(|| {
+                        panic!(
+                            "Function parameter '{value}' not found while processing access rules"
+                        )
+                    });
+                    (
+                        entry
+                            .entity_type
+                            .expect("Function parameter type not available"),
+                        Some(value.clone()),
+                        entry.path.clone(),
+                    )
                 };
 
                 let (tail_last, tail_init) =
@@ -322,7 +360,7 @@ fn compute_column_selection<'a>(
                 match tail_last {
                     FieldSelectionElement::Identifier(_, _, _) => {
                         let (_, column_path, field_type) =
-                            compute_column_path(lead_type, path_tail);
+                            compute_column_path(lead_type, base_path.clone(), path_tail);
 
                         let column_path = column_path.expect("Unexpected empty column path");
 
@@ -342,7 +380,6 @@ fn compute_column_selection<'a>(
                             column_path
                         };
 
-                        // TODO: Avoid this unwrap (parser should have caught expression "self" without any fields)
                         Ok(DatabasePathSelection::Column(
                             column_path,
                             field_type.unwrap(),
@@ -356,10 +393,23 @@ fn compute_column_selection<'a>(
                         ..
                     } => {
                         let (field_composite_type, column_path, _field_type) =
-                            compute_column_path(lead_type, tail_init);
+                            compute_column_path(lead_type, base_path, tail_init);
+
+                        let column_path = column_path.expect("Unexpected empty column path");
+                        let column_path = ensure_parameter_alias(column_path, &elem_name.0);
+                        let composite_type = field_composite_type.unwrap_or_else(|| {
+                            panic!("Function call expected to operate on a collection type")
+                        });
+
                         let mut new_function_context = function_context.clone();
-                        new_function_context
-                            .extend([(elem_name.0.clone(), field_composite_type.unwrap())]);
+                        new_function_context.insert(
+                            elem_name.0.clone(),
+                            FunctionContextEntry {
+                                entity_type: Some(composite_type),
+                                path: Some(column_path.clone()),
+                            },
+                        );
+
                         let predicate_expr = compute_predicate_expression(
                             expr,
                             self_type_info,
@@ -371,7 +421,7 @@ fn compute_column_selection<'a>(
                         )?;
 
                         Ok(DatabasePathSelection::Function(
-                            column_path.unwrap(),
+                            column_path.clone(),
                             FunctionCall {
                                 name: name.0.clone(),
                                 parameter_name: elem_name.0.clone(),
@@ -409,35 +459,196 @@ fn compute_column_selection<'a>(
     }
 }
 
+fn ensure_parameter_alias(path: PhysicalColumnPath, parameter_name: &str) -> PhysicalColumnPath {
+    let alias_base = if parameter_name.is_empty() {
+        "nested"
+    } else {
+        parameter_name
+    };
+
+    let mut links = Vec::new();
+    let mut remaining = Some(path);
+    while let Some(current) = remaining {
+        let (head, tail) = current.split_head();
+        links.push(head);
+        remaining = tail;
+    }
+
+    let mut iter = links.into_iter();
+    let head = iter
+        .next()
+        .expect("Unexpected empty column path for function");
+    let mut rebuilt = PhysicalColumnPath::init(alias_link(head, alias_base, 0));
+
+    for (index, link) in iter.enumerate() {
+        rebuilt = rebuilt.push(alias_link(link, alias_base, index + 1));
+    }
+
+    rebuilt
+}
+
+fn alias_link(link: ColumnPathLink, alias_base: &str, position: usize) -> ColumnPathLink {
+    match link {
+        ColumnPathLink::Relation(mut relation) => {
+            if relation.linked_table_alias.is_none() {
+                let mut hasher = DefaultHasher::new();
+                alias_base.hash(&mut hasher);
+                position.hash(&mut hasher);
+                relation.hash(&mut hasher);
+                let hashed = hasher.finish();
+                let suffix = format!("{hashed:016x}");
+                let alias = format!("{alias_base}_{}", &suffix[..8]);
+                relation = relation.with_alias(alias);
+            }
+            ColumnPathLink::Relation(relation)
+        }
+        other => other,
+    }
+}
+
 fn compute_function_expr(
     lead_path: PhysicalColumnPath,
     function_param_name: String,
     function_expr: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+    function_context: HashMap<String, FunctionContextEntry>,
 ) -> Result<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>, ModelBuildingError> {
+    fn normalize_single_relation(path: PhysicalColumnPath) -> PhysicalColumnPath {
+        let (head, tail) = path.split_head();
+
+        if tail.is_none() {
+            if let ColumnPathLink::Relation(relation) = head {
+                if relation.column_pairs.len() == 1 {
+                    return PhysicalColumnPath::leaf(relation.column_pairs[0].self_column_id);
+                }
+            }
+        }
+
+        path
+    }
+
+    fn with_head_alias(path: PhysicalColumnPath, alias: String) -> PhysicalColumnPath {
+        let (head, tail) = path.split_head();
+        let new_head = match head {
+            ColumnPathLink::Relation(relation) => {
+                ColumnPathLink::Relation(relation.with_alias(alias))
+            }
+            other => other,
+        };
+
+        let mut rebuilt = PhysicalColumnPath::init(new_head);
+        if let Some(tail_path) = tail {
+            rebuilt = rebuilt.join(tail_path);
+        }
+
+        rebuilt
+    }
+
+    fn ensure_alias_if_conflict(
+        path: PhysicalColumnPath,
+        lead_path: &PhysicalColumnPath,
+        parameter_name: &Option<String>,
+    ) -> PhysicalColumnPath {
+        if path.alias().is_some() || path.lead_table_id() != lead_path.lead_table_id() {
+            return path;
+        }
+
+        let alias = parameter_name
+            .as_ref()
+            .map(|name| format!("{name}_path"))
+            .unwrap_or_else(|| "nested_path".to_string());
+
+        with_head_alias(path, alias)
+    }
+
     fn function_elem_path(
-        lead_path: PhysicalColumnPath,
-        function_param_name: String,
+        lead_path: &PhysicalColumnPath,
+        function_param_name: &str,
         expr: DatabaseAccessPrimitiveExpression,
+        function_context: &HashMap<String, FunctionContextEntry>,
     ) -> Result<DatabaseAccessPrimitiveExpression, ModelBuildingError> {
         match expr {
             DatabaseAccessPrimitiveExpression::Column(function_column_path, parameter_name) => {
-                // We may have expression like `self.documentUser.some(du => du.read)`, in which case we want to join the column path
-                // to form `self.documentUser.read`.
-                //
-                // However, if the lead path is `self.documentUser.some(du => du.id === self.id)`, we don't want to join the column path
-                // for the `self.id` part.
-                Ok(DatabaseAccessPrimitiveExpression::Column(
-                    if parameter_name == Some(function_param_name) {
-                        lead_path.clone().join(function_column_path)
+                let resolved_path = if let Some(param_name) = parameter_name.as_deref() {
+                    if param_name == function_param_name {
+                        if function_column_path.lead_table_id() == lead_path.lead_table_id() {
+                            normalize_single_relation(function_column_path)
+                        } else {
+                            normalize_single_relation(lead_path.clone().join(function_column_path))
+                        }
+                    } else if let Some(entry) = function_context.get(param_name) {
+                        if let Some(base_path) = &entry.path {
+                            if function_column_path.lead_table_id() == base_path.lead_table_id() {
+                                normalize_single_relation(function_column_path)
+                            } else {
+                                normalize_single_relation(
+                                    base_path.clone().join(function_column_path),
+                                )
+                            }
+                        } else {
+                            normalize_single_relation(function_column_path)
+                        }
                     } else {
-                        function_column_path
-                    },
+                        normalize_single_relation(function_column_path)
+                    }
+                } else {
+                    normalize_single_relation(function_column_path)
+                };
+
+                let resolved_path =
+                    ensure_alias_if_conflict(resolved_path, lead_path, &parameter_name);
+
+                if std::env::var("EXO_DEBUG_FUNCTION_PATH").is_ok() {
+                    println!(
+                        "[function-debug] lead_path={lead_path:?} parameter={parameter_name:?} resolved_path={resolved_path:?}"
+                    );
+                }
+
+                Ok(DatabaseAccessPrimitiveExpression::Column(
+                    resolved_path,
                     parameter_name,
                 ))
             }
-            DatabaseAccessPrimitiveExpression::Function(_, _) => Err(ModelBuildingError::Generic(
-                "Cannot have a function call inside another function call".to_string(),
-            )),
+            DatabaseAccessPrimitiveExpression::Function(nested_lead_path, nested_call) => {
+                let FunctionCall {
+                    name,
+                    parameter_name,
+                    expr,
+                } = nested_call;
+
+                let nested_lead_path = ensure_parameter_alias(nested_lead_path, &parameter_name);
+                let updated_lead_column_path = lead_path.clone().join(nested_lead_path.clone());
+
+                if std::env::var("EXO_DEBUG_FUNCTION_PATH").is_ok() {
+                    println!(
+                        "[function-debug] nested lead={lead_path:?} nested_path={nested_lead_path:?} updated_lead={updated_lead_column_path:?}"
+                    );
+                }
+
+                let mut updated_context = function_context.clone();
+                updated_context.insert(
+                    parameter_name.clone(),
+                    FunctionContextEntry {
+                        entity_type: None,
+                        path: Some(updated_lead_column_path.clone()),
+                    },
+                );
+
+                let updated_expr = compute_function_expr(
+                    updated_lead_column_path.clone(),
+                    parameter_name.clone(),
+                    expr,
+                    updated_context,
+                )?;
+
+                Ok(DatabaseAccessPrimitiveExpression::Function(
+                    updated_lead_column_path,
+                    FunctionCall {
+                        name,
+                        parameter_name,
+                        expr: updated_expr,
+                    },
+                ))
+            }
             expr => Ok(expr),
         }
     }
@@ -445,24 +656,47 @@ fn compute_function_expr(
     match function_expr {
         AccessPredicateExpression::LogicalOp(op) => match op {
             AccessLogicalExpression::Not(p) => {
-                let updated_expr = compute_function_expr(lead_path, function_param_name, *p)?;
+                let updated_expr = compute_function_expr(
+                    lead_path.clone(),
+                    function_param_name.clone(),
+                    *p,
+                    function_context.clone(),
+                )?;
                 Ok(AccessPredicateExpression::LogicalOp(
                     AccessLogicalExpression::Not(Box::new(updated_expr)),
                 ))
             }
             AccessLogicalExpression::And(left, right) => {
-                let updated_left =
-                    compute_function_expr(lead_path.clone(), function_param_name.clone(), *left)?;
-                let updated_right = compute_function_expr(lead_path, function_param_name, *right)?;
+                let updated_left = compute_function_expr(
+                    lead_path.clone(),
+                    function_param_name.clone(),
+                    *left,
+                    function_context.clone(),
+                )?;
+                let updated_right = compute_function_expr(
+                    lead_path,
+                    function_param_name,
+                    *right,
+                    function_context,
+                )?;
 
                 Ok(AccessPredicateExpression::LogicalOp(
                     AccessLogicalExpression::And(Box::new(updated_left), Box::new(updated_right)),
                 ))
             }
             AccessLogicalExpression::Or(left, right) => {
-                let updated_left =
-                    compute_function_expr(lead_path.clone(), function_param_name.clone(), *left)?;
-                let updated_right = compute_function_expr(lead_path, function_param_name, *right)?;
+                let updated_left = compute_function_expr(
+                    lead_path.clone(),
+                    function_param_name.clone(),
+                    *left,
+                    function_context.clone(),
+                )?;
+                let updated_right = compute_function_expr(
+                    lead_path,
+                    function_param_name,
+                    *right,
+                    function_context,
+                )?;
 
                 Ok(AccessPredicateExpression::LogicalOp(
                     AccessLogicalExpression::Or(Box::new(updated_left), Box::new(updated_right)),
@@ -474,8 +708,9 @@ fn compute_function_expr(
             let (left, right) = op.owned_sides();
 
             let updated_left =
-                function_elem_path(lead_path.clone(), function_param_name.clone(), *left)?;
-            let updated_right = function_elem_path(lead_path, function_param_name, *right)?;
+                function_elem_path(&lead_path, &function_param_name, *left, &function_context)?;
+            let updated_right =
+                function_elem_path(&lead_path, &function_param_name, *right, &function_context)?;
             Ok(AccessPredicateExpression::RelationalOp(combiner(
                 Box::new(updated_left),
                 Box::new(updated_right),

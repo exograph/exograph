@@ -30,7 +30,7 @@ use postgres_graphql_model::{
 };
 
 use crate::{
-    auth_util::{check_access, AccessCheckOutcome},
+    auth_util::{AccessCheckOutcome, check_access},
     sql_mapper::{SQLMapper, SQLOperationKind},
     util::get_argument_field,
 };

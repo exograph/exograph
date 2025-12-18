@@ -15,6 +15,11 @@
   height: 100% !important;
 }
 
+.graphiql-container .graphiql-main,
+.graphiql-container .graphiql-main > * {
+  min-height: 0;
+}
+
 .graphiql-editor-tools>.active {
   font-weight: bold;
 }
@@ -61,4 +66,3 @@
 .error-message .graphiql-button {
   border: 1px solid;
 }
-
