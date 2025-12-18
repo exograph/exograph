@@ -4229,7 +4229,6 @@ dependencies = [
  "thiserror 2.0.17",
  "tokio",
  "tracing",
- "windows-sys 0.59.0",
 ]
 
 [[package]]
