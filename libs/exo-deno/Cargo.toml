@@ -12,24 +12,30 @@ default = []
 typescript-loader = ["dep:deno_ast"]
 
 [build-dependencies]
-deno_runtime = { version = "0.227.0", features = [
+deno_runtime = { version = "0.231.0", features = [
   "include_js_files_for_snapshotting",
   "only_snapshotted_js_sources",
   "snapshot",
 ] }
 
+[target.'cfg(windows)'.build-dependencies]
+windows-sys = { version = "0.59.0", features = [
+  "Win32_System_SystemInformation",
+  "Win32_Networking",
+  "Win32_Networking_WinSock",
+] }
 
 [dependencies]
 thiserror.workspace = true
 async-trait.workspace = true
-deno_runtime = "0.227.0"
+deno_runtime = "0.231.0"
 deno_core.workspace = true
 deno_error.workspace = true
-deno_fs = "0.129.0"
-deno_resolver = "0.50.0"
-node_resolver = "0.57.0"
+deno_fs = "0.133.0"
+deno_resolver = "0.54.0"
+node_resolver = "0.61.0"
 sys_traits = "0.1.17"
-deno_ast = { version = "0.50.3", features = ["transpiling"], optional = true }
+deno_ast = { version = "0.52.0", features = ["transpiling"], optional = true }
 tokio.workspace = true
 reqwest = { workspace = true, features = ["blocking"] }
 futures.workspace = true
@@ -39,6 +45,13 @@ tracing.workspace = true
 include_dir.workspace = true
 
 exo-env = { path = "../exo-env" }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59.0", features = [
+  "Win32_System_SystemInformation",
+  "Win32_Networking",
+  "Win32_Networking_WinSock",
+] }
 
 [dev-dependencies]
 ctor.workspace = true
