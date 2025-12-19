@@ -22,7 +22,7 @@ futures.workspace = true
 async-trait.workspace = true
 async-recursion.workspace = true
 jsonwebtoken.workspace = true
-oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", branch = "exograph" }
+oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", version = "0.3.0", branch = "exograph", features = ["aws_lc_rs"]}
 cookie = "0.18.1"
 elsa = "1.8.1"
 async-graphql-value.workspace = true
