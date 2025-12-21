@@ -22,7 +22,6 @@ futures.workspace = true
 async-trait.workspace = true
 async-recursion.workspace = true
 jsonwebtoken.workspace = true
-oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", branch = "exograph" }
 cookie = "0.18.1"
 elsa = "1.8.1"
 async-graphql-value.workspace = true
@@ -63,6 +62,14 @@ wildmatch = { workspace = true, optional = true }
 zip.workspace = true
 tempfile.workspace = true
 home = "0.5.11"
+# Use aws_lc_rs for native targets
+oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", version = "0.3.0", branch = "exograph", features = ["aws_lc_rs"]}
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# Use rust_crypto for wasm targets (aws_lc_rs doesn't support wasm)
+oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", version = "0.3.0", branch = "exograph", features = ["rust_crypto"]}
+# getrandom 0.2.x (pulled in by jsonwebtoken) uses "js" feature for wasm support
+getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }
