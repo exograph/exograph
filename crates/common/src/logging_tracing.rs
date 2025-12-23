@@ -27,7 +27,7 @@
 //! - `OTEL_EXPORTER_OTLP_PROTOCOL` the OTLP version used. Can be `grpc` (the default) or `http/protobuf`.
 //! - `OTEL_EXPORTER_OTLP_HEADERS` allows you to set custom headers such as authentication tokens.
 //!
-//! At least one `OTEL_` prefixed variable must be set to enable OpenTelemetry.
+//! EXO_ENABLE_OTEL must be set to `true` to enable OpenTelemetry.
 //!
 //! To use Jaeger, a local server can be started using docker:
 //!
@@ -40,8 +40,11 @@ use exo_env::Environment;
 use http::Uri;
 use thiserror::Error;
 
-use opentelemetry_otlp::{SpanExporter, WithTonicConfig};
-use opentelemetry_sdk::{Resource, runtime, trace::TracerProvider};
+use opentelemetry_otlp::{ExporterBuildError, SpanExporter, WithTonicConfig};
+use opentelemetry_sdk::{
+    Resource,
+    trace::{SdkTracerProvider, TraceError},
+};
 use std::str::FromStr;
 use tonic::transport::{ClientTlsConfig, Endpoint};
 use tracing_subscriber::{EnvFilter, filter::LevelFilter, prelude::*};
@@ -79,7 +82,7 @@ pub async fn init(env: &dyn Environment) -> Result<(), OtelError> {
 
 async fn create_oltp_trace_provider(
     env: &dyn Environment,
-) -> Result<Option<TracerProvider>, OtelError> {
+) -> Result<Option<SdkTracerProvider>, OtelError> {
     if !env.enabled(EXO_ENABLE_OTEL, false)? {
         return Ok(None);
     }
@@ -158,9 +161,9 @@ async fn create_oltp_trace_provider(
     }?;
 
     Ok(Some(
-        TracerProvider::builder()
-            .with_resource(Resource::default())
-            .with_batch_exporter(exporter, runtime::Tokio)
+        SdkTracerProvider::builder()
+            .with_resource(Resource::builder().build())
+            .with_batch_exporter(exporter)
             .build(),
     ))
 }
@@ -197,7 +200,10 @@ fn parse_otlp_headers_from_env(env: &dyn Environment) -> Vec<(String, String)> {
 #[derive(Error, Debug)]
 pub enum OtelError {
     #[error(transparent)]
-    TraceError(#[from] opentelemetry::trace::TraceError),
+    TraceError(#[from] TraceError),
+
+    #[error(transparent)]
+    ExporterBuildError(#[from] ExporterBuildError),
 
     #[error("Unsupported protocol {0}")]
     UnsupportedProtocol(String),
