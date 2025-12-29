@@ -96,7 +96,7 @@ futures = "0.3.29"
 heck = "0.5.0"
 include_dir = "0.7.4"
 indexmap = "2"
-insta = { version = "1.44.3", features = ["redactions", "yaml"] }
+insta = { version = "1.45.1", features = ["redactions", "yaml"] }
 jsonwebtoken = "10.2.0"
 lazy_static = "1.5.0"
 maybe-owned = "0.3.4"
