@@ -12,7 +12,7 @@ default = []
 typescript-loader = ["dep:deno_ast"]
 
 [build-dependencies]
-deno_runtime = { version = "0.233.0", features = [
+deno_runtime = { workspace = true, features = [
   "include_js_files_for_snapshotting",
   "only_snapshotted_js_sources",
   "snapshot",
@@ -28,12 +28,12 @@ windows-sys = { version = "0.59.0", features = [
 [dependencies]
 thiserror.workspace = true
 async-trait.workspace = true
-deno_runtime = "0.233.0"
+deno_runtime.workspace = true
 deno_core.workspace = true
 deno_error.workspace = true
-deno_fs = "0.135.0"
-deno_resolver = "0.56.0"
-node_resolver = "0.63.0"
+deno_fs.workspace = true
+deno_resolver.workspace = true
+node_resolver.workspace = true
 sys_traits = "0.1.17"
 deno_ast = { version = "0.52.0", features = ["transpiling"], optional = true }
 tokio.workspace = true
