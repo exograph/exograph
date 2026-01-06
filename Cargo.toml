@@ -89,8 +89,12 @@ ctor = "0.6.3"
 http = "1"
 clap = "4.5.53"
 
-deno_core = "0.376.0"
 deno_error = "0.7.1"
+deno_runtime = "0.234.0"
+deno_core = "0.376.0"
+deno_fs = "0.136.0"
+deno_resolver = "0.57.0"
+node_resolver = "0.64.0"
 
 futures = "0.3.29"
 heck = "0.5.0"
