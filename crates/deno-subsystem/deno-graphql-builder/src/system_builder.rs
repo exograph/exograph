@@ -36,7 +36,7 @@ use url::Url;
 
 use crate::module_skeleton_generator;
 
-const DENO_VERSION: &str = "2.6.4";
+const DENO_VERSION: &str = "2.6.5";
 
 const DENO_BUNDLE_WARNING: &[u8] = b"is experimental and subject to changes";
 
