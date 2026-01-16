@@ -52,7 +52,10 @@ opentelemetry-otlp = { version = "0.31", features = [
   "tls",
 ], optional = true }
 # Tonic isn't used directly but we need these flags to establish a TLS connection
-tonic = { version = "0.14", features = ["tls-aws-lc", "tls-native-roots"], optional = true }
+tonic = { version = "0.14", features = [
+  "tls-aws-lc",
+  "tls-native-roots",
+], optional = true }
 
 hyper-util = { version = "0.1.7" }
 tower = { version = "0.5", features = ["util"] }
@@ -64,11 +67,15 @@ zip.workspace = true
 tempfile.workspace = true
 home = "0.5.11"
 # Use aws_lc_rs for native targets
-oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", version = "0.3.0", branch = "exograph", features = ["aws_lc_rs"]}
+oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", version = "0.3.0", branch = "exograph", features = [
+  "aws_lc_rs",
+] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # Use rust_crypto for wasm targets (aws_lc_rs doesn't support wasm)
-oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", version = "0.3.0", branch = "exograph", features = ["rust_crypto"]}
+oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", version = "0.3.0", branch = "exograph", features = [
+  "rust_crypto",
+] }
 # getrandom 0.2.x (pulled in by jsonwebtoken) uses "js" feature for wasm support
 getrandom = { version = "0.2", features = ["js"] }
 
@@ -79,3 +86,6 @@ multiplatform_test.workspace = true
 
 [lib]
 doctest = false
+
+[package.metadata.cargo-shear]
+ignored = ["getrandom"]

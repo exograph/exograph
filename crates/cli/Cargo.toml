@@ -25,7 +25,6 @@ ctrlc = "3.4"
 zip.workspace = true
 inquire = "0.9.1"
 reqwest = { workspace = true, features = ["stream"] }
-sha2 = "0.10"
 serde.workspace = true
 serde_json.workspace = true
 which.workspace = true
@@ -36,7 +35,6 @@ pluralizer.workspace = true
 wildmatch.workspace = true
 tracing.workspace = true
 strsim = "0.11.1"
-home = "0.5.12"
 
 exo-sql = { path = "../../libs/exo-sql", features = [
   "pool",
