@@ -1,0 +1,46 @@
+name: 'Setup PostgreSQL'
+description: 'Setup PostgreSQL with pgvector for all platforms'
+inputs:
+  pg-version:
+    description: 'PostgreSQL major version'
+    required: false
+    default: '18'
+  pgvector-version:
+    description: 'pgvector version (Windows only)'
+    required: false
+    default: '0.8.0'
+runs:
+  using: 'composite'
+  steps:
+    # Windows: Use action-setup-postgres + compile pgvector
+    - name: Setup PostgreSQL (Windows)
+      if: runner.os == 'Windows'
+      uses: ikalnytskyi/action-setup-postgres@v8
+      with:
+        postgres-version: ${{ inputs.pg-version }}
+        username: postgres
+        password: postgres
+
+    - name: Setup pgvector (Windows)
+      if: runner.os == 'Windows'
+      uses: ./.github/actions/setup-pgvector-windows
+      with:
+        pg-version: ${{ inputs.pg-version }}
+        pgvector-version: ${{ inputs.pgvector-version }}
+
+    # Linux: Use PGDG repository for both PostgreSQL and pgvector
+    - name: Setup PostgreSQL + pgvector (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+        sudo apt-get install -y postgresql-${{ inputs.pg-version }}-pgvector
+        echo "$(pg_config --bindir)" >> $GITHUB_PATH
+
+    # macOS: Use Homebrew for both PostgreSQL and pgvector
+    - name: Setup PostgreSQL + pgvector (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        brew install postgresql@${{ inputs.pg-version }} pgvector
+        echo "/opt/homebrew/opt/postgresql@${{ inputs.pg-version }}/bin" >> $GITHUB_PATH

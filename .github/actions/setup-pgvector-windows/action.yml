@@ -4,11 +4,11 @@ inputs:
   pg-version:
     description: 'Major version of PostgreSQL'
     required: false
-    default: '14'
+    default: '18'
   pgvector-version:
     description: 'Version of pgvector'
     required: false
-    default: '0.6.2'
+    default: '0.8.0'
 runs:
   using: 'composite'
   steps:
