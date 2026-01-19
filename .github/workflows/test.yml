@@ -59,12 +59,12 @@ jobs:
           - os: ubuntu-22.04
             deps-script: |
               sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
-              sudo apt-get install -y protobuf-compiler postgresql-14-pgvector
+              sudo apt-get install -y protobuf-compiler postgresql-18-pgvector
             target: x86_64-unknown-linux-gnu
           - os: macos-14
             deps-script: |
-              brew install protobuf postgresql@17 pgvector
-              echo "/opt/homebrew/opt/postgresql@17/bin" >> $GITHUB_PATH
+              brew install protobuf postgresql@18 pgvector
+              echo "/opt/homebrew/opt/postgresql@18/bin" >> $GITHUB_PATH
             target: aarch64-apple-darwin
           - os: windows-2022
             deps-script: choco install protoc

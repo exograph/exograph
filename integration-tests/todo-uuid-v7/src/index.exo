@@ -1,0 +1,26 @@
+context AuthContext {
+  @jwt("sub") id: Uuid
+  @jwt("role") role: String = "user"
+}
+
+@postgres
+module TodoDatabase {
+  @access(self.user.id == AuthContext.id || AuthContext.role == "admin")
+  type Todo {
+    @pk id: Uuid = uuidGenerateV7()
+    title: String
+    completed: Boolean
+    user: User = AuthContext.id
+  }
+
+  @access(AuthContext.role == "admin")
+  type User {
+    @pk id: Uuid = uuidGenerateV7()
+    @unique email: String
+    firstName: String
+    lastName: String
+    profileImageUrl: String
+    role: String = "user"
+    todos: Set<Todo>?
+  }
+}

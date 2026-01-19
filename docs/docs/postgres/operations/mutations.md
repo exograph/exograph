@@ -17,7 +17,7 @@ As discussed in the [customizing types](../customizing-types.md) section, if you
 Both create mutations use the same input type of the `<EntityName>CreateInput` form. For example, for the `createConcert` mutation, the input type is `ConcertCreationInput`. It has all the fields of the entity type. However, if the primary key is of the `Int` type set to `autoIncrement()`, it will not be in the input type. Every field marked optional in your type definition is also optional in the input type. The singular form mutation takes this type, whereas the multiple entity version takes an array.
 
 :::tip Special treatment for `Uuid` primary keys
-If your entity type has a primary key of the `Uuid` type, it may still be supplied in the input data. This allows client-generated UUIDs. If the client does not provide the primary key, Exograph will generate one (due to the default value of `generate_uuid()` or `uuidGenerateV4()`).
+If your entity type has a primary key of the `Uuid` type, it may still be supplied in the input data. This allows client-generated UUIDs. If the client does not provide the primary key, Exograph will generate one (due to the default value of `generate_uuid()` or `uuidGenerateV4()` or `uuidGenerateV7()`).
 :::
 
 ### Creating a single entity
@@ -193,7 +193,7 @@ There is one more detail to note here. The `performances` added will automatical
 
 ## Deleting data
 
-To delete a single entity by its primary key, Exograph offers the `delete<EntityType>` mutation, which takes the primary key as an argument. 
+To delete a single entity by its primary key, Exograph offers the `delete<EntityType>` mutation, which takes the primary key as an argument.
 
 Given this mutation, you can delete a concert as follows:
 

@@ -56,7 +56,7 @@ impl DockerPostgresDatabaseServer {
         let container_name = format!("exograph-db-{}", generate_random_string());
 
         let docker_image = std::env::var(EXO_SQL_EPHEMERAL_DATABASE_DOCKER_IMAGE)
-            .unwrap_or_else(|_| "pgvector/pgvector:pg14".to_string());
+            .unwrap_or_else(|_| "pgvector/pgvector:pg18".to_string());
 
         // start postgres docker in background
         let mut db_background = std::process::Command::new("docker");

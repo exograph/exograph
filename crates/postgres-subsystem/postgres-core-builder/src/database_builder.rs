@@ -336,9 +336,11 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
                         Some(ColumnDefault::CurrentTimestamp)
                     }
                 } else if string == "gen_random_uuid()" {
-                    Some(ColumnDefault::Uuid(UuidGenerationMethod::GenRandomUuid))
+                    Some(ColumnDefault::Uuid(UuidGenerationMethod::Random))
                 } else if string == "uuid_generate_v4()" {
-                    Some(ColumnDefault::Uuid(UuidGenerationMethod::UuidGenerateV4))
+                    Some(ColumnDefault::Uuid(UuidGenerationMethod::V4))
+                } else if string == "uuidv7()" {
+                    Some(ColumnDefault::Uuid(UuidGenerationMethod::V7))
                 } else {
                     Some(ColumnDefault::Function(string.to_string()))
                 }

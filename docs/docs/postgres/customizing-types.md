@@ -282,12 +282,15 @@ To use the primary key of Uuid type, specify the field's type to be `Uuid` type 
 
 - `generate_uuid()` - uses PostgreSQL's `gen_random_uuid()` function (built into PostgreSQL 13+)
 - `uuidGenerateV4()` - uses PostgreSQL's `uuid_generate_v4()` function (requires `uuid-ossp` extension)
+- `uuidGenerateV7()` - uses PostgreSQL's `uuidv7()` (requires Postgres version 18 or higher)
 
 ```exo
 type Concert {
   @pk id: Uuid = generate_uuid()
   // OR
   @pk id: Uuid = uuidGenerateV4()
+  // OR
+  @pk id: Uuid = uuidGenerateV7()
   ...
 }
 ```
@@ -348,7 +351,7 @@ module PeopleDatabase {
     @pk firstName: String
     @pk lastName: String
     age: Int
-    @column(mapping={street: "addr_street", city: "addr_city", state: "addr_state", zip: "addr_zip"}) 
+    @column(mapping={street: "addr_street", city: "addr_city", state: "addr_state", zip: "addr_zip"})
     address: Address?
   }
 
@@ -374,7 +377,7 @@ This would generate columns `address_street`, `address_city`, `address_state`, a
 
 ### Specifying a default value
 
-The default value of a column is specified using an assignment in the field definition. For example, as we have seen in the [previous section](#assigning-primary-key), you can set the default value of an `Int` field to `autoIncrement()` to make it auto-incrementing and the default value of a `Uuid` field to `generate_uuid()` or `uuidGenerateV4()` to make it auto-generated.
+The default value of a column is specified using an assignment in the field definition. For example, as we have seen in the [previous section](#assigning-primary-key), you can set the default value of an `Int` field to `autoIncrement()` to make it auto-incrementing and the default value of a `Uuid` field to `generate_uuid()` or `uuidGenerateV4()` or `uuidGenerateV7()` to make it auto-generated.
 
 Similarly, you can set the default value of a scalar column to a constant value. For example, if you want to set the default value of the `price` field to `50`, you can use the following definition:
 
@@ -438,6 +441,8 @@ type Concert {
   @update modificationVersion: Uuid = generate_uuid()
   // OR
   @update modificationVersion: Uuid = uuidGenerateV4()
+  // OR
+  @update modificationVersion: Uuid = uuidGenerateV7()
 }
 ```
 
