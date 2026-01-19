@@ -4,11 +4,11 @@ inputs:
   pg-version:
     description: 'Major version of PostgreSQL'
     required: false
-    default: '14'
+    default: '18'
   pgvector-version:
     description: 'Version of pgvector'
     required: false
-    default: '0.6.2'
+    default: '0.8.1'
 runs:
   using: 'composite'
   steps:
@@ -23,5 +23,5 @@ runs:
         key: pgvector-${{ runner.os }}-v${{ inputs.pgvector-version }}-pg${{ inputs.pg-version }}
     - name: Install pgvector
       if: steps.cache-pgvector.outputs.cache-hit != 'true'
-      run: Start-Process -FilePath '${{ github.action_path }}\install-pgvector.bat' -ArgumentList "${{ inputs.pg-version }}", "${{ inputs.pgvector-version }}" -Wait
-      shell: powershell
+      run: call "${{ github.action_path }}\install-pgvector.bat" "${{ inputs.pg-version }}" "${{ inputs.pgvector-version }}"
+      shell: cmd

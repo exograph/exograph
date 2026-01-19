@@ -1,0 +1,8 @@
+@postgres
+module Database {
+  @access(query=true, mutation=false)
+  type Item {
+    @pk id: Uuid = uuidGenerateV7()
+    name: String
+  }
+}

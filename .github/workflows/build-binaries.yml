@@ -92,15 +92,11 @@ jobs:
         # For these target platforms
         include:
           - os: macos-14
-            deps-script: |
-              brew install protobuf postgresql@17 pgvector
-              echo "/opt/homebrew/opt/postgresql@17/bin" >> $GITHUB_PATH
+            deps-script: brew install protobuf
             target: aarch64-apple-darwin
             bin_extension: ""
           - os: ubuntu-22.04
-            deps-script: |
-              sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
-              sudo apt-get install -y protobuf-compiler postgresql-14-pgvector
+            deps-script: sudo apt-get install -y protobuf-compiler
             target: x86_64-unknown-linux-gnu
             bin_extension: ""
           - os: windows-2022
@@ -115,9 +111,8 @@ jobs:
         if: ${{ runner.os != 'Windows' }}
         run: |
           bash ${PWD}/.github/workflows/clear-disk-space.sh
-      - name: Setup pgvector (Windows)
-        if: runner.os == 'Windows'
-        uses: ./.github/actions/setup-pgvector-windows
+      - name: Setup PostgreSQL
+        uses: ./.github/actions/setup-postgres
       - name: Install deps
         run: ${{ matrix.deps-script }}
       - name: Setup Node
@@ -138,14 +133,6 @@ jobs:
       - name: Build
         run: |
           cargo build -p cli -p server-actix -p lsp -p mcp-bridge --target ${{ matrix.target }} --release
-      - name: Add Postgres to PATH
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            echo "$PGBIN" >> $GITHUB_PATH
-          else
-            echo "$(pg_config --bindir)" >> $GITHUB_PATH
-          fi
-        shell: bash
       - name: Test
         env:
           RUST_BACKTRACE: 1

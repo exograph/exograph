@@ -1,0 +1,272 @@
+type BooleanAgg {
+  count: Int
+}
+
+input BooleanFilter {
+  eq: Boolean
+  neq: Boolean
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Todo {
+  id: Uuid!
+  title: String!
+  completed: Boolean!
+  user: User!
+}
+
+"""An aggregate for the `Todo` type."""
+type TodoAgg {
+  id: UuidAgg
+  title: StringAgg
+  completed: BooleanAgg
+}
+
+input TodoCreationInput {
+  id: Uuid
+  title: String!
+  completed: Boolean!
+  user: UserReferenceInput
+}
+
+input TodoCreationInputFromUser {
+  id: Uuid
+  title: String!
+  completed: Boolean!
+}
+
+"""
+Predicate for the `Todo` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input TodoFilter {
+  id: UuidFilter
+  title: StringFilter
+  completed: BooleanFilter
+  user: UserFilter
+  and: [TodoFilter!]
+  or: [TodoFilter!]
+  not: TodoFilter
+}
+
+input TodoOrdering {
+  id: Ordering
+  title: Ordering
+  completed: Ordering
+  user: [UserOrdering!]
+}
+
+input TodoReferenceInput {
+  id: Uuid!
+}
+
+input TodoUpdateInput {
+  id: Uuid
+  title: String
+  completed: Boolean
+  user: UserReferenceInput
+}
+
+input TodoUpdateInputFromUser {
+  create: [TodoCreationInputFromUser!]
+  update: [TodoUpdateInputFromUserNested!]
+  delete: [TodoReferenceInput!]
+}
+
+input TodoUpdateInputFromUserNested {
+  id: Uuid!
+  title: String
+  completed: Boolean
+}
+
+type User {
+  id: Uuid!
+  email: String!
+  firstName: String!
+  lastName: String!
+  profileImageUrl: String!
+  role: String!
+  todos(where: TodoFilter, orderBy: [TodoOrdering!], limit: Int, offset: Int): [Todo!]
+  todosAgg(where: TodoFilter): TodoAgg
+}
+
+"""An aggregate for the `User` type."""
+type UserAgg {
+  id: UuidAgg
+  email: StringAgg
+  firstName: StringAgg
+  lastName: StringAgg
+  profileImageUrl: StringAgg
+  role: StringAgg
+}
+
+input UserCreationInput {
+  id: Uuid
+  email: String!
+  firstName: String!
+  lastName: String!
+  profileImageUrl: String!
+  role: String
+  todos: [TodoCreationInputFromUser!]
+}
+
+"""
+Predicate for the `User` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input UserFilter {
+  id: UuidFilter
+  email: StringFilter
+  firstName: StringFilter
+  lastName: StringFilter
+  profileImageUrl: StringFilter
+  role: StringFilter
+  todos: TodoFilter
+  and: [UserFilter!]
+  or: [UserFilter!]
+  not: UserFilter
+}
+
+input UserOrdering {
+  id: Ordering
+  email: Ordering
+  firstName: Ordering
+  lastName: Ordering
+  profileImageUrl: Ordering
+  role: Ordering
+}
+
+input UserReferenceInput {
+  id: Uuid!
+}
+
+input UserUpdateInput {
+  id: Uuid
+  email: String
+  firstName: String
+  lastName: String
+  profileImageUrl: String
+  role: String
+  todos: TodoUpdateInputFromUser
+}
+
+scalar Uuid
+
+type UuidAgg {
+  count: Int
+}
+
+input UuidFilter {
+  eq: Uuid
+  neq: Uuid
+}
+
+type Query {
+  """Get a single `Todo` given primary key fields"""
+  todo(id: Uuid!): Todo
+
+  """
+  Get multiple `Todo`s given the provided `where` filter, order by, limit, and offset
+  """
+  todos(where: TodoFilter, orderBy: [TodoOrdering!], limit: Int, offset: Int): [Todo!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Todo`s given the provided `where` filter
+  """
+  todosAgg(where: TodoFilter): TodoAgg!
+
+  """Get a single `User` given primary key fields"""
+  user(id: Uuid!): User
+
+  """Get a single `User` given unique fields"""
+  userByEmail(email: String!): User
+
+  """
+  Get multiple `User`s given the provided `where` filter, order by, limit, and offset
+  """
+  users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+
+  """
+  Get the aggregate value of the selected fields over all `User`s given the provided `where` filter
+  """
+  usersAgg(where: UserFilter): UserAgg!
+}
+
+type Mutation {
+  """
+  Create a new Todo. Check the `TodoCreationInput` type for the expected shape of the data.
+  """
+  createTodo(data: TodoCreationInput!): Todo!
+
+  """
+  Create multiple Todos. Check the `TodoCreationInput` type for the expected shape of the data.
+  """
+  createTodos(data: [TodoCreationInput!]!): [Todo!]!
+
+  """
+  Create a new User. Check the `UserCreationInput` type for the expected shape of the data.
+  """
+  createUser(data: UserCreationInput!): User!
+
+  """
+  Create multiple Users. Check the `UserCreationInput` type for the expected shape of the data.
+  """
+  createUsers(data: [UserCreationInput!]!): [User!]!
+
+  """Delete the Todo with the provided primary key."""
+  deleteTodo(id: Uuid!): Todo
+
+  """Delete multiple Todos matching the provided `where` filter."""
+  deleteTodos(where: TodoFilter): [Todo!]!
+
+  """Delete the User with the provided primary key."""
+  deleteUser(id: Uuid!): User
+
+  """Delete multiple Users matching the provided `where` filter."""
+  deleteUsers(where: UserFilter): [User!]!
+
+  """
+  Update the Todo with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateTodo(id: Uuid!, data: TodoUpdateInput!): Todo
+
+  """
+  Update multiple Todos matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateTodos(where: TodoFilter, data: TodoUpdateInput!): [Todo!]!
+
+  """
+  Update the User with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateUser(id: Uuid!, data: UserUpdateInput!): User
+
+  """
+  Update multiple Users matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
+}

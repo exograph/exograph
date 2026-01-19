@@ -264,8 +264,7 @@ impl TableSpec {
             if typ.is::<crate::sql::physical_column_type::UuidColumnType>() {
                 // Only uuid_generate_v4() requires an extension (uuid-ossp)
                 // gen_random_uuid() is built into PostgreSQL 13+
-                if let Some(ColumnDefault::Uuid(UuidGenerationMethod::UuidGenerateV4)) =
-                    &col_spec.default_value
+                if let Some(ColumnDefault::Uuid(UuidGenerationMethod::V4)) = &col_spec.default_value
                 {
                     required_extensions.insert("uuid-ossp".to_string());
                 }
