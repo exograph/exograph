@@ -40,7 +40,9 @@ impl RequestHead for WorkerRequestWrapper {
 
     fn get_method(&self) -> http::Method {
         // Convert via string to avoid additional variant (currently "REPORT") in worker::Method
-        http::Method::from_bytes(self.0.method().as_ref().as_bytes()).unwrap_or(http::Method::GET)
+        // `expect` is safe here because worker::Method is guaranteed to be a valid HTTP method
+        http::Method::from_bytes(self.0.method().as_ref().as_bytes())
+            .expect("worker::Method should always be a valid HTTP method")
     }
 
     fn get_path(&self) -> String {
