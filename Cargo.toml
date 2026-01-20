@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.26.2"
+version = "0.27.0"
 edition = "2024"
 
 # See https://github.com/mozilla/application-services/blob/main/Cargo.toml for the reasons why we use this structure
