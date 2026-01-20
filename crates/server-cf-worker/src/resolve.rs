@@ -39,17 +39,8 @@ impl RequestHead for WorkerRequestWrapper {
     }
 
     fn get_method(&self) -> http::Method {
-        match self.0.method() {
-            worker::Method::Head => http::Method::HEAD,
-            worker::Method::Get => http::Method::GET,
-            worker::Method::Post => http::Method::POST,
-            worker::Method::Put => http::Method::PUT,
-            worker::Method::Patch => http::Method::PATCH,
-            worker::Method::Delete => http::Method::DELETE,
-            worker::Method::Options => http::Method::OPTIONS,
-            worker::Method::Connect => http::Method::CONNECT,
-            worker::Method::Trace => http::Method::TRACE,
-        }
+        // Convert via string to avoid additional variant (currently "REPORT") in worker::Method
+        http::Method::from_bytes(self.0.method().as_ref().as_bytes()).unwrap_or(http::Method::GET)
     }
 
     fn get_path(&self) -> String {
