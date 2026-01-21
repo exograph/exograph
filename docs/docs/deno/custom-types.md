@@ -62,3 +62,42 @@ If you were to implement the same module in JavaScript, the only difference woul
 :::note
 You may use a type as an argument or a return type, but not both. This is due to the GraphQL specification, which considers input and output types as different.
 :::
+
+## Cross-Module Type References
+
+Deno modules often execute queries using `Exograph` to fetch data defined in a Postgres or another Deno module. For example, a Deno query might translate its arguments into a `where` argument for a Postgres query, simplifying how clients interact with your API. In such cases, it is useful to reference types defined in those modules.
+
+To refer to a type defined in another module, use the syntax `<ModuleName>.<TypeName>`. For example, if you have a Postgres module named `TodoDatabase` that defines a `Todo` type, you can reference it in your Deno module as `TodoDatabase.Todo` like so:
+
+
+```exo
+@postgres
+module TodoDatabase {
+  @access(true)
+  type Todo {
+    @pk id: Int = autoIncrement()
+    title: String
+    completed: Boolean
+  }
+}
+
+@deno("todo-service.ts")
+module TodoService {
+  @access(true)
+  export query completedTodos(@inject exograph: Exograph): Set<TodoDatabase.Todo>
+}
+```
+
+Like Deno modules, Postgres modules also generate TypeScript type definitions, which you can import and use in your Deno module implementation.
+
+```typescript
+import type { Exograph } from '../generated/exograph.d.ts';
+import type * as TodoDatabase from '../generated/TodoDatabase.d.ts';
+
+export async function completedTodos(exograph: Exograph): Promise<TodoDatabase.Todo[]> {
+  const result = await exograph.executeQuery(`...`);
+  return result;
+}
+```
+
+This enables patterns like custom business logic, data transformation, or aggregation while leveraging type definitions from other modules.
