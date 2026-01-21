@@ -622,6 +622,12 @@ mod tests {
             .subspan(0, 0)
     }
 
+    /*
+    type [name] {
+        field1: String
+        field2: Int
+    }
+     */
     fn fabricate_model(name: &str) -> AstModel<Typed> {
         let span = fabricate_span();
 
@@ -653,6 +659,12 @@ mod tests {
         }
     }
 
+    /*
+    type [name] {
+        items: Set<Item>
+        totalCount: Int
+    }
+    */
     fn fabricate_model_with_collection(name: &str) -> AstModel<Typed> {
         let span = fabricate_span();
 
@@ -696,8 +708,27 @@ mod tests {
         }
     }
 
+    /*
+    module [name] {
+        type TestType1 {
+            field1: String
+            field2: Int
+        }
+
+        type TestType2 {
+            field1: String
+            field2: Int
+        }
+
+        type EdgeType {
+            items: Set<Item>
+            totalCount: Int
+        }
+    }
+    */
     fn fabricate_module(name: &str) -> AstModule<Typed> {
         let span = fabricate_span();
+
         AstModule {
             name: name.to_string(),
             types: vec![
@@ -715,12 +746,18 @@ mod tests {
         }
     }
 
-    // TESTS
+    fn read_temp_file_content(file: &mut std::fs::File) -> String {
+        file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        let mut content = String::new();
+        file.read_to_string(&mut content).unwrap();
+        content
+    }
 
     #[test]
     fn test_generate_type_skeleton() {
         let mock_type = fabricate_model("TestType");
         let mut temp_file = tempfile().unwrap();
+
         generate_type_skeleton(
             &mock_type,
             &TypecheckedSystem {
@@ -732,9 +769,7 @@ mod tests {
         )
         .unwrap();
 
-        temp_file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        let mut generated_code = String::new();
-        temp_file.read_to_string(&mut generated_code).unwrap();
+        let generated_code = read_temp_file_content(&mut temp_file);
 
         let expected_code =
             "export interface TestType {\n\tfield1: string\n\tfield2: number\n}\n\n";
@@ -747,6 +782,7 @@ mod tests {
         let mock_type = fabricate_model_with_collection("TestType");
 
         let mut temp_file = tempfile().unwrap();
+
         generate_type_skeleton(
             &mock_type,
             &TypecheckedSystem {
@@ -757,9 +793,8 @@ mod tests {
             &mut temp_file,
         )
         .unwrap();
-        temp_file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        let mut generated_code = String::new();
-        temp_file.read_to_string(&mut generated_code).unwrap();
+
+        let generated_code = read_temp_file_content(&mut temp_file);
 
         let expected_code =
             "export interface TestType {\n\titems: Item[]\n\ttotalCount: number\n}\n\n";
@@ -769,17 +804,12 @@ mod tests {
 
     #[test]
     fn test_generates_module_definitions_correctly() {
-        use std::fs;
-
         let module = fabricate_module("TestModule");
 
         let generated_dir = PathBuf::from("generated");
-        let generated_dir_path = generated_dir.as_path();
+        let module_file = generated_dir.join("TestModule.d.ts");
 
-        // Ensure the directory does not exist before the test
-        if generated_dir_path.exists() {
-            fs::remove_dir_all(&generated_dir).unwrap();
-        }
+        let _ = fs::remove_file(&module_file);
 
         generate_module_definitions(
             &module,
@@ -790,14 +820,14 @@ mod tests {
             },
         )
         .unwrap();
-        let module_file = generated_dir.join("TestModule.d.ts");
+
         assert!(
             module_file.exists(),
             "Module {} doesn't exist",
             module_file.display()
         );
 
-        let content = fs::read_to_string(module_file).unwrap();
+        let content = fs::read_to_string(&module_file).unwrap();
 
         let expected_type1 = "export interface TestType1 {\n\tfield1: string\n\tfield2: number\n}";
         let expected_type2 = "export interface TestType2 {\n\tfield1: string\n\tfield2: number\n}";
@@ -807,7 +837,7 @@ mod tests {
         assert!(content.contains(expected_type2), "TestType2 not found");
         assert!(content.contains(expected_edge_type), "EdgeType not found");
 
-        fs::remove_dir_all(generated_dir).unwrap();
+        fs::remove_file(&module_file).unwrap();
     }
 
     #[test]
@@ -819,9 +849,6 @@ mod tests {
 
         let index_file_path = src_dir.join("index.exo");
         fs::File::create(index_file_path).unwrap();
-
-        let generated_dir = Path::new("tests/generated");
-        fs::create_dir_all(generated_dir).unwrap();
 
         let out_file_path = src_dir.join("test_module.ts");
         let mut out_file = fs::File::create(&out_file_path).unwrap();
@@ -844,8 +871,11 @@ mod tests {
         assert_eq!(content, expected_imports);
     }
 
-    // When a foregn model is used inside a Deno module.
+    // A foreign model is used inside a Deno module.
 
+    /*
+    query [name](arg1: Int): ForeignModule.ForeignModel
+     */
     fn fabricate_method_with_return_type(
         name: &str,
         foreign_module_name: Option<&str>,
@@ -874,6 +904,11 @@ mod tests {
         }
     }
 
+    /*
+    type [name] {
+         foreignField: ForeignModule.ForeignModel
+    }
+    */
     fn fabricate_model_with_foreign_model(
         name: &str,
         foreign_module_name: &str,
@@ -906,11 +941,11 @@ mod tests {
     }
 
     /*
-       module [module name] {
-           type LocalModel {
-               foreignField: ForeignModule.ForeignModel
-           }
-       }
+    module [module name] {
+        type LocalModel {
+            foreignField: ForeignModule.ForeignModel
+        }
+    }
     */
     fn fabricate_module_with_foreign_model(name: &str) -> AstModule<Typed> {
         let span = fabricate_span();
@@ -947,9 +982,7 @@ mod tests {
         )
         .unwrap();
 
-        temp_file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        let mut generated_code = String::new();
-        temp_file.read_to_string(&mut generated_code).unwrap();
+        let generated_code = read_temp_file_content(&mut temp_file);
         let method_line: &str = generated_code.lines().nth(1).unwrap();
 
         let expected_code =
@@ -977,9 +1010,6 @@ mod tests {
 
         let index_file_path = src_dir.join("index.exo");
         fs::File::create(index_file_path).unwrap();
-
-        let generated_dir = Path::new("tests/generated");
-        fs::create_dir_all(generated_dir).unwrap();
 
         let out_file_path = src_dir.join("test_module.ts");
         let mut out_file = fs::File::create(&out_file_path).unwrap();

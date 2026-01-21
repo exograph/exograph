@@ -199,13 +199,11 @@ pub async fn build(
     base_system: &BaseModelSystem,
     build_mode: BuildMode,
 ) -> Result<Option<ModelDenoSystemWithInterceptors>, ModelBuildingError> {
-    let module_selection_closure = |module: &AstModule<Typed>| match (
-        module.annotations.get("deno"),
-        module.annotations.get("postgres"),
-    ) {
-        (Some(_), _) => Some("deno".to_string()),
-        (_, Some(_)) => Some("postgres".to_string()),
-        _ => None,
+    let module_selection_closure = |module: &AstModule<Typed>| {
+        ["deno", "postgres"]
+            .into_iter()
+            .find(|&name| module.annotations.get(name).is_some())
+            .map(String::from)
     };
 
     let script_processor = DenoScriptProcessor { build_mode };
