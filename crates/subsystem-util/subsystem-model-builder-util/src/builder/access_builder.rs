@@ -40,6 +40,11 @@ pub fn build_access(
         Some(p) => {
             let value = match p {
                 AstAnnotationParams::Single(default, _) => default,
+                // For Map format annotations (e.g., @access(query=true, mutation=false)),
+                // return restrictive access. These types are typically from @postgres modules
+                // included for type generation, and their actual access control is handled
+                // by the postgres subsystem.
+                AstAnnotationParams::Map(_, _) => return ResolvedAccess::restrictive(),
                 _ => panic!(), // module queries and annotations should only have a single parameter (the default value)
             };
 

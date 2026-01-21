@@ -174,6 +174,11 @@ impl ScriptProcessor for DenoScriptProcessor {
             )?;
         }
 
+        // Only @deno modules have script files to run.
+        if module.annotations.get("deno").is_none() {
+            return Ok((String::new(), vec![]));
+        }
+
         let root = Url::from_file_path(std::fs::canonicalize(module_fs_path).unwrap()).unwrap();
 
         let bundled = bundle_source(module_fs_path).await?;
@@ -194,8 +199,14 @@ pub async fn build(
     base_system: &BaseModelSystem,
     build_mode: BuildMode,
 ) -> Result<Option<ModelDenoSystemWithInterceptors>, ModelBuildingError> {
-    let module_selection_closure =
-        |module: &AstModule<Typed>| module.annotations.get("deno").map(|_| "deno".to_string());
+    let module_selection_closure = |module: &AstModule<Typed>| match (
+        module.annotations.get("deno"),
+        module.annotations.get("postgres"),
+    ) {
+        (Some(_), _) => Some("deno".to_string()),
+        (_, Some(_)) => Some("postgres".to_string()),
+        _ => None,
+    };
 
     let script_processor = DenoScriptProcessor { build_mode };
 
