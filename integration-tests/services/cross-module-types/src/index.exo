@@ -1,0 +1,17 @@
+// Test for cross-module type generation: Deno module using types from Postgres module
+
+@postgres
+module TodoDatabase {
+  @access(true)
+  type Todo {
+    @pk id: Int = autoIncrement()
+    title: String
+    completed: Boolean
+  }
+}
+
+@deno("todo-service.ts")
+module TodoService {
+  @access(true)
+  export query completedTodos(@inject exograph: Exograph): Set<TodoDatabase.Todo>
+}

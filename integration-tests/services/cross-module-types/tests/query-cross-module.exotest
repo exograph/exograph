@@ -1,0 +1,20 @@
+operation: |
+    query {
+        completedTodos {
+            id
+            title
+            completed
+        }
+    }
+response: |
+    {
+        "data": {
+            "completedTodos": [
+                {
+                    "id": 1,
+                    "title": "Test todo",
+                    "completed": true
+                }
+            ]
+        }
+    }

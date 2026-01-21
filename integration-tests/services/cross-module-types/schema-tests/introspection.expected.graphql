@@ -1,0 +1,138 @@
+type BooleanAgg {
+  count: Int
+}
+
+input BooleanFilter {
+  eq: Boolean
+  neq: Boolean
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Todo {
+  id: Int!
+  title: String!
+  completed: Boolean!
+}
+
+"""An aggregate for the `Todo` type."""
+type TodoAgg {
+  id: IntAgg
+  title: StringAgg
+  completed: BooleanAgg
+}
+
+input TodoCreationInput {
+  title: String!
+  completed: Boolean!
+}
+
+"""
+Predicate for the `Todo` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input TodoFilter {
+  id: IntFilter
+  title: StringFilter
+  completed: BooleanFilter
+  and: [TodoFilter!]
+  or: [TodoFilter!]
+  not: TodoFilter
+}
+
+input TodoOrdering {
+  id: Ordering
+  title: Ordering
+  completed: Ordering
+}
+
+input TodoUpdateInput {
+  id: Int
+  title: String
+  completed: Boolean
+}
+
+type Query {
+  completedTodos: [Todo!]!
+
+  """Get a single `Todo` given primary key fields"""
+  todo(id: Int!): Todo
+
+  """
+  Get multiple `Todo`s given the provided `where` filter, order by, limit, and offset
+  """
+  todos(where: TodoFilter, orderBy: [TodoOrdering!], limit: Int, offset: Int): [Todo!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Todo`s given the provided `where` filter
+  """
+  todosAgg(where: TodoFilter): TodoAgg!
+}
+
+type Mutation {
+  """
+  Create a new Todo. Check the `TodoCreationInput` type for the expected shape of the data.
+  """
+  createTodo(data: TodoCreationInput!): Todo!
+
+  """
+  Create multiple Todos. Check the `TodoCreationInput` type for the expected shape of the data.
+  """
+  createTodos(data: [TodoCreationInput!]!): [Todo!]!
+
+  """Delete the Todo with the provided primary key."""
+  deleteTodo(id: Int!): Todo
+
+  """Delete multiple Todos matching the provided `where` filter."""
+  deleteTodos(where: TodoFilter): [Todo!]!
+
+  """
+  Update the Todo with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateTodo(id: Int!, data: TodoUpdateInput!): Todo
+
+  """
+  Update multiple Todos matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateTodos(where: TodoFilter, data: TodoUpdateInput!): [Todo!]!
+}

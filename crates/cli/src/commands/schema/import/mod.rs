@@ -230,6 +230,9 @@ mod tests {
         )
         .await
         .unwrap();
+
+        // Clean up generated directory created by the build process
+        let _ = std::fs::remove_dir_all("generated");
     }
 
     async fn single_test(
