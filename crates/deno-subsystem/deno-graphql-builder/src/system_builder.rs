@@ -36,7 +36,7 @@ use url::Url;
 
 use crate::module_skeleton_generator;
 
-const DENO_VERSION: &str = "2.6.5";
+const DENO_VERSION: &str = "2.6.6";
 
 const DENO_BUNDLE_WARNING: &[u8] = b"is experimental and subject to changes";
 
@@ -48,7 +48,7 @@ async fn bundle_source(module_fs_path: &Path) -> Result<String, ModelBuildingErr
         .arg("--allow-import")
         .arg("--quiet")
         .arg("--node-modules-dir=auto")
-        .arg(module_fs_path.to_string_lossy().as_ref())
+        .arg(module_fs_path.to_string_lossy().to_string())
         .output()
         .await;
 
