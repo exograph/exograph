@@ -1,0 +1,22 @@
+# Test that a user can only query their own todos via RPC
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_todos"
+    }
+  unorderedPaths:
+    - result
+auth: |
+  {
+    "sub": $.u1Id,
+    "role": "user"
+  }
+response: |
+  {
+    "result": [
+      {"id": $.u1TodoIds[0], "title": "U1-T1", "completed": false, "priority": "MEDIUM"},
+      {"id": $.u1TodoIds[1], "title": "U1-T2", "completed": true, "priority": "MEDIUM"},
+      {"id": $.u1TodoIds[2], "title": "U1-T3", "completed": false, "priority": "HIGH"}
+    ]
+  }

@@ -85,9 +85,9 @@ impl<'a> Router<RequestContext<'a>> for RpcRouter {
         };
 
         let stream = try_stream! {
-            macro_rules! emit_id_and_close {
+            macro_rules! emit_jsonrpc_id_and_close {
                 () => {
-                    yield Bytes::from_static(br#", "id": "#);
+                    yield Bytes::from_static(br#", "jsonrpc": "2.0", "id": "#);
 
                     match id {
                         Some(JsonRpcId::String(value)) => {
@@ -109,7 +109,7 @@ impl<'a> Router<RequestContext<'a>> for RpcRouter {
 
             match response {
                 Ok(Some(response)) => {
-                    yield Bytes::from_static(br#"{"jsonrpc": "2.0", "result": "#);
+                    yield Bytes::from_static(br#"{"result": "#);
 
                     match response.response.body {
                         QueryResponseBody::Json(value) => yield Bytes::from(value.to_string()),
@@ -117,7 +117,7 @@ impl<'a> Router<RequestContext<'a>> for RpcRouter {
                         QueryResponseBody::Raw(None) => yield Bytes::from_static(b"null"),
                     };
 
-                    emit_id_and_close!();
+                    emit_jsonrpc_id_and_close!();
                 },
                 Ok(None) => {
                     yield Bytes::from_static(br#"{"error": {"code": "#);
@@ -125,7 +125,7 @@ impl<'a> Router<RequestContext<'a>> for RpcRouter {
                     yield Bytes::from_static(br#", "message": ""#);
                     yield Bytes::from_static(ERROR_METHOD_NOT_FOUND_MESSAGE.as_bytes());
                     yield Bytes::from_static(br#""}"#);
-                    emit_id_and_close!();
+                    emit_jsonrpc_id_and_close!();
                 },
                 Err(err) => {
                     tracing::error!("Error while resolving request: {:?}", err);
@@ -139,7 +139,7 @@ impl<'a> Router<RequestContext<'a>> for RpcRouter {
                             .replace('\n', "; ")
                     );
                     yield Bytes::from_static(br#""}"#);
-                    emit_id_and_close!();
+                    emit_jsonrpc_id_and_close!();
                 },
             }
         };

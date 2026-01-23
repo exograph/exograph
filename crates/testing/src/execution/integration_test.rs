@@ -24,6 +24,7 @@ use futures::future::OptionFuture;
 use jsonwebtoken::{EncodingKey, Header, encode};
 use rand::{Rng, distr::Alphanumeric};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use system_router::{SystemRouter, create_system_router_from_file};
 
@@ -39,8 +40,8 @@ use exo_sql::TransactionMode;
 
 use crate::execution::assertion::assert_using_deno;
 use crate::model::{
-    ApiOperation, ApiOperationInvariant, DatabaseOperation, InitOperation, IntegrationTest,
-    resolve_testvariable,
+    ApiOperation, ApiOperationInvariant, DatabaseOperation, GraphQLOperation, InitOperation,
+    IntegrationTest, Operation, RpcOperation, resolve_testvariable,
 };
 
 use super::assertion::{dynamic_assert_using_deno, evaluate_using_deno};
@@ -54,6 +55,15 @@ struct TestfileContext {
     jwtsecret: String,
     cookies: HashMap<String, String>,
     testvariables: HashMap<String, serde_json::Value>,
+    /// For RPC operations: stores the jsonrpc and id sent in the request
+    /// so we can match them in the response
+    rpc_request_metadata: Option<RpcRequestMetadata>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct RpcRequestMetadata {
+    jsonrpc: String,
+    id: Value,
 }
 
 impl IntegrationTest {
@@ -160,6 +170,23 @@ impl IntegrationTest {
                 extra_envs.insert("OTEL_SERVICE_NAME".to_string(), test_name.clone());
             }
 
+            // Automatically enable RPC API if any test or init operation is RPC
+            // (unless explicitly set by the user)
+            let has_rpc_operation = self.test_operations.iter().any(|op| {
+                matches!(op.operation, Operation::Rpc(_))
+            }) || self.init_operations.iter().any(|init_op| {
+                matches!(init_op, InitOperation::Api(op) if matches!(op.operation, Operation::Rpc(_)))
+            });
+
+            // Automatically set EXO_UNSTABLE_ENABLE_RPC_API=true if needed.
+            // But if the test already set it, respect that, so we can test with disabled RPC too.
+            if has_rpc_operation && !extra_envs.contains_key("EXO_UNSTABLE_ENABLE_RPC_API") {
+                extra_envs.insert(
+                    "EXO_UNSTABLE_ENABLE_RPC_API".to_string(),
+                    "true".to_string(),
+                );
+            }
+
             let router = {
                 let static_loaders = server_common::create_static_loaders();
 
@@ -202,6 +229,7 @@ impl IntegrationTest {
                 jwtsecret,
                 cookies: HashMap::new(),
                 testvariables: HashMap::new(),
+                rpc_request_metadata: None,
             }
         };
 
@@ -337,12 +365,20 @@ async fn assert_api_operation(
     let test_result = match expected_payload {
         Some(expected_payload) => {
             // expected response specified - do an assertion
+            // For RPC operations, metadata is passed to Deno for auto-injection into response
+            let rpc_metadata_value = ctx
+                .rpc_request_metadata
+                .as_ref()
+                .map(serde_json::to_value)
+                .transpose()?;
+
             match dynamic_assert_using_deno(
                 expected_payload,
                 body,
                 &deno_prelude,
                 &ctx.testvariables,
                 &operations_metadata.unordered_paths,
+                rpc_metadata_value.as_ref(),
             )
             .await
             {
@@ -412,21 +448,73 @@ async fn execute_api_operation(
     operation: &ApiOperation,
     ctx: &mut TestfileContext,
 ) -> Result<Value> {
-    let ApiOperation {
-        document,
-        variables,
-        auth,
-        headers,
-        deno_prelude,
-        ..
-    } = operation;
+    // Clear any previous RPC metadata
+    ctx.rpc_request_metadata = None;
 
-    let deno_prelude = deno_prelude.clone().unwrap_or_default();
+    match &operation.operation {
+        Operation::GraphQL(gql_op) => execute_graphql_operation(operation, gql_op, ctx).await,
+        Operation::Rpc(rpc_op) => execute_rpc_operation(operation, rpc_op, ctx).await,
+    }
+}
+
+/// Helper function to add JWT auth to a request if specified
+async fn add_auth_and_headers(
+    request_head: &mut MemoryRequestHead,
+    operation: &ApiOperation,
+    ctx: &TestfileContext,
+    deno_prelude: &str,
+) -> Result<()> {
+    // Add JWT token if specified
+    if let Some(auth) = &operation.auth {
+        let mut auth = evaluate_using_deno(auth, "", &ctx.testvariables).await?;
+        let auth_ref = auth.as_object_mut().unwrap();
+        let epoch_time = SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs();
+
+        // Populate token with expiry information
+        auth_ref.insert("iat".to_string(), json!(epoch_time));
+        auth_ref.insert("exp".to_string(), json!(epoch_time + 60 * 60));
+
+        let token = encode(
+            &Header::default(),
+            &auth,
+            &EncodingKey::from_secret(ctx.jwtsecret.as_ref()),
+        )?;
+        request_head.add_header("Authorization", &format!("Bearer {token}"));
+    }
+
+    request_head.add_header("Content-Type", "application/json");
+
+    // Add extra headers from testfile
+    let headers = OptionFuture::from(operation.headers.as_ref().map(|headers| async {
+        evaluate_using_deno(headers, deno_prelude, &ctx.testvariables).await
+    }))
+    .await
+    .transpose()?;
+
+    if let Some(Value::Object(map)) = headers {
+        for (header, value) in map.iter() {
+            request_head.add_header(
+                header,
+                value.as_str().expect("expected string for header value"),
+            );
+        }
+    }
+
+    Ok(())
+}
+
+async fn execute_graphql_operation(
+    operation: &ApiOperation,
+    gql_op: &GraphQLOperation,
+    ctx: &mut TestfileContext,
+) -> Result<Value> {
+    let deno_prelude = operation.deno_prelude.clone().unwrap_or_default();
 
     // process substitutions in query variables section
     // and extend our collection with the results
     let variables_map: Map<String, Value> = OptionFuture::from(
-        variables
+        gql_op
+            .variables
             .as_ref()
             .map(|vars| evaluate_using_deno(vars, &deno_prelude, &ctx.testvariables)),
     )
@@ -441,7 +529,7 @@ async fn execute_api_operation(
     // remove @bind directives from our query
     // TODO: could we take them out of ExecutableDocument and serialize that instead?
     let query = Regex::new(r"@bind\(.*\)")?
-        .replace_all(document, "")
+        .replace_all(&gql_op.document, "")
         .to_string();
     // similarly, remove @unordered directives
     let query = query.replace("@unordered", "");
@@ -455,42 +543,7 @@ async fn execute_api_operation(
         Some("127.0.0.1".to_string()),
     );
 
-    // add JWT token if specified in testfile
-    if let Some(auth) = auth {
-        let mut auth = evaluate_using_deno(auth, "", &ctx.testvariables).await?;
-        let auth_ref = auth.as_object_mut().unwrap();
-        let epoch_time = SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs();
-
-        // populate token with expiry information
-        auth_ref.insert("iat".to_string(), json!(epoch_time));
-        auth_ref.insert("exp".to_string(), json!(epoch_time + 60 * 60));
-
-        let token = encode(
-            &Header::default(),
-            &auth,
-            &EncodingKey::from_secret(ctx.jwtsecret.as_ref()),
-        )
-        .unwrap();
-        request_head.add_header("Authorization", &format!("Bearer {token}"));
-    };
-
-    request_head.add_header("Content-Type", "application/json");
-
-    // add extra headers from testfile
-    let headers = OptionFuture::from(headers.as_ref().map(|headers| async {
-        evaluate_using_deno(headers, &deno_prelude, &ctx.testvariables).await
-    }))
-    .await
-    .transpose()?;
-
-    if let Some(Value::Object(map)) = headers {
-        for (header, value) in map.iter() {
-            request_head.add_header(
-                header,
-                value.as_str().expect("expected string for header value"),
-            );
-        }
-    }
+    add_auth_and_headers(&mut request_head, operation, ctx, &deno_prelude).await?;
 
     let operations_payload = OperationsPayload {
         operation_name: None,
@@ -502,6 +555,80 @@ async fn execute_api_operation(
     let request = MemoryRequestPayload::new(operations_payload.to_json()?, request_head);
     // run the operation
     Ok(run_query(request, &ctx.router, &mut ctx.cookies).await?)
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+struct JsonRpcRequestBuilder {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub jsonrpc: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<Value>,
+    pub method: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub params: Option<Value>,
+}
+
+async fn execute_rpc_operation(
+    operation: &ApiOperation,
+    rpc_op: &RpcOperation,
+    ctx: &mut TestfileContext,
+) -> Result<Value> {
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    let deno_prelude = operation.deno_prelude.clone().unwrap_or_default();
+
+    // Evaluate payload with variable substitution
+    let evaluated_payload: Value =
+        evaluate_using_deno(&rpc_op.payload, &deno_prelude, &ctx.testvariables).await?;
+
+    // Deserialize into proper JSON-RPC request type for type safety
+    let mut rpc_request: JsonRpcRequestBuilder = serde_json::from_value(evaluated_payload)
+        .context("RPC payload must be a valid JSON-RPC request object")?;
+
+    // Add defaults if missing
+    if rpc_request.jsonrpc.is_none() {
+        rpc_request.jsonrpc = Some("2.0".to_string());
+    }
+
+    if rpc_request.id.is_none() {
+        static REQUEST_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
+        let request_id = REQUEST_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
+        rpc_request.id = Some(json!(request_id));
+    }
+
+    // Store request metadata for automatic response validation
+    // Both fields are guaranteed to be Some due to the checks above (lines 586-594)
+    ctx.rpc_request_metadata = Some(RpcRequestMetadata {
+        jsonrpc: rpc_request
+            .jsonrpc
+            .clone()
+            .expect("jsonrpc should be set by this point"),
+        id: rpc_request
+            .id
+            .clone()
+            .expect("id should be set by this point"),
+    });
+
+    // Convert back to Value for request payload
+    let rpc_request = serde_json::to_value(rpc_request)?;
+
+    // Build request head with JWT auth and headers
+    let mut request_head = MemoryRequestHead::new(
+        HashMap::new(),
+        ctx.cookies.clone(),
+        http::Method::POST,
+        "/rpc".to_string(),
+        Value::default(),
+        Some("127.0.0.1".to_string()),
+    );
+
+    add_auth_and_headers(&mut request_head, operation, ctx, &deno_prelude).await?;
+
+    let request = MemoryRequestPayload::new(rpc_request.clone(), request_head);
+
+    // Execute and return raw JSON-RPC response
+    let rpc_response = run_query(request, &ctx.router, &mut ctx.cookies).await?;
+    Ok(rpc_response)
 }
 
 pub async fn run_query(

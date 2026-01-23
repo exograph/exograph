@@ -11,7 +11,9 @@ use std::{collections::HashMap, path::PathBuf};
 
 mod operations_metadata;
 
-pub use operations_metadata::{OperationMetadata, build_operations_metadata, resolve_testvariable};
+pub use operations_metadata::{
+    OperationMetadata, build_operations_metadata, parse_dot_notation_path, resolve_testvariable,
+};
 
 /// Tests for a particular model
 pub struct TestSuite {
@@ -47,10 +49,26 @@ pub struct DatabaseOperation {
 }
 
 #[derive(Debug, Clone)]
-pub struct ApiOperation {
+pub enum Operation {
+    GraphQL(GraphQLOperation),
+    Rpc(RpcOperation),
+}
+
+#[derive(Debug, Clone)]
+pub struct GraphQLOperation {
     pub document: String,
+    pub variables: Option<String>, // GraphQL-specific field for type safety
+}
+
+#[derive(Debug, Clone)]
+pub struct RpcOperation {
+    pub payload: String, // Full JSON-RPC payload (stringified) - validated during parsing
+}
+
+#[derive(Debug, Clone)]
+pub struct ApiOperation {
+    pub operation: Operation,
     pub metadata: OperationMetadata,
-    pub variables: Option<String>, // stringified
     pub deno_prelude: Option<String>,
     pub auth: Option<String>,    // stringified
     pub headers: Option<String>, // stringified

@@ -19,16 +19,42 @@ use async_graphql_parser::parse_query;
 use serde::Deserialize;
 
 use crate::model::{
-    ApiOperation, ApiOperationInvariant, DatabaseOperation, InitOperation, IntegrationTest,
-    OperationMetadata, build_operations_metadata,
+    ApiOperation, ApiOperationInvariant, DatabaseOperation, GraphQLOperation, InitOperation,
+    IntegrationTest, Operation, OperationMetadata, RpcOperation, build_operations_metadata,
+    parse_dot_notation_path,
 };
 
 // serde file formats
 #[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+enum OperationSpec {
+    GraphQLString(String), // operation: |query { ... }|
+    Typed(TypedOperation), // operation: { type: rpc, ... }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct TypedOperation {
+    #[serde(rename = "type", default = "default_graphql_type")]
+    operation_type: String,
+
+    // RPC fields
+    payload: Option<String>, // Full JSON-RPC payload as JSON string
+    #[serde(rename = "unorderedPaths")]
+    unordered_paths: Option<Vec<String>>,
+
+    // GraphQL object-style (future)
+    query: Option<String>,
+}
+
+fn default_graphql_type() -> String {
+    "graphql".to_string()
+}
+
+#[derive(Deserialize, Debug, Clone)]
 struct TestfileStage {
     pub headers: Option<String>,
     pub deno: Option<String>,
-    pub operation: String,
+    pub operation: OperationSpec,
     pub variable: Option<String>,
     pub auth: Option<String>,
     pub response: Option<String>,
@@ -193,27 +219,90 @@ impl IntegrationTest {
             );
         }
 
-        // validate GraphQL
+        // validate GraphQL and RPC operations
         let test_operation_sequence = stages
             .into_iter()
             .map(|stage| {
-                let operations_metadata = parse_query(&stage.operation)
-                    .map(|gql_document| build_operations_metadata(&gql_document))
-                    .unwrap_or_else(|_| {
-                        eprintln!(
-                            "Invalid GraphQL document; defaulting test variables binding to empty"
-                        );
-                        OperationMetadata::default()
-                    });
+                let (operation_type, operations_metadata) = match &stage.operation {
+                    OperationSpec::GraphQLString(document) => {
+                        let metadata = parse_query(document)
+                            .map(|gql_doc| build_operations_metadata(&gql_doc))
+                            .unwrap_or_else(|_| {
+                                eprintln!(
+                                    "Invalid GraphQL document; defaulting test variables binding to empty"
+                                );
+                                OperationMetadata::default()
+                            });
+                        let variables = stage.variable.clone();
+                        (Operation::GraphQL(GraphQLOperation {
+                            document: document.clone(),
+                            variables
+                        }), metadata)
+                    }
+                    OperationSpec::Typed(typed) => {
+                        match typed.operation_type.as_str() {
+                            "graphql" => {
+                                let document = typed.query.as_ref()
+                                    .ok_or(anyhow::anyhow!("GraphQL operation missing query field"))?
+                                    .clone();
+                                let metadata = parse_query(&document)
+                                    .map(|gql_doc| build_operations_metadata(&gql_doc))
+                                    .unwrap_or_else(|_| {
+                                        eprintln!(
+                                            "Invalid GraphQL document; defaulting test variables binding to empty"
+                                        );
+                                        OperationMetadata::default()
+                                    });
+                                let variables = stage.variable.clone();
+                                (Operation::GraphQL(GraphQLOperation { document, variables }), metadata)
+                            }
+                            "rpc" => {
+                                if stage.variable.is_some() {
+                                    bail!("RPC operations cannot use the 'variable' field. Params should be embedded directly in the JSON-RPC payload.");
+                                }
+
+                                let payload = typed.payload.as_ref()
+                                    .ok_or(anyhow::anyhow!("RPC operation missing payload field"))?
+                                    .clone();
+
+                                // Validate that payload is valid JSON with at least a "method" field
+                                let payload_value: serde_json::Value = serde_json::from_str(&payload)
+                                    .context("RPC payload must be a valid JSON object")?;
+
+                                match payload_value.as_object() {
+                                    Some(obj) if obj.contains_key("method") => { /* Valid */ }
+                                    Some(_) => bail!("RPC payload must have a 'method' field"),
+                                    None => bail!("RPC payload must be a JSON object"),
+                                }
+
+                                let unordered_paths = typed.unordered_paths.as_ref()
+                                    .map(|paths| {
+                                        paths.iter()
+                                            .map(|path| parse_dot_notation_path(path))
+                                            .collect::<Result<HashSet<_>>>()
+                                    })
+                                    .transpose()?
+                                    .unwrap_or_default();
+
+                                let metadata = OperationMetadata {
+                                    bindings: HashMap::new(),
+                                    unordered_paths,
+                                };
+
+                                (Operation::Rpc(RpcOperation { payload }), metadata)
+                            }
+                            other => bail!("Unknown operation type: {}", other)
+                        }
+                    }
+                };
 
                 let invariants =
                     Self::load_invariants(testfile_path, stage.invariants.unwrap_or_default())?;
 
                 Ok(ApiOperation {
-                    document: stage.operation,
+                    operation: operation_type,
                     metadata: operations_metadata,
                     auth: stage.auth,
-                    variables: stage.variable,
                     expected_response: stage.response,
                     headers: stage.headers,
                     deno_prelude: stage.deno,

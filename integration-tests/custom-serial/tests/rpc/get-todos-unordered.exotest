@@ -1,0 +1,17 @@
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_todos"
+    }
+  unorderedPaths:
+    - result
+response: |
+  {
+    "result": [
+      {"id": $.u2todoIds[1], "title": "U2-T2", "completed": false},
+      {"id": $.u1todoIds[0], "title": "U1-T1", "completed": true},
+      {"id": $.u2todoIds[0], "title": "U2-T1", "completed": true},
+      {"id": $.u1todoIds[1], "title": "U1-T2", "completed": false}
+    ]
+  }

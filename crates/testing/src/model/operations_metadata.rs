@@ -9,7 +9,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use async_graphql_parser::{
     Positioned,
     types::{DocumentOperations, ExecutableDocument, FragmentDefinition, Selection, SelectionSet},
@@ -268,6 +268,16 @@ pub fn resolve_testvariable(
     }
 
     recursive_resolve(starting_path, response)
+}
+
+// Parse dot-notation paths for RPC unordered paths
+// Examples: "result", "result.items"
+pub fn parse_dot_notation_path(path: &str) -> Result<Vec<String>> {
+    if path.is_empty() {
+        bail!("Empty path in unorderedPaths");
+    }
+
+    Ok(path.split('.').map(|s| s.to_string()).collect())
 }
 
 #[cfg(test)]

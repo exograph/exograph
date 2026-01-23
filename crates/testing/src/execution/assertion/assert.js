@@ -35,11 +35,22 @@ export async function evaluate(testvariables) {
 //
 // The Rust code replaces `%%JSON%%` with the stringified JSON object to be substituted in.
 // See `dynamic_assert_using_deno` in `mod.rs` for more details.
-export async function dynamic_assert(actualPayload, testvariables, unorderedSelections) {
+export async function dynamic_assert(actualPayload, testvariables, unorderedSelections, rpcMetadata) {
     var $ = testvariables;
 
-    // substituted in from Rust
-    const expectedPayload = "%%JSON%%";
+    // substituted in from Rust (literally replaced in the source code)
+    let expectedPayload = "%%JSON%%";
+
+    // For RPC responses, auto-inject jsonrpc and id if they're missing from the expected payload
+    // This happens AFTER variable substitution, so the expectedPayload is now a proper object
+    if (rpcMetadata && typeof expectedPayload === "object" && expectedPayload !== null && !Array.isArray(expectedPayload)) {
+        if (!expectedPayload.hasOwnProperty("jsonrpc")) {
+            expectedPayload.jsonrpc = rpcMetadata.jsonrpc;
+        }
+        if (!expectedPayload.hasOwnProperty("id")) {
+            expectedPayload.id = rpcMetadata.id;
+        }
+    }
 
     try {
         await assertEquals(expectedPayload, actualPayload, [], unorderedSelections);
