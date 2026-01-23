@@ -1,0 +1,14 @@
+# Test RPC error response for method not found
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "non_existent_method"
+    }
+response: |
+  {
+    "error": {
+      "code": -32601,
+      "message": "Method not found"
+    }
+  }

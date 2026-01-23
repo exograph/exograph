@@ -43,9 +43,11 @@ pub async fn dynamic_assert_using_deno(
     prelude: &str,
     testvariables: &HashMap<String, serde_json::Value>,
     unordeded_selections: &HashSet<Vec<String>>,
+    rpc_metadata: Option<&serde_json::Value>,
 ) -> Result<()> {
     let testvariables_json = serde_json::to_value(testvariables)?;
     let unordeded_selections_json = serde_json::to_value(unordeded_selections)?;
+    let rpc_metadata_json = serde_json::to_value(rpc_metadata)?;
 
     // first substitute expected variables
     let script = ASSERT_JS.to_owned();
@@ -62,6 +64,7 @@ pub async fn dynamic_assert_using_deno(
                 Arg::Serde(actual.clone()),
                 Arg::Serde(testvariables_json),
                 Arg::Serde(unordeded_selections_json),
+                Arg::Serde(rpc_metadata_json),
             ],
         )
         .await
@@ -216,6 +219,7 @@ mod tests {
             "",
             &testvariables,
             &HashSet::new(),
+            None,
         )
         .await
         .unwrap();
@@ -269,6 +273,7 @@ mod tests {
             "",
             &testvariables,
             &HashSet::new(),
+            None,
         )
         .await
         .unwrap_err();
@@ -299,6 +304,7 @@ mod tests {
             "",
             &testvariables,
             &HashSet::new(),
+            None,
         )
         .await
         .unwrap_err();
@@ -335,6 +341,7 @@ mod tests {
             prelude,
             &testvariables,
             &HashSet::new(),
+            None,
         )
         .await
         .unwrap();
@@ -395,6 +402,7 @@ mod tests {
             &vec![vec!["data".to_string(), "products".to_string()]]
                 .into_iter()
                 .collect(),
+            None,
         )
         .await
         .unwrap();
@@ -424,6 +432,7 @@ mod tests {
                 "",
                 &testvariables,
                 &unordered_selection,
+                None,
             )
             .await;
             assert!(result.is_err(), "Dynamic assert should fail");
@@ -436,6 +445,189 @@ mod tests {
             .await;
 
             assert!(result.is_err(), "Assert should fail");
+        }
+    }
+
+    #[tokio::test]
+    async fn rpc_auto_inject_fields() {
+        // Test various combinations of missing/present jsonrpc and id fields
+        let actual = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 42,
+            "result": {
+                "items": [1, 2, 3]
+            }
+        });
+
+        let rpc_metadata = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 42
+        });
+
+        let test_cases = vec![
+            (
+                "both fields missing",
+                r#"{ "result": { "items": [1, 2, 3] } }"#,
+            ),
+            (
+                "only jsonrpc present",
+                r#"{ "jsonrpc": "2.0", "result": { "items": [1, 2, 3] } }"#,
+            ),
+            (
+                "only id present",
+                r#"{ "id": 42, "result": { "items": [1, 2, 3] } }"#,
+            ),
+            (
+                "both fields present",
+                r#"{ "jsonrpc": "2.0", "id": 42, "result": { "items": [1, 2, 3] } }"#,
+            ),
+        ];
+
+        for (description, expected) in test_cases {
+            dynamic_assert_using_deno(
+                expected,
+                actual.clone(),
+                "",
+                &HashMap::new(),
+                &HashSet::new(),
+                Some(&rpc_metadata),
+            )
+            .await
+            .unwrap_or_else(|e| panic!("Failed for '{}': {}", description, e));
+        }
+    }
+
+    #[tokio::test]
+    async fn rpc_detect_wrong_values() {
+        // Test that wrong values are detected and fail appropriately
+        let actual = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 42,
+            "result": {
+                "items": [1, 2, 3]
+            }
+        });
+
+        let rpc_metadata = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 42
+        });
+
+        let test_cases = vec![
+            (
+                "wrong jsonrpc",
+                r#"{ "jsonrpc": "1.0", "id": 42, "result": { "items": [1, 2, 3] } }"#,
+                "expected 1.0, got 2.0",
+            ),
+            (
+                "wrong id",
+                r#"{ "jsonrpc": "2.0", "id": 99, "result": { "items": [1, 2, 3] } }"#,
+                "expected 99, got 42",
+            ),
+        ];
+
+        for (description, expected, error_msg) in test_cases {
+            let err = dynamic_assert_using_deno(
+                expected,
+                actual.clone(),
+                "",
+                &HashMap::new(),
+                &HashSet::new(),
+                Some(&rpc_metadata),
+            )
+            .await
+            .unwrap_err();
+
+            assert!(
+                err.to_string().contains(error_msg),
+                "Failed for '{}': expected error containing '{}', got '{}'",
+                description,
+                error_msg,
+                err
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn rpc_edge_cases() {
+        // Test edge cases: variable substitution, nested objects, arrays, errors
+        let rpc_metadata = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 42
+        });
+
+        #[allow(clippy::type_complexity)]
+        let test_cases: Vec<(
+            &str,
+            &str,
+            serde_json::Value,
+            HashMap<String, serde_json::Value>,
+            Option<&serde_json::Value>,
+        )> = vec![
+            (
+                "variable substitution",
+                r#"{ "result": { "items": $.items } }"#,
+                serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": 42,
+                    "result": {
+                        "items": [1, 2, 3]
+                    }
+                }),
+                vec![("items".to_owned(), serde_json::json!([1, 2, 3]))]
+                    .into_iter()
+                    .collect(),
+                Some(&rpc_metadata),
+            ),
+            (
+                "nested objects with id field",
+                r#"{ "result": [{"id": 1, "name": "foo"}, {"id": 2, "name": "bar"}] }"#,
+                serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": 42,
+                    "result": [{"id": 1, "name": "foo"}, {"id": 2, "name": "bar"}]
+                }),
+                HashMap::new(),
+                Some(&rpc_metadata),
+            ),
+            (
+                "array response - no injection",
+                r#"[{"id": 1, "name": "foo"}, {"id": 2, "name": "bar"}]"#,
+                serde_json::json!([{"id": 1, "name": "foo"}, {"id": 2, "name": "bar"}]),
+                HashMap::new(),
+                Some(&rpc_metadata),
+            ),
+            (
+                "error response",
+                r#"{ "error": { "code": -32600, "message": "Invalid Request" } }"#,
+                serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": 42,
+                    "error": {"code": -32600, "message": "Invalid Request"}
+                }),
+                HashMap::new(),
+                Some(&rpc_metadata),
+            ),
+            (
+                "GraphQL response - no injection",
+                r#"{ "data": { "items": [1, 2, 3] } }"#,
+                serde_json::json!({"data": {"items": [1, 2, 3]}}),
+                HashMap::new(),
+                None,
+            ),
+        ];
+
+        for (description, expected, actual, testvariables, metadata) in test_cases {
+            dynamic_assert_using_deno(
+                expected,
+                actual,
+                "",
+                &testvariables,
+                &HashSet::new(),
+                metadata,
+            )
+            .await
+            .unwrap_or_else(|e| panic!("Failed for '{}': {}", description, e));
         }
     }
 }
