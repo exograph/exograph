@@ -55,24 +55,31 @@ pub(crate) fn predicate_from_name<C: PartialEq + ParamEquality>(
     op_name: &str,
     lhs: C,
     rhs: C,
-) -> Predicate<C> {
+) -> Result<Predicate<C>, PostgresExecutionError> {
     match op_name {
-        "eq" => Predicate::Eq(lhs, rhs),
-        "neq" => Predicate::Neq(lhs, rhs),
-        "lt" => Predicate::Lt(lhs, rhs),
-        "lte" => Predicate::Lte(lhs, rhs),
-        "gt" => Predicate::Gt(lhs, rhs),
-        "gte" => Predicate::Gte(lhs, rhs),
-        "like" => Predicate::StringLike(lhs, rhs, CaseSensitivity::Sensitive),
-        "ilike" => Predicate::StringLike(lhs, rhs, CaseSensitivity::Insensitive),
-        "startsWith" => Predicate::StringStartsWith(lhs, rhs),
-        "endsWith" => Predicate::StringEndsWith(lhs, rhs),
-        "contains" => Predicate::JsonContains(lhs, rhs),
-        "containedBy" => Predicate::JsonContainedBy(lhs, rhs),
-        "matchKey" => Predicate::JsonMatchKey(lhs, rhs),
-        "matchAnyKey" => Predicate::JsonMatchAnyKey(lhs, rhs),
-        "matchAllKeys" => Predicate::JsonMatchAllKeys(lhs, rhs),
-        _ => panic!("Unknown predicate operator: {op_name}"),
+        "eq" => Ok(Predicate::Eq(lhs, rhs)),
+        "neq" => Ok(Predicate::Neq(lhs, rhs)),
+        "lt" => Ok(Predicate::Lt(lhs, rhs)),
+        "lte" => Ok(Predicate::Lte(lhs, rhs)),
+        "gt" => Ok(Predicate::Gt(lhs, rhs)),
+        "gte" => Ok(Predicate::Gte(lhs, rhs)),
+        "like" => Ok(Predicate::StringLike(lhs, rhs, CaseSensitivity::Sensitive)),
+        "ilike" => Ok(Predicate::StringLike(
+            lhs,
+            rhs,
+            CaseSensitivity::Insensitive,
+        )),
+        "startsWith" => Ok(Predicate::StringStartsWith(lhs, rhs)),
+        "endsWith" => Ok(Predicate::StringEndsWith(lhs, rhs)),
+        "contains" => Ok(Predicate::JsonContains(lhs, rhs)),
+        "containedBy" => Ok(Predicate::JsonContainedBy(lhs, rhs)),
+        "matchKey" => Ok(Predicate::JsonMatchKey(lhs, rhs)),
+        "matchAnyKey" => Ok(Predicate::JsonMatchAnyKey(lhs, rhs)),
+        "matchAllKeys" => Ok(Predicate::JsonMatchAllKeys(lhs, rhs)),
+        _ => Err(PostgresExecutionError::Validation(
+            op_name.into(),
+            format!("Unknown predicate operator: {op_name}"),
+        )),
     }
 }
 

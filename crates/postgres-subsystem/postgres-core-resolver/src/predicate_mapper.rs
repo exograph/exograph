@@ -106,10 +106,18 @@ fn map_predicate<'a, F: FieldAccessChecker>(
                                     Some(column_path_link) => {
                                         match &column_path_link.self_column_ids()[..] {
                                             [column_id] => *column_id,
-                                            _ => panic!("Expected a single column id"),
+                                            _ => {
+                                                return Err(PostgresExecutionError::Generic(
+                                                    "Expected a single column id".into(),
+                                                ));
+                                            }
                                         }
                                     }
-                                    None => panic!("Expected column path link"),
+                                    None => {
+                                        return Err(PostgresExecutionError::Generic(
+                                            "Expected column path link".into(),
+                                        ));
+                                    }
                                 };
 
                                 let op_value = literal_column_path(
@@ -131,9 +139,17 @@ fn map_predicate<'a, F: FieldAccessChecker>(
                                                     None
                                                 }
                                             })
-                                            .expect("Expected a matching column path link")
+                                            .ok_or_else(|| {
+                                                PostgresExecutionError::Generic(
+                                                    "Expected a matching column path link".into(),
+                                                )
+                                            })?
                                     }
-                                    None => panic!("Expected column path link"),
+                                    None => {
+                                        return Err(PostgresExecutionError::Generic(
+                                            "Expected column path link".into(),
+                                        ));
+                                    }
                                 };
 
                                 let param_column_path =
@@ -171,7 +187,13 @@ fn map_predicate<'a, F: FieldAccessChecker>(
                                     let distance = op_value.get("distance").unwrap();
                                     match distance {
                                         Val::Object(map) => {
-                                            assert!(map.len() == 1);
+                                            if map.len() != 1 {
+                                                return Err(PostgresExecutionError::Validation(
+                                                    "distance".into(),
+                                                    "Distance must have exactly one comparator"
+                                                        .into(),
+                                                ));
+                                            }
                                             let operator = map.keys().next().unwrap();
                                             let threshold = map.values().next().unwrap();
 
@@ -233,14 +255,13 @@ fn map_predicate<'a, F: FieldAccessChecker>(
                                         override_op_value_type,
                                         &parent_column_path,
                                         database,
-                                    )
-                                    .expect("Could not get operands");
+                                    )?;
 
-                                    Ok(predicate_from_name(
+                                    predicate_from_name(
                                         &parameter.name,
                                         op_key_column,
                                         op_value_column,
-                                    ))
+                                    )
                                 }
                             }
                             None => Ok(AbstractPredicate::True),
@@ -406,15 +427,17 @@ fn operands<'a>(
     parent_column_path: &Option<PhysicalColumnPath>,
     database: &'a Database,
 ) -> Result<(ColumnPath, ColumnPath), PostgresExecutionError> {
-    let op_param_column_path = param
-        .column_path_link
-        .as_ref()
-        .expect("Could not find column path link while forming operands");
+    let op_param_column_path = param.column_path_link.as_ref().ok_or_else(|| {
+        PostgresExecutionError::Generic(
+            "Could not find column path link while forming operands".into(),
+        )
+    })?;
     let op_physical_column_ids = op_param_column_path.self_column_ids();
-    assert!(
-        op_physical_column_ids.len() == 1,
-        "Operand must be non-composite columns"
-    );
+    if op_physical_column_ids.len() != 1 {
+        return Err(PostgresExecutionError::Generic(
+            "Operand must be non-composite columns".into(),
+        ));
+    }
     let op_physical_column_id = op_physical_column_ids[0];
     let op_physical_column = op_physical_column_id.get_column(database);
 
