@@ -22,8 +22,8 @@ use core_model::{
 };
 use core_plugin_shared::{error::ModelSerializationError, system_serializer::SystemSerializer};
 
+use postgres_core_model::subsystem::PostgresCoreSubsystem;
 use postgres_core_model::types::EntityType;
-use postgres_core_model::{predicate::PredicateParameterType, subsystem::PostgresCoreSubsystem};
 
 use serde::{Deserialize, Serialize};
 
@@ -31,7 +31,6 @@ use serde::{Deserialize, Serialize};
 pub struct PostgresGraphQLSubsystem {
     // query related
     pub order_by_types: SerializableSlab<OrderByParameterType>,
-    pub predicate_types: SerializableSlab<PredicateParameterType>,
 
     pub pk_queries: MappedArena<UniqueQuery>,
     pub collection_queries: MappedArena<CollectionQuery>,
@@ -111,9 +110,12 @@ impl PostgresGraphQLSubsystem {
             all_type_definitions.push(parameter_type.1.type_definition(self))
         });
 
-        self.predicate_types.iter().for_each(|parameter_type| {
-            all_type_definitions.push(parameter_type.1.type_definition(self))
-        });
+        self.core_subsystem
+            .predicate_types
+            .iter()
+            .for_each(|parameter_type| {
+                all_type_definitions.push(parameter_type.1.type_definition(self))
+            });
 
         self.mutation_types.iter().for_each(|parameter_type| {
             all_type_definitions.push(parameter_type.1.type_definition(self))
@@ -148,7 +150,6 @@ impl Default for PostgresGraphQLSubsystem {
     fn default() -> Self {
         Self {
             order_by_types: SerializableSlab::new(),
-            predicate_types: SerializableSlab::new(),
             pk_queries: MappedArena::default(),
             collection_queries: MappedArena::default(),
             aggregate_queries: MappedArena::default(),

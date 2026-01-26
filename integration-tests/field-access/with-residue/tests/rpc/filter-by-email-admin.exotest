@@ -1,0 +1,20 @@
+# Admin can filter by email field (has full access)
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_people",
+      "params": {
+        "where": {"email": {"eq": "p1@example.com"}}
+      }
+    }
+auth: |
+  {
+    "role": "admin"
+  }
+response: |
+  {
+    "result": [
+      {"id": $.p1id, "name": "P1", "age": 10, "authId": 1, "email": "p1@example.com"}
+    ]
+  }

@@ -10,16 +10,15 @@
 use async_trait::async_trait;
 use futures::future::join_all;
 
-use crate::util::to_pg_vector;
-use crate::{
-    auth_util::check_retrieve_access, column_path_util::to_column_path, sql_mapper::SQLMapper,
-};
+use crate::{auth_util::check_retrieve_access, sql_mapper::SQLMapper};
 use common::context::RequestContext;
 use common::value::Val;
 use exo_sql::{
     AbstractOrderBy, AbstractOrderByExpr, AbstractPredicate, Ordering, PhysicalColumnPath,
 };
+use postgres_core_resolver::column_path_util::to_column_path;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
+use postgres_core_resolver::predicate_util::to_pg_vector;
 
 use exo_sql::{ColumnPath, SQLParamContainer, VectorDistanceFunction};
 

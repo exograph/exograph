@@ -13,7 +13,6 @@ mod abstract_operation_resolver;
 mod access;
 mod aggregate_query;
 mod auth_util;
-mod column_path_util;
 mod create_data_param_mapper;
 mod limit_offset_mapper;
 mod operation_resolver;

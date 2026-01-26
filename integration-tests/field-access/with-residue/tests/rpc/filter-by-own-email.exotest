@@ -1,0 +1,20 @@
+# User can filter by email and see their own record (self.authId == AuthContext.id)
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_people",
+      "params": {
+        "where": {"email": {"eq": "p1@example.com"}}
+      }
+    }
+auth: |
+  {
+    "sub": 1
+  }
+response: |
+  {
+    "result": [
+      {"id": $.p1id, "name": "P1", "age": 10, "authId": 1, "email": "p1@example.com"}
+    ]
+  }

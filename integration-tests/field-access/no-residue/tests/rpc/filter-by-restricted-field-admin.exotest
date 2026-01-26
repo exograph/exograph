@@ -1,0 +1,21 @@
+# Test that admin can filter by field with field-level access control
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_customers",
+      "params": {
+        "where": {"internalTier": {"eq": 1}}
+      }
+    }
+auth: |
+  {
+    "sub": null,
+    "role": "admin"
+  }
+response: |
+  {
+    "result": [
+      {"id": $.c1id, "name": "C1", "userId": 1, "internalTier": 1}
+    ]
+  }

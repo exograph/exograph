@@ -32,8 +32,8 @@ use postgres_graphql_model::{
 use crate::{
     auth_util::check_access,
     sql_mapper::{SQLMapper, SQLOperationKind},
-    util::get_argument_field,
 };
+use postgres_core_resolver::predicate_util::get_argument_field;
 
 use postgres_core_resolver::{cast, postgres_execution_error::PostgresExecutionError};
 

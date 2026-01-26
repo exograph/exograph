@@ -9,14 +9,17 @@ use core_resolver::plugin::SubsystemRpcResolver;
 use core_resolver::plugin::subsystem_rpc_resolver::{SubsystemRpcError, SubsystemRpcResponse};
 use core_resolver::{QueryResponse, QueryResponseBody};
 use exo_sql::{
-    AbstractOperation, AbstractSelect, AliasedSelectionElement, DatabaseExecutor, Selection,
-    SelectionCardinality, SelectionElement,
+    AbstractOperation, AbstractPredicate, AbstractSelect, AliasedSelectionElement,
+    DatabaseExecutor, Selection, SelectionCardinality, SelectionElement,
 };
 use postgres_core_model::relation::PostgresRelation;
 use postgres_core_resolver::database_helper::extractor;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_rpc_model::operation::PostgresOperationKind;
 use postgres_rpc_model::{operation::PostgresOperation, subsystem::PostgresRpcSubsystemWithRouter};
+
+use postgres_core_resolver::predicate_mapper::compute_predicate;
+use postgres_core_resolver::predicate_util::json_to_val;
 
 pub struct PostgresSubsystemRpcResolver {
     pub id: &'static str,
@@ -34,13 +37,15 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
     async fn resolve<'a>(
         &self,
         request_method: &str,
-        _request_params: &Option<serde_json::Value>,
+        request_params: &Option<serde_json::Value>,
         request_context: &'a RequestContext<'a>,
     ) -> Result<Option<SubsystemRpcResponse>, SubsystemRpcError> {
         let operation = self.subsystem.method_operation_map.get(request_method);
 
         if let Some(operation) = operation {
-            let operation = operation.resolve(request_context, &self.subsystem).await?;
+            let operation = operation
+                .resolve(request_params, request_context, &self.subsystem)
+                .await?;
 
             let mut tx = request_context
                 .system_context
@@ -86,6 +91,7 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
 trait OperationResolver {
     async fn resolve<'a>(
         &self,
+        request_params: &Option<serde_json::Value>,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresRpcSubsystemWithRouter,
     ) -> Result<AbstractOperation, SubsystemRpcError>;
@@ -95,6 +101,7 @@ trait OperationResolver {
 impl OperationResolver for PostgresOperation {
     async fn resolve<'a>(
         &self,
+        request_params: &Option<serde_json::Value>,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresRpcSubsystemWithRouter,
     ) -> Result<AbstractOperation, SubsystemRpcError> {
@@ -122,6 +129,28 @@ impl OperationResolver for PostgresOperation {
             .map(|p| p.0)
             .resolve();
 
+        // Extract the "where" parameter from request_params and compute the user predicate
+        let user_predicate = if let Some(params) = request_params {
+            if let Some(where_value) = params.get("where") {
+                let where_val = json_to_val(where_value);
+                compute_predicate(
+                    &self.predicate_param,
+                    &where_val,
+                    &subsystem.core_subsystem,
+                    request_context,
+                )
+                .await
+                .map_err(from_postgres_error)?
+            } else {
+                AbstractPredicate::True
+            }
+        } else {
+            AbstractPredicate::True
+        };
+
+        // Combine user predicate with access predicate
+        let combined_predicate = AbstractPredicate::and(user_predicate, access_predicate);
+
         let selection = Selection::Json(
             entity_type
                 .fields
@@ -142,7 +171,7 @@ impl OperationResolver for PostgresOperation {
         let select = AbstractSelect {
             table_id: entity_type.table_id,
             selection,
-            predicate: access_predicate,
+            predicate: combined_predicate,
             order_by: None,
             offset: None,
             limit: None,

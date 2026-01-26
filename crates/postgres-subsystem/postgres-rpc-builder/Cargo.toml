@@ -5,6 +5,7 @@ edition.workspace = true
 publish = false
 
 [dependencies]
+core-model = { path = "../../core-subsystem/core-model" }
 postgres-core-model = { path = "../postgres-core-model" }
 postgres-rpc-model = { path = "../postgres-rpc-model" }
 postgres-core-builder = { path = "../postgres-core-builder" }

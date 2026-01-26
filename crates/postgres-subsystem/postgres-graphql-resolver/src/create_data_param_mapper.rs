@@ -127,7 +127,8 @@ async fn map_single<'a>(
 
     let mapped = stream::iter(&data_type.fields)
         .map(|field| async move {
-            let field_arg = super::util::get_argument_field(argument, &field.name);
+            let field_arg =
+                postgres_core_resolver::predicate_util::get_argument_field(argument, &field.name);
 
             // If the argument has not been supplied, but has a default value, extract it from the context
             let field_arg = match field_arg {
@@ -241,7 +242,10 @@ async fn map_self_column<'a>(
                 })
                 .expect("Foreign key field not found");
 
-            match super::util::get_argument_field(argument, foreign_type_pk_field_name) {
+            match postgres_core_resolver::predicate_util::get_argument_field(
+                argument,
+                foreign_type_pk_field_name,
+            ) {
                 Some(foreign_type_pk_arg) => foreign_type_pk_arg,
                 None => {
                     // This can happen if we used a context value for a foreign key

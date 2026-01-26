@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use postgres_core_model::predicate::PredicateParameter;
 use postgres_core_model::types::EntityType;
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +19,7 @@ use core_model::mapped_arena::SerializableSlabIndex;
 pub struct PostgresOperation {
     pub kind: PostgresOperationKind,
     pub entity_type_id: SerializableSlabIndex<EntityType>,
-    // TODO: Add parameter model
+    pub predicate_param: PredicateParameter,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
