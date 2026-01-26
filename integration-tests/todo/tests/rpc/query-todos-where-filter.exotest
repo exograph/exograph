@@ -1,0 +1,26 @@
+# Test that where filter works with RPC
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_todos",
+      "params": {
+        "where": {"completed": {"eq": false}}
+      }
+    }
+  unorderedPaths:
+    - result
+auth: |
+  {
+    "sub": null,
+    "role": "admin"
+  }
+response: |
+  {
+    "result": [
+      {"id": $.u1TodoIds[0], "title": "U1-T1", "completed": false, "priority": "MEDIUM"},
+      {"id": $.u1TodoIds[2], "title": "U1-T3", "completed": false, "priority": "HIGH"},
+      {"id": $.u2TodoIds[0], "title": "U2-T1", "completed": false, "priority": "MEDIUM"},
+      {"id": $.u2TodoIds[2], "title": "U2-T3", "completed": false, "priority": "LOW"}
+    ]
+  }

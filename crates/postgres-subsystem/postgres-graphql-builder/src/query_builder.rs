@@ -30,12 +30,12 @@ use postgres_core_model::{
     types::{EntityRepresentation, EntityType, PostgresField, PostgresPrimitiveType},
 };
 
-use crate::predicate_builder::get_unique_filter_type_name;
-
 use crate::shallow::Shallow;
 use postgres_core_builder::aggregate_type_builder::aggregate_type_name;
+use postgres_core_builder::predicate_builder::{get_filter_type_name, get_unique_filter_type_name};
+use postgres_core_builder::shallow::Shallow as CoreShallow;
 
-use super::{order_by_type_builder, predicate_builder, system_builder::SystemContextBuilding};
+use super::{order_by_type_builder, system_builder::SystemContextBuilding};
 
 use super::naming::ToPostgresQueryName;
 use postgres_core_builder::resolved_type::{ResolvedCompositeType, ResolvedType, ResolvedTypeEnv};
@@ -114,25 +114,25 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
 
         expand_pk_query(
             entity_type,
-            &building.predicate_types,
+            &building.core_subsystem.predicate_types,
             &mut building.pk_queries,
             &building.core_subsystem.database,
         );
         expand_collection_query(
             entity_type,
             &building.core_subsystem.primitive_types,
-            &building.predicate_types,
+            &building.core_subsystem.predicate_types,
             &building.order_by_types,
             &mut building.collection_queries,
         );
         expand_aggregate_query(
             entity_type,
-            &building.predicate_types,
+            &building.core_subsystem.predicate_types,
             &mut building.aggregate_queries,
         );
         expand_unique_queries(
             entity_type,
-            &building.predicate_types,
+            &building.core_subsystem.predicate_types,
             &mut building.unique_queries,
             resolved_env,
             &building.core_subsystem.database,
@@ -416,7 +416,7 @@ pub fn collection_predicate_param(
     entity_type: &EntityType,
     predicate_types: &MappedArena<PredicateParameterType>,
 ) -> PredicateParameter {
-    let param_type_name = predicate_builder::get_filter_type_name(&entity_type.name);
+    let param_type_name = get_filter_type_name(&entity_type.name);
     let param_type_id = predicate_types.get_id(&param_type_name).unwrap();
 
     let param_type = PredicateParameterTypeWrapper {

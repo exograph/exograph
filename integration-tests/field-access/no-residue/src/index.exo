@@ -10,9 +10,9 @@ module CustomerDatabase {
     @pk id: Int = autoIncrement()
     name: String
     userId: Int = AuthContext.id
-    
+
     @access(
-      query=AuthContext.role == "tier-querier" || AuthContext.role == "admin", 
+      query=AuthContext.role == "tier-querier" || AuthContext.role == "admin",
       create=AuthContext.role == "tier-creator" || AuthContext.role == "admin",
       update=AuthContext.role == "tier-updater" || AuthContext.role == "admin")
     // @access(AuthContext.role == "admin")

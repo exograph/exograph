@@ -18,6 +18,7 @@ use core_model_builder::{builder::system_builder::BaseModelSystem, error::ModelB
 use postgres_core_model::{
     access::PrecheckAccessPrimitiveExpression,
     aggregate::AggregateType,
+    predicate::PredicateParameterType,
     subsystem::PostgresCoreSubsystem,
     types::{EntityType, PostgresPrimitiveType},
     vector_distance::VectorDistanceType,
@@ -27,7 +28,7 @@ use postgres_core_model::access::DatabaseAccessPrimitiveExpression;
 
 use exo_sql::Database;
 
-use crate::{aggregate_type_builder, database_builder, type_builder};
+use crate::{aggregate_type_builder, database_builder, predicate_builder, type_builder};
 
 use crate::resolved_type::ResolvedTypeEnv;
 
@@ -49,6 +50,8 @@ fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBui
     type_builder::build_shallow(resolved_env, building);
 
     aggregate_type_builder::build_shallow(resolved_env, building);
+
+    predicate_builder::build_shallow(&resolved_env.resolved_types, building);
 }
 
 fn build_expanded(
@@ -60,6 +63,8 @@ fn build_expanded(
 
     aggregate_type_builder::build_expanded(resolved_env, building)?;
 
+    predicate_builder::build_expanded(resolved_env, building);
+
     Ok(())
 }
 
@@ -68,6 +73,7 @@ pub struct SystemContextBuilding {
     pub primitive_types: MappedArena<PostgresPrimitiveType>,
     pub entity_types: MappedArena<EntityType>,
     pub aggregate_types: MappedArena<AggregateType>,
+    pub predicate_types: MappedArena<PredicateParameterType>,
     pub vector_distance_types: MappedArena<VectorDistanceType>,
 
     pub database_access_expressions:
@@ -85,6 +91,7 @@ impl SystemContextBuilding {
             primitive_types: self.primitive_types.values(),
             entity_types: self.entity_types.values(),
             aggregate_types: self.aggregate_types.values(),
+            predicate_types: self.predicate_types.values(),
 
             database: self.database,
 

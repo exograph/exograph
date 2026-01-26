@@ -9,7 +9,6 @@
 
 use super::predicate_mapper::compute_predicate;
 use super::{auth_util::check_access, sql_mapper::SQLOperationKind, util::Arguments};
-use crate::util::to_pg_vector;
 use crate::{
     operation_resolver::OperationSelectionResolver, order_by_mapper::OrderByParameterInput,
     sql_mapper::extract_and_map,
@@ -32,6 +31,7 @@ use postgres_core_model::{
     types::{EntityType, PostgresField},
 };
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
+use postgres_core_resolver::predicate_util::to_pg_vector;
 use postgres_graphql_model::query::UniqueQuery;
 use postgres_graphql_model::{
     order::OrderByParameter,

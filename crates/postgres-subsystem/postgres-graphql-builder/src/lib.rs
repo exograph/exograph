@@ -16,7 +16,6 @@ mod mutation_builder;
 mod naming;
 mod order_by_type_builder;
 mod plugin;
-mod predicate_builder;
 mod query_builder;
 mod reference_input_type_builder;
 mod system_builder;

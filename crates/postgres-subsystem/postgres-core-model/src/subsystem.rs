@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     access::{DatabaseAccessPrimitiveExpression, PrecheckAccessPrimitiveExpression},
     aggregate::AggregateType,
+    predicate::PredicateParameterType,
     types::{EntityType, PostgresPrimitiveType},
 };
 
@@ -29,6 +30,7 @@ pub struct PostgresCoreSubsystem {
     pub entity_types: SerializableSlab<EntityType>,
 
     pub aggregate_types: SerializableSlab<AggregateType>,
+    pub predicate_types: SerializableSlab<PredicateParameterType>,
 
     pub database_access_expressions:
         SerializableSlab<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
@@ -61,6 +63,7 @@ impl Default for PostgresCoreSubsystem {
             primitive_types: SerializableSlab::new(),
             entity_types: SerializableSlab::new(),
             aggregate_types: SerializableSlab::new(),
+            predicate_types: SerializableSlab::new(),
 
             database_access_expressions: SerializableSlab::new(),
             precheck_expressions: SerializableSlab::new(),

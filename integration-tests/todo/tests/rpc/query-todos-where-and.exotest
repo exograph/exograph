@@ -1,0 +1,23 @@
+# Test that where filter with AND logical operator works with RPC
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_todos",
+      "params": {
+        "where": {"and": [{"completed": {"eq": false}}, {"priority": {"eq": "HIGH"}}]}
+      }
+    }
+  unorderedPaths:
+    - result
+auth: |
+  {
+    "sub": null,
+    "role": "admin"
+  }
+response: |
+  {
+    "result": [
+      {"id": $.u1TodoIds[2], "title": "U1-T3", "completed": false, "priority": "HIGH"}
+    ]
+  }

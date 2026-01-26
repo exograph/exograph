@@ -8062,6 +8062,7 @@ dependencies = [
 name = "postgres-rpc-builder"
 version = "0.27.0"
 dependencies = [
+ "core-model",
  "core-model-builder",
  "core-plugin-shared",
  "postgres-core-builder",

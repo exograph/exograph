@@ -118,7 +118,7 @@ impl MutationBuilder for UpdateMutationBuilder {
             data_param: Self::data_param(entity_type, building, false),
             predicate_params: query_builder::pk_predicate_params(
                 entity_type,
-                &building.predicate_types,
+                &building.core_subsystem.predicate_types,
                 &building.core_subsystem.database,
             ),
         }
@@ -143,7 +143,7 @@ impl MutationBuilder for UpdateMutationBuilder {
             data_param: Self::data_param(entity_type, building, true),
             predicate_params: vec![query_builder::collection_predicate_param(
                 entity_type,
-                &building.predicate_types,
+                &building.core_subsystem.predicate_types,
             )],
         }
     }

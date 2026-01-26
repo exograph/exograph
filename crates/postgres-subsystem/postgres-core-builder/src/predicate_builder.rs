@@ -24,14 +24,14 @@ use postgres_core_model::{relation::PostgresRelation, types::EntityRepresentatio
 
 use super::system_builder::SystemContextBuilding;
 
-use postgres_core_builder::shallow::Shallow;
-use postgres_core_builder::type_provider::PRIMITIVE_TYPE_PROVIDER_REGISTRY;
-use postgres_core_builder::{
+use crate::shallow::Shallow;
+use crate::type_provider::PRIMITIVE_TYPE_PROVIDER_REGISTRY;
+use crate::{
     resolved_type::{ResolvedCompositeType, ResolvedType, ResolvedTypeEnv},
     type_provider::VectorTypeHint,
 };
 
-impl crate::shallow::Shallow for PredicateParameter {
+impl Shallow for PredicateParameter {
     fn shallow() -> Self {
         Self {
             name: String::new(),
@@ -43,7 +43,7 @@ impl crate::shallow::Shallow for PredicateParameter {
     }
 }
 
-impl crate::shallow::Shallow for PredicateParameterTypeWrapper {
+impl Shallow for PredicateParameterTypeWrapper {
     fn shallow() -> Self {
         Self {
             name: String::new(),
@@ -139,7 +139,7 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
 }
 
 pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-    for (_, primitive_type) in building.core_subsystem.primitive_types.iter() {
+    for (_, primitive_type) in building.primitive_types.iter() {
         let param_type_name = get_filter_type_name(&primitive_type.name);
         let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
@@ -147,7 +147,7 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
         building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
     }
 
-    for (entity_type_id, entity_type) in building.core_subsystem.entity_types.iter() {
+    for (entity_type_id, entity_type) in building.entity_types.iter() {
         if entity_type.representation == EntityRepresentation::Json {
             continue;
         }
@@ -236,7 +236,7 @@ fn expand_entity_type(
     ) -> bool {
         let field_type_id = &field.typ.innermost().type_id;
         if let TypeIndex::Composite(index) = field_type_id {
-            let field_type = &building.core_subsystem.entity_types[*index];
+            let field_type = &building.entity_types[*index];
             field_type.representation != EntityRepresentation::Json
         } else {
             true
@@ -252,11 +252,7 @@ fn expand_entity_type(
         .map(|field| {
             let param_type_name = get_filter_type_name(field.typ.name());
 
-            let column_path_link = Some(
-                field
-                    .relation
-                    .column_path_link(&building.core_subsystem.database),
-            );
+            let column_path_link = Some(field.relation.column_path_link(&building.database));
 
             let resolved_field = resolved_type
                 .as_composite()

@@ -1,0 +1,18 @@
+# User filtering by someone else's email gets empty results (residue predicate restricts access)
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_people",
+      "params": {
+        "where": {"email": {"eq": "p1@example.com"}}
+      }
+    }
+auth: |
+  {
+    "sub": 2
+  }
+response: |
+  {
+    "result": []
+  }
