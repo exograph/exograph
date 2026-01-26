@@ -9044,13 +9044,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "saphyr-parser"
-version = "0.0.6"
+name = "saphyr-parser-bw"
+version = "0.0.605"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fb771b59f6b1985d1406325ec28f97cfb14256abcec4fdfb37b36a1766d6af7"
+checksum = "5e1aee7486406df3541b5a657204a11be97175a467d77bc98e6d94a66289fb80"
 dependencies = [
  "arraydeque",
- "hashlink",
+ "smallvec 2.0.0-alpha.12",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -9180,9 +9181,9 @@ dependencies = [
 
 [[package]]
 name = "serde-saphyr"
-version = "0.0.13"
+version = "0.0.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be7f28bb35aab6f9cdc5f464f9bbda0b1e3908766e819557111cc13e58ce7915"
+checksum = "4db5a4a562bcc0017c34cd0efbabf447be783f00576a2a516947f884e6a7ed57"
 dependencies = [
  "ahash",
  "annotate-snippets",
@@ -9190,11 +9191,12 @@ dependencies = [
  "encoding_rs_io",
  "nohash-hasher",
  "num-traits",
- "ryu",
- "saphyr-parser",
+ "regex",
+ "saphyr-parser-bw",
  "serde",
  "serde_json",
  "smallvec 2.0.0-alpha.12",
+ "zmij",
 ]
 
 [[package]]
