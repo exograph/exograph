@@ -15,6 +15,7 @@ serde_json.workspace = true
 common = { path = "../common" }
 exo-env = { path = "../../libs/exo-env" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
+rpc-introspection = { path = "../rpc-introspection" }
 
 [dev-dependencies]
 

@@ -31,6 +31,7 @@ use postgres_core_resolver::predicate_mapper::compute_predicate;
 use postgres_core_resolver::predicate_util::json_to_val;
 use postgres_rpc_model::operation::{CollectionQuery, PkQuery};
 use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
+use rpc_introspection::RpcSchema;
 
 use common::value::Val;
 
@@ -124,6 +125,10 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
         }
 
         Ok(None)
+    }
+
+    fn rpc_schema(&self) -> Option<RpcSchema> {
+        Some(crate::schema_builder::build_rpc_schema(&self.subsystem))
     }
 }
 

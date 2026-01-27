@@ -1,7 +1,7 @@
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::{
     primitive_type::{self, PrimitiveBaseType},
-    types::{TypeValidation, TypeValidationProvider},
+    types::{FloatConstraints, TypeValidation, TypeValidationProvider},
 };
 use core_model_builder::{
     ast::ast_types::AstField,
@@ -36,9 +36,9 @@ impl ResolvedTypeHint for FloatTypeHint {
 
 impl TypeValidationProvider for FloatTypeHint {
     fn get_type_validation(&self) -> Option<TypeValidation> {
-        self.range.as_ref().map(|r| TypeValidation::Float {
-            range: r.to_owned(),
-        })
+        self.range
+            .as_ref()
+            .map(|r| TypeValidation::Float(FloatConstraints::from_range(r.0, r.1)))
     }
 }
 

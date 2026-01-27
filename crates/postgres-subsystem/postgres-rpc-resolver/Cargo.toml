@@ -16,6 +16,7 @@ core-resolver = { path = "../../core-subsystem/core-resolver" }
 postgres-rpc-model = { path = "../postgres-rpc-model" }
 postgres-core-resolver = { path = "../postgres-core-resolver" }
 postgres-core-model = { path = "../postgres-core-model" }
+rpc-introspection = { path = "../../rpc-introspection" }
 common = { path = "../../common" }
 
 [dev-dependencies]
