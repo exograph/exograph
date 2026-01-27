@@ -24,6 +24,7 @@ use exo_sql::{
 };
 use exo_sql::{Function, SQLParamContainer};
 use futures::StreamExt;
+use postgres_core_model::order::OrderByParameter;
 use postgres_core_model::vector_distance::VectorDistanceField;
 use postgres_core_model::{
     aggregate::AggregateField,
@@ -34,7 +35,6 @@ use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_core_resolver::predicate_util::to_pg_vector;
 use postgres_graphql_model::query::UniqueQuery;
 use postgres_graphql_model::{
-    order::OrderByParameter,
     query::{CollectionQuery, CollectionQueryParameters},
     subsystem::PostgresGraphQLSubsystem,
 };
@@ -149,10 +149,7 @@ async fn compute_order_by<'content>(
     request_context: &'content RequestContext<'content>,
 ) -> Result<Option<AbstractOrderBy>, PostgresExecutionError> {
     extract_and_map(
-        OrderByParameterInput {
-            param,
-            parent_column_path: None,
-        },
+        OrderByParameterInput { param },
         arguments,
         subsystem,
         request_context,

@@ -1,0 +1,21 @@
+# Test that user with tier-querier role can order by field with field-level access control
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_customers",
+      "params": {
+        "orderBy": [{"internalTier": "ASC"}]
+      }
+    }
+auth: |
+  {
+    "sub": 1,
+    "role": "tier-querier"
+  }
+response: |
+  {
+    "result": [
+      {"id": $.c1id, "name": "C1", "userId": 1, "internalTier": 1}
+    ]
+  }

@@ -14,12 +14,14 @@ use exo_sql::{
 };
 use postgres_core_model::relation::PostgresRelation;
 use postgres_core_resolver::database_helper::extractor;
+use postgres_core_resolver::order_by_mapper::compute_order_by;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
+use postgres_core_resolver::predicate_mapper::compute_predicate;
+use postgres_core_resolver::predicate_util::json_to_val;
 use postgres_rpc_model::operation::PostgresOperationKind;
 use postgres_rpc_model::{operation::PostgresOperation, subsystem::PostgresRpcSubsystemWithRouter};
 
-use postgres_core_resolver::predicate_mapper::compute_predicate;
-use postgres_core_resolver::predicate_util::json_to_val;
+use common::value::Val;
 
 pub struct PostgresSubsystemRpcResolver {
     pub id: &'static str,
@@ -129,23 +131,32 @@ impl OperationResolver for PostgresOperation {
             .map(|p| p.0)
             .resolve();
 
-        // Extract the "where" parameter from request_params and compute the user predicate
-        let user_predicate = if let Some(params) = request_params {
-            if let Some(where_value) = params.get("where") {
-                let where_val = json_to_val(where_value);
-                compute_predicate(
-                    &self.predicate_param,
-                    &where_val,
+        // Extract the "where" parameter and compute the user predicate
+        let user_predicate = match extract_param(request_params, "where") {
+            Some(where_val) => compute_predicate(
+                &self.predicate_param,
+                &where_val,
+                &subsystem.core_subsystem,
+                request_context,
+            )
+            .await
+            .map_err(from_postgres_error)?,
+            None => AbstractPredicate::True,
+        };
+
+        // Extract the "orderBy" parameter and compute the order by clause
+        let order_by = match extract_param(request_params, "orderBy") {
+            Some(order_by_val) => Some(
+                compute_order_by(
+                    &self.order_by_param,
+                    &order_by_val,
                     &subsystem.core_subsystem,
                     request_context,
                 )
                 .await
-                .map_err(from_postgres_error)?
-            } else {
-                AbstractPredicate::True
-            }
-        } else {
-            AbstractPredicate::True
+                .map_err(from_postgres_error)?,
+            ),
+            None => None,
         };
 
         // Combine user predicate with access predicate
@@ -172,7 +183,7 @@ impl OperationResolver for PostgresOperation {
             table_id: entity_type.table_id,
             selection,
             predicate: combined_predicate,
-            order_by: None,
+            order_by,
             offset: None,
             limit: None,
         };
@@ -186,4 +197,12 @@ fn from_postgres_error(e: PostgresExecutionError) -> SubsystemRpcError {
         PostgresExecutionError::Authorization => SubsystemRpcError::Authorization,
         _ => SubsystemRpcError::UserDisplayError(e.user_error_message()),
     }
+}
+
+/// Extract an optional parameter from request params and convert to Val.
+fn extract_param(request_params: &Option<serde_json::Value>, key: &str) -> Option<Val> {
+    request_params
+        .as_ref()
+        .and_then(|params| params.get(key))
+        .map(json_to_val)
 }

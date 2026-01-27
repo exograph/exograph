@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+//! GraphQL-specific trait implementations for order-by types.
+
 use crate::subsystem::PostgresGraphQLSubsystem;
 
 use async_graphql_parser::{
@@ -18,78 +20,16 @@ use async_graphql_parser::{
 };
 use async_graphql_value::Name;
 use core_model::{
-    mapped_arena::SerializableSlabIndex,
     primitive_type::vector_introspection_type,
     type_normalization::{
-        BaseType, InputValueProvider, Parameter, Type, TypeDefinitionProvider, default_positioned,
+        BaseType, InputValueProvider, Type, TypeDefinitionProvider, default_positioned,
         default_positioned_name,
     },
-    types::{FieldType, Named, TypeValidation},
 };
-
-use postgres_core_model::access::Access;
-
-use exo_sql::{ColumnPathLink, VectorDistanceFunction};
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct OrderByParameter {
-    pub name: String,
-    pub typ: FieldType<OrderByParameterTypeWrapper>,
-
-    /// How does this parameter relates with the parent parameter?
-    /// For example for parameter used as `{order_by: {venue1: {id: Desc}}}`, we will have following column links:
-    /// ```no_rust
-    ///   id: Some((<the venues.id column>, None))
-    ///   venue1: Some((<the concerts.venue1_id column>, <the venues.id column>))
-    ///   order_by: None
-    /// ```
-    pub column_path_link: Option<ColumnPathLink>,
-    pub access: Option<Access>,
-    // TODO: Generalize this to support more than just vector distance functions
-    pub vector_distance_function: Option<VectorDistanceFunction>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct OrderByParameterTypeWrapper {
-    pub name: String,
-    pub type_id: SerializableSlabIndex<OrderByParameterType>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct OrderByParameterType {
-    pub name: String,
-    pub kind: OrderByParameterTypeKind,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum OrderByParameterTypeKind {
-    Primitive,
-    Vector,
-    Composite { parameters: Vec<OrderByParameter> },
-}
-
-pub const PRIMITIVE_ORDERING_OPTIONS: [&str; 2] = ["ASC", "DESC"];
-
-impl Named for OrderByParameterTypeWrapper {
-    fn name(&self) -> &str {
-        &self.name
-    }
-}
-
-impl Parameter for OrderByParameter {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn typ(&self) -> Type {
-        (&self.typ).into()
-    }
-
-    fn type_validation(&self) -> Option<TypeValidation> {
-        None
-    }
-}
+use postgres_core_model::order::{
+    OrderByParameterType, OrderByParameterTypeKind, OrderByParameterTypeWrapper,
+    PRIMITIVE_ORDERING_OPTIONS,
+};
 
 impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for OrderByParameterType {
     fn type_definition(&self, _system: &PostgresGraphQLSubsystem) -> TypeDefinition {
@@ -170,7 +110,7 @@ impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for OrderByParameterType {
 
 impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for OrderByParameterTypeWrapper {
     fn type_definition(&self, system: &PostgresGraphQLSubsystem) -> TypeDefinition {
-        let typ = &system.order_by_types[self.type_id];
+        let typ = &system.core_subsystem.order_by_types[self.type_id];
         typ.type_definition(system)
     }
 }

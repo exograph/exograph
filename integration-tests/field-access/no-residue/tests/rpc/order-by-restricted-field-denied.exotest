@@ -1,0 +1,22 @@
+# Test that user without tier-querier role cannot order by field with field-level access control
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_customers",
+      "params": {
+        "orderBy": [{"internalTier": "ASC"}]
+      }
+    }
+auth: |
+  {
+    "sub": 1,
+    "role": "user"
+  }
+response: |
+  {
+    "error": {
+      "code": -32004,
+      "message": "Not authorized"
+    }
+  }

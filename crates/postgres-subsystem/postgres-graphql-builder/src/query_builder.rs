@@ -17,7 +17,6 @@ use core_model::{
 use exo_sql::Database;
 use postgres_graphql_model::{
     limit_offset::{LimitParameter, LimitParameterType, OffsetParameter, OffsetParameterType},
-    order::{OrderByParameter, OrderByParameterType},
     query::{
         AggregateQuery, AggregateQueryParameters, CollectionQuery, CollectionQueryParameters,
         UniqueQuery, UniqueQueryParameters,
@@ -25,6 +24,7 @@ use postgres_graphql_model::{
 };
 
 use postgres_core_model::{
+    order::{OrderByParameter, OrderByParameterType},
     predicate::{PredicateParameter, PredicateParameterType, PredicateParameterTypeWrapper},
     relation::PostgresRelation,
     types::{EntityRepresentation, EntityType, PostgresField, PostgresPrimitiveType},
@@ -35,7 +35,8 @@ use postgres_core_builder::aggregate_type_builder::aggregate_type_name;
 use postgres_core_builder::predicate_builder::{get_filter_type_name, get_unique_filter_type_name};
 use postgres_core_builder::shallow::Shallow as CoreShallow;
 
-use super::{order_by_type_builder, system_builder::SystemContextBuilding};
+use super::system_builder::SystemContextBuilding;
+use postgres_core_builder::order_by_builder;
 
 use super::naming::ToPostgresQueryName;
 use postgres_core_builder::resolved_type::{ResolvedCompositeType, ResolvedType, ResolvedTypeEnv};
@@ -122,7 +123,7 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
             entity_type,
             &building.core_subsystem.primitive_types,
             &building.core_subsystem.predicate_types,
-            &building.order_by_types,
+            &building.core_subsystem.order_by_types,
             &mut building.collection_queries,
         );
         expand_aggregate_query(
@@ -278,8 +279,7 @@ fn expand_collection_query(
     let operation_name = entity_type.collection_query();
 
     let predicate_param = collection_predicate_param(entity_type, predicate_types);
-    let order_by_param =
-        order_by_type_builder::new_root_param(&entity_type.name, false, order_by_types);
+    let order_by_param = order_by_builder::new_root_param(&entity_type.name, false, order_by_types);
     let limit_param = limit_param(primitive_types);
     let offset_param = offset_param(primitive_types);
 

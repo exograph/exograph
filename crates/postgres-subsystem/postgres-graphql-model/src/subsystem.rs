@@ -11,7 +11,7 @@ use std::{collections::HashMap, sync::Arc, vec};
 
 use async_graphql_parser::types::{FieldDefinition, TypeDefinition};
 
-use super::{mutation::PostgresMutation, order::OrderByParameterType};
+use super::mutation::PostgresMutation;
 use crate::{
     query::{AggregateQuery, CollectionQuery, UniqueQuery},
     types::MutationType,
@@ -30,8 +30,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PostgresGraphQLSubsystem {
     // query related
-    pub order_by_types: SerializableSlab<OrderByParameterType>,
-
     pub pk_queries: MappedArena<UniqueQuery>,
     pub collection_queries: MappedArena<CollectionQuery>,
     pub aggregate_queries: MappedArena<AggregateQuery>,
@@ -106,9 +104,12 @@ impl PostgresGraphQLSubsystem {
             .iter()
             .for_each(|typ| all_type_definitions.push(typ.1.type_definition(self)));
 
-        self.order_by_types.iter().for_each(|parameter_type| {
-            all_type_definitions.push(parameter_type.1.type_definition(self))
-        });
+        self.core_subsystem
+            .order_by_types
+            .iter()
+            .for_each(|parameter_type| {
+                all_type_definitions.push(parameter_type.1.type_definition(self))
+            });
 
         self.core_subsystem
             .predicate_types
@@ -149,7 +150,6 @@ impl PostgresGraphQLSubsystem {
 impl Default for PostgresGraphQLSubsystem {
     fn default() -> Self {
         Self {
-            order_by_types: SerializableSlab::new(),
             pk_queries: MappedArena::default(),
             collection_queries: MappedArena::default(),
             aggregate_queries: MappedArena::default(),

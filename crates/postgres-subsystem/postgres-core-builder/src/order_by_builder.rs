@@ -13,32 +13,29 @@ use core_model::{
 };
 
 use exo_sql::{ColumnPathLink, Database};
-use postgres_graphql_model::{
-    order::OrderByParameter,
-    order::{OrderByParameterType, OrderByParameterTypeKind, OrderByParameterTypeWrapper},
+use postgres_core_model::{
+    access::Access,
+    order::{
+        OrderByParameter, OrderByParameterType, OrderByParameterTypeKind,
+        OrderByParameterTypeWrapper,
+    },
+    types::{EntityRepresentation, EntityType, PostgresField, PostgresPrimitiveType, PostgresType},
 };
-
-use postgres_core_model::types::{
-    EntityRepresentation, EntityType, PostgresField, PostgresPrimitiveType, PostgresType,
-};
-
-use postgres_core_model::access::Access;
-
-use postgres_core_builder::shallow::Shallow;
 
 use super::system_builder::SystemContextBuilding;
 
-use postgres_core_builder::{
+use crate::shallow::Shallow;
+use crate::{
     resolved_type::{
         ResolvedCompositeType, ResolvedField, ResolvedType, ResolvedTypeEnv, SerializableTypeHint,
     },
     type_provider::VectorTypeHint,
 };
 
-impl crate::shallow::Shallow for OrderByParameter {
+impl Shallow for OrderByParameter {
     fn shallow() -> Self {
         Self {
-            name: String::default(),
+            name: String::new(),
             typ: FieldType::Plain(OrderByParameterTypeWrapper::shallow()),
             column_path_link: None,
             access: None,
@@ -47,10 +44,10 @@ impl crate::shallow::Shallow for OrderByParameter {
     }
 }
 
-impl crate::shallow::Shallow for OrderByParameterTypeWrapper {
+impl Shallow for OrderByParameterTypeWrapper {
     fn shallow() -> Self {
         Self {
-            name: String::default(),
+            name: String::new(),
             type_id: SerializableSlabIndex::shallow(),
         }
     }
@@ -89,7 +86,6 @@ pub fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContex
 
 pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
     for (_, entity_type) in building
-        .core_subsystem
         .entity_types
         .iter()
         .filter(|(_, et)| et.representation != EntityRepresentation::Json)
@@ -148,10 +144,10 @@ fn expand_type(
             new_field_param(
                 resolved_field,
                 field,
-                &building.core_subsystem.primitive_types,
-                &building.core_subsystem.entity_types,
+                &building.primitive_types,
+                &building.entity_types,
                 &building.order_by_types,
-                &building.core_subsystem.database,
+                &building.database,
             )
         })
         .collect();
@@ -205,7 +201,7 @@ fn new_param(
     }
 }
 
-pub fn new_field_param(
+pub(crate) fn new_field_param(
     resolved_field: &ResolvedField,
     entity_field: &PostgresField<EntityType>,
     primitive_types: &MappedArena<PostgresPrimitiveType>,

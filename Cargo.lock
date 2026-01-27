@@ -7936,7 +7936,6 @@ dependencies = [
  "bincode 2.0.1",
  "core-model",
  "core-plugin-shared",
- "exo-sql",
  "postgres-core-model",
  "serde",
  "wasm-bindgen-test",

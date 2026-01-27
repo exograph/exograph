@@ -1,0 +1,26 @@
+# Test that orderBy with multiple fields works with RPC
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_todos",
+      "params": {
+        "orderBy": [{"completed": "ASC"}, {"title": "DESC"}]
+      }
+    }
+auth: |
+  {
+    "sub": null,
+    "role": "admin"
+  }
+response: |
+  {
+    "result": [
+      {"id": $.u2TodoIds[2], "title": "U2-T3", "completed": false, "priority": "LOW"},
+      {"id": $.u2TodoIds[0], "title": "U2-T1", "completed": false, "priority": "MEDIUM"},
+      {"id": $.u1TodoIds[2], "title": "U1-T3", "completed": false, "priority": "HIGH"},
+      {"id": $.u1TodoIds[0], "title": "U1-T1", "completed": false, "priority": "MEDIUM"},
+      {"id": $.u2TodoIds[1], "title": "U2-T2", "completed": true, "priority": "MEDIUM"},
+      {"id": $.u1TodoIds[1], "title": "U1-T2", "completed": true, "priority": "MEDIUM"}
+    ]
+  }
