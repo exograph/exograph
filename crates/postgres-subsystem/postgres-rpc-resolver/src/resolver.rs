@@ -10,7 +10,7 @@ use core_resolver::plugin::subsystem_rpc_resolver::{SubsystemRpcError, Subsystem
 use core_resolver::{QueryResponse, QueryResponseBody};
 use exo_sql::{
     AbstractOperation, AbstractPredicate, AbstractSelect, AliasedSelectionElement,
-    DatabaseExecutor, Selection, SelectionCardinality, SelectionElement,
+    DatabaseExecutor, Limit, Offset, Selection, SelectionCardinality, SelectionElement,
 };
 use postgres_core_model::relation::PostgresRelation;
 use postgres_core_resolver::database_helper::extractor;
@@ -162,6 +162,10 @@ impl OperationResolver for PostgresOperation {
         // Combine user predicate with access predicate
         let combined_predicate = AbstractPredicate::and(user_predicate, access_predicate);
 
+        // Extract limit and offset parameters
+        let limit = extract_limit_offset(request_params, "limit").map(Limit);
+        let offset = extract_limit_offset(request_params, "offset").map(Offset);
+
         let selection = Selection::Json(
             entity_type
                 .fields
@@ -184,8 +188,8 @@ impl OperationResolver for PostgresOperation {
             selection,
             predicate: combined_predicate,
             order_by,
-            offset: None,
-            limit: None,
+            offset,
+            limit,
         };
 
         Ok(AbstractOperation::Select(select))
@@ -205,4 +209,12 @@ fn extract_param(request_params: &Option<serde_json::Value>, key: &str) -> Optio
         .as_ref()
         .and_then(|params| params.get(key))
         .map(json_to_val)
+}
+
+/// Extract a limit or offset value from request parameters.
+fn extract_limit_offset(request_params: &Option<serde_json::Value>, key: &str) -> Option<i64> {
+    request_params
+        .as_ref()
+        .and_then(|params| params.get(key))
+        .and_then(|v| v.as_i64())
 }
