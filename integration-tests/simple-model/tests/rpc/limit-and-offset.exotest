@@ -1,0 +1,81 @@
+# Test limit and offset parameters with RPC
+# Data: 4 logs with timestamps 3, 6, 9, 12 (ordered by id)
+stages:
+  # Test limit only - returns first 2 logs
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_logs",
+          "params": {
+            "orderBy": [{"id": "ASC"}],
+            "limit": 2
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": $.log1_id, "timestamp": 3, "text": "[NORMAL] http request"},
+          {"id": $.log2_id, "timestamp": 6, "text": "[WARNING] disk usage 50%"}
+        ]
+      }
+
+  # Test offset only - skips first 2 logs, returns remaining
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_logs",
+          "params": {
+            "orderBy": [{"id": "ASC"}],
+            "offset": 2
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": $.log3_id, "timestamp": 9, "text": "[ERROR] service stopped"},
+          {"id": $.log4_id, "timestamp": 12, "text": "[NORMAL] it's 12:00pm!"}
+        ]
+      }
+
+  # Test limit and offset together - skip 1, take 3
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_logs",
+          "params": {
+            "orderBy": [{"id": "ASC"}],
+            "limit": 3,
+            "offset": 1
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": $.log2_id, "timestamp": 6, "text": "[WARNING] disk usage 50%"},
+          {"id": $.log3_id, "timestamp": 9, "text": "[ERROR] service stopped"},
+          {"id": $.log4_id, "timestamp": 12, "text": "[NORMAL] it's 12:00pm!"}
+        ]
+      }
+
+  # Test limit with where filter - filter by timestamp > 5, then limit to 2
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_logs",
+          "params": {
+            "orderBy": [{"id": "ASC"}],
+            "where": {"timestamp": {"gt": 5}},
+            "limit": 2
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": $.log2_id, "timestamp": 6, "text": "[WARNING] disk usage 50%"},
+          {"id": $.log3_id, "timestamp": 9, "text": "[ERROR] service stopped"}
+        ]
+      }
