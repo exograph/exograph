@@ -18,6 +18,7 @@ use core_model_builder::{builder::system_builder::BaseModelSystem, error::ModelB
 use postgres_core_model::{
     access::PrecheckAccessPrimitiveExpression,
     aggregate::AggregateType,
+    order::OrderByParameterType,
     predicate::PredicateParameterType,
     subsystem::PostgresCoreSubsystem,
     types::{EntityType, PostgresPrimitiveType},
@@ -28,7 +29,9 @@ use postgres_core_model::access::DatabaseAccessPrimitiveExpression;
 
 use exo_sql::Database;
 
-use crate::{aggregate_type_builder, database_builder, predicate_builder, type_builder};
+use crate::{
+    aggregate_type_builder, database_builder, order_by_builder, predicate_builder, type_builder,
+};
 
 use crate::resolved_type::ResolvedTypeEnv;
 
@@ -46,12 +49,14 @@ pub fn build(resolved_env: &ResolvedTypeEnv) -> Result<SystemContextBuilding, Mo
 
 /// Build shallow types, context, query parameters (order by and predicate)
 fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-    // The order of next three is unimportant, since each of them simply create a shallow type without referring to anything
+    // The order of next four is unimportant, since each of them simply create a shallow type without referring to anything
     type_builder::build_shallow(resolved_env, building);
 
     aggregate_type_builder::build_shallow(resolved_env, building);
 
     predicate_builder::build_shallow(&resolved_env.resolved_types, building);
+
+    order_by_builder::build_shallow(resolved_env, building);
 }
 
 fn build_expanded(
@@ -65,6 +70,8 @@ fn build_expanded(
 
     predicate_builder::build_expanded(resolved_env, building);
 
+    order_by_builder::build_expanded(resolved_env, building);
+
     Ok(())
 }
 
@@ -74,6 +81,7 @@ pub struct SystemContextBuilding {
     pub entity_types: MappedArena<EntityType>,
     pub aggregate_types: MappedArena<AggregateType>,
     pub predicate_types: MappedArena<PredicateParameterType>,
+    pub order_by_types: MappedArena<OrderByParameterType>,
     pub vector_distance_types: MappedArena<VectorDistanceType>,
 
     pub database_access_expressions:
@@ -92,6 +100,7 @@ impl SystemContextBuilding {
             entity_types: self.entity_types.values(),
             aggregate_types: self.aggregate_types.values(),
             predicate_types: self.predicate_types.values(),
+            order_by_types: self.order_by_types.values(),
 
             database: self.database,
 

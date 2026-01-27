@@ -17,6 +17,7 @@ use core_plugin_shared::{
 
 use core_model_builder::error::ModelBuildingError;
 
+use postgres_core_builder::order_by_builder::new_root_param;
 use postgres_core_builder::predicate_builder::get_filter_type_name;
 use postgres_core_builder::resolved_type::ResolvedType;
 use postgres_core_builder::resolved_type::ResolvedTypeEnv;
@@ -75,12 +76,19 @@ impl PostgresRpcSubsystemBuilder {
                     }
                 };
 
+                let order_by_param = new_root_param(
+                    &composite.name,
+                    false,
+                    &core_subsystem_building.order_by_types,
+                );
+
                 operations.push((
                     rpc_method,
                     PostgresOperation {
                         kind: PostgresOperationKind::Query,
                         entity_type_id,
                         predicate_param,
+                        order_by_param,
                     },
                 ));
             }

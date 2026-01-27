@@ -1,0 +1,24 @@
+# Test that admin can order by field with field-level access control (DESC)
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_customers",
+      "params": {
+        "orderBy": [{"internalTier": "DESC"}]
+      }
+    }
+auth: |
+  {
+    "sub": null,
+    "role": "admin"
+  }
+response: |
+  {
+    "result": [
+      {"id": $.c4id, "name": "C4", "userId": 4, "internalTier": 4},
+      {"id": $.c3id, "name": "C3", "userId": 3, "internalTier": 3},
+      {"id": $.c2id, "name": "C2", "userId": 2, "internalTier": 2},
+      {"id": $.c1id, "name": "C1", "userId": 1, "internalTier": 1}
+    ]
+  }

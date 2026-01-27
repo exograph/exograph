@@ -1,0 +1,23 @@
+# Admin can order by email field (has full access)
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_people",
+      "params": {
+        "orderBy": [{"email": "ASC"}]
+      }
+    }
+auth: |
+  {
+    "role": "admin"
+  }
+response: |
+  {
+    "result": [
+      {"id": $.p1id, "name": "P1", "age": 10, "authId": 1, "email": "p1@example.com"},
+      {"id": $.p2id, "name": "P2", "age": 20, "authId": 2, "email": "p2@example.com"},
+      {"id": $.p3id, "name": "P3", "age": 30, "authId": 3, "email": "p3@example.com"},
+      {"id": $.p4id, "name": "P4", "age": 40, "authId": 4, "email": "p4@example.com"}
+    ]
+  }

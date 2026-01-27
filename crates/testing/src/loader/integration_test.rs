@@ -346,7 +346,15 @@ impl IntegrationTest {
                     invariant_path.display()
                 )
             })?;
-            let integration_test = Self::load(&invariant_path, vec![], parent, parent)?;
+            let integration_test = Self::load(&invariant_path, vec![], parent, parent)
+                .with_context(|| {
+                    format!(
+                        "Failed to load invariant '{}' (resolved to '{}') referenced in test file '{}'",
+                        invariant.path,
+                        invariant_path.display(),
+                        testfile_path.display()
+                    )
+                })?;
 
             for op in integration_test.test_operations {
                 invariant_ops.push(ApiOperationInvariant { operation: op });

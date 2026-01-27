@@ -14,7 +14,6 @@ use core_model_builder::error::ModelBuildingError;
 
 use postgres_graphql_model::{
     mutation::PostgresMutation,
-    order::OrderByParameterType,
     query::{AggregateQuery, CollectionQuery, UniqueQuery},
     subsystem::PostgresGraphQLSubsystem,
     types::MutationType,
@@ -22,7 +21,7 @@ use postgres_graphql_model::{
 
 use postgres_core_model::types::EntityType;
 
-use super::{mutation_builder, order_by_type_builder, query_builder, type_builder};
+use super::{mutation_builder, query_builder, type_builder};
 use postgres_core_builder::resolved_type::ResolvedTypeEnv;
 
 pub fn build(
@@ -39,7 +38,6 @@ pub fn build(
         build_expanded(resolved_env, &mut building)?;
 
         PostgresGraphQLSubsystem {
-            order_by_types: building.order_by_types.values(),
             pk_queries: building.pk_queries,
             collection_queries: building.collection_queries,
             aggregate_queries: building.aggregate_queries,
@@ -70,11 +68,7 @@ pub fn build(
 
 /// Build shallow types, context, query parameters (order by and predicate)
 fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-    // The order of next two is unimportant, since each of them simply create a shallow type without referring to anything
-
-    order_by_type_builder::build_shallow(resolved_env, building);
-
-    // The next two shallow builders need POSTGRES types build above (the order of the next two is unimportant)
+    // The shallow builders need POSTGRES types built in core (the order of the next two is unimportant)
     // Specifically, the OperationReturn type in Query and Mutation looks for the id for the return type, so requires
     // type_builder::build_shallow to have run
     query_builder::build_shallow(&resolved_env.resolved_types, building);
@@ -88,10 +82,6 @@ fn build_expanded(
     // First fully build the types.
     type_builder::build_expanded(resolved_env, building)?;
 
-    // Which is then used to expand query and query parameters (the order is unimportant) but must be executed
-    // after running type_builder::build_expanded (since they depend on expanded PostgresTypes (note the next ones do not access resolved_types))
-    order_by_type_builder::build_expanded(resolved_env, building);
-
     // Finally expand queries, mutations, and module methods
     query_builder::build_expanded(resolved_env, building);
     mutation_builder::build_expanded(building)?;
@@ -101,8 +91,6 @@ fn build_expanded(
 
 #[derive(Debug, Default)]
 pub struct SystemContextBuilding {
-    pub order_by_types: MappedArena<OrderByParameterType>,
-
     pub pk_queries: MappedArena<UniqueQuery>,
     pub collection_queries: MappedArena<CollectionQuery>,
     pub aggregate_queries: MappedArena<AggregateQuery>,

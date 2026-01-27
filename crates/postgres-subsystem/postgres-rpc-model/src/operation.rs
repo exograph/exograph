@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use postgres_core_model::order::OrderByParameter;
 use postgres_core_model::predicate::PredicateParameter;
 use postgres_core_model::types::EntityType;
 use serde::{Deserialize, Serialize};
@@ -20,6 +21,7 @@ pub struct PostgresOperation {
     pub kind: PostgresOperationKind,
     pub entity_type_id: SerializableSlabIndex<EntityType>,
     pub predicate_param: PredicateParameter,
+    pub order_by_param: OrderByParameter,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

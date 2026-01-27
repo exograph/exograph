@@ -14,7 +14,7 @@ auth: |
     "sub": 6
   }
 invariants:
-  - path: ../system-state.gql
+  - path: ../../system-state.gql
 response: |
   {
     "errors": [

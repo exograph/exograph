@@ -1,0 +1,21 @@
+# User cannot order by email field when they don't have access (ordering would reveal info about other users' emails)
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_people",
+      "params": {
+        "orderBy": [{"email": "ASC"}]
+      }
+    }
+auth: |
+  {
+    "sub": 1
+  }
+response: |
+  {
+    "error": {
+      "code": -32004,
+      "message": "Not authorized"
+    }
+  }

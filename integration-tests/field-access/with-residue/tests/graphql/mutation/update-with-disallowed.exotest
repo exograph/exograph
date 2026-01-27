@@ -17,7 +17,7 @@ auth: |
     "sub": $.p2id
   }
 invariants:
-  - path: ../system-state.gql
+  - path: ../../system-state.gql
 response: |
   {
     "data": {
