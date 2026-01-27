@@ -9,7 +9,8 @@
 
 use std::sync::Arc;
 
-use core_model::types::FieldType;
+use core_model::mapped_arena::MappedArena;
+use core_model::types::{BaseOperationReturnType, FieldType, Named, OperationReturnType};
 use core_model_builder::plugin::RpcSubsystemBuild;
 use core_plugin_shared::{
     serializable_system::SerializableRpcBytes, system_serializer::SystemSerializer,
@@ -22,8 +23,11 @@ use postgres_core_builder::predicate_builder::get_filter_type_name;
 use postgres_core_builder::resolved_type::ResolvedType;
 use postgres_core_builder::resolved_type::ResolvedTypeEnv;
 use postgres_core_model::predicate::{PredicateParameter, PredicateParameterTypeWrapper};
+use postgres_core_model::relation::PostgresRelation;
 use postgres_core_model::types::EntityRepresentation;
-use postgres_rpc_model::operation::{PostgresOperation, PostgresOperationKind};
+use postgres_rpc_model::operation::{
+    CollectionQuery, CollectionQueryParameters, PkQuery, PkQueryParameters,
+};
 use postgres_rpc_model::subsystem::PostgresRpcSubsystem;
 
 pub struct PostgresRpcSubsystemBuilder {}
@@ -34,7 +38,8 @@ impl PostgresRpcSubsystemBuilder {
         resolved_env: &ResolvedTypeEnv<'_>,
         core_subsystem_building: Arc<postgres_core_builder::SystemContextBuilding>,
     ) -> Result<Option<RpcSubsystemBuild>, ModelBuildingError> {
-        let mut operations = vec![];
+        let mut collection_queries = MappedArena::default();
+        let mut pk_queries = MappedArena::default();
 
         for typ in resolved_env.resolved_types.iter() {
             if let ResolvedType::Composite(composite) = typ.1 {
@@ -50,7 +55,10 @@ impl PostgresRpcSubsystemBuilder {
                         composite.name
                     )))?;
 
-                let rpc_method = format!("get_{}", composite.plural_name.to_lowercase());
+                let entity_type = &core_subsystem_building.entity_types[entity_type_id];
+
+                // Build collection query (such as get_todos) - returns multiple items
+                let collection_method = format!("get_{}", composite.plural_name.to_lowercase());
 
                 let predicate_param = {
                     let param_type_name = get_filter_type_name(&composite.name);
@@ -82,24 +90,88 @@ impl PostgresRpcSubsystemBuilder {
                     &core_subsystem_building.order_by_types,
                 );
 
-                operations.push((
-                    rpc_method,
-                    PostgresOperation {
-                        kind: PostgresOperationKind::Query,
-                        entity_type_id,
+                // Return type: List of the entity type
+                let return_type: OperationReturnType<_> =
+                    FieldType::List(Box::new(FieldType::Plain(BaseOperationReturnType {
+                        associated_type_id: entity_type_id,
+                        type_name: composite.name.clone(),
+                    })));
+
+                let collection_query = CollectionQuery {
+                    name: collection_method.clone(),
+                    parameters: CollectionQueryParameters {
                         predicate_param,
                         order_by_param,
                     },
-                ));
+                    return_type,
+                };
+
+                collection_queries.add(&collection_method, collection_query);
+
+                // Build pk query (get_todo) - returns single item by primary key
+                // Only create pk query if all pk fields are scalar (simple pk, not composite with relations)
+                let pk_fields = entity_type.pk_fields();
+                let all_scalar = pk_fields
+                    .iter()
+                    .all(|field| matches!(field.relation, PostgresRelation::Scalar { .. }));
+
+                if !pk_fields.is_empty() && all_scalar {
+                    let pk_method = format!("get_{}", composite.name.to_lowercase());
+
+                    let pk_params: Vec<PredicateParameter> = pk_fields
+                        .iter()
+                        .map(|field| {
+                            let predicate_type_name = field.typ.name().to_owned();
+                            let param_type_id = core_subsystem_building
+                                .predicate_types
+                                .get_id(&predicate_type_name)
+                                .unwrap();
+                            let param_type = PredicateParameterTypeWrapper {
+                                name: predicate_type_name,
+                                type_id: param_type_id,
+                            };
+
+                            PredicateParameter {
+                                name: field.name.to_string(),
+                                typ: FieldType::Plain(param_type),
+                                column_path_link: Some(
+                                    field
+                                        .relation
+                                        .column_path_link(&core_subsystem_building.database),
+                                ),
+                                access: None,
+                                vector_distance_function: None,
+                            }
+                        })
+                        .collect();
+
+                    // Return type: Optional of the entity type
+                    let return_type: OperationReturnType<_> =
+                        FieldType::Optional(Box::new(FieldType::Plain(BaseOperationReturnType {
+                            associated_type_id: entity_type_id,
+                            type_name: composite.name.clone(),
+                        })));
+
+                    let pk_query = PkQuery {
+                        name: pk_method.clone(),
+                        parameters: PkQueryParameters {
+                            predicate_params: pk_params,
+                        },
+                        return_type,
+                    };
+
+                    pk_queries.add(&pk_method, pk_query);
+                }
             }
         }
 
-        if operations.is_empty() {
+        if collection_queries.is_empty() && pk_queries.is_empty() {
             return Ok(None);
         }
 
         let subsystem = PostgresRpcSubsystem {
-            operations,
+            pk_queries,
+            collection_queries,
             core_subsystem: Default::default(),
         };
 

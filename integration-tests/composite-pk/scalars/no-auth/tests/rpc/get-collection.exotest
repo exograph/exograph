@@ -1,0 +1,20 @@
+# Test collection query (get_people) returns array
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_people",
+          "params": {
+            "where": {"firstName": {"eq": "John"}},
+            "orderBy": [{"lastName": "ASC"}],
+            "limit": 2
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"firstName": "John", "lastName": "DoeAlbany", "age": 20},
+          {"firstName": "John", "lastName": "DoeBoston", "age": 30}
+        ]
+      }

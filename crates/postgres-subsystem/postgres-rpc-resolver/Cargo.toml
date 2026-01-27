@@ -11,6 +11,7 @@ serde_json.workspace = true
 
 exo-sql = { path = "../../../libs/exo-sql" }
 
+core-model = { path = "../../core-subsystem/core-model" }
 core-resolver = { path = "../../core-subsystem/core-resolver" }
 postgres-rpc-model = { path = "../postgres-rpc-model" }
 postgres-core-resolver = { path = "../postgres-core-resolver" }

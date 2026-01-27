@@ -1,0 +1,63 @@
+# Test single item query (get_log) vs collection query (get_logs)
+# Data: 4 logs with timestamps 3, 6, 9, 12 (created with autoIncrement IDs 1, 2, 3, 4)
+stages:
+  # Test get_log - returns single item by id (not an array)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_log",
+          "params": {
+            "id": 1
+          }
+        }
+    response: |
+      {
+        "result": {"id": $.log1_id, "timestamp": 3, "text": "[NORMAL] http request"}
+      }
+
+  # Test get_log - returns single item for a different id
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_log",
+          "params": {
+            "id": 3
+          }
+        }
+    response: |
+      {
+        "result": {"id": $.log3_id, "timestamp": 9, "text": "[ERROR] service stopped"}
+      }
+
+  # Test get_log with non-existent id - returns null
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_log",
+          "params": {
+            "id": 99999
+          }
+        }
+    response: |
+      {
+        "result": null
+      }
+
+  # Test get_log with missing required id parameter - returns error
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_log",
+          "params": {}
+        }
+    response: |
+      {
+        "error": {
+          "code": -32001,
+          "message": "Missing required parameter: id"
+        }
+      }
