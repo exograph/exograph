@@ -8087,6 +8087,7 @@ version = "0.27.0"
 dependencies = [
  "async-trait",
  "common",
+ "core-model",
  "core-resolver",
  "exo-sql",
  "http 1.4.0",

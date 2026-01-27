@@ -7,27 +7,35 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use core_model::types::OperationReturnType;
 use postgres_core_model::order::OrderByParameter;
 use postgres_core_model::predicate::PredicateParameter;
 use postgres_core_model::types::EntityType;
 use serde::{Deserialize, Serialize};
 
-use core_model::mapped_arena::SerializableSlabIndex;
-
 // TODO: Share this with REST?
 
+/// Base operation type for RPC operations
 #[derive(Serialize, Deserialize, Debug)]
-pub struct PostgresOperation {
-    pub kind: PostgresOperationKind,
-    pub entity_type_id: SerializableSlabIndex<EntityType>,
+pub struct PostgresOperation<P> {
+    pub name: String,
+    pub parameters: P,
+    pub return_type: OperationReturnType<EntityType>,
+}
+
+/// Parameters for collection queries (e.g., `get_todos`)
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CollectionQueryParameters {
     pub predicate_param: PredicateParameter,
     pub order_by_param: OrderByParameter,
 }
 
+/// Parameters for pk queries (e.g., `get_todo`)
 #[derive(Serialize, Deserialize, Debug)]
-pub enum PostgresOperationKind {
-    Query,
-    Create,
-    Update,
-    Delete,
+pub struct PkQueryParameters {
+    /// Predicate parameters for each pk field (implicit equality)
+    pub predicate_params: Vec<PredicateParameter>,
 }
+
+pub type CollectionQuery = PostgresOperation<CollectionQueryParameters>;
+pub type PkQuery = PostgresOperation<PkQueryParameters>;

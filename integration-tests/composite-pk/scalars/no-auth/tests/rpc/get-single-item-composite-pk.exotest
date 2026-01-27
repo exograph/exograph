@@ -1,0 +1,106 @@
+# Test single item query with composite primary keys (no auth)
+# Person has 2 pk fields: firstName, lastName
+# Address has 4 pk fields: street, city, state, zip
+stages:
+  # Test get_person with composite pk (2 fields)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_person",
+          "params": {
+            "firstName": "John",
+            "lastName": "DoeAlbany"
+          }
+        }
+    response: |
+      {
+        "result": {"firstName": "John", "lastName": "DoeAlbany", "age": 20}
+      }
+
+  # Test get_person with different composite pk values
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_person",
+          "params": {
+            "firstName": "Jane",
+            "lastName": "SmithBoston"
+          }
+        }
+    response: |
+      {
+        "result": {"firstName": "Jane", "lastName": "SmithBoston", "age": 35}
+      }
+
+  # Test get_person with non-existent composite pk - returns null
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_person",
+          "params": {
+            "firstName": "NonExistent",
+            "lastName": "Person"
+          }
+        }
+    response: |
+      {
+        "result": null
+      }
+
+  # Test get_person with missing one pk field - returns error
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_person",
+          "params": {
+            "firstName": "John"
+          }
+        }
+    response: |
+      {
+        "error": {
+          "code": -32001,
+          "message": "Missing required parameter: lastName"
+        }
+      }
+
+  # Test get_address with composite pk (4 fields)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_address",
+          "params": {
+            "street": "2 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": 22101
+          }
+        }
+    response: |
+      {
+        "result": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101, "info": null}
+      }
+
+  # Test get_address with missing pk fields - returns error for first missing field
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_address",
+          "params": {
+            "street": "2 Main St",
+            "city": "Boston"
+          }
+        }
+    response: |
+      {
+        "error": {
+          "code": -32001,
+          "message": "Missing required parameter: state"
+        }
+      }

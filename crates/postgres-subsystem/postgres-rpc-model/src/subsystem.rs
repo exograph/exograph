@@ -7,34 +7,37 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
+use core_model::mapped_arena::MappedArena;
 use core_plugin_interface::interface::SubsystemLoadingError;
 use core_plugin_shared::{error::ModelSerializationError, system_serializer::SystemSerializer};
 use postgres_core_model::subsystem::PostgresCoreSubsystem;
 use serde::{Deserialize, Serialize};
 
-use crate::operation::PostgresOperation;
+use crate::operation::{CollectionQuery, PkQuery};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PostgresRpcSubsystem {
-    pub operations: Vec<(String, PostgresOperation)>,
+    pub pk_queries: MappedArena<PkQuery>,
+    pub collection_queries: MappedArena<CollectionQuery>,
+    // Future: pub mutations: MappedArena<RpcMutation>,
     #[serde(skip)]
     pub core_subsystem: Arc<PostgresCoreSubsystem>,
 }
 
 #[derive(Debug)]
 pub struct PostgresRpcSubsystemWithRouter {
-    pub method_operation_map: HashMap<String, PostgresOperation>,
+    pub pk_queries: MappedArena<PkQuery>,
+    pub collection_queries: MappedArena<CollectionQuery>,
     pub core_subsystem: Arc<PostgresCoreSubsystem>,
 }
 
 impl PostgresRpcSubsystemWithRouter {
     pub fn new(subsystem: PostgresRpcSubsystem) -> Result<Self, SubsystemLoadingError> {
-        let method_operation_map = HashMap::from_iter(subsystem.operations);
         Ok(Self {
-            method_operation_map,
+            pk_queries: subsystem.pk_queries,
+            collection_queries: subsystem.collection_queries,
             core_subsystem: subsystem.core_subsystem.clone(),
         })
     }
