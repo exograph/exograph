@@ -396,6 +396,59 @@
           }
         }
       },
+      "Ordering": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ]
+          }
+        },
+        "required": [
+          "direction"
+        ],
+        "description": "Sort order direction"
+      },
+      "VenueOrdering": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "name": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "published": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "latitude": {
+            "$ref": "#/components/schemas/Ordering"
+          }
+        }
+      },
+      "ConcertOrdering": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "venue": {
+            "$ref": "#/components/schemas/VenueOrdering"
+          },
+          "published": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Ordering"
+          }
+        }
+      },
       "Venue": {
         "type": "object",
         "properties": {

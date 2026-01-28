@@ -118,15 +118,22 @@ impl<'a> Router<RequestContext<'a>> for RpcRouter {
 
                         // Handle rpc.discover method
                         if request.method == RPC_DISCOVER_METHOD {
-                            let openrpc_json = serde_json::to_value(self.build_openrpc_document())
-                                .unwrap_or_default();
-                            Ok(Some(SubsystemRpcResponse {
-                                response: QueryResponse {
-                                    body: QueryResponseBody::Json(openrpc_json),
-                                    headers: vec![],
-                                },
-                                status_code: StatusCode::OK,
-                            }))
+                            match serde_json::to_value(self.build_openrpc_document()) {
+                                Ok(openrpc_json) => Ok(Some(SubsystemRpcResponse {
+                                    response: QueryResponse {
+                                        body: QueryResponseBody::Json(openrpc_json),
+                                        headers: vec![],
+                                    },
+                                    status_code: StatusCode::OK,
+                                })),
+                                Err(e) => {
+                                    tracing::error!(
+                                        "Failed to serialize OpenRPC document: {:?}",
+                                        e
+                                    );
+                                    Err(SubsystemRpcError::InternalError)
+                                }
+                            }
                         } else {
                             self.system_resolver
                                 .resolve(&request.method, &request.params, request_context)

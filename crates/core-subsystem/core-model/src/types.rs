@@ -302,7 +302,7 @@ fn get_max_length_directive(max_length: usize) -> ConstDirective {
         name: default_positioned_name("maxLength"),
         arguments: vec![(
             default_positioned_name("value"),
-            default_positioned(ConstValue::Number((max_length as i64).into())),
+            default_positioned(ConstValue::Number((max_length as u64).into())),
         )],
     }
 }

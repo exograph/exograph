@@ -228,6 +228,45 @@
             "nullable": true
           }
         }
+      },
+      "Ordering": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ]
+          }
+        },
+        "required": [
+          "direction"
+        ],
+        "description": "Sort order direction"
+      },
+      "VideoOrdering": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "name": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "slug": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "nonce": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "views": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "filesize": {
+            "$ref": "#/components/schemas/Ordering"
+          }
+        }
       }
     }
   }

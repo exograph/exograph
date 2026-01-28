@@ -177,11 +177,10 @@ pub fn validate_with_constraints(
                     });
                 } else {
                     // It's a whole number but too large for i64
-                    errors.push(ValidationError::IntegerOutOfRange {
+                    errors.push(ValidationError::TypeMismatch {
                         param: param_name.to_string(),
-                        value: float_val as i64, // This will be incorrect for very large values
-                        min: constraints.min,
-                        max: constraints.max,
+                        expected: "integer",
+                        actual: "number out of 64-bit signed integer range".to_string(),
                     });
                 }
             }

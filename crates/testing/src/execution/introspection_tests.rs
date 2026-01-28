@@ -279,6 +279,9 @@ async fn check_rpc_introspection(
 
     let rpc_introspection_result = run_query(request, system_router, &mut HashMap::new()).await?;
 
+    // Validate internal consistency of the OpenRPC document
+    validate_openrpc_refs(&rpc_introspection_result, model_path)?;
+
     // Pretty-print the JSON for easier diffing
     let rpc_json = serde_json::to_string_pretty(&rpc_introspection_result)?;
 
@@ -351,5 +354,65 @@ fn print_diff(expected_file: &Path, actual_file: &Path) -> Result<()> {
             expected_file.display(),
             actual_file.display()
         ))
+    }
+}
+
+/// Validate internal consistency of an OpenRPC document.
+/// Ensures all $ref references point to existing schemas in components/schemas.
+fn validate_openrpc_refs(doc: &Value, model_path: &Path) -> Result<()> {
+    // Collect all defined schema names
+    let defined_schemas: std::collections::HashSet<String> = doc
+        .get("components")
+        .and_then(|c| c.get("schemas"))
+        .and_then(|s| s.as_object())
+        .map(|schemas| schemas.keys().cloned().collect())
+        .unwrap_or_default();
+
+    // Collect all $ref values from the document
+    let mut refs = Vec::new();
+    collect_refs(doc, &mut refs);
+
+    // Check each ref points to an existing schema
+    let mut missing_refs = Vec::new();
+    for ref_value in refs {
+        // $ref format is "#/components/schemas/SchemaName"
+        if let Some(schema_name) = ref_value.strip_prefix("#/components/schemas/")
+            && !defined_schemas.contains(schema_name)
+        {
+            missing_refs.push(schema_name.to_string());
+        }
+    }
+
+    if !missing_refs.is_empty() {
+        // Deduplicate and sort for cleaner error message
+        missing_refs.sort();
+        missing_refs.dedup();
+        return Err(anyhow!(
+            "OpenRPC schema in {} has broken $ref references. Missing schemas: {}",
+            model_path.display(),
+            missing_refs.join(", ")
+        ));
+    }
+
+    Ok(())
+}
+
+/// Recursively collect all $ref values from a JSON value.
+fn collect_refs(value: &Value, refs: &mut Vec<String>) {
+    match value {
+        Value::Object(map) => {
+            if let Some(Value::String(ref_value)) = map.get("$ref") {
+                refs.push(ref_value.clone());
+            }
+            for v in map.values() {
+                collect_refs(v, refs);
+            }
+        }
+        Value::Array(arr) => {
+            for v in arr {
+                collect_refs(v, refs);
+            }
+        }
+        _ => {}
     }
 }

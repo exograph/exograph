@@ -276,6 +276,42 @@
           }
         }
       },
+      "Ordering": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ]
+          }
+        },
+        "required": [
+          "direction"
+        ],
+        "description": "Sort order direction"
+      },
+      "NumbersOrdering": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "limit": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "age": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "float_limit": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Ordering"
+          }
+        }
+      },
       "OtherNumbers": {
         "type": "object",
         "properties": {
@@ -345,6 +381,26 @@
               "$ref": "#/components/schemas/OtherNumbersFilter"
             },
             "nullable": true
+          }
+        }
+      },
+      "OtherNumbersOrdering": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "limit": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "age": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "float_limit": {
+            "$ref": "#/components/schemas/Ordering"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Ordering"
           }
         }
       }

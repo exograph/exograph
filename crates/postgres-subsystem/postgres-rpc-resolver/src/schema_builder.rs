@@ -13,6 +13,9 @@
 //! through all collection queries and pk queries.
 
 use core_model::types::{FieldType, OperationReturnType, TypeValidation};
+use postgres_core_model::order::{
+    OrderByParameter, OrderByParameterTypeKind, PRIMITIVE_ORDERING_OPTIONS,
+};
 use postgres_core_model::predicate::{PredicateParameter, PredicateParameterTypeKind};
 use postgres_core_model::relation::PostgresRelation;
 use postgres_core_model::types::{EntityType, PostgresFieldType, PostgresPrimitiveTypeKind};
@@ -22,6 +25,9 @@ use rpc_introspection::schema::{
     RpcMethod, RpcObjectField, RpcObjectType, RpcParameter, RpcSchema, RpcTypeSchema,
 };
 use std::collections::HashSet;
+
+/// Name for the primitive ordering enum type
+const ORDERING_ENUM_NAME: &str = "Ordering";
 
 /// Build an RpcSchema from a PostgresRpcSubsystemWithRouter.
 pub fn build_rpc_schema(subsystem: &PostgresRpcSubsystemWithRouter) -> RpcSchema {
@@ -85,14 +91,14 @@ fn build_collection_query_method(
     method = method.with_param(where_param);
 
     // Add "orderBy" parameter (optional ordering)
-    let order_by_param = RpcParameter::new(
-        "orderBy",
-        RpcTypeSchema::optional(RpcTypeSchema::object(format!(
-            "{}Ordering",
-            entity_type.name
-        ))),
-    )
-    .with_description("Ordering for the results");
+    let order_by_schema = build_order_by_param_schema(
+        &query.parameters.order_by_param,
+        subsystem,
+        schema,
+        added_types,
+    );
+    let order_by_param = RpcParameter::new("orderBy", RpcTypeSchema::optional(order_by_schema))
+        .with_description("Ordering for the results");
     method = method.with_param(order_by_param);
 
     // Add "limit" parameter
@@ -372,6 +378,7 @@ fn build_predicate_param_schema(
         }
         PredicateParameterTypeKind::Vector => {
             // Vector similarity search filter
+            ensure_vector_filter_added(schema, added_types);
             RpcTypeSchema::object("VectorFilter")
         }
     }
@@ -401,6 +408,127 @@ fn build_pk_param_schema(
     };
 
     RpcTypeSchema::scalar(type_name)
+}
+
+/// Build the schema for an orderBy parameter.
+fn build_order_by_param_schema(
+    param: &OrderByParameter,
+    subsystem: &PostgresRpcSubsystemWithRouter,
+    schema: &mut RpcSchema,
+    added_types: &mut HashSet<String>,
+) -> RpcTypeSchema {
+    let param_type = &subsystem.core_subsystem.order_by_types[param.typ.innermost().type_id];
+
+    match &param_type.kind {
+        OrderByParameterTypeKind::Primitive => {
+            // Primitive ordering is an enum with ASC/DESC values
+            ensure_ordering_enum_added(schema, added_types);
+            RpcTypeSchema::object(ORDERING_ENUM_NAME)
+        }
+        OrderByParameterTypeKind::Vector => {
+            // Vector ordering has distance function and target vector
+            ensure_vector_ordering_added(schema, added_types);
+            RpcTypeSchema::object("VectorOrdering")
+        }
+        OrderByParameterTypeKind::Composite { parameters } => {
+            // Composite ordering like ConcertOrdering with fields for each orderable field
+            let ordering_type_name = &param_type.name;
+            if !added_types.contains(ordering_type_name) {
+                added_types.insert(ordering_type_name.clone());
+                let mut ordering_obj = RpcObjectType::new(ordering_type_name);
+
+                for field_param in parameters {
+                    let field_schema = RpcTypeSchema::optional(build_order_by_param_schema(
+                        field_param,
+                        subsystem,
+                        schema,
+                        added_types,
+                    ));
+                    ordering_obj = ordering_obj
+                        .with_field(RpcObjectField::new(&field_param.name, field_schema));
+                }
+
+                schema.add_object_type(ordering_type_name.clone(), ordering_obj);
+            }
+            RpcTypeSchema::object(ordering_type_name)
+        }
+    }
+}
+
+/// Ensure the primitive Ordering enum type is added to the schema.
+fn ensure_ordering_enum_added(schema: &mut RpcSchema, added_types: &mut HashSet<String>) {
+    if added_types.contains(ORDERING_ENUM_NAME) {
+        return;
+    }
+    added_types.insert(ORDERING_ENUM_NAME.to_string());
+
+    // Ordering is an enum with ASC and DESC values
+    let ordering_obj =
+        RpcObjectType::new(ORDERING_ENUM_NAME).with_description("Sort order direction");
+
+    // Add enum values as fields (simplified representation)
+    // In OpenRPC, this will be represented as an enum in the JSON Schema
+    schema.add_object_type(
+        ORDERING_ENUM_NAME.to_string(),
+        ordering_obj.with_field(RpcObjectField::new(
+            "direction",
+            RpcTypeSchema::enum_type(
+                PRIMITIVE_ORDERING_OPTIONS
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+            ),
+        )),
+    );
+}
+
+/// Ensure the VectorOrdering type is added to the schema.
+fn ensure_vector_ordering_added(schema: &mut RpcSchema, added_types: &mut HashSet<String>) {
+    const VECTOR_ORDERING_NAME: &str = "VectorOrdering";
+    if added_types.contains(VECTOR_ORDERING_NAME) {
+        return;
+    }
+    added_types.insert(VECTOR_ORDERING_NAME.to_string());
+
+    let ordering_obj = RpcObjectType::new(VECTOR_ORDERING_NAME)
+        .with_description("Vector similarity ordering")
+        .with_field(RpcObjectField::new(
+            "distanceTo",
+            RpcTypeSchema::optional(RpcTypeSchema::array(RpcTypeSchema::scalar("Float"))),
+        ))
+        .with_field(RpcObjectField::new(
+            "direction",
+            RpcTypeSchema::optional(RpcTypeSchema::enum_type(
+                PRIMITIVE_ORDERING_OPTIONS
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+            )),
+        ));
+
+    schema.add_object_type(VECTOR_ORDERING_NAME.to_string(), ordering_obj);
+}
+
+/// Ensure the VectorFilter type is added to the schema.
+fn ensure_vector_filter_added(schema: &mut RpcSchema, added_types: &mut HashSet<String>) {
+    const VECTOR_FILTER_NAME: &str = "VectorFilter";
+    if added_types.contains(VECTOR_FILTER_NAME) {
+        return;
+    }
+    added_types.insert(VECTOR_FILTER_NAME.to_string());
+
+    let filter_obj = RpcObjectType::new(VECTOR_FILTER_NAME)
+        .with_description("Vector similarity filter")
+        .with_field(RpcObjectField::new(
+            "distanceTo",
+            RpcTypeSchema::optional(RpcTypeSchema::array(RpcTypeSchema::scalar("Float"))),
+        ))
+        .with_field(RpcObjectField::new(
+            "distance",
+            RpcTypeSchema::optional(RpcTypeSchema::scalar("Float")),
+        ));
+
+    schema.add_object_type(VECTOR_FILTER_NAME.to_string(), filter_obj);
 }
 
 // Integration tests for this module are in integration-tests/rpc-introspection
