@@ -179,10 +179,70 @@ impl<T> OperationReturnType<T> {
     }
 }
 
+/// Constraints for integer types
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct IntConstraints {
+    pub min: Option<i64>,
+    pub max: Option<i64>,
+    pub bits: Option<u8>, // 16, 32, 64
+}
+
+impl IntConstraints {
+    pub fn new(min: Option<i64>, max: Option<i64>) -> Self {
+        Self {
+            min,
+            max,
+            bits: None,
+        }
+    }
+
+    pub fn from_range(min: i64, max: i64) -> Self {
+        Self::new(Some(min), Some(max))
+    }
+}
+
+/// Constraints for floating-point types
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct FloatConstraints {
+    pub min: Option<f64>,
+    pub max: Option<f64>,
+}
+
+impl FloatConstraints {
+    pub fn new(min: Option<f64>, max: Option<f64>) -> Self {
+        Self { min, max }
+    }
+
+    pub fn from_range(min: f64, max: f64) -> Self {
+        Self::new(Some(min), Some(max))
+    }
+}
+
+/// Constraints for string types
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct StringConstraints {
+    pub min_length: Option<usize>,
+    pub max_length: Option<usize>,
+}
+
+impl StringConstraints {
+    pub fn new(min_length: Option<usize>, max_length: Option<usize>) -> Self {
+        Self {
+            min_length,
+            max_length,
+        }
+    }
+
+    pub fn with_max_length(max_length: usize) -> Self {
+        Self::new(None, Some(max_length))
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum TypeValidation {
-    Int { range: (i64, i64) },
-    Float { range: (f64, f64) },
+    Int(IntConstraints),
+    Float(FloatConstraints),
+    String(StringConstraints),
 }
 
 pub trait TypeValidationProvider {
@@ -197,15 +257,24 @@ impl DirectivesProvider for TypeValidation {
     fn get_directives(&self) -> Vec<ConstDirective> {
         let mut directives = vec![];
         match self {
-            TypeValidation::Int { range } => {
-                let (min, max) = range.to_owned();
-                directives.push(get_range_directive(min, max));
+            TypeValidation::Int(constraints) => {
+                if let (Some(min), Some(max)) = (constraints.min, constraints.max) {
+                    directives.push(get_range_directive(min, max));
+                }
                 directives
             }
 
-            TypeValidation::Float { range } => {
-                let (min, max) = range.to_owned();
-                directives.push(get_range_directive(min, max));
+            TypeValidation::Float(constraints) => {
+                if let (Some(min), Some(max)) = (constraints.min, constraints.max) {
+                    directives.push(get_range_directive(min, max));
+                }
+                directives
+            }
+
+            TypeValidation::String(constraints) => {
+                if let Some(max_length) = constraints.max_length {
+                    directives.push(get_max_length_directive(max_length));
+                }
                 directives
             }
         }
@@ -225,5 +294,15 @@ fn get_range_directive<T: Into<ConstValue>>(min: T, max: T) -> ConstDirective {
                 default_positioned(max.into()),
             ),
         ],
+    }
+}
+
+fn get_max_length_directive(max_length: usize) -> ConstDirective {
+    ConstDirective {
+        name: default_positioned_name("maxLength"),
+        arguments: vec![(
+            default_positioned_name("value"),
+            default_positioned(ConstValue::Number((max_length as u64).into())),
+        )],
     }
 }

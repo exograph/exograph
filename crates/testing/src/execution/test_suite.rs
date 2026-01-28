@@ -19,6 +19,7 @@ impl TestSuite {
     pub fn run(
         self,
         run_introspection_tests: bool,
+        generate_rpc_expected: bool,
         ephemeral_server: Arc<Box<dyn EphemeralDatabaseServer + Send + Sync>>,
         tx: Sender<Result<TestResult>>,
         tasks: crossbeam_channel::Sender<Box<dyn FnOnce() + Send>>,
@@ -45,10 +46,12 @@ impl TestSuite {
                         }
 
                         if run_introspection_tests {
-                            let result =
-                                std::panic::AssertUnwindSafe(run_introspection_test(&project_dir))
-                                    .catch_unwind()
-                                    .await;
+                            let result = std::panic::AssertUnwindSafe(run_introspection_test(
+                                &project_dir,
+                                generate_rpc_expected,
+                            ))
+                            .catch_unwind()
+                            .await;
                             tx.send(result.unwrap_or_else(|_| report_panic(&project_dir)))
                                 .map_err(|_| ())
                                 .unwrap();

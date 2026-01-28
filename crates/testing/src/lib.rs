@@ -29,6 +29,7 @@ pub fn run(
     root_directory: &PathBuf,
     pattern: &Option<String>,
     run_introspection_tests: bool,
+    generate_rpc_expected: bool,
 ) -> Result<()> {
     // Make sure deno runtime is initialized in the main thread to work around deno segfault
     // on Linux issue. The tests are run in parallel and will initialize the deno module
@@ -70,6 +71,7 @@ pub fn run(
     for project_test in project_tests {
         project_test.run(
             run_introspection_tests,
+            generate_rpc_expected,
             ephemeral_server.clone(),
             tx.clone(),
             tasks.clone(),
