@@ -6,17 +6,17 @@
   },
   "methods": [
     {
-      "name": "get_videos",
-      "description": "Get multiple `Video`s given the provided `where` filter, order by, limit, and offset",
+      "name": "get_documents",
+      "description": "Get multiple `Document`s given the provided `where` filter, order by, limit, and offset",
       "params": [
         {
           "name": "where",
-          "description": "Filter conditions for Videos",
+          "description": "Filter conditions for Documents",
           "required": false,
           "schema": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/VideoFilter"
+                "$ref": "#/components/schemas/DocumentFilter"
               },
               {
                 "type": "null"
@@ -31,7 +31,7 @@
           "schema": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/VideoOrdering"
+                "$ref": "#/components/schemas/DocumentOrdering"
               },
               {
                 "type": "null"
@@ -63,14 +63,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Video"
+            "$ref": "#/components/schemas/Document"
           }
         }
       }
     },
     {
-      "name": "get_video",
-      "description": "Get a single `Video` given primary key fields",
+      "name": "get_document",
+      "description": "Get a single `Document` given primary key fields",
       "params": [
         {
           "name": "id",
@@ -86,7 +86,7 @@
         "schema": {
           "oneOf": [
             {
-              "$ref": "#/components/schemas/Video"
+              "$ref": "#/components/schemas/Document"
             },
             {
               "type": "null"
@@ -98,38 +98,30 @@
   ],
   "components": {
     "schemas": {
-      "Video": {
+      "Document": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer"
           },
-          "name": {
+          "title": {
             "type": "string"
           },
-          "slug": {
-            "type": "string",
-            "maxLength": 30
+          "content": {
+            "type": "string"
           },
-          "nonce": {
-            "type": "integer"
-          },
-          "views": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 9999999999
-          },
-          "filesize": {
-            "type": "integer"
+          "contentVector": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "nullable": true
           }
         },
         "required": [
           "id",
-          "name",
-          "slug",
-          "nonce",
-          "views",
-          "filesize"
+          "title",
+          "content"
         ]
       },
       "IntFilter": {
@@ -206,7 +198,55 @@
           }
         }
       },
-      "VideoFilter": {
+      "VectorFilterArg": {
+        "type": "object",
+        "properties": {
+          "distanceTo": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "distance": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "distanceTo"
+        ],
+        "description": "Vector similarity search argument"
+      },
+      "VectorFilter": {
+        "type": "object",
+        "properties": {
+          "similar": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VectorFilterArg"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "eq": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "nullable": true
+          },
+          "neq": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "nullable": true
+          }
+        }
+      },
+      "DocumentFilter": {
         "type": "object",
         "properties": {
           "id": {
@@ -219,7 +259,7 @@
               }
             ]
           },
-          "name": {
+          "title": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/StringFilter"
@@ -229,7 +269,7 @@
               }
             ]
           },
-          "slug": {
+          "content": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/StringFilter"
@@ -239,30 +279,10 @@
               }
             ]
           },
-          "nonce": {
+          "contentVector": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "views": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "filesize": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
+                "$ref": "#/components/schemas/VectorFilter"
               },
               {
                 "type": "null"
@@ -272,21 +292,21 @@
           "and": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VideoFilter"
+              "$ref": "#/components/schemas/DocumentFilter"
             },
             "nullable": true
           },
           "or": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VideoFilter"
+              "$ref": "#/components/schemas/DocumentFilter"
             },
             "nullable": true
           },
           "not": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/VideoFilter"
+                "$ref": "#/components/schemas/DocumentFilter"
               },
               {
                 "type": "null"
@@ -311,7 +331,28 @@
         ],
         "description": "Sort order direction"
       },
-      "VideoOrdering": {
+      "VectorOrdering": {
+        "type": "object",
+        "properties": {
+          "distanceTo": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "nullable": true
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
+          }
+        },
+        "description": "Vector similarity ordering"
+      },
+      "DocumentOrdering": {
         "type": "object",
         "properties": {
           "id": {
@@ -324,7 +365,7 @@
               }
             ]
           },
-          "name": {
+          "title": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/Ordering"
@@ -334,7 +375,7 @@
               }
             ]
           },
-          "slug": {
+          "content": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/Ordering"
@@ -344,30 +385,10 @@
               }
             ]
           },
-          "nonce": {
+          "contentVector": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "views": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "filesize": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
+                "$ref": "#/components/schemas/VectorOrdering"
               },
               {
                 "type": "null"

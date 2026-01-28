@@ -6,17 +6,17 @@
   },
   "methods": [
     {
-      "name": "get_videos",
-      "description": "Get multiple `Video`s given the provided `where` filter, order by, limit, and offset",
+      "name": "get_foos",
+      "description": "Get multiple `Foo`s given the provided `where` filter, order by, limit, and offset",
       "params": [
         {
           "name": "where",
-          "description": "Filter conditions for Videos",
+          "description": "Filter conditions for Foos",
           "required": false,
           "schema": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/VideoFilter"
+                "$ref": "#/components/schemas/FooFilter"
               },
               {
                 "type": "null"
@@ -31,7 +31,7 @@
           "schema": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/VideoOrdering"
+                "$ref": "#/components/schemas/FooOrdering"
               },
               {
                 "type": "null"
@@ -63,14 +63,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Video"
+            "$ref": "#/components/schemas/Foo"
           }
         }
       }
     },
     {
-      "name": "get_video",
-      "description": "Get a single `Video` given primary key fields",
+      "name": "get_foo",
+      "description": "Get a single `Foo` given primary key fields",
       "params": [
         {
           "name": "id",
@@ -86,7 +86,7 @@
         "schema": {
           "oneOf": [
             {
-              "$ref": "#/components/schemas/Video"
+              "$ref": "#/components/schemas/Foo"
             },
             {
               "type": "null"
@@ -98,38 +98,19 @@
   ],
   "components": {
     "schemas": {
-      "Video": {
+      "Foo": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer"
           },
-          "name": {
+          "verylong": {
             "type": "string"
-          },
-          "slug": {
-            "type": "string",
-            "maxLength": 30
-          },
-          "nonce": {
-            "type": "integer"
-          },
-          "views": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 9999999999
-          },
-          "filesize": {
-            "type": "integer"
           }
         },
         "required": [
           "id",
-          "name",
-          "slug",
-          "nonce",
-          "views",
-          "filesize"
+          "verylong"
         ]
       },
       "IntFilter": {
@@ -161,7 +142,7 @@
           }
         }
       },
-      "StringFilter": {
+      "DecimalFilter": {
         "type": "object",
         "properties": {
           "eq": {
@@ -187,26 +168,10 @@
           "gte": {
             "type": "string",
             "nullable": true
-          },
-          "like": {
-            "type": "string",
-            "nullable": true
-          },
-          "ilike": {
-            "type": "string",
-            "nullable": true
-          },
-          "startsWith": {
-            "type": "string",
-            "nullable": true
-          },
-          "endsWith": {
-            "type": "string",
-            "nullable": true
           }
         }
       },
-      "VideoFilter": {
+      "FooFilter": {
         "type": "object",
         "properties": {
           "id": {
@@ -219,50 +184,10 @@
               }
             ]
           },
-          "name": {
+          "verylong": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "slug": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "nonce": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "views": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "filesize": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
+                "$ref": "#/components/schemas/DecimalFilter"
               },
               {
                 "type": "null"
@@ -272,21 +197,21 @@
           "and": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VideoFilter"
+              "$ref": "#/components/schemas/FooFilter"
             },
             "nullable": true
           },
           "or": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VideoFilter"
+              "$ref": "#/components/schemas/FooFilter"
             },
             "nullable": true
           },
           "not": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/VideoFilter"
+                "$ref": "#/components/schemas/FooFilter"
               },
               {
                 "type": "null"
@@ -311,7 +236,7 @@
         ],
         "description": "Sort order direction"
       },
-      "VideoOrdering": {
+      "FooOrdering": {
         "type": "object",
         "properties": {
           "id": {
@@ -324,47 +249,7 @@
               }
             ]
           },
-          "name": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "slug": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "nonce": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "views": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "filesize": {
+          "verylong": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/Ordering"

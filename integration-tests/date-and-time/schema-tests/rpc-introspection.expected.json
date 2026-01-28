@@ -6,17 +6,17 @@
   },
   "methods": [
     {
-      "name": "get_concerts",
-      "description": "Get multiple `Concert`s given the provided `where` filter, order by, limit, and offset",
+      "name": "get_books",
+      "description": "Get multiple `Book`s given the provided `where` filter, order by, limit, and offset",
       "params": [
         {
           "name": "where",
-          "description": "Filter conditions for Concerts",
+          "description": "Filter conditions for Books",
           "required": false,
           "schema": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/ConcertFilter"
+                "$ref": "#/components/schemas/BookFilter"
               },
               {
                 "type": "null"
@@ -31,7 +31,7 @@
           "schema": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/ConcertOrdering"
+                "$ref": "#/components/schemas/BookOrdering"
               },
               {
                 "type": "null"
@@ -63,77 +63,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Concert"
+            "$ref": "#/components/schemas/Book"
           }
         }
       }
     },
     {
-      "name": "get_venues",
-      "description": "Get multiple `Venue`s given the provided `where` filter, order by, limit, and offset",
-      "params": [
-        {
-          "name": "where",
-          "description": "Filter conditions for Venues",
-          "required": false,
-          "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/VenueFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        {
-          "name": "orderBy",
-          "description": "Ordering for the results",
-          "required": false,
-          "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/VenueOrdering"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        {
-          "name": "limit",
-          "description": "Maximum number of results to return",
-          "required": false,
-          "schema": {
-            "type": "integer",
-            "nullable": true
-          }
-        },
-        {
-          "name": "offset",
-          "description": "Number of results to skip",
-          "required": false,
-          "schema": {
-            "type": "integer",
-            "nullable": true
-          }
-        }
-      ],
-      "result": {
-        "name": "result",
-        "schema": {
-          "type": "array",
-          "items": {
-            "$ref": "#/components/schemas/Venue"
-          }
-        }
-      }
-    },
-    {
-      "name": "get_concert",
-      "description": "Get a single `Concert` given primary key fields",
+      "name": "get_book",
+      "description": "Get a single `Book` given primary key fields",
       "params": [
         {
           "name": "id",
@@ -149,34 +86,7 @@
         "schema": {
           "oneOf": [
             {
-              "$ref": "#/components/schemas/Concert"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "get_venue",
-      "description": "Get a single `Venue` given primary key fields",
-      "params": [
-        {
-          "name": "id",
-          "description": "Primary key field: id",
-          "required": true,
-          "schema": {
-            "type": "integer"
-          }
-        }
-      ],
-      "result": {
-        "name": "result",
-        "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/Venue"
+              "$ref": "#/components/schemas/Book"
             },
             {
               "type": "null"
@@ -188,27 +98,39 @@
   ],
   "components": {
     "schemas": {
-      "Concert": {
+      "Book": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer"
           },
-          "title": {
+          "name": {
             "type": "string"
           },
-          "published": {
-            "type": "boolean"
+          "published_on": {
+            "type": "string",
+            "format": "date"
           },
-          "price": {
-            "type": "string"
+          "modified_time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "modified_time_stripped": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reading_club_time": {
+            "type": "string",
+            "format": "time"
           }
         },
         "required": [
           "id",
-          "title",
-          "published",
-          "price"
+          "name",
+          "published_on",
+          "modified_time",
+          "modified_time_stripped",
+          "reading_club_time"
         ]
       },
       "IntFilter": {
@@ -285,49 +207,147 @@
           }
         }
       },
-      "BooleanFilter": {
+      "LocalDateFilter": {
         "type": "object",
         "properties": {
           "eq": {
-            "type": "boolean",
-            "nullable": true
+            "type": "string",
+            "nullable": true,
+            "format": "date"
           },
           "neq": {
-            "type": "boolean",
-            "nullable": true
-          }
-        }
-      },
-      "FloatFilter": {
-        "type": "object",
-        "properties": {
-          "eq": {
-            "type": "number",
-            "nullable": true
-          },
-          "neq": {
-            "type": "number",
-            "nullable": true
+            "type": "string",
+            "nullable": true,
+            "format": "date"
           },
           "lt": {
-            "type": "number",
-            "nullable": true
+            "type": "string",
+            "nullable": true,
+            "format": "date"
           },
           "lte": {
-            "type": "number",
-            "nullable": true
+            "type": "string",
+            "nullable": true,
+            "format": "date"
           },
           "gt": {
-            "type": "number",
-            "nullable": true
+            "type": "string",
+            "nullable": true,
+            "format": "date"
           },
           "gte": {
-            "type": "number",
-            "nullable": true
+            "type": "string",
+            "nullable": true,
+            "format": "date"
           }
         }
       },
-      "VenueFilter": {
+      "InstantFilter": {
+        "type": "object",
+        "properties": {
+          "eq": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "neq": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "lt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "lte": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "gt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "gte": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          }
+        }
+      },
+      "LocalDateTimeFilter": {
+        "type": "object",
+        "properties": {
+          "eq": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "neq": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "lt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "lte": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "gt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "gte": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          }
+        }
+      },
+      "LocalTimeFilter": {
+        "type": "object",
+        "properties": {
+          "eq": {
+            "type": "string",
+            "nullable": true,
+            "format": "time"
+          },
+          "neq": {
+            "type": "string",
+            "nullable": true,
+            "format": "time"
+          },
+          "lt": {
+            "type": "string",
+            "nullable": true,
+            "format": "time"
+          },
+          "lte": {
+            "type": "string",
+            "nullable": true,
+            "format": "time"
+          },
+          "gt": {
+            "type": "string",
+            "nullable": true,
+            "format": "time"
+          },
+          "gte": {
+            "type": "string",
+            "nullable": true,
+            "format": "time"
+          }
+        }
+      },
+      "BookFilter": {
         "type": "object",
         "properties": {
           "id": {
@@ -350,138 +370,40 @@
               }
             ]
           },
-          "concerts": {
+          "published_on": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/ConcertFilter"
+                "$ref": "#/components/schemas/LocalDateFilter"
               },
               {
                 "type": "null"
               }
             ]
           },
-          "published": {
+          "modified_time": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/BooleanFilter"
+                "$ref": "#/components/schemas/InstantFilter"
               },
               {
                 "type": "null"
               }
             ]
           },
-          "latitude": {
+          "modified_time_stripped": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/FloatFilter"
+                "$ref": "#/components/schemas/LocalDateTimeFilter"
               },
               {
                 "type": "null"
               }
             ]
           },
-          "and": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/VenueFilter"
-            },
-            "nullable": true
-          },
-          "or": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/VenueFilter"
-            },
-            "nullable": true
-          },
-          "not": {
+          "reading_club_time": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/VenueFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "DecimalFilter": {
-        "type": "object",
-        "properties": {
-          "eq": {
-            "type": "string",
-            "nullable": true
-          },
-          "neq": {
-            "type": "string",
-            "nullable": true
-          },
-          "lt": {
-            "type": "string",
-            "nullable": true
-          },
-          "lte": {
-            "type": "string",
-            "nullable": true
-          },
-          "gt": {
-            "type": "string",
-            "nullable": true
-          },
-          "gte": {
-            "type": "string",
-            "nullable": true
-          }
-        }
-      },
-      "ConcertFilter": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "title": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "venue": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/VenueFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "published": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/BooleanFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "price": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DecimalFilter"
+                "$ref": "#/components/schemas/LocalTimeFilter"
               },
               {
                 "type": "null"
@@ -491,21 +413,21 @@
           "and": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ConcertFilter"
+              "$ref": "#/components/schemas/BookFilter"
             },
             "nullable": true
           },
           "or": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ConcertFilter"
+              "$ref": "#/components/schemas/BookFilter"
             },
             "nullable": true
           },
           "not": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/ConcertFilter"
+                "$ref": "#/components/schemas/BookFilter"
               },
               {
                 "type": "null"
@@ -530,7 +452,7 @@
         ],
         "description": "Sort order direction"
       },
-      "VenueOrdering": {
+      "BookOrdering": {
         "type": "object",
         "properties": {
           "id": {
@@ -553,7 +475,7 @@
               }
             ]
           },
-          "published": {
+          "published_on": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/Ordering"
@@ -563,22 +485,7 @@
               }
             ]
           },
-          "latitude": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "ConcertOrdering": {
-        "type": "object",
-        "properties": {
-          "id": {
+          "modified_time": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/Ordering"
@@ -588,7 +495,7 @@
               }
             ]
           },
-          "title": {
+          "modified_time_stripped": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/Ordering"
@@ -598,27 +505,7 @@
               }
             ]
           },
-          "venue": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/VenueOrdering"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "published": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "price": {
+          "reading_club_time": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/Ordering"
@@ -629,29 +516,6 @@
             ]
           }
         }
-      },
-      "Venue": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          },
-          "name": {
-            "type": "string"
-          },
-          "published": {
-            "type": "boolean"
-          },
-          "latitude": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "published",
-          "latitude"
-        ]
       }
     }
   }

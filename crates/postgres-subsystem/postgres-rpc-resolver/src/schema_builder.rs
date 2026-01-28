@@ -303,8 +303,9 @@ fn build_predicate_param_schema(
     // Build the filter type based on the parameter type kind
     match &param_type.kind {
         PredicateParameterTypeKind::ImplicitEqual => {
-            // For implicit equals, use the field's scalar type
-            RpcTypeSchema::scalar("String") // Simplified - actual type depends on field
+            // For implicit equals, get the actual scalar type from the column
+            let type_name = get_scalar_type_from_column_path_link(param, subsystem);
+            RpcTypeSchema::scalar(&type_name)
         }
         PredicateParameterTypeKind::Operator(operators) => {
             // Build filter type with operators like eq, neq, lt, gt, etc.
@@ -313,7 +314,24 @@ fn build_predicate_param_schema(
                 added_types.insert(filter_type_name.clone());
                 let mut filter_obj = RpcObjectType::new(filter_type_name);
                 for op_param in operators {
-                    let op_schema = RpcTypeSchema::optional(RpcTypeSchema::scalar("String")); // Simplified
+                    // Check if this operator's type is itself a predicate type (like VectorFilterArg)
+                    let op_type =
+                        &subsystem.core_subsystem.predicate_types[op_param.typ.innermost().type_id];
+                    let op_schema = match &op_type.kind {
+                        PredicateParameterTypeKind::Vector => {
+                            // Build the vector filter argument schema (for similarity search)
+                            RpcTypeSchema::optional(build_vector_filter_arg_schema(
+                                schema,
+                                added_types,
+                            ))
+                        }
+                        _ => {
+                            // Regular scalar operator - get the type from column path link
+                            let type_name =
+                                get_scalar_type_from_column_path_link(op_param, subsystem);
+                            RpcTypeSchema::optional(RpcTypeSchema::scalar(&type_name))
+                        }
+                    };
                     filter_obj =
                         filter_obj.with_field(RpcObjectField::new(&op_param.name, op_schema));
                 }
@@ -344,10 +362,17 @@ fn build_predicate_param_schema(
                 }
 
                 // Add logical operators (and, or, not)
+                // Note: 'and' and 'or' take arrays of predicates, but 'not' takes a single predicate
                 for logical_param in logical_op_params {
-                    let logical_schema = RpcTypeSchema::optional(RpcTypeSchema::array(
-                        RpcTypeSchema::object(filter_type_name),
-                    ));
+                    let logical_schema = if logical_param.name == "not" {
+                        // 'not' takes a single optional predicate
+                        RpcTypeSchema::optional(RpcTypeSchema::object(filter_type_name))
+                    } else {
+                        // 'and' and 'or' take arrays of predicates
+                        RpcTypeSchema::optional(RpcTypeSchema::array(RpcTypeSchema::object(
+                            filter_type_name,
+                        )))
+                    };
                     filter_obj = filter_obj
                         .with_field(RpcObjectField::new(&logical_param.name, logical_schema));
                 }
@@ -377,9 +402,8 @@ fn build_predicate_param_schema(
             RpcTypeSchema::object(ref_filter_name)
         }
         PredicateParameterTypeKind::Vector => {
-            // Vector similarity search filter
-            ensure_vector_filter_added(schema, added_types);
-            RpcTypeSchema::object("VectorFilter")
+            // Vector similarity search filter argument (used by 'similar' operator)
+            build_vector_filter_arg_schema(schema, added_types)
         }
     }
 }
@@ -389,25 +413,32 @@ fn build_pk_param_schema(
     subsystem: &PostgresRpcSubsystemWithRouter,
 ) -> RpcTypeSchema {
     // PK parameters use implicit equal semantics - they're required scalar values
-    let param_type = &subsystem.core_subsystem.predicate_types[param.typ.innermost().type_id];
+    // Get the actual type from the column path link
+    let type_name = get_scalar_type_from_column_path_link(param, subsystem);
+    RpcTypeSchema::scalar(&type_name)
+}
 
-    // Try to determine the underlying scalar type from the parameter name
-    // For now, we use a simple heuristic based on common patterns
-    let type_name = match param.name.as_str() {
-        "id" => "Int",
-        _ => {
-            // Default to the parameter type name, which might give us a hint
-            match &param_type.underlying_type {
-                Some(_) => "String", // Has underlying entity - it's a reference
-                None => match param_type.name.as_str() {
-                    name if name.ends_with("Filter") => "String",
-                    _ => "String", // Default fallback
-                },
-            }
-        }
-    };
+/// Get the scalar type name from a predicate parameter.
+///
+/// First tries to get the type from `column_path_link` (for field parameters).
+/// Falls back to the parameter type wrapper's name (for operator parameters like eq, neq, etc.).
+fn get_scalar_type_from_column_path_link(
+    param: &PredicateParameter,
+    subsystem: &PostgresRpcSubsystemWithRouter,
+) -> String {
+    use exo_sql::ColumnPathLink;
 
-    RpcTypeSchema::scalar(type_name)
+    // First try to get the type from the column path link
+    if let Some(ColumnPathLink::Leaf(column_id)) = &param.column_path_link {
+        let column = column_id.get_column(&subsystem.core_subsystem.database);
+        return column.typ.type_name().to_string();
+    }
+
+    // Fall back to the parameter type wrapper's name
+    // This works for operator parameters where the type name is set directly
+    // (e.g., "Int" for IntFilter's eq, neq, etc. operators)
+    let param_type_wrapper = param.typ.innermost();
+    param_type_wrapper.name.clone()
 }
 
 /// Build the schema for an orderBy parameter.
@@ -509,26 +540,32 @@ fn ensure_vector_ordering_added(schema: &mut RpcSchema, added_types: &mut HashSe
     schema.add_object_type(VECTOR_ORDERING_NAME.to_string(), ordering_obj);
 }
 
-/// Ensure the VectorFilter type is added to the schema.
-fn ensure_vector_filter_added(schema: &mut RpcSchema, added_types: &mut HashSet<String>) {
-    const VECTOR_FILTER_NAME: &str = "VectorFilter";
-    if added_types.contains(VECTOR_FILTER_NAME) {
-        return;
+/// Build the VectorFilterArg schema (used by the 'similar' operator in VectorFilter).
+/// VectorFilterArg has two fields:
+/// - distanceTo: the target vector to compare against (array of floats)
+/// - distance: the maximum distance threshold (float)
+fn build_vector_filter_arg_schema(
+    schema: &mut RpcSchema,
+    added_types: &mut HashSet<String>,
+) -> RpcTypeSchema {
+    const VECTOR_FILTER_ARG_NAME: &str = "VectorFilterArg";
+    if !added_types.contains(VECTOR_FILTER_ARG_NAME) {
+        added_types.insert(VECTOR_FILTER_ARG_NAME.to_string());
+
+        let filter_arg_obj = RpcObjectType::new(VECTOR_FILTER_ARG_NAME)
+            .with_description("Vector similarity search argument")
+            .with_field(RpcObjectField::new(
+                "distanceTo",
+                RpcTypeSchema::array(RpcTypeSchema::scalar("Float")),
+            ))
+            .with_field(RpcObjectField::new(
+                "distance",
+                RpcTypeSchema::optional(RpcTypeSchema::scalar("Float")),
+            ));
+
+        schema.add_object_type(VECTOR_FILTER_ARG_NAME.to_string(), filter_arg_obj);
     }
-    added_types.insert(VECTOR_FILTER_NAME.to_string());
-
-    let filter_obj = RpcObjectType::new(VECTOR_FILTER_NAME)
-        .with_description("Vector similarity filter")
-        .with_field(RpcObjectField::new(
-            "distanceTo",
-            RpcTypeSchema::optional(RpcTypeSchema::array(RpcTypeSchema::scalar("Float"))),
-        ))
-        .with_field(RpcObjectField::new(
-            "distance",
-            RpcTypeSchema::optional(RpcTypeSchema::scalar("Float")),
-        ));
-
-    schema.add_object_type(VECTOR_FILTER_NAME.to_string(), filter_obj);
+    RpcTypeSchema::object(VECTOR_FILTER_ARG_NAME)
 }
 
 // Integration tests for this module are in integration-tests/rpc-introspection

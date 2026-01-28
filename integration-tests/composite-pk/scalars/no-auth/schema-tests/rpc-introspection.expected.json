@@ -6,17 +6,17 @@
   },
   "methods": [
     {
-      "name": "get_concerts",
-      "description": "Get multiple `Concert`s given the provided `where` filter, order by, limit, and offset",
+      "name": "get_people",
+      "description": "Get multiple `Person`s given the provided `where` filter, order by, limit, and offset",
       "params": [
         {
           "name": "where",
-          "description": "Filter conditions for Concerts",
+          "description": "Filter conditions for People",
           "required": false,
           "schema": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/ConcertFilter"
+                "$ref": "#/components/schemas/PersonFilter"
               },
               {
                 "type": "null"
@@ -31,7 +31,7 @@
           "schema": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/ConcertOrdering"
+                "$ref": "#/components/schemas/PersonOrdering"
               },
               {
                 "type": "null"
@@ -63,23 +63,23 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Concert"
+            "$ref": "#/components/schemas/Person"
           }
         }
       }
     },
     {
-      "name": "get_venues",
-      "description": "Get multiple `Venue`s given the provided `where` filter, order by, limit, and offset",
+      "name": "get_addresses",
+      "description": "Get multiple `Address`s given the provided `where` filter, order by, limit, and offset",
       "params": [
         {
           "name": "where",
-          "description": "Filter conditions for Venues",
+          "description": "Filter conditions for Addresses",
           "required": false,
           "schema": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/VenueFilter"
+                "$ref": "#/components/schemas/AddressFilter"
               },
               {
                 "type": "null"
@@ -94,7 +94,7 @@
           "schema": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/VenueOrdering"
+                "$ref": "#/components/schemas/AddressOrdering"
               },
               {
                 "type": "null"
@@ -126,21 +126,29 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Venue"
+            "$ref": "#/components/schemas/Address"
           }
         }
       }
     },
     {
-      "name": "get_concert",
-      "description": "Get a single `Concert` given primary key fields",
+      "name": "get_person",
+      "description": "Get a single `Person` given primary key fields",
       "params": [
         {
-          "name": "id",
-          "description": "Primary key field: id",
+          "name": "firstName",
+          "description": "Primary key field: firstName",
           "required": true,
           "schema": {
-            "type": "integer"
+            "type": "string"
+          }
+        },
+        {
+          "name": "lastName",
+          "description": "Primary key field: lastName",
+          "required": true,
+          "schema": {
+            "type": "string"
           }
         }
       ],
@@ -149,7 +157,7 @@
         "schema": {
           "oneOf": [
             {
-              "$ref": "#/components/schemas/Concert"
+              "$ref": "#/components/schemas/Person"
             },
             {
               "type": "null"
@@ -159,12 +167,36 @@
       }
     },
     {
-      "name": "get_venue",
-      "description": "Get a single `Venue` given primary key fields",
+      "name": "get_address",
+      "description": "Get a single `Address` given primary key fields",
       "params": [
         {
-          "name": "id",
-          "description": "Primary key field: id",
+          "name": "street",
+          "description": "Primary key field: street",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "city",
+          "description": "Primary key field: city",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "state",
+          "description": "Primary key field: state",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "zip",
+          "description": "Primary key field: zip",
           "required": true,
           "schema": {
             "type": "integer"
@@ -176,7 +208,7 @@
         "schema": {
           "oneOf": [
             {
-              "$ref": "#/components/schemas/Venue"
+              "$ref": "#/components/schemas/Address"
             },
             {
               "type": "null"
@@ -188,57 +220,24 @@
   ],
   "components": {
     "schemas": {
-      "Concert": {
+      "Person": {
         "type": "object",
         "properties": {
-          "id": {
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "age": {
             "type": "integer"
-          },
-          "title": {
-            "type": "string"
-          },
-          "published": {
-            "type": "boolean"
-          },
-          "price": {
-            "type": "string"
           }
         },
         "required": [
-          "id",
-          "title",
-          "published",
-          "price"
+          "firstName",
+          "lastName",
+          "age"
         ]
-      },
-      "IntFilter": {
-        "type": "object",
-        "properties": {
-          "eq": {
-            "type": "integer",
-            "nullable": true
-          },
-          "neq": {
-            "type": "integer",
-            "nullable": true
-          },
-          "lt": {
-            "type": "integer",
-            "nullable": true
-          },
-          "lte": {
-            "type": "integer",
-            "nullable": true
-          },
-          "gt": {
-            "type": "integer",
-            "nullable": true
-          },
-          "gte": {
-            "type": "integer",
-            "nullable": true
-          }
-        }
       },
       "StringFilter": {
         "type": "object",
@@ -285,62 +284,39 @@
           }
         }
       },
-      "BooleanFilter": {
+      "IntFilter": {
         "type": "object",
         "properties": {
           "eq": {
-            "type": "boolean",
+            "type": "integer",
             "nullable": true
           },
           "neq": {
-            "type": "boolean",
-            "nullable": true
-          }
-        }
-      },
-      "FloatFilter": {
-        "type": "object",
-        "properties": {
-          "eq": {
-            "type": "number",
-            "nullable": true
-          },
-          "neq": {
-            "type": "number",
+            "type": "integer",
             "nullable": true
           },
           "lt": {
-            "type": "number",
+            "type": "integer",
             "nullable": true
           },
           "lte": {
-            "type": "number",
+            "type": "integer",
             "nullable": true
           },
           "gt": {
-            "type": "number",
+            "type": "integer",
             "nullable": true
           },
           "gte": {
-            "type": "number",
+            "type": "integer",
             "nullable": true
           }
         }
       },
-      "VenueFilter": {
+      "AddressFilter": {
         "type": "object",
         "properties": {
-          "id": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "name": {
+          "street": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/StringFilter"
@@ -350,105 +326,7 @@
               }
             ]
           },
-          "concerts": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ConcertFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "published": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/BooleanFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "latitude": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/FloatFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "and": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/VenueFilter"
-            },
-            "nullable": true
-          },
-          "or": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/VenueFilter"
-            },
-            "nullable": true
-          },
-          "not": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/VenueFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "DecimalFilter": {
-        "type": "object",
-        "properties": {
-          "eq": {
-            "type": "string",
-            "nullable": true
-          },
-          "neq": {
-            "type": "string",
-            "nullable": true
-          },
-          "lt": {
-            "type": "string",
-            "nullable": true
-          },
-          "lte": {
-            "type": "string",
-            "nullable": true
-          },
-          "gt": {
-            "type": "string",
-            "nullable": true
-          },
-          "gte": {
-            "type": "string",
-            "nullable": true
-          }
-        }
-      },
-      "ConcertFilter": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "title": {
+          "city": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/StringFilter"
@@ -458,30 +336,40 @@
               }
             ]
           },
-          "venue": {
+          "state": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/VenueFilter"
+                "$ref": "#/components/schemas/StringFilter"
               },
               {
                 "type": "null"
               }
             ]
           },
-          "published": {
+          "zip": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/BooleanFilter"
+                "$ref": "#/components/schemas/IntFilter"
               },
               {
                 "type": "null"
               }
             ]
           },
-          "price": {
+          "info": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/DecimalFilter"
+                "$ref": "#/components/schemas/StringFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "people": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PersonFilter"
               },
               {
                 "type": "null"
@@ -491,21 +379,90 @@
           "and": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ConcertFilter"
+              "$ref": "#/components/schemas/AddressFilter"
             },
             "nullable": true
           },
           "or": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ConcertFilter"
+              "$ref": "#/components/schemas/AddressFilter"
             },
             "nullable": true
           },
           "not": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/ConcertFilter"
+                "$ref": "#/components/schemas/AddressFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "PersonFilter": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StringFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastName": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StringFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "age": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IntFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "address": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AddressFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "and": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonFilter"
+            },
+            "nullable": true
+          },
+          "or": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonFilter"
+            },
+            "nullable": true
+          },
+          "not": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PersonFilter"
               },
               {
                 "type": "null"
@@ -530,10 +487,10 @@
         ],
         "description": "Sort order direction"
       },
-      "VenueOrdering": {
+      "AddressOrdering": {
         "type": "object",
         "properties": {
-          "id": {
+          "street": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/Ordering"
@@ -543,7 +500,7 @@
               }
             ]
           },
-          "name": {
+          "city": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/Ordering"
@@ -553,7 +510,7 @@
               }
             ]
           },
-          "published": {
+          "state": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/Ordering"
@@ -563,7 +520,17 @@
               }
             ]
           },
-          "latitude": {
+          "zip": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Ordering"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "info": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/Ordering"
@@ -575,10 +542,10 @@
           }
         }
       },
-      "ConcertOrdering": {
+      "PersonOrdering": {
         "type": "object",
         "properties": {
-          "id": {
+          "firstName": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/Ordering"
@@ -588,7 +555,7 @@
               }
             ]
           },
-          "title": {
+          "lastName": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/Ordering"
@@ -598,17 +565,7 @@
               }
             ]
           },
-          "venue": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/VenueOrdering"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "published": {
+          "age": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/Ordering"
@@ -618,10 +575,10 @@
               }
             ]
           },
-          "price": {
+          "address": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/Ordering"
+                "$ref": "#/components/schemas/AddressOrdering"
               },
               {
                 "type": "null"
@@ -630,27 +587,31 @@
           }
         }
       },
-      "Venue": {
+      "Address": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer"
-          },
-          "name": {
+          "street": {
             "type": "string"
           },
-          "published": {
-            "type": "boolean"
+          "city": {
+            "type": "string"
           },
-          "latitude": {
-            "type": "number"
+          "state": {
+            "type": "string"
+          },
+          "zip": {
+            "type": "integer"
+          },
+          "info": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
-          "id",
-          "name",
-          "published",
-          "latitude"
+          "street",
+          "city",
+          "state",
+          "zip"
         ]
       }
     }

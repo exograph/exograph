@@ -102,9 +102,8 @@ fn convert_type_schema(schema: &RpcTypeSchema) -> JsonSchema {
             match inner_schema {
                 JsonSchema::Inline(inline) => JsonSchema::Inline(inline.with_nullable()),
                 JsonSchema::Ref(ref_schema) => {
-                    // For refs, we just return the ref as-is
-                    // In a full implementation, we'd use oneOf/anyOf for nullable refs
-                    JsonSchema::Ref(ref_schema)
+                    // Use oneOf pattern for nullable references: oneOf: [{$ref: "..."}, {type: "null"}]
+                    JsonSchema::Inline(JsonSchemaInline::nullable_ref(ref_schema))
                 }
             }
         }
@@ -118,16 +117,17 @@ fn type_name_to_json_schema(type_name: &str) -> JsonSchemaInline {
         "String" => JsonSchemaInline::string(),
         "Boolean" => JsonSchemaInline::boolean(),
         "ID" => JsonSchemaInline::string(),
-        "Uuid" => JsonSchemaInline::string(),
-        "DateTime" => JsonSchemaInline::string(),
-        "LocalDateTime" => JsonSchemaInline::string(),
-        "LocalDate" => JsonSchemaInline::string(),
-        "LocalTime" => JsonSchemaInline::string(),
-        "Instant" => JsonSchemaInline::string(),
+        "Uuid" => JsonSchemaInline::string().with_format("uuid"),
+        "DateTime" => JsonSchemaInline::string().with_format("date-time"),
+        "LocalDateTime" => JsonSchemaInline::string().with_format("date-time"),
+        "LocalDate" => JsonSchemaInline::string().with_format("date"),
+        "LocalTime" => JsonSchemaInline::string().with_format("time"),
+        "Instant" => JsonSchemaInline::string().with_format("date-time"),
         "Json" => JsonSchemaInline::default(), // Any type
-        "Blob" => JsonSchemaInline::string(),
+        "Blob" => JsonSchemaInline::string().with_format("byte"), // Base64-encoded binary
         "Decimal" => JsonSchemaInline::string(), // Decimals are strings for precision
-        _ => JsonSchemaInline::default(),        // Unknown type
+        "Vector" => JsonSchemaInline::array(JsonSchema::Inline(JsonSchemaInline::number())), // Array of floats
+        _ => JsonSchemaInline::default(), // Unknown type
     }
 }
 

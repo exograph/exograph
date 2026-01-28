@@ -263,6 +263,14 @@ pub struct JsonSchemaInline {
     /// Maximum length for strings
     #[serde(rename = "maxLength", skip_serializing_if = "Option::is_none")]
     pub max_length: Option<usize>,
+
+    /// Format hint for strings (e.g., "uuid", "date", "date-time", "time", "byte")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub format: Option<String>,
+
+    /// oneOf schemas (for nullable references)
+    #[serde(rename = "oneOf", skip_serializing_if = "Option::is_none")]
+    pub one_of: Option<Vec<JsonSchema>>,
 }
 
 impl JsonSchemaInline {
@@ -331,6 +339,11 @@ impl JsonSchemaInline {
         self
     }
 
+    pub fn with_format(mut self, format: impl Into<String>) -> Self {
+        self.format = Some(format.into());
+        self
+    }
+
     pub fn with_enum_values(mut self, values: Vec<String>) -> Self {
         self.enum_values = Some(values);
         self
@@ -348,6 +361,23 @@ impl JsonSchemaInline {
     pub fn with_required(mut self, required: Vec<String>) -> Self {
         self.required = Some(required);
         self
+    }
+
+    /// Create a nullable schema using oneOf pattern with the given ref and null type.
+    /// This properly represents optional references in JSON Schema.
+    pub fn nullable_ref(ref_schema: JsonSchemaRef) -> Self {
+        Self {
+            one_of: Some(vec![
+                JsonSchema::Ref(ref_schema),
+                JsonSchema::Inline(JsonSchemaInline::null()),
+            ]),
+            ..Default::default()
+        }
+    }
+
+    /// Create a null type schema.
+    pub fn null() -> Self {
+        Self::new("null")
     }
 }
 

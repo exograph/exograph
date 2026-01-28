@@ -6,17 +6,17 @@
   },
   "methods": [
     {
-      "name": "get_videos",
-      "description": "Get multiple `Video`s given the provided `where` filter, order by, limit, and offset",
+      "name": "get_images",
+      "description": "Get multiple `Image`s given the provided `where` filter, order by, limit, and offset",
       "params": [
         {
           "name": "where",
-          "description": "Filter conditions for Videos",
+          "description": "Filter conditions for Images",
           "required": false,
           "schema": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/VideoFilter"
+                "$ref": "#/components/schemas/ImageFilter"
               },
               {
                 "type": "null"
@@ -31,7 +31,7 @@
           "schema": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/VideoOrdering"
+                "$ref": "#/components/schemas/ImageOrdering"
               },
               {
                 "type": "null"
@@ -63,21 +63,22 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Video"
+            "$ref": "#/components/schemas/Image"
           }
         }
       }
     },
     {
-      "name": "get_video",
-      "description": "Get a single `Video` given primary key fields",
+      "name": "get_image",
+      "description": "Get a single `Image` given primary key fields",
       "params": [
         {
           "name": "id",
           "description": "Primary key field: id",
           "required": true,
           "schema": {
-            "type": "integer"
+            "type": "string",
+            "format": "uuid"
           }
         }
       ],
@@ -86,7 +87,7 @@
         "schema": {
           "oneOf": [
             {
-              "$ref": "#/components/schemas/Video"
+              "$ref": "#/components/schemas/Image"
             },
             {
               "type": "null"
@@ -98,66 +99,39 @@
   ],
   "components": {
     "schemas": {
-      "Video": {
+      "Image": {
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer"
+            "type": "string",
+            "format": "uuid"
           },
           "name": {
             "type": "string"
           },
-          "slug": {
+          "data": {
             "type": "string",
-            "maxLength": 30
-          },
-          "nonce": {
-            "type": "integer"
-          },
-          "views": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 9999999999
-          },
-          "filesize": {
-            "type": "integer"
+            "format": "byte"
           }
         },
         "required": [
           "id",
           "name",
-          "slug",
-          "nonce",
-          "views",
-          "filesize"
+          "data"
         ]
       },
-      "IntFilter": {
+      "UuidFilter": {
         "type": "object",
         "properties": {
           "eq": {
-            "type": "integer",
-            "nullable": true
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
           },
           "neq": {
-            "type": "integer",
-            "nullable": true
-          },
-          "lt": {
-            "type": "integer",
-            "nullable": true
-          },
-          "lte": {
-            "type": "integer",
-            "nullable": true
-          },
-          "gt": {
-            "type": "integer",
-            "nullable": true
-          },
-          "gte": {
-            "type": "integer",
-            "nullable": true
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
           }
         }
       },
@@ -206,13 +180,13 @@
           }
         }
       },
-      "VideoFilter": {
+      "ImageFilter": {
         "type": "object",
         "properties": {
           "id": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/IntFilter"
+                "$ref": "#/components/schemas/UuidFilter"
               },
               {
                 "type": "null"
@@ -229,64 +203,29 @@
               }
             ]
           },
-          "slug": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "nonce": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "views": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "filesize": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "data": {
+            "type": "string",
+            "nullable": true,
+            "format": "byte"
           },
           "and": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VideoFilter"
+              "$ref": "#/components/schemas/ImageFilter"
             },
             "nullable": true
           },
           "or": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VideoFilter"
+              "$ref": "#/components/schemas/ImageFilter"
             },
             "nullable": true
           },
           "not": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/VideoFilter"
+                "$ref": "#/components/schemas/ImageFilter"
               },
               {
                 "type": "null"
@@ -311,7 +250,7 @@
         ],
         "description": "Sort order direction"
       },
-      "VideoOrdering": {
+      "ImageOrdering": {
         "type": "object",
         "properties": {
           "id": {
@@ -334,37 +273,7 @@
               }
             ]
           },
-          "slug": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "nonce": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "views": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "filesize": {
+          "data": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/Ordering"
