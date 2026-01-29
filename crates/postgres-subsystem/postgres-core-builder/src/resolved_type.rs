@@ -10,7 +10,10 @@ use core_model::{
     function_defn::FunctionDefinition,
     mapped_arena::MappedArena,
     primitive_type::PrimitiveType,
-    types::{FieldType, Named, TypeValidation, TypeValidationProvider},
+    types::{
+        FieldType, FloatConstraints, IntConstraints, Named, StringConstraints, TypeValidation,
+        TypeValidationProvider,
+    },
 };
 use core_model_builder::{
     ast::ast_types::{AstExpr, default_span},
@@ -212,9 +215,7 @@ impl TypeValidationProvider for SerializableTypeHint {
         // Check if this is an IntTypeHint
         if let Some(int_hint) = hint_ref.downcast_ref::<crate::type_provider::IntTypeHint>() {
             if let Some(r) = &int_hint.range {
-                return Some(TypeValidation::Int {
-                    range: r.to_owned(),
-                });
+                return Some(TypeValidation::Int(IntConstraints::from_range(r.0, r.1)));
             }
         }
         // Check if this is a FloatTypeHint
@@ -222,9 +223,17 @@ impl TypeValidationProvider for SerializableTypeHint {
             hint_ref.downcast_ref::<crate::type_provider::FloatTypeHint>()
             && let Some(r) = &float_hint.range
         {
-            return Some(TypeValidation::Float {
-                range: r.to_owned(),
-            });
+            return Some(TypeValidation::Float(FloatConstraints::from_range(
+                r.0, r.1,
+            )));
+        }
+        // Check if this is a StringTypeHint
+        else if let Some(string_hint) =
+            hint_ref.downcast_ref::<crate::type_provider::StringTypeHint>()
+        {
+            return Some(TypeValidation::String(StringConstraints::with_max_length(
+                string_hint.max_length,
+            )));
         }
         None
     }

@@ -28,7 +28,7 @@ use core_model::{
 };
 use postgres_core_model::order::{
     OrderByParameterType, OrderByParameterTypeKind, OrderByParameterTypeWrapper,
-    PRIMITIVE_ORDERING_OPTIONS,
+    PRIMITIVE_ORDERING_OPTIONS, PRIMITIVE_ORDERING_TYPE_NAME,
 };
 
 impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for OrderByParameterType {
@@ -85,7 +85,7 @@ impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for OrderByParameterType {
                         default_value: None,
                         ty: default_positioned(
                             Type {
-                                base: BaseType::Leaf("Ordering".to_string()),
+                                base: BaseType::Leaf(PRIMITIVE_ORDERING_TYPE_NAME.to_string()),
                                 nullable: true,
                             }
                             .to_graphql_type(),

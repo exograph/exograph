@@ -18,6 +18,8 @@ use crate::{access::Access, types::EntityType};
 use exo_sql::{ColumnPathLink, VectorDistanceFunction};
 use serde::{Deserialize, Serialize};
 
+pub const PREDICATE_PARAM_NAME: &str = "where";
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PredicateParameter {
     /// The name of the parameter. For example, "where", "and", "id", "venue", etc.

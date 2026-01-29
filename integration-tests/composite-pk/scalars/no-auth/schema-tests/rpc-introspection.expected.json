@@ -1,0 +1,587 @@
+{
+  "openrpc": "1.3.2",
+  "info": {
+    "title": "Exograph RPC API",
+    "version": "1.0.0"
+  },
+  "methods": [
+    {
+      "name": "get_people",
+      "description": "Get multiple `Person`s given the provided `where` filter, order by, limit, and offset",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for People",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PersonFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        {
+          "name": "orderBy",
+          "description": "Ordering for the results",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PersonOrdering"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        {
+          "name": "limit",
+          "description": "Maximum number of results to return",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "nullable": true
+          }
+        },
+        {
+          "name": "offset",
+          "description": "Number of results to skip",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Person"
+          }
+        }
+      }
+    },
+    {
+      "name": "get_addresses",
+      "description": "Get multiple `Address`s given the provided `where` filter, order by, limit, and offset",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Addresses",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AddressFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        {
+          "name": "orderBy",
+          "description": "Ordering for the results",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AddressOrdering"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        {
+          "name": "limit",
+          "description": "Maximum number of results to return",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "nullable": true
+          }
+        },
+        {
+          "name": "offset",
+          "description": "Number of results to skip",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Address"
+          }
+        }
+      }
+    },
+    {
+      "name": "get_person",
+      "description": "Get a single `Person` given primary key fields",
+      "params": [
+        {
+          "name": "firstName",
+          "description": "Primary key field: firstName",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "lastName",
+          "description": "Primary key field: lastName",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/Person"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "get_address",
+      "description": "Get a single `Address` given primary key fields",
+      "params": [
+        {
+          "name": "street",
+          "description": "Primary key field: street",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "city",
+          "description": "Primary key field: city",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "state",
+          "description": "Primary key field: state",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "zip",
+          "description": "Primary key field: zip",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/Address"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "components": {
+    "schemas": {
+      "Person": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "age": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName",
+          "age"
+        ]
+      },
+      "StringFilter": {
+        "type": "object",
+        "properties": {
+          "eq": {
+            "type": "string",
+            "nullable": true
+          },
+          "neq": {
+            "type": "string",
+            "nullable": true
+          },
+          "lt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lte": {
+            "type": "string",
+            "nullable": true
+          },
+          "gt": {
+            "type": "string",
+            "nullable": true
+          },
+          "gte": {
+            "type": "string",
+            "nullable": true
+          },
+          "like": {
+            "type": "string",
+            "nullable": true
+          },
+          "ilike": {
+            "type": "string",
+            "nullable": true
+          },
+          "startsWith": {
+            "type": "string",
+            "nullable": true
+          },
+          "endsWith": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "IntFilter": {
+        "type": "object",
+        "properties": {
+          "eq": {
+            "type": "integer",
+            "nullable": true
+          },
+          "neq": {
+            "type": "integer",
+            "nullable": true
+          },
+          "lt": {
+            "type": "integer",
+            "nullable": true
+          },
+          "lte": {
+            "type": "integer",
+            "nullable": true
+          },
+          "gt": {
+            "type": "integer",
+            "nullable": true
+          },
+          "gte": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      },
+      "AddressFilter": {
+        "type": "object",
+        "properties": {
+          "street": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StringFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "city": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StringFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StringFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "zip": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IntFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "info": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StringFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "people": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PersonFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "and": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddressFilter"
+            },
+            "nullable": true
+          },
+          "or": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddressFilter"
+            },
+            "nullable": true
+          },
+          "not": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AddressFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "PersonFilter": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StringFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastName": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StringFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "age": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IntFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "address": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AddressFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "and": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonFilter"
+            },
+            "nullable": true
+          },
+          "or": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonFilter"
+            },
+            "nullable": true
+          },
+          "not": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PersonFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "AddressOrdering": {
+        "type": "object",
+        "properties": {
+          "street": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
+          },
+          "zip": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
+          },
+          "info": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
+          }
+        }
+      },
+      "PersonOrdering": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
+          },
+          "lastName": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
+          },
+          "age": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
+          },
+          "address": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AddressOrdering"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "Address": {
+        "type": "object",
+        "properties": {
+          "street": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "zip": {
+            "type": "integer"
+          },
+          "info": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "street",
+          "city",
+          "state",
+          "zip"
+        ]
+      }
+    }
+  }
+}

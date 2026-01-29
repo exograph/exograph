@@ -1,0 +1,17 @@
+[package]
+name = "rpc-introspection"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+indexmap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+core-model = { path = "../core-subsystem/core-model" }
+
+[dev-dependencies]
+
+[lib]
+doctest = false

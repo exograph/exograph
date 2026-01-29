@@ -24,6 +24,7 @@ use postgres_graphql_model::{
 };
 
 use postgres_core_model::{
+    doc_comments,
     order::{OrderByParameter, OrderByParameterType},
     predicate::{PredicateParameter, PredicateParameterType, PredicateParameterTypeWrapper},
     relation::PostgresRelation,
@@ -158,15 +159,11 @@ fn shallow_unique_query(
                 type_name: return_type.name.clone(),
             },
         ))),
-        doc_comments: Some(format!(
-            "Get a single `{}` given {}",
-            return_type.name,
-            if pk_query {
-                "primary key fields"
-            } else {
-                "unique fields"
-            }
-        )),
+        doc_comments: Some(if pk_query {
+            doc_comments::pk_query_description(&return_type.name)
+        } else {
+            doc_comments::unique_query_description(&return_type.name)
+        }),
     }
 }
 
@@ -262,9 +259,8 @@ fn shallow_collection_query(
                 type_name: resolved_entity_type.name.clone(),
             },
         ))),
-        doc_comments: Some(format!(
-            "Get multiple `{}`s given the provided `where` filter, order by, limit, and offset",
-            resolved_entity_type.name
+        doc_comments: Some(doc_comments::collection_query_description(
+            &resolved_entity_type.name,
         )),
     }
 }
@@ -392,7 +388,7 @@ pub fn limit_param(primitive_types: &MappedArena<PostgresPrimitiveType>) -> Limi
     let param_type_name = primitive_type::IntType::NAME;
 
     LimitParameter {
-        name: "limit".to_string(),
+        name: postgres_core_model::limit_offset::LIMIT_PARAM_NAME.to_string(),
         typ: FieldType::Optional(Box::new(FieldType::Plain(LimitParameterType {
             type_name: param_type_name.to_string(),
             type_id: primitive_types.get_id(param_type_name).unwrap(),
@@ -404,7 +400,7 @@ pub fn offset_param(primitive_types: &MappedArena<PostgresPrimitiveType>) -> Off
     let param_type_name = primitive_type::IntType::NAME;
 
     OffsetParameter {
-        name: "offset".to_string(),
+        name: postgres_core_model::limit_offset::OFFSET_PARAM_NAME.to_string(),
         typ: FieldType::Optional(Box::new(FieldType::Plain(OffsetParameterType {
             type_name: param_type_name.to_string(),
             type_id: primitive_types.get_id(param_type_name).unwrap(),
@@ -425,7 +421,7 @@ pub fn collection_predicate_param(
     };
 
     PredicateParameter {
-        name: "where".to_string(),
+        name: postgres_core_model::predicate::PREDICATE_PARAM_NAME.to_string(),
         typ: FieldType::Optional(Box::new(FieldType::Plain(param_type))),
         column_path_link: None,
         access: None,

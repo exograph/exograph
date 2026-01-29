@@ -25,13 +25,17 @@ use system_router::{
 
 use common::env_const::{
     EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION, EXO_POSTGRES_URL,
+    EXO_UNSTABLE_ENABLE_RPC_API,
 };
 
 use super::{TestResult, TestResultKind};
 
 use super::integration_test::run_query;
 
-pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
+pub(super) async fn run_introspection_test(
+    model_path: &Path,
+    generate_rpc_expected: bool,
+) -> Result<TestResult> {
     let log_prefix = format!("(introspection: {})\n :: ", model_path.display()).purple();
     println!("{log_prefix} Running introspection tests...");
 
@@ -43,6 +47,7 @@ pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
             (EXO_CONNECTION_POOL_SIZE, "1"),
             (EXO_INTROSPECTION, "true"),
             (EXO_CHECK_CONNECTION_ON_STARTUP, "false"),
+            (EXO_UNSTABLE_ENABLE_RPC_API, "true"),
         ]);
 
         let exo_ir_file = format!("{}/target/index.exo_ir", model_path.display()).to_string();
@@ -50,7 +55,7 @@ pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
         create_system_router_from_file(&exo_ir_file, static_loaders, Arc::new(env)).await?
     };
 
-    let result = check_introspection(&router, model_path).await;
+    let result = check_introspection(&router, model_path, generate_rpc_expected).await;
 
     match result {
         Ok(result) => match result {
@@ -120,6 +125,7 @@ pub async fn get_introspection_result(serialized_system: SerializableSystem) -> 
                         (EXO_CONNECTION_POOL_SIZE, "1"),
                         (EXO_INTROSPECTION, "true"),
                         (EXO_CHECK_CONNECTION_ON_STARTUP, "false"),
+                        (EXO_UNSTABLE_ENABLE_RPC_API, "true"),
                     ]);
 
                     let env = Arc::new(env);
@@ -135,6 +141,20 @@ pub async fn get_introspection_result(serialized_system: SerializableSystem) -> 
 }
 
 async fn check_introspection(
+    system_router: &SystemRouter,
+    model_path: &Path,
+    generate_rpc_expected: bool,
+) -> Result<Result<()>> {
+    // Check GraphQL introspection
+    if let Err(e) = check_graphql_introspection(system_router, model_path).await? {
+        return Ok(Err(e));
+    }
+
+    // Check RPC introspection
+    check_rpc_introspection(system_router, model_path, generate_rpc_expected).await
+}
+
+async fn check_graphql_introspection(
     system_router: &SystemRouter,
     model_path: &Path,
 ) -> Result<Result<()>> {
@@ -226,6 +246,74 @@ async fn check_introspection(
     }
 }
 
+fn create_rpc_discover_request() -> MemoryRequestPayload {
+    let request_head = MemoryRequestHead::new(
+        HashMap::new(),
+        HashMap::new(),
+        http::Method::GET,
+        "/rpc/discover".to_string(),
+        Value::default(),
+        None,
+    );
+
+    MemoryRequestPayload::new(Value::Null, request_head)
+}
+
+async fn check_rpc_introspection(
+    system_router: &SystemRouter,
+    model_path: &Path,
+    generate_rpc_expected: bool,
+) -> Result<Result<()>> {
+    let schema_tests_dir_str = format!("{}/schema-tests", model_path.display());
+    let schema_tests_dir = Path::new(&schema_tests_dir_str);
+    let expected_path = schema_tests_dir.join("rpc-introspection.expected.json");
+
+    // Only run RPC introspection tests if expected file exists or generation was requested
+    // Temporarily (until the RPC support becomes a bit more stable) control for which tests to check schema
+    if !(std::fs::exists(&expected_path)? || generate_rpc_expected) {
+        // Skip RPC introspection test if expected file doesn't exist and generation not requested
+        return Ok(Ok(()));
+    }
+
+    let request = create_rpc_discover_request();
+
+    let rpc_introspection_result = run_query(request, system_router, &mut HashMap::new()).await?;
+
+    // Validate internal consistency of the OpenRPC document
+    validate_openrpc_refs(&rpc_introspection_result, model_path)?;
+
+    // Pretty-print the JSON for easier diffing
+    let rpc_json = serde_json::to_string_pretty(&rpc_introspection_result)?;
+
+    std::fs::create_dir_all(schema_tests_dir)?;
+
+    let actual_path = schema_tests_dir.join("rpc-introspection.actual.json");
+
+    if !std::fs::exists(&expected_path)? {
+        // Generate expected file only when generation was requested
+        std::fs::write(&expected_path, &rpc_json)?;
+    } else {
+        let expected_json_str = std::fs::read_to_string(&expected_path)?;
+        let expected_json: Value = serde_json::from_str(&expected_json_str)?;
+
+        if rpc_introspection_result != expected_json {
+            std::fs::write(&actual_path, &rpc_json)?;
+            print_diff(&expected_path, &actual_path)?;
+            return Ok(Err(anyhow!(
+                "RPC OpenRPC schema does not match the expected schema in {}.",
+                model_path.display()
+            )));
+        }
+    }
+
+    // If the actual file exists (produced by the test in an earlier run), we should delete it
+    if std::fs::exists(&actual_path)? {
+        std::fs::remove_file(&actual_path)?;
+    }
+
+    Ok(Ok(()))
+}
+
 fn print_diff(expected_file: &Path, actual_file: &Path) -> Result<()> {
     let diff_output = std::process::Command::new("diff")
         .arg("-u")
@@ -244,5 +332,65 @@ fn print_diff(expected_file: &Path, actual_file: &Path) -> Result<()> {
             expected_file.display(),
             actual_file.display()
         ))
+    }
+}
+
+/// Validate internal consistency of an OpenRPC document.
+/// Ensures all $ref references point to existing schemas in components/schemas.
+fn validate_openrpc_refs(doc: &Value, model_path: &Path) -> Result<()> {
+    // Collect all defined schema names
+    let defined_schemas: std::collections::HashSet<String> = doc
+        .get("components")
+        .and_then(|c| c.get("schemas"))
+        .and_then(|s| s.as_object())
+        .map(|schemas| schemas.keys().cloned().collect())
+        .unwrap_or_default();
+
+    // Collect all $ref values from the document
+    let mut refs = Vec::new();
+    collect_refs(doc, &mut refs);
+
+    // Check each ref points to an existing schema
+    let mut missing_refs = Vec::new();
+    for ref_value in refs {
+        // $ref format is "#/components/schemas/SchemaName"
+        if let Some(schema_name) = ref_value.strip_prefix("#/components/schemas/")
+            && !defined_schemas.contains(schema_name)
+        {
+            missing_refs.push(schema_name.to_string());
+        }
+    }
+
+    if !missing_refs.is_empty() {
+        // Deduplicate and sort for cleaner error message
+        missing_refs.sort();
+        missing_refs.dedup();
+        return Err(anyhow!(
+            "OpenRPC schema in {} has broken $ref references. Missing schemas: {}",
+            model_path.display(),
+            missing_refs.join(", ")
+        ));
+    }
+
+    Ok(())
+}
+
+/// Recursively collect all $ref values from a JSON value.
+fn collect_refs(value: &Value, refs: &mut Vec<String>) {
+    match value {
+        Value::Object(map) => {
+            if let Some(Value::String(ref_value)) = map.get("$ref") {
+                refs.push(ref_value.clone());
+            }
+            for v in map.values() {
+                collect_refs(v, refs);
+            }
+        }
+        Value::Array(arr) => {
+            for v in arr {
+                collect_refs(v, refs);
+            }
+        }
+        _ => {}
     }
 }

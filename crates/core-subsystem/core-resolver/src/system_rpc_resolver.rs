@@ -4,6 +4,7 @@ use futures::{StreamExt, lock::Mutex};
 
 use common::context::RequestContext;
 use exo_env::Environment;
+use rpc_introspection::RpcSchema;
 
 use crate::plugin::{
     SubsystemRpcResolver,
@@ -25,6 +26,14 @@ impl SystemRpcResolver {
             subsystem_resolvers,
             env,
         }
+    }
+
+    /// Collect RPC schemas from all subsystems that provide them.
+    pub fn rpc_schemas(&self) -> Vec<RpcSchema> {
+        self.subsystem_resolvers
+            .iter()
+            .filter_map(|resolver| resolver.rpc_schema())
+            .collect()
     }
 
     pub async fn resolve(

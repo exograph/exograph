@@ -1,0 +1,380 @@
+{
+  "openrpc": "1.3.2",
+  "info": {
+    "title": "Exograph RPC API",
+    "version": "1.0.0"
+  },
+  "methods": [
+    {
+      "name": "get_documents",
+      "description": "Get multiple `Document`s given the provided `where` filter, order by, limit, and offset",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Documents",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocumentFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        {
+          "name": "orderBy",
+          "description": "Ordering for the results",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocumentOrdering"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        {
+          "name": "limit",
+          "description": "Maximum number of results to return",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "nullable": true
+          }
+        },
+        {
+          "name": "offset",
+          "description": "Number of results to skip",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Document"
+          }
+        }
+      }
+    },
+    {
+      "name": "get_document",
+      "description": "Get a single `Document` given primary key fields",
+      "params": [
+        {
+          "name": "id",
+          "description": "Primary key field: id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/Document"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "components": {
+    "schemas": {
+      "Document": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "contentVector": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "content"
+        ]
+      },
+      "IntFilter": {
+        "type": "object",
+        "properties": {
+          "eq": {
+            "type": "integer",
+            "nullable": true
+          },
+          "neq": {
+            "type": "integer",
+            "nullable": true
+          },
+          "lt": {
+            "type": "integer",
+            "nullable": true
+          },
+          "lte": {
+            "type": "integer",
+            "nullable": true
+          },
+          "gt": {
+            "type": "integer",
+            "nullable": true
+          },
+          "gte": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      },
+      "StringFilter": {
+        "type": "object",
+        "properties": {
+          "eq": {
+            "type": "string",
+            "nullable": true
+          },
+          "neq": {
+            "type": "string",
+            "nullable": true
+          },
+          "lt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lte": {
+            "type": "string",
+            "nullable": true
+          },
+          "gt": {
+            "type": "string",
+            "nullable": true
+          },
+          "gte": {
+            "type": "string",
+            "nullable": true
+          },
+          "like": {
+            "type": "string",
+            "nullable": true
+          },
+          "ilike": {
+            "type": "string",
+            "nullable": true
+          },
+          "startsWith": {
+            "type": "string",
+            "nullable": true
+          },
+          "endsWith": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "VectorFilterArg": {
+        "type": "object",
+        "properties": {
+          "distanceTo": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "distance": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "distanceTo"
+        ],
+        "description": "Vector similarity search argument"
+      },
+      "VectorFilter": {
+        "type": "object",
+        "properties": {
+          "similar": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VectorFilterArg"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "eq": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "nullable": true
+          },
+          "neq": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "nullable": true
+          }
+        }
+      },
+      "DocumentFilter": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IntFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StringFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "content": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StringFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contentVector": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VectorFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "and": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentFilter"
+            },
+            "nullable": true
+          },
+          "or": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentFilter"
+            },
+            "nullable": true
+          },
+          "not": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocumentFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "VectorOrdering": {
+        "type": "object",
+        "properties": {
+          "distanceTo": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "nullable": true
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
+          }
+        },
+        "description": "Vector similarity ordering"
+      },
+      "DocumentOrdering": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
+          },
+          "content": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
+          },
+          "contentVector": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VectorOrdering"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

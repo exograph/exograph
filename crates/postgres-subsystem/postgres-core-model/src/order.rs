@@ -62,6 +62,8 @@ pub enum OrderByParameterTypeKind {
     Composite { parameters: Vec<OrderByParameter> },
 }
 
+pub const ORDER_BY_PARAM_NAME: &str = "orderBy";
+pub const PRIMITIVE_ORDERING_TYPE_NAME: &str = "Ordering";
 pub const PRIMITIVE_ORDERING_OPTIONS: [&str; 2] = ["ASC", "DESC"];
 
 impl Named for OrderByParameterTypeWrapper {

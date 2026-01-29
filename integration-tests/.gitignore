@@ -3,6 +3,7 @@ contexts.d.ts
 exograph.d.ts
 generated
 introspection.actual.graphql
+rpc-introspection.actual.json
 
 .wrangler/
 node_modules

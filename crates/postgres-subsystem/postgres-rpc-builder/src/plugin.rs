@@ -22,11 +22,12 @@ use postgres_core_builder::order_by_builder::new_root_param;
 use postgres_core_builder::predicate_builder::get_filter_type_name;
 use postgres_core_builder::resolved_type::ResolvedType;
 use postgres_core_builder::resolved_type::ResolvedTypeEnv;
+use postgres_core_model::doc_comments;
 use postgres_core_model::predicate::{PredicateParameter, PredicateParameterTypeWrapper};
 use postgres_core_model::relation::PostgresRelation;
 use postgres_core_model::types::EntityRepresentation;
 use postgres_rpc_model::operation::{
-    CollectionQuery, CollectionQueryParameters, PkQuery, PkQueryParameters,
+    CollectionQuery, CollectionQueryParameters, PkQuery, PkQueryParameters, ScalarParam,
 };
 use postgres_rpc_model::subsystem::PostgresRpcSubsystem;
 
@@ -76,7 +77,7 @@ impl PostgresRpcSubsystemBuilder {
                     };
 
                     PredicateParameter {
-                        name: "where".to_string(),
+                        name: postgres_core_model::predicate::PREDICATE_PARAM_NAME.to_string(),
                         typ: FieldType::Optional(Box::new(FieldType::Plain(param_type))),
                         column_path_link: None,
                         access: None,
@@ -97,13 +98,30 @@ impl PostgresRpcSubsystemBuilder {
                         type_name: composite.name.clone(),
                     })));
 
+                let limit_param = ScalarParam {
+                    name: postgres_core_model::limit_offset::LIMIT_PARAM_NAME.to_string(),
+                    description: postgres_core_model::limit_offset::LIMIT_PARAM_DESCRIPTION
+                        .to_string(),
+                    type_name: core_model::primitive_type::IntType::NAME.to_string(),
+                };
+
+                let offset_param = ScalarParam {
+                    name: postgres_core_model::limit_offset::OFFSET_PARAM_NAME.to_string(),
+                    description: postgres_core_model::limit_offset::OFFSET_PARAM_DESCRIPTION
+                        .to_string(),
+                    type_name: core_model::primitive_type::IntType::NAME.to_string(),
+                };
+
                 let collection_query = CollectionQuery {
                     name: collection_method.clone(),
                     parameters: CollectionQueryParameters {
                         predicate_param,
                         order_by_param,
+                        limit_param,
+                        offset_param,
                     },
                     return_type,
+                    doc_comments: Some(doc_comments::collection_query_description(&composite.name)),
                 };
 
                 collection_queries.add(&collection_method, collection_query);
@@ -158,6 +176,7 @@ impl PostgresRpcSubsystemBuilder {
                             predicate_params: pk_params,
                         },
                         return_type,
+                        doc_comments: Some(doc_comments::pk_query_description(&composite.name)),
                     };
 
                     pk_queries.add(&pk_method, pk_query);

@@ -5,6 +5,7 @@ use crate::{QueryResponse, system_resolver::SystemResolutionError};
 use async_trait::async_trait;
 use common::context::{ContextExtractionError, RequestContext};
 use http::StatusCode;
+use rpc_introspection::RpcSchema;
 use serde::{Deserialize, Serialize};
 
 use super::SubsystemResolutionError;
@@ -42,6 +43,10 @@ pub trait SubsystemRpcResolver: Sync {
         request_params: &Option<serde_json::Value>,
         request_context: &'a RequestContext<'a>,
     ) -> Result<Option<SubsystemRpcResponse>, SubsystemRpcError>;
+
+    /// Return the RPC schema for this subsystem, used for introspection.
+    /// Returns `None` if this subsystem doesn't expose RPC methods.
+    fn rpc_schema(&self) -> Option<RpcSchema>;
 }
 
 #[derive(Error, Debug)]

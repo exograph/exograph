@@ -20,6 +20,7 @@ use exo_sql::testing::db::EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE;
 use crate::config::Config;
 
 const EXO_RUN_INTROSPECTION_TESTS: &str = "EXO_RUN_INTROSPECTION_TESTS";
+const EXO_RPC_GENERATE_EXPECTED: &str = "EXO_RPC_GENERATE_EXPECTED";
 
 pub struct TestCommandDefinition {}
 
@@ -64,6 +65,8 @@ impl CommandDefinition for TestCommandDefinition {
             Err(_) => Ok(false),
         }?;
 
+        let generate_rpc_expected: bool = std::env::var(EXO_RPC_GENERATE_EXPECTED).is_ok();
+
         // Clear all EXO_ env vars before running tests (this way, if the user has set any, they won't affect the tests)
         for (key, _) in std::env::vars() {
             if key.starts_with("EXO_") && key != EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE {
@@ -79,6 +82,11 @@ impl CommandDefinition for TestCommandDefinition {
             std::env::set_var(EXO_ENV, "test");
         }
 
-        testing::run(&dir, &pattern, run_introspection_tests)
+        testing::run(
+            &dir,
+            &pattern,
+            run_introspection_tests,
+            generate_rpc_expected,
+        )
     }
 }

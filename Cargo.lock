@@ -1811,6 +1811,7 @@ dependencies = [
  "insta",
  "postgres-builder",
  "postgres-resolver",
+ "rpc-introspection",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -8094,6 +8095,7 @@ dependencies = [
  "postgres-core-model",
  "postgres-core-resolver",
  "postgres-rpc-model",
+ "rpc-introspection",
  "serde_json",
 ]
 
@@ -8751,6 +8753,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rpc-introspection"
+version = "0.27.0"
+dependencies = [
+ "core-model",
+ "indexmap 2.13.0",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "rpc-router"
 version = "0.27.0"
 dependencies = [
@@ -8761,6 +8773,7 @@ dependencies = [
  "core-resolver",
  "exo-env",
  "http 1.4.0",
+ "rpc-introspection",
  "serde_json",
  "tracing",
 ]
