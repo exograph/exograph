@@ -667,7 +667,7 @@ mod tests {
         format!("Register Op: {arg}")
     }
 
-    #[op2(async)]
+    #[op2(async(lazy), fast)]
     #[string]
     async fn op_async_rust_impl(#[string] arg: String) -> String {
         format!("Register Async Op: {arg}")

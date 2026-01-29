@@ -96,7 +96,7 @@ pub enum DenoExecutionError {
     Explicit(String),
 }
 
-#[op2(async)]
+#[op2(async(lazy))]
 #[serde]
 pub async fn op_exograph_execute_query(
     state: Rc<RefCell<OpState>>,
@@ -106,7 +106,7 @@ pub async fn op_exograph_execute_query(
     op_exograph_execute_query_helper(state, query_string, variables, Value::Null).await
 }
 
-#[op2(async)]
+#[op2(async(lazy))]
 #[serde]
 pub async fn op_exograph_execute_query_priv(
     state: Rc<RefCell<OpState>>,
@@ -148,7 +148,7 @@ pub fn op_operation_query(state: &mut OpState) -> Result<serde_json::Value, Deno
     }
 }
 
-#[op2(async)]
+#[op2(async(lazy), fast)]
 #[serde]
 pub async fn op_operation_proceed(
     state: Rc<RefCell<OpState>>,
