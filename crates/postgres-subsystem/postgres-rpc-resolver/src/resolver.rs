@@ -241,21 +241,22 @@ impl OperationSelectionResolver for CollectionQuery {
         let access_predicate =
             compute_access_predicate(entity_type, request_context, subsystem).await?;
 
-        // Extract the "where" parameter and compute the user predicate
-        let user_predicate = match extract_param(request_params, "where") {
-            Some(where_val) => compute_predicate(
-                &self.parameters.predicate_param,
-                &where_val,
-                &subsystem.core_subsystem,
-                request_context,
-            )
-            .await
-            .map_err(from_postgres_error)?,
-            None => AbstractPredicate::True,
-        };
+        // Extract the predicate parameter and compute the user predicate
+        let user_predicate =
+            match extract_param(request_params, &self.parameters.predicate_param.name) {
+                Some(where_val) => compute_predicate(
+                    &self.parameters.predicate_param,
+                    &where_val,
+                    &subsystem.core_subsystem,
+                    request_context,
+                )
+                .await
+                .map_err(from_postgres_error)?,
+                None => AbstractPredicate::True,
+            };
 
-        // Extract the "orderBy" parameter and compute the order by clause
-        let order_by = match extract_param(request_params, "orderBy") {
+        // Extract the order by parameter and compute the order by clause
+        let order_by = match extract_param(request_params, &self.parameters.order_by_param.name) {
             Some(order_by_val) => Some(
                 compute_order_by(
                     &self.parameters.order_by_param,
@@ -273,8 +274,10 @@ impl OperationSelectionResolver for CollectionQuery {
         let predicate = AbstractPredicate::and(user_predicate, access_predicate);
 
         // Extract limit and offset parameters
-        let limit = extract_limit_offset(request_params, "limit").map(Limit);
-        let offset = extract_limit_offset(request_params, "offset").map(Offset);
+        let limit =
+            extract_limit_offset(request_params, &self.parameters.limit_param.name).map(Limit);
+        let offset =
+            extract_limit_offset(request_params, &self.parameters.offset_param.name).map(Offset);
 
         Ok(compute_select(
             predicate,

@@ -5,6 +5,7 @@ edition.workspace = true
 publish = false
 
 [dependencies]
+indexmap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 

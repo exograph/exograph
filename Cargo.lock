@@ -8757,6 +8757,7 @@ name = "rpc-introspection"
 version = "0.27.0"
 dependencies = [
  "core-model",
+ "indexmap 2.13.0",
  "serde",
  "serde_json",
 ]

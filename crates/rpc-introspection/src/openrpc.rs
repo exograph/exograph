@@ -411,9 +411,14 @@ mod tests {
                 ),
             );
 
-        let json = serde_json::to_string_pretty(&doc).unwrap();
-        assert!(json.contains("\"openrpc\": \"1.3.2\""));
-        assert!(json.contains("\"name\": \"get_item\""));
+        let json = serde_json::to_value(&doc).unwrap();
+        assert_eq!(json["openrpc"], "1.3.2");
+        assert_eq!(json["info"]["title"], "Test API");
+        assert_eq!(json["info"]["version"], "1.0.0");
+        assert_eq!(json["info"]["description"], "A test API");
+        assert_eq!(json["methods"][0]["name"], "get_item");
+        assert_eq!(json["methods"][0]["params"][0]["name"], "id");
+        assert_eq!(json["methods"][0]["params"][0]["required"], true);
     }
 
     #[test]

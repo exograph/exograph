@@ -471,74 +471,48 @@
           }
         }
       },
-      "Ordering": {
-        "type": "object",
-        "properties": {
-          "direction": {
-            "type": "string",
-            "enum": [
-              "ASC",
-              "DESC"
-            ]
-          }
-        },
-        "required": [
-          "direction"
-        ],
-        "description": "Sort order direction"
-      },
       "AddressOrdering": {
         "type": "object",
         "properties": {
           "street": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "city": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "state": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "zip": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "info": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           }
         }
       },
@@ -546,34 +520,28 @@
         "type": "object",
         "properties": {
           "firstName": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "lastName": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "age": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "address": {
             "oneOf": [

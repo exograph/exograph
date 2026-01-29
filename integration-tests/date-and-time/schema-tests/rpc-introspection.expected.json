@@ -436,84 +436,56 @@
           }
         }
       },
-      "Ordering": {
-        "type": "object",
-        "properties": {
-          "direction": {
-            "type": "string",
-            "enum": [
-              "ASC",
-              "DESC"
-            ]
-          }
-        },
-        "required": [
-          "direction"
-        ],
-        "description": "Sort order direction"
-      },
       "BookOrdering": {
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "name": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "published_on": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "modified_time": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "modified_time_stripped": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "reading_club_time": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           }
         }
       }

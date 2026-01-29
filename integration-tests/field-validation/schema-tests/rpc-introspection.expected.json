@@ -356,74 +356,48 @@
           }
         }
       },
-      "Ordering": {
-        "type": "object",
-        "properties": {
-          "direction": {
-            "type": "string",
-            "enum": [
-              "ASC",
-              "DESC"
-            ]
-          }
-        },
-        "required": [
-          "direction"
-        ],
-        "description": "Sort order direction"
-      },
       "NumbersOrdering": {
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "limit": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "age": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "float_limit": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "price": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           }
         }
       },
@@ -541,54 +515,44 @@
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "limit": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "age": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "float_limit": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "price": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           }
         }
       }

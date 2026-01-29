@@ -514,64 +514,40 @@
           }
         }
       },
-      "Ordering": {
-        "type": "object",
-        "properties": {
-          "direction": {
-            "type": "string",
-            "enum": [
-              "ASC",
-              "DESC"
-            ]
-          }
-        },
-        "required": [
-          "direction"
-        ],
-        "description": "Sort order direction"
-      },
       "VenueOrdering": {
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "name": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "published": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "latitude": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           }
         }
       },
@@ -579,24 +555,20 @@
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "title": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "venue": {
             "oneOf": [
@@ -609,24 +581,20 @@
             ]
           },
           "published": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           },
           "price": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Ordering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
           }
         }
       },

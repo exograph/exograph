@@ -9,10 +9,10 @@
 
 //! RPC Schema types that represent the structure of RPC methods and their parameters.
 //!
-//! These types are used both for introspection (generating OpenRPC documents) and
-//! for validation (checking incoming parameters against the schema).
+//! These types are used for introspection (generating OpenRPC documents).
 
 use core_model::types::TypeValidation;
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 /// The complete RPC schema containing all methods and component definitions.
@@ -37,7 +37,7 @@ impl RpcSchema {
     }
 
     pub fn add_object_type(&mut self, name: String, object_type: RpcObjectType) {
-        self.components.schemas.push((name, object_type));
+        self.components.schemas.insert(name, object_type);
     }
 
     /// Merge another schema into this one, consuming the other schema.
@@ -57,18 +57,18 @@ impl Default for RpcSchema {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RpcComponents {
     /// Object type definitions that can be referenced by methods
-    pub schemas: Vec<(String, RpcObjectType)>,
+    pub schemas: IndexMap<String, RpcObjectType>,
 }
 
 impl RpcComponents {
     pub fn new() -> Self {
         Self {
-            schemas: Vec::new(),
+            schemas: IndexMap::new(),
         }
     }
 
     pub fn get_schema(&self, name: &str) -> Option<&RpcObjectType> {
-        self.schemas.iter().find(|(n, _)| n == name).map(|(_, s)| s)
+        self.schemas.get(name)
     }
 }
 

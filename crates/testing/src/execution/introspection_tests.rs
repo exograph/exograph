@@ -293,38 +293,16 @@ async fn check_rpc_introspection(
         // Generate expected file only when generation was requested
         std::fs::write(&expected_path, &rpc_json)?;
     } else {
-        let expected_json = std::fs::read_to_string(&expected_path)?;
+        let expected_json_str = std::fs::read_to_string(&expected_path)?;
+        let expected_json: Value = serde_json::from_str(&expected_json_str)?;
 
-        // Compare the JSONs line by line (to avoid Windows/Unix line ending issues)
-        let json_line_count = rpc_json.lines().count();
-        let expected_json_line_count = expected_json.lines().count();
-
-        if json_line_count != expected_json_line_count {
+        if rpc_introspection_result != expected_json {
             std::fs::write(&actual_path, &rpc_json)?;
             print_diff(&expected_path, &actual_path)?;
-            return Err(anyhow!(
-                "RPC OpenRPC schema does not match the expected schema in {}. Expected {} lines, got {} lines",
-                model_path.display(),
-                expected_json_line_count,
-                json_line_count
-            ));
-        }
-
-        let json_lines = rpc_json.lines();
-        let expected_json_lines = expected_json.lines();
-
-        for (line_number, (json_line, expected_json_line)) in
-            json_lines.zip(expected_json_lines).enumerate()
-        {
-            if json_line.trim() != expected_json_line.trim() {
-                std::fs::write(&actual_path, &rpc_json)?;
-                print_diff(&expected_path, &actual_path)?;
-                return Err(anyhow!(
-                    "RPC OpenRPC schema does not match the expected schema in {}. Difference at line {}",
-                    model_path.display(),
-                    line_number + 1
-                ));
-            }
+            return Ok(Err(anyhow!(
+                "RPC OpenRPC schema does not match the expected schema in {}.",
+                model_path.display()
+            )));
         }
     }
 

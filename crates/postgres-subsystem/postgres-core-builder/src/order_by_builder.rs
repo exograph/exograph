@@ -16,8 +16,8 @@ use exo_sql::{ColumnPathLink, Database};
 use postgres_core_model::{
     access::Access,
     order::{
-        OrderByParameter, OrderByParameterType, OrderByParameterTypeKind,
-        OrderByParameterTypeWrapper,
+        ORDER_BY_PARAM_NAME, OrderByParameter, OrderByParameterType, OrderByParameterTypeKind,
+        OrderByParameterTypeWrapper, PRIMITIVE_ORDERING_TYPE_NAME,
     },
     types::{EntityRepresentation, EntityType, PostgresField, PostgresPrimitiveType, PostgresType},
 };
@@ -54,7 +54,7 @@ impl Shallow for OrderByParameterTypeWrapper {
 }
 
 pub fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-    let type_name = "Ordering".to_string();
+    let type_name = PRIMITIVE_ORDERING_TYPE_NAME.to_string();
     let primitive_type = OrderByParameterType {
         name: type_name.to_owned(),
         kind: OrderByParameterTypeKind::Primitive,
@@ -109,7 +109,7 @@ fn get_parameter_type_name(entity_type_name: &str, is_primitive: bool) -> String
     if entity_type_name == "Vector" {
         "VectorOrdering".to_string()
     } else if is_primitive {
-        "Ordering".to_string()
+        PRIMITIVE_ORDERING_TYPE_NAME.to_string()
     } else {
         format!("{}Ordering", &entity_type_name)
     }
@@ -250,7 +250,7 @@ pub fn new_root_param(
     order_by_types: &MappedArena<OrderByParameterType>,
 ) -> OrderByParameter {
     new_param(
-        "orderBy",
+        ORDER_BY_PARAM_NAME,
         entity_type_name,
         is_primitive,
         None,

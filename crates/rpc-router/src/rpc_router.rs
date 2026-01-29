@@ -29,6 +29,7 @@ pub struct RpcRouter {
     system_resolver: SystemRpcResolver,
     api_path_prefix: String,
     discover_path: String,
+    openrpc_document: OpenRpcDocument,
 }
 
 /// The JSON-RPC method name for discovery
@@ -38,10 +39,18 @@ impl RpcRouter {
     pub fn new(system_resolver: SystemRpcResolver, env: Arc<dyn Environment>) -> Self {
         let api_path_prefix = get_rpc_http_path(env.as_ref()).clone();
         let discover_path = format!("{}/discover", api_path_prefix);
+
+        let mut combined = RpcSchema::new();
+        for schema in system_resolver.rpc_schemas() {
+            combined.merge(schema);
+        }
+        let openrpc_document = to_openrpc(&combined, OPENRPC_API_TITLE, OPENRPC_API_VERSION);
+
         Self {
             system_resolver,
             api_path_prefix,
             discover_path,
+            openrpc_document,
         }
     }
 
@@ -55,19 +64,10 @@ impl RpcRouter {
         request_head.get_path() == self.discover_path && request_head.get_method() == "GET"
     }
 
-    /// Build the OpenRPC document from all subsystem schemas
-    fn build_openrpc_document(&self) -> OpenRpcDocument {
-        let mut combined = RpcSchema::new();
-        for schema in self.system_resolver.rpc_schemas() {
-            combined.merge(schema);
-        }
-        to_openrpc(&combined, OPENRPC_API_TITLE, OPENRPC_API_VERSION)
-    }
-
     /// Handle the discover endpoint (GET /rpc/discover)
     fn handle_discover(&self) -> ResponsePayload {
-        let openrpc_doc = self.build_openrpc_document();
-        let body = serde_json::to_string_pretty(&openrpc_doc).unwrap_or_else(|_| "{}".to_string());
+        let body = serde_json::to_string_pretty(&self.openrpc_document)
+            .unwrap_or_else(|_| "{}".to_string());
 
         let mut headers = Headers::new();
         headers.insert("content-type".into(), "application/json".into());
@@ -118,7 +118,7 @@ impl<'a> Router<RequestContext<'a>> for RpcRouter {
 
                         // Handle rpc.discover method
                         if request.method == RPC_DISCOVER_METHOD {
-                            match serde_json::to_value(self.build_openrpc_document()) {
+                            match serde_json::to_value(&self.openrpc_document) {
                                 Ok(openrpc_json) => Ok(Some(SubsystemRpcResponse {
                                     response: QueryResponse {
                                         body: QueryResponseBody::Json(openrpc_json),
@@ -200,13 +200,10 @@ impl<'a> Router<RequestContext<'a>> for RpcRouter {
 
                     yield Bytes::from_static(br#"{"error": {"code": "#);
                     yield Bytes::from_static(err.error_code_string().as_bytes());
-                    yield Bytes::from_static(br#", "message": ""#);
-                    yield Bytes::from(
-                        err.user_error_message().unwrap_or_default()
-                            .replace('\"', "")
-                            .replace('\n', "; ")
-                    );
-                    yield Bytes::from_static(br#""}"#);
+                    yield Bytes::from_static(br#", "message": "#);
+                    let message = err.user_error_message().unwrap_or_default();
+                    yield Bytes::from(serde_json::to_string(&message).unwrap_or_else(|_| "\"\"".to_string()));
+                    yield Bytes::from_static(br#"}"#);
                     emit_jsonrpc_id_and_close!();
                 },
             }

@@ -12,7 +12,6 @@
 //! This crate provides types and utilities for:
 //! - Representing RPC method schemas
 //! - Converting schemas to OpenRPC format
-//! - Validating RPC parameters against schemas
 //!
 //! # Example
 //!
@@ -32,10 +31,8 @@
 pub mod conversion;
 pub mod openrpc;
 pub mod schema;
-pub mod validation;
 
 // Re-export commonly used types
 pub use conversion::to_openrpc;
 pub use openrpc::OpenRpcDocument;
 pub use schema::{RpcMethod, RpcParameter, RpcSchema, RpcTypeSchema};
-pub use validation::{ValidationError, validate_with_constraints};
