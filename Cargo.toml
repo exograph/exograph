@@ -103,7 +103,7 @@ heck = "0.5.0"
 include_dir = "0.7.4"
 indexmap = "2"
 insta = { version = "1.46.2", features = ["redactions", "yaml"] }
-jsonwebtoken = "10.2.0"
+jsonwebtoken = "10.3.0"
 lazy_static = "1.5.0"
 maybe-owned = "0.3.4"
 rand = "0.9.2"
