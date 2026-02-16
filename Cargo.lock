@@ -2551,7 +2551,49 @@ dependencies = [
  "base64 0.22.1",
  "capacity_builder",
  "deno_error",
- "deno_media_type",
+ "deno_media_type 0.3.0",
+ "deno_terminal",
+ "dprint-swc-ext",
+ "percent-encoding",
+ "serde",
+ "swc_atoms",
+ "swc_common",
+ "swc_config",
+ "swc_config_macro",
+ "swc_ecma_ast",
+ "swc_ecma_codegen",
+ "swc_ecma_codegen_macros",
+ "swc_ecma_lexer",
+ "swc_ecma_loader",
+ "swc_ecma_parser",
+ "swc_ecma_transforms_base",
+ "swc_ecma_transforms_classes",
+ "swc_ecma_transforms_macros",
+ "swc_ecma_transforms_proposal",
+ "swc_ecma_transforms_react",
+ "swc_ecma_transforms_typescript",
+ "swc_ecma_utils",
+ "swc_ecma_visit",
+ "swc_eq_ignore_macros",
+ "swc_macros_common",
+ "swc_sourcemap",
+ "swc_visit",
+ "text_lines",
+ "thiserror 2.0.18",
+ "unicode-width 0.2.2",
+ "url",
+]
+
+[[package]]
+name = "deno_ast"
+version = "0.53.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ac5df28715465cff3f03294564f38c9cd3c24c4cfb965a32fd1327efa111b02"
+dependencies = [
+ "base64 0.22.1",
+ "capacity_builder",
+ "deno_error",
+ "deno_media_type 0.4.0",
  "deno_terminal",
  "dprint-swc-ext",
  "percent-encoding",
@@ -2641,7 +2683,7 @@ dependencies = [
  "chrono",
  "data-url",
  "deno_error",
- "deno_media_type",
+ "deno_media_type 0.3.0",
  "deno_path_util",
  "http 1.4.0",
  "indexmap 2.13.0",
@@ -3100,6 +3142,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "deno_media_type"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "debab24ecd9f4fd64aa42fb18a02dff20a97d5830b2b85b98ce70b509f790763"
+dependencies = [
+ "data-url",
+ "serde",
+ "url",
+]
+
+[[package]]
 name = "deno_napi"
 version = "0.160.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3431,7 +3484,7 @@ dependencies = [
  "deno_error",
  "deno_lockfile",
  "deno_maybe_sync",
- "deno_media_type",
+ "deno_media_type 0.3.0",
  "deno_npm",
  "deno_package_json",
  "deno_path_util",
@@ -3464,7 +3517,7 @@ checksum = "ad6fba9b11a84a7e31bf12429c86322f73a388f1c564d6e206068d41388ab761"
 dependencies = [
  "async-trait",
  "color-print",
- "deno_ast",
+ "deno_ast 0.52.0",
  "deno_bundle_runtime",
  "deno_cache",
  "deno_core",
@@ -4386,7 +4439,7 @@ version = "0.27.0"
 dependencies = [
  "async-trait",
  "ctor",
- "deno_ast",
+ "deno_ast 0.53.0",
  "deno_core",
  "deno_error",
  "deno_fs",
@@ -7015,7 +7068,7 @@ dependencies = [
  "dashmap 5.5.3",
  "deno_error",
  "deno_maybe_sync",
- "deno_media_type",
+ "deno_media_type 0.3.0",
  "deno_package_json",
  "deno_path_util",
  "deno_semver",

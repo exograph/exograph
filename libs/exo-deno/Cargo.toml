@@ -28,7 +28,7 @@ deno_fs.workspace = true
 deno_resolver.workspace = true
 node_resolver.workspace = true
 sys_traits = "0.1.17"
-deno_ast = { version = "0.52.0", features = ["transpiling"], optional = true }
+deno_ast = { version = "0.53.0", features = ["transpiling"], optional = true }
 tokio.workspace = true
 reqwest = { workspace = true, features = ["blocking"] }
 futures.workspace = true
