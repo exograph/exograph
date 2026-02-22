@@ -22,7 +22,7 @@ use exo_sql::testing::db::EphemeralDatabaseServer;
 use futures::FutureExt;
 use futures::future::OptionFuture;
 use jsonwebtoken::{EncodingKey, Header, encode};
-use rand::{Rng, distr::Alphanumeric};
+use rand::{RngExt, distr::Alphanumeric};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};

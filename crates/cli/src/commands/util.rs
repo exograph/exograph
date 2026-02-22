@@ -18,7 +18,7 @@ use common::env_const::{
 };
 use exo_env::{Environment, MapEnvironment};
 use exo_sql::schema::spec::{MigrationScope, MigrationScopeMatches, NameMatching};
-use rand::Rng;
+use rand::RngExt;
 
 pub(super) fn generate_random_string() -> String {
     rand::rng()

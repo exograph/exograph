@@ -78,6 +78,8 @@ oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", v
 ] }
 # getrandom 0.2.x (pulled in by jsonwebtoken) uses "js" feature for wasm support
 getrandom = { version = "0.2", features = ["js"] }
+# getrandom 0.4.x (pulled in by rand 0.10) uses "wasm_js" feature for wasm support
+getrandom_04 = { package = "getrandom", version = "0.4", features = ["wasm_js"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }
@@ -88,4 +90,4 @@ multiplatform_test.workspace = true
 doctest = false
 
 [package.metadata.cargo-shear]
-ignored = ["getrandom"]
+ignored = ["getrandom", "getrandom_04"]
