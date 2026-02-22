@@ -98,7 +98,7 @@ deno_fs = "0.142.0"
 deno_resolver = "0.63.0"
 node_resolver = "0.70.0"
 
-futures = "0.3.29"
+futures = "0.3.32"
 heck = "0.5.0"
 include_dir = "0.7.4"
 indexmap = "2"
