@@ -149,7 +149,7 @@ pub(super) fn launch_process(
 }
 
 pub(crate) fn generate_random_string() -> String {
-    use rand::Rng;
+    use rand::RngExt;
 
     rand::rng()
         .sample_iter(&rand::distr::Alphanumeric)
