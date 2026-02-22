@@ -1,3 +1,4 @@
+use std::pin::pin;
 use std::sync::Arc;
 
 use futures::{StreamExt, lock::Mutex};
@@ -37,7 +38,7 @@ impl SystemRestResolver {
             resolver.resolve(*request_context).await
         });
 
-        futures::pin_mut!(stream);
+        let mut stream = pin!(stream);
 
         // Really a find_map(), but StreamExt::find_map() is not available
         while let Some(next_val) = stream.next().await {

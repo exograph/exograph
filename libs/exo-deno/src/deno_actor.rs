@@ -9,9 +9,9 @@
 
 use deno_core::Extension;
 use exo_env::Environment;
-use futures::pin_mut;
 use serde_json::Value;
 use std::fmt::Debug;
+use std::pin::pin;
 use std::{
     panic,
     sync::{
@@ -230,13 +230,13 @@ where
             ))
         })?;
 
-        pin_mut!(final_result_receiver);
+        let mut final_result_receiver = pin!(final_result_receiver);
 
         // receive loop
         loop {
             let mut receiver = self.callback_receiver.lock().await;
             let on_recv_request = receiver.recv();
-            pin_mut!(on_recv_request);
+            let on_recv_request = pin!(on_recv_request);
 
             // wait on an event from either a Deno op (callback) or from DenoActor containing the final result of the function
             tokio::select! {

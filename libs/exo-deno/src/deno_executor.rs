@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use futures::pin_mut;
+use std::pin::pin;
 
 use crate::error::DenoError;
 
@@ -58,12 +58,12 @@ impl<C: Sync + Send + Debug + 'static, M: Sync + Send + 'static, R: Debug + Sync
             to_user_sender,
         );
 
-        pin_mut!(on_function_result); // needs to be pinned to reuse it
+        let mut on_function_result = pin!(on_function_result); // needs to be pinned to reuse it
 
         // receive loop
         loop {
             let on_recv_request = to_user_receiver.recv();
-            pin_mut!(on_recv_request);
+            let on_recv_request = pin!(on_recv_request);
 
             tokio::select! {
                 msg = on_recv_request => {

@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::pin::pin;
 use std::sync::Arc;
 
 use async_graphql_parser::{
@@ -220,7 +221,7 @@ impl GraphQLSystemResolver {
                     .await
             });
 
-        futures::pin_mut!(stream);
+        let mut stream = pin!(stream);
 
         // Really a find_map(), but StreamExt::find_map() is not available
         while let Some(next_val) = stream.next().await {
