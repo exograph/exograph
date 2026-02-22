@@ -92,11 +92,11 @@ http = "1"
 clap = "4.5.53"
 
 deno_error = "0.7.1"
-deno_runtime = "0.237.0"
-deno_core = "0.382.0"
-deno_fs = "0.139.0"
-deno_resolver = "0.60.0"
-node_resolver = "0.67.0"
+deno_runtime = "0.240.0"
+deno_core = "0.385.0"
+deno_fs = "0.142.0"
+deno_resolver = "0.63.0"
+node_resolver = "0.70.0"
 
 futures = "0.3.29"
 heck = "0.5.0"
@@ -138,7 +138,7 @@ multiplatform_test = "0.6.0"
 pluralizer = "0.5.0"
 tracing-subscriber = "0.3.20"
 toml = { version = "0.9.5", features = ["parse"] }
-zip = "7.4.0"
+zip = { version = "8.1.0", default-features = false, features = ["deflate"] }
 
 # reduce binary size, does not affect stack traces
 [profile.dev]
