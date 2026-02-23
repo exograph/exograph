@@ -90,7 +90,6 @@ impl TestSuite {
         // when multiple parallel builds compete for shared caches like Deno's esbuild binary,
         // or brief network unavailability)
         let max_attempts = 3;
-        let mut last_err = None;
         for attempt in 0..max_attempts {
             match run_command(
                 std::env::current_exe()?.as_os_str().to_str().unwrap(),
@@ -100,23 +99,24 @@ impl TestSuite {
             ) {
                 Ok(()) => return Ok(()),
                 Err(e) => {
-                    if attempt < max_attempts - 1 {
-                        let pause = Duration::from_millis(1000 * 2u64.pow(attempt as u32));
-                        eprintln!(
-                            "Build failed for {} (attempt {}/{}): {:#}. Retrying in {:?}...",
-                            self.project_dir.display(),
-                            attempt + 1,
-                            max_attempts,
-                            e,
-                            pause
-                        );
-                        thread::sleep(pause);
+                    if attempt >= max_attempts - 1 {
+                        return Err(e);
                     }
-                    last_err = Some(e);
+
+                    let pause = Duration::from_millis(1000 * 2u64.pow(attempt as u32));
+                    eprintln!(
+                        "Build failed for {} (attempt {}/{}): {:#}. Retrying in {:?}...",
+                        self.project_dir.display(),
+                        attempt + 1,
+                        max_attempts,
+                        e,
+                        pause
+                    );
+                    thread::sleep(pause);
                 }
             }
         }
-        Err(last_err.unwrap())
+        unreachable!()
     }
 
     // Run all scripts of the "build*.sh" form in the same directory as the model
