@@ -6,6 +6,8 @@ use std::{
     path::Path,
     process::Command,
     sync::{Arc, mpsc::Sender},
+    thread,
+    time::Duration,
 };
 
 use exo_sql::testing::db::EphemeralDatabaseServer;
@@ -84,12 +86,37 @@ impl TestSuite {
         self.build_prerequisites()?;
 
         // Use std::env::current_exe() so that we run the same "exo" that invoked us (specifically, avoid using another exo on $PATH)
-        run_command(
-            std::env::current_exe()?.as_os_str().to_str().unwrap(),
-            [OsStr::new("build")],
-            Some(self.project_dir.as_ref()),
-            "Could not build the exo_ir.",
-        )
+        // Retry the build to handle transient failures (e.g. file locking races on Windows
+        // when multiple parallel builds compete for shared caches like Deno's esbuild binary,
+        // or brief network unavailability)
+        let max_attempts = 3;
+        for attempt in 0..max_attempts {
+            match run_command(
+                std::env::current_exe()?.as_os_str().to_str().unwrap(),
+                [OsStr::new("build")],
+                Some(self.project_dir.as_ref()),
+                "Could not build the exo_ir.",
+            ) {
+                Ok(()) => return Ok(()),
+                Err(e) => {
+                    if attempt >= max_attempts - 1 {
+                        return Err(e);
+                    }
+
+                    let pause = Duration::from_millis(1000 * 2u64.pow(attempt as u32));
+                    eprintln!(
+                        "Build failed for {} (attempt {}/{}): {:#}. Retrying in {:?}...",
+                        self.project_dir.display(),
+                        attempt + 1,
+                        max_attempts,
+                        e,
+                        pause
+                    );
+                    thread::sleep(pause);
+                }
+            }
+        }
+        unreachable!()
     }
 
     // Run all scripts of the "build*.sh" form in the same directory as the model
