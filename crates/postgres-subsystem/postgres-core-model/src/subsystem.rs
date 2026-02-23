@@ -12,7 +12,9 @@ use core_model::{
     context_type::{ContextContainer, ContextType},
     mapped_arena::{MappedArena, SerializableSlab},
 };
-use core_plugin_shared::{error::ModelSerializationError, system_serializer::SystemSerializer};
+use core_plugin_shared::system_serializer::{
+    ModelSerializationError, SystemSerializer, postcard_deserialize, postcard_serialize,
+};
 use exo_sql::Database;
 use serde::{Deserialize, Serialize};
 
@@ -46,15 +48,13 @@ impl SystemSerializer for PostgresCoreSubsystem {
     type Underlying = Self;
 
     fn serialize(&self) -> Result<Vec<u8>, ModelSerializationError> {
-        bincode::serde::encode_to_vec(self, bincode::config::standard())
-            .map_err(ModelSerializationError::Serialize)
+        postcard_serialize(self)
     }
 
     fn deserialize_reader(
-        mut reader: impl std::io::Read,
+        reader: impl std::io::Read,
     ) -> Result<Self::Underlying, ModelSerializationError> {
-        bincode::serde::decode_from_std_read(&mut reader, bincode::config::standard())
-            .map_err(ModelSerializationError::Deserialize)
+        postcard_deserialize(reader)
     }
 }
 

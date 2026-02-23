@@ -70,18 +70,14 @@ impl PhysicalColumnTypeSerializer for TimeColumnTypeSerializer {
             .downcast_ref::<TimeColumnType>()
             .ok_or_else(|| "Expected TimeColumnType".to_string())
             .and_then(|t| {
-                bincode::serde::encode_to_vec(t, bincode::config::standard())
-                    .map_err(|e| format!("Failed to serialize Time: {}", e))
+                postcard::to_allocvec(t).map_err(|e| format!("Failed to serialize Time: {}", e))
             })
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-        let (t, size) = bincode::serde::decode_from_slice::<TimeColumnType, _>(
-            data,
-            bincode::config::standard(),
-        )
-        .map_err(|e| format!("Failed to deserialize Time: {}", e))?;
-        if size != data.len() {
+        let (t, remaining) = postcard::take_from_bytes::<TimeColumnType>(data)
+            .map_err(|e| format!("Failed to deserialize Time: {}", e))?;
+        if !remaining.is_empty() {
             return Err("Did not consume all bytes during deserialization of Time".to_string());
         }
         Ok(Box::new(t) as Box<dyn PhysicalColumnType>)

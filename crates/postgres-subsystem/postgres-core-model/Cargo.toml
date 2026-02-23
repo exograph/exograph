@@ -6,7 +6,6 @@ publish = false
 
 [dependencies]
 serde.workspace = true
-bincode.workspace = true
 
 exo-sql = { path = "../../../libs/exo-sql" }
 core-model = { path = "../../core-subsystem/core-model" }
@@ -17,7 +16,6 @@ common = { path = "../../common" }
 [dev-dependencies]
 tokio.workspace = true
 wasm-bindgen-test.workspace = true
-bincode.workspace = true
 exo-sql = { path = "../../../libs/exo-sql", features = [
   "bigdecimal",
   "test-support",

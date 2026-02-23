@@ -12,7 +12,9 @@ use std::sync::Arc;
 
 use common::http::RequestHead;
 use core_plugin_interface::interface::SubsystemLoadingError;
-use core_plugin_shared::{error::ModelSerializationError, system_serializer::SystemSerializer};
+use core_plugin_shared::system_serializer::{
+    ModelSerializationError, SystemSerializer, postcard_deserialize, postcard_serialize,
+};
 use matchit::Router;
 use postgres_core_model::subsystem::PostgresCoreSubsystem;
 use serde::{Deserialize, Serialize};
@@ -76,14 +78,12 @@ impl SystemSerializer for PostgresRestSubsystem {
     type Underlying = Self;
 
     fn serialize(&self) -> Result<Vec<u8>, ModelSerializationError> {
-        bincode::serde::encode_to_vec(self, bincode::config::standard())
-            .map_err(ModelSerializationError::Serialize)
+        postcard_serialize(self)
     }
 
     fn deserialize_reader(
-        mut reader: impl std::io::Read,
+        reader: impl std::io::Read,
     ) -> Result<Self::Underlying, ModelSerializationError> {
-        bincode::serde::decode_from_std_read(&mut reader, bincode::config::standard())
-            .map_err(ModelSerializationError::Deserialize)
+        postcard_deserialize(reader)
     }
 }

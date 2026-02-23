@@ -82,7 +82,7 @@ async-graphql-value = "7.1.0"
 async-recursion = "1.1.1"
 async-stream = "0.3.6"
 async-trait = "0.1.88"
-bincode = { version = "2.0.1", features = ["std", "serde"] }
+postcard = { version = "1", features = ["use-std", "alloc"] }
 bytes = "1"
 chrono = { version = "0.4.40", default-features = false, features = ["clock"] }
 codemap = "0.1.3"

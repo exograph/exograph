@@ -14,8 +14,9 @@ use core_model::{
     mapped_arena::{MappedArena, SerializableSlab},
     type_normalization::{FieldDefinitionProvider, TypeDefinitionProvider},
 };
-use core_plugin_shared::error::ModelSerializationError;
-use core_plugin_shared::system_serializer::SystemSerializer;
+use core_plugin_shared::system_serializer::{
+    ModelSerializationError, SystemSerializer, postcard_deserialize, postcard_serialize,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -71,15 +72,13 @@ impl SystemSerializer for DenoSubsystem {
     type Underlying = Self;
 
     fn serialize(&self) -> Result<Vec<u8>, ModelSerializationError> {
-        bincode::serde::encode_to_vec(self, bincode::config::standard())
-            .map_err(ModelSerializationError::Serialize)
+        postcard_serialize(self)
     }
 
     fn deserialize_reader(
-        mut reader: impl std::io::Read,
+        reader: impl std::io::Read,
     ) -> Result<Self::Underlying, ModelSerializationError> {
-        bincode::serde::decode_from_std_read(&mut reader, bincode::config::standard())
-            .map_err(ModelSerializationError::Deserialize)
+        postcard_deserialize(reader)
     }
 }
 

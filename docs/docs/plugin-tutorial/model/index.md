@@ -6,12 +6,12 @@ sidebar_position: 2
 
 We will now start writing the plugin's model in the `kv-model` crate. A plugin's model defines the structure it uses to keep track of everything it needs to successfully resolve operations. It is parsed from a user's `.exo` file.
 
-1.  Add `bincode` and `serde` as dependencies to `Cargo.toml`.
+1.  Add `postcard` and `serde` as dependencies to `Cargo.toml`.
     Models need to be serializable in order to be written to a `.exo_ir` file.
 
     ```toml
     [dependencies]
-    bincode = "1"
+    postcard = { version = "1", features = ["use-std", "alloc"] }
     serde = "1"
     core-plugin-interface.workspace = true
     ```
@@ -81,18 +81,20 @@ We will now start writing the plugin's model in the `kv-model` crate. A plugin's
         type Underlying = Self;
 
         fn serialize(&self) -> Result<Vec<u8>, ModelSerializationError> {
-            bincode::serialize(&self).map_err(ModelSerializationError::Serialize)
+            postcard::to_allocvec(&self).map_err(ModelSerializationError::Serialize)
         }
 
         fn deserialize_reader(
-            reader: impl std::io::Read,
+            mut reader: impl std::io::Read,
         ) -> Result<Self::Underlying, ModelSerializationError> {
-            bincode::deserialize_from(reader).map_err(ModelSerializationError::Deserialize)
+            let mut bytes = Vec::new();
+            reader.read_to_end(&mut bytes).map_err(|e| ModelSerializationError::Other(e.to_string()))?;
+            postcard::from_bytes(&bytes).map_err(ModelSerializationError::Deserialize)
         }
     }
     ```
 
-    `SystemSerializer` is a helper trait that defines serialization and deserialization methods for models. generically. Although we use `bincode` here, the model can be serialized into any format that can be represented by a `Vec<u8>`.
+    `SystemSerializer` is a helper trait that defines serialization and deserialization methods for models generically. Although we use `postcard` here, the model can be serialized into any format that can be represented by a `Vec<u8>`.
 
 4.  Create a `operations.rs` module in the crate. We will define what the plugin's queries and mutations look like in here.
 
