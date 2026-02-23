@@ -31,6 +31,10 @@ updates:
         patterns:
           - "tracing"
           - "tracing-*"
+      postgres:
+        patterns:
+          - "*postgres*"
+          - "pg_bigdecimal"
     commit-message:
       prefix: fix
       prefix-development: chore

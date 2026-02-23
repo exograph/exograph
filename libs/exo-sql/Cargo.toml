@@ -22,7 +22,7 @@ interactive-migration = ["toml"]
 
 [dependencies]
 bytes.workspace = true
-pg_bigdecimal = { version = "0.1.4", optional = true }
+pg_bigdecimal = { version = "0.1", optional = true }
 futures.workspace = true
 uuid.workspace = true
 indexmap.workspace = true
@@ -36,7 +36,7 @@ rustls = { workspace = true, optional = true, default-features = false, features
 ] }
 rustls-pki-types = { version = "1.13.1", optional = true }
 tokio-postgres-rustls = { version = "0.13.0", optional = true }
-rustls-native-certs = { version = "0.8.0", optional = true }
+rustls-native-certs = { version = "0.8", optional = true }
 postgres_array = "0.11.1"
 deadpool-postgres = { workspace = true, optional = true }
 chrono.workspace = true
