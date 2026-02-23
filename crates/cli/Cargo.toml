@@ -21,7 +21,7 @@ notify-debouncer-full = "0.7.0"
 clap.workspace = true
 futures.workspace = true
 rand.workspace = true
-ctrlc = "3.4"
+ctrlc = "3.5"
 zip.workspace = true
 inquire = "0.9.3"
 reqwest = { workspace = true, features = ["stream"] }
