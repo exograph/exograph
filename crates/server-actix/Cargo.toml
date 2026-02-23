@@ -17,7 +17,7 @@ static-deno-resolver = ["server-common/static-deno-resolver"]
 static-wasm-resolver = ["server-common/static-wasm-resolver"]
 
 [dependencies]
-actix-web = { version = "4.10.2", default-features = false, features = [
+actix-web = { version = "4.13.0", default-features = false, features = [
   "macros",
   "cookies",
 ] }
