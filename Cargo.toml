@@ -120,7 +120,7 @@ test-log = "0.2.19"
 thiserror = "2"
 tracing = "0.1.41"
 tokio = "1"
-tokio-postgres = { version = "0.7.12", default-features = false }
+tokio-postgres = { version = "0.7", default-features = false }
 deadpool-postgres = { version = "0.14.1", default-features = false }
 tree-sitter = { git = "https://github.com/exograph/tree-sitter-c2rust.git", branch = "generate-loading-feature-flag" }
 tree-sitter-c2rust = "0.25.1"

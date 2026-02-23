@@ -31,6 +31,12 @@ updates:
         patterns:
           - "tracing"
           - "tracing-*"
+      postgres:
+        patterns:
+          - "tokio-postgres"
+          - "deadpool-postgres"
+          - "postgres"
+          - "postgres-*"
     commit-message:
       prefix: fix
       prefix-development: chore
