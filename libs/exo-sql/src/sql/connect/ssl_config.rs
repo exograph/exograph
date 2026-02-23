@@ -116,17 +116,20 @@ impl SslConfig {
             // If the cert path is provided, use it. Otherwise, use the native certs.
             match self.root_cert_path {
                 Some(cert_path) => {
-                    CertificateDer::pem_file_iter(&cert_path)
-                        .map_err(|e| {
+                    let certs = CertificateDer::pem_file_iter(&cert_path).map_err(|e| {
+                        DatabaseError::Config(format!(
+                            "Failed to open certificate file '{cert_path}': {e}"
+                        ))
+                    })?;
+
+                    for cert in certs {
+                        let cert = cert.map_err(|e| {
                             DatabaseError::Config(format!(
-                                "Failed to open certificate file '{cert_path}': {e}"
+                                "Invalid certificate in '{cert_path}': {e}"
                             ))
-                        })?
-                        .collect::<Result<Vec<_>, _>>()
-                        .map_err(|_| DatabaseError::Config("Invalid certificate".into()))?
-                        .into_iter()
-                        .map(|cert| root_store.add(cert))
-                        .collect::<Result<Vec<_>, _>>()?;
+                        })?;
+                        root_store.add(cert)?;
+                    }
                 }
                 None => {
                     // We need to load certificates only if at least one TCP host is present.
