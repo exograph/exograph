@@ -25,7 +25,7 @@ thiserror.workspace = true
 
 serde_json = { workspace = true, features = ["preserve_order"] }
 tracing.workspace = true
-tracing-actix-web = "0.7.18"
+tracing-actix-web = "0.7"
 url.workspace = true
 reqwest.workspace = true
 http.workspace = true
