@@ -9,17 +9,57 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      wasm:
+        patterns:
+          - "wasm-bindgen"
+          - "wasm-bindgen-*"
+          - "js-sys"
+          - "web-sys"
+      deno:
+        patterns:
+          - "deno_*"
+          - "node_resolver"
+      wasmtime:
+        patterns:
+          - "wasmtime"
+          - "wasi-common"
+      async-graphql:
+        patterns:
+          - "async-graphql-*"
+      tracing:
+        patterns:
+          - "tracing"
+          - "tracing-*"
     commit-message:
       prefix: fix
       prefix-development: chore
       include: scope
 
   - package-ecosystem: "npm"
-    directories: 
+    directories:
       - "/docs"
-      - "/graphiql/lib"
-      - "/graphiql/app"
-      - "/crates/testing"
+      - "/playground/lib"
+      - "/playground/app"
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      typescript-eslint:
+        patterns:
+          - "@typescript-eslint/*"
+      css-tooling:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+          - "postcss"
+          - "autoprefixer"
+      docusaurus:
+        patterns:
+          - "@docusaurus/*"
     schedule:
       interval: "weekly"
     commit-message:
