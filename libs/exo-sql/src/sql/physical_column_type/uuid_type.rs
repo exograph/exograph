@@ -60,18 +60,14 @@ impl PhysicalColumnTypeSerializer for UuidColumnTypeSerializer {
             .downcast_ref::<UuidColumnType>()
             .ok_or_else(|| "Expected UuidColumnType".to_string())
             .and_then(|t| {
-                bincode::serde::encode_to_vec(t, bincode::config::standard())
-                    .map_err(|e| format!("Failed to serialize Uuid: {}", e))
+                postcard::to_allocvec(t).map_err(|e| format!("Failed to serialize Uuid: {}", e))
             })
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-        let (t, size) = bincode::serde::decode_from_slice::<UuidColumnType, _>(
-            data,
-            bincode::config::standard(),
-        )
-        .map_err(|e| format!("Failed to deserialize Uuid: {}", e))?;
-        if size != data.len() {
+        let (t, remaining) = postcard::take_from_bytes::<UuidColumnType>(data)
+            .map_err(|e| format!("Failed to deserialize Uuid: {}", e))?;
+        if !remaining.is_empty() {
             return Err("Did not consume all bytes during deserialization of Uuid".to_string());
         }
         Ok(Box::new(t) as Box<dyn PhysicalColumnType>)

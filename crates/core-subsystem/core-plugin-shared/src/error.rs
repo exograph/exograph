@@ -12,8 +12,11 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum ModelSerializationError {
     #[error("Unable to serialize model {0}")]
-    Serialize(#[source] bincode::error::EncodeError),
+    Serialize(#[source] postcard::Error),
 
     #[error("Unable to deserialize model {0}")]
-    Deserialize(#[source] bincode::error::DecodeError),
+    Deserialize(#[source] postcard::Error),
+
+    #[error("{0}")]
+    Other(String),
 }

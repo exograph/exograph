@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 serde.workspace = true
-bincode.workspace = true
+postcard.workspace = true
 thiserror.workspace = true
 bytes.workspace = true
 tracing.workspace = true

@@ -87,18 +87,15 @@ impl PhysicalColumnTypeSerializer for TimestampColumnTypeSerializer {
             .downcast_ref::<TimestampColumnType>()
             .ok_or_else(|| "Expected TimestampColumnType".to_string())
             .and_then(|t| {
-                bincode::serde::encode_to_vec(t, bincode::config::standard())
+                postcard::to_allocvec(t)
                     .map_err(|e| format!("Failed to serialize Timestamp: {}", e))
             })
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-        let (t, size) = bincode::serde::decode_from_slice::<TimestampColumnType, _>(
-            data,
-            bincode::config::standard(),
-        )
-        .map_err(|e| format!("Failed to deserialize Timestamp: {}", e))?;
-        if size != data.len() {
+        let (t, remaining) = postcard::take_from_bytes::<TimestampColumnType>(data)
+            .map_err(|e| format!("Failed to deserialize Timestamp: {}", e))?;
+        if !remaining.is_empty() {
             return Err(
                 "Did not consume all bytes during deserialization of Timestamp".to_string(),
             );

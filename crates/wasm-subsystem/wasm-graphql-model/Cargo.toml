@@ -7,7 +7,6 @@ publish = false
 [dependencies]
 async-graphql-parser.workspace = true
 serde.workspace = true
-bincode.workspace = true
 
 core-model = { path = "../../core-subsystem/core-model" }
 core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }

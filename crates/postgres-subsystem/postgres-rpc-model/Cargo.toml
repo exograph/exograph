@@ -6,7 +6,6 @@ publish = false
 
 [dependencies]
 serde.workspace = true
-bincode.workspace = true
 
 postgres-core-model = { path = "../postgres-core-model" }
 core-model = { path = "../../core-subsystem/core-model" }

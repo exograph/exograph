@@ -8,8 +8,10 @@
 // by the Apache License, Version 2.0.
 
 use bytes::{Buf, Bytes};
+use serde::{Serialize, de::DeserializeOwned};
+use std::io::Read;
 
-use crate::error::ModelSerializationError;
+pub use crate::error::ModelSerializationError;
 
 /// Serialize and deserialize the underlying type
 /// Used to serialize and deserialize subsystems as well as the whole system
@@ -17,7 +19,7 @@ use crate::error::ModelSerializationError;
 /// Implementations must ensure that the serialization and deserialization is
 /// compatible with the same version of the underlying type. Other than that
 /// there is no constraint of the serialization format. For example, one subsystem
-/// may use the bincode format, while another subsystem may use JSON.
+/// may use the postcard format, while another subsystem may use JSON.
 pub trait SystemSerializer {
     type Underlying;
 
@@ -30,4 +32,18 @@ pub trait SystemSerializer {
     fn deserialize(bytes: Vec<u8>) -> Result<Self::Underlying, ModelSerializationError> {
         Self::deserialize_reader(Bytes::from(bytes).reader())
     }
+}
+
+pub fn postcard_serialize<T: Serialize>(value: &T) -> Result<Vec<u8>, ModelSerializationError> {
+    postcard::to_allocvec(value).map_err(ModelSerializationError::Serialize)
+}
+
+pub fn postcard_deserialize<T: DeserializeOwned>(
+    mut reader: impl Read,
+) -> Result<T, ModelSerializationError> {
+    let mut bytes = Vec::new();
+    reader
+        .read_to_end(&mut bytes)
+        .map_err(|e| ModelSerializationError::Other(e.to_string()))?;
+    postcard::from_bytes(&bytes).map_err(ModelSerializationError::Deserialize)
 }

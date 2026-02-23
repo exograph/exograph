@@ -110,8 +110,7 @@ impl PhysicalColumnTypeSerializer for ArrayColumnTypeSerializer {
             .downcast_ref::<ArrayColumnType>()
             .ok_or_else(|| "Expected ArrayColumnType".to_string())
             .and_then(|t| {
-                bincode::serde::encode_to_vec(t, bincode::config::standard())
-                    .map_err(|e| format!("Failed to serialize Array: {}", e))
+                postcard::to_allocvec(t).map_err(|e| format!("Failed to serialize Array: {}", e))
             })
     }
 
@@ -123,10 +122,9 @@ impl PhysicalColumnTypeSerializer for ArrayColumnTypeSerializer {
             typ: super::SerializedPhysicalColumnType,
         }
 
-        let (array_data, size) =
-            bincode::serde::decode_from_slice::<ArrayData, _>(data, bincode::config::standard())
-                .map_err(|e| format!("Failed to deserialize ArrayColumnType structure: {}", e))?;
-        if size != data.len() {
+        let (array_data, remaining) = postcard::take_from_bytes::<ArrayData>(data)
+            .map_err(|e| format!("Failed to deserialize ArrayColumnType structure: {}", e))?;
+        if !remaining.is_empty() {
             return Err(
                 "Did not consume all bytes during deserialization of ArrayColumnType".to_string(),
             );
