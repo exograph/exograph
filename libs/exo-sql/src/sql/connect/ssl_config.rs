@@ -1,13 +1,11 @@
 #![cfg(feature = "postgres-url")]
 
-use std::{fs::File, io::BufReader};
-
 #[cfg(feature = "tls")]
 use rustls::RootCertStore;
 #[cfg(feature = "tls")]
 use rustls_native_certs::load_native_certs;
 #[cfg(feature = "tls")]
-use rustls_pki_types::CertificateDer;
+use rustls_pki_types::{CertificateDer, pem::PemObject};
 
 use crate::database_error::DatabaseError;
 use tokio_postgres::config::SslMode;
@@ -118,17 +116,16 @@ impl SslConfig {
             // If the cert path is provided, use it. Otherwise, use the native certs.
             match self.root_cert_path {
                 Some(cert_path) => {
-                    let cert_file = File::open(&cert_path).map_err(|e| {
-                        DatabaseError::Config(format!(
-                            "Failed to open certificate file '{cert_path}': {e}"
-                        ))
-                    })?;
-                    let mut buf = BufReader::new(cert_file);
-                    rustls_pemfile::certs(&mut buf)
+                    CertificateDer::pem_file_iter(&cert_path)
+                        .map_err(|e| {
+                            DatabaseError::Config(format!(
+                                "Failed to open certificate file '{cert_path}': {e}"
+                            ))
+                        })?
                         .collect::<Result<Vec<_>, _>>()
                         .map_err(|_| DatabaseError::Config("Invalid certificate".into()))?
                         .into_iter()
-                        .map(|cert| root_store.add(CertificateDer::from(cert.to_vec())))
+                        .map(|cert| root_store.add(cert))
                         .collect::<Result<Vec<_>, _>>()?;
                 }
                 None => {
