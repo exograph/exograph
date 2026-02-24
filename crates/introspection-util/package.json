@@ -3,6 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "graphql": "16.10.0"
+    "graphql": "16.13.0"
   }
 }
