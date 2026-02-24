@@ -125,15 +125,15 @@ deadpool-postgres = { version = "0.14.1", default-features = false }
 tree-sitter = { git = "https://github.com/exograph/tree-sitter-c2rust.git", branch = "generate-loading-feature-flag" }
 tree-sitter-c2rust = "0.25.1"
 tree-sitter-generate = { git = "https://github.com/exograph/tree-sitter-c2rust.git", branch = "generate-loading-feature-flag" }
-typed-generational-arena = { version = "0.2.6", features = ["serde"] }
+typed-generational-arena = { version = "0.2.9", features = ["serde"] }
 uuid = "1"
 url = "2.5.8"
 wasmtime = "41.0.3"
 wasi-common = "41.0.3"
 wildmatch = "2.6.1"
 which = "8.0.0"
-wasm-bindgen-test = "0.3.61"
-wasm-bindgen-test-macro = "0.3.61"
+wasm-bindgen-test = "0.3.62"
+wasm-bindgen-test-macro = "0.3.62"
 multiplatform_test = "0.6.0"
 pluralizer = "0.5.0"
 tracing-subscriber = "0.3"
