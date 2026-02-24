@@ -23,7 +23,7 @@ async-trait.workspace = true
 async-recursion.workspace = true
 jsonwebtoken.workspace = true
 cookie = "0.18.1"
-elsa = "1.8.1"
+elsa = "1.11.2"
 async-graphql-value.workspace = true
 tokio-postgres.workspace = true
 colored.workspace = true
@@ -32,7 +32,7 @@ exo-env = { path = "../../libs/exo-env" }
 exo-sql = { path = "../../libs/exo-sql" }
 
 anyhow.workspace = true
-indicatif = "0.18.0"
+indicatif = "0.18.4"
 sha2 = "0.10"
 
 tracing.workspace = true
@@ -57,7 +57,7 @@ tonic = { version = "0.14", features = [
   "tls-native-roots",
 ], optional = true }
 
-hyper-util = { version = "0.1.7" }
+hyper-util = { version = "0.1.20" }
 tower = { version = "0.5", features = ["util"] }
 
 wildmatch = { workspace = true, optional = true }
@@ -65,7 +65,7 @@ wildmatch = { workspace = true, optional = true }
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 zip.workspace = true
 tempfile.workspace = true
-home = "0.5.11"
+home = "0.5.12"
 # Use aws_lc_rs for native targets
 oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", version = "0.3.0", branch = "exograph", features = [
   "aws_lc_rs",

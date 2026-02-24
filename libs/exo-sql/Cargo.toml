@@ -56,7 +56,7 @@ toml = { workspace = true, optional = true }
 which = { workspace = true, optional = true }
 rand.workspace = true
 tempfile = { workspace = true, optional = true }
-urlencoding = "2.1.2"
+urlencoding = "2.1.3"
 
 serde_json.workspace = true
 
