@@ -30,7 +30,7 @@
     "tailwindcss": "^4.1.11",
     "typescript": "5.7.2",
     "vite": "7.0.5",
-    "vite-plugin-svgr": "4.3.0"
+    "vite-plugin-svgr": "4.5.0"
   },
   "browserslist": {
     "production": [
