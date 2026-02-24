@@ -13,7 +13,7 @@ opentelemetry = ["opentelemetry_sdk", "opentelemetry-otlp", "tonic"]
 [dependencies]
 thiserror.workspace = true
 tokio.workspace = true
-reqwest = { workspace = true, features = ["stream"] }
+reqwest.workspace = true
 http.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["preserve_order"] }
@@ -63,6 +63,7 @@ tower = { version = "0.5", features = ["util"] }
 wildmatch = { workspace = true, optional = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
+reqwest = { workspace = true, features = ["stream"] }
 zip.workspace = true
 tempfile.workspace = true
 home = "0.5.12"
