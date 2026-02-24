@@ -7,11 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-import { experimental_createMCPClient } from 'ai';
+import { createMCPClient, type MCPClient } from '@ai-sdk/mcp';
 import { ExographTransport, HttpFetcher } from '../../transport';
 import { JWTSource } from '../../../auth/types';
-
-type MCPClient = Awaited<ReturnType<typeof experimental_createMCPClient>>;
 
 export type MCPConnectionState =
   | { type: 'disconnected' }
@@ -91,7 +89,7 @@ export class MCPConnectionManager {
       const fetcher = new HttpFetcher(endpoint, () => this.computeHeaders());
       const transport = new ExographTransport(fetcher);
 
-      const client = await experimental_createMCPClient({
+      const client = await createMCPClient({
         transport,
       });
 

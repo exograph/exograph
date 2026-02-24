@@ -15,13 +15,16 @@ When working solely on the UI aspect of the playground, you can get faster itera
 
 1. Comment out the existing `<base ...` and add `<base href="/" />`
 2. Replace `window.exoConfig = {}` with the following:
+
 ```javascript
-  window.exoConfig =   {
-    playgroundHttpPath: "/playground",
-    graphqlHttpPath: "http://localhost:9876/graphql",
-    enableSchemaLiveUpdate: false
-  }
-  ```
+window.exoConfig = {
+  playgroundHttpPath: "/playground",
+  graphqlHttpPath: "http://localhost:9876/graphql",
+  mcpHttpPath: "http://localhost:9876/mcp",
+  enableSchemaLiveUpdate: false,
+};
+```
+
 3. When exploring OIDC, add `exoOidcUrl = "<provider>";`
 
 Then, from the `graphiql/lib` directory, run:

@@ -5,6 +5,9 @@ import { createMonacoEditorPlugin } from '../lib/vite.plugin.js'
 
 export default defineConfig({
   base: '',
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+  },
   server: {
     fs: {
       allow: ['.', '../lib']
