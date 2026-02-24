@@ -108,8 +108,8 @@ lazy_static = "1.5.0"
 maybe-owned = "0.3.4"
 rand = "0.10.0"
 regex = "1"
-reqwest = { version = "0.12", default-features = false, features = [
-  "rustls-tls-native-roots",
+reqwest = { version = "0.13", default-features = false, features = [
+  "rustls",
 ] }
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
 serde = { version = "1.0", features = ["derive"] }
