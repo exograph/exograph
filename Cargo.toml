@@ -92,11 +92,11 @@ http = "1"
 clap = "4"
 
 deno_error = "0.7.1"
-deno_runtime = "0.240.0"
-deno_core = "0.385.0"
-deno_fs = "0.142.0"
-deno_resolver = "0.63.0"
-node_resolver = "0.70.0"
+deno_runtime = "0.242.0"
+deno_core = "0.386.0"
+deno_fs = "0.144.0"
+deno_resolver = "0.65.0"
+node_resolver = "0.72.0"
 
 futures = "0.3.32"
 heck = "0.5.0"
@@ -108,9 +108,7 @@ lazy_static = "1.5.0"
 maybe-owned = "0.3.4"
 rand = "0.10.0"
 regex = "1"
-reqwest = { version = "0.13", default-features = false, features = [
-  "rustls",
-] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
