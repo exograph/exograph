@@ -18,30 +18,33 @@ import { LLMProvider } from "../providers/ModelId";
 import { ProviderAPI } from "../api";
 
 export interface ProviderConfigContextValue {
-  getApiKey: (provider: LLMProvider) => string;
+  getApiKey: (provider: LLMProvider) => string | undefined;
   setApiKey: (
     provider: LLMProvider,
-    apiKey: string,
+    apiKey: string | undefined,
     storeInLocalStorage: boolean
   ) => void;
-  hasApiKey: (provider: LLMProvider) => boolean;
   isStoringInLocalStorage: (provider: LLMProvider) => boolean;
 }
 
-const ProviderConfigContext = createContext<ProviderConfigContextValue | undefined>(undefined);
+const ProviderConfigContext = createContext<
+  ProviderConfigContextValue | undefined
+>(undefined);
 
 export interface ProviderConfigProviderProps {
   children: React.ReactNode;
 }
 
-export function ProviderConfigProvider({ children }: ProviderConfigProviderProps) {
+export function ProviderConfigProvider({
+  children,
+}: ProviderConfigProviderProps) {
   const [providerAPI] = useState(() => new ProviderAPI());
   const [updateCounter, setUpdateCounter] = useState(0);
 
   // Set up change listener on mount
   useEffect(() => {
     const cleanup = providerAPI.addChangeListener(() => {
-      setUpdateCounter(prev => prev + 1);
+      setUpdateCounter((prev) => prev + 1);
     });
     return cleanup;
   }, [providerAPI]);
@@ -53,21 +56,25 @@ export function ProviderConfigProvider({ children }: ProviderConfigProviderProps
       setApiKey: (provider, apiKey, storeInLocalStorage) => {
         providerAPI.setApiKey(provider, apiKey, storeInLocalStorage);
       },
-      hasApiKey: (provider) => providerAPI.hasApiKey(provider),
-      isStoringInLocalStorage: (provider) => providerAPI.isStoringInLocalStorage(provider),
+      isStoringInLocalStorage: (provider) =>
+        providerAPI.isStoringInLocalStorage(provider),
     }),
     [providerAPI, updateCounter]
   );
 
   return (
-    <ProviderConfigContext.Provider value={value}>{children}</ProviderConfigContext.Provider>
+    <ProviderConfigContext.Provider value={value}>
+      {children}
+    </ProviderConfigContext.Provider>
   );
 }
 
 export const useProviderConfig = (): ProviderConfigContextValue => {
   const context = useContext(ProviderConfigContext);
   if (!context) {
-    throw new Error("useProviderConfig must be used within a ProviderConfigProvider");
+    throw new Error(
+      "useProviderConfig must be used within a ProviderConfigProvider"
+    );
   }
   return context;
 };

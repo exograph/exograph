@@ -19,6 +19,8 @@
     "@ai-sdk/google": "^3.0.30",
     "@ai-sdk/mcp": "^1.0.21",
     "@ai-sdk/openai": "^3.0.31",
+    "@assistant-ui/react": "^0.12.12",
+    "@assistant-ui/react-markdown": "^0.12.5",
     "@auth0/auth0-react": "^2.15.0",
     "@clerk/clerk-react": "5.61.1",
     "@clerk/themes": "2.4.55",

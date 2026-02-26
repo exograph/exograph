@@ -6,3 +6,4 @@ deno.lock
 Session.vim*
 tags
 *.swp
+.playwright-mcp

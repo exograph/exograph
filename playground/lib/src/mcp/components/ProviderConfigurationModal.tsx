@@ -12,7 +12,7 @@ import { Dialog } from "../../util/Dialog";
 import { LLMProvider, ModelId } from "../providers/ModelId";
 import { DEFAULT_PROVIDER, PROVIDERS } from "../providers/config";
 import { useProviderConfig } from "../context/ProviderConfigContext";
-import { useModelSettings } from "../context/ModelSettingsContext";
+import { useModelSettings } from "../context/ModelContext";
 import { Tooltip } from "../../util/Tooltip";
 
 // Constants for model settings limits
@@ -98,7 +98,7 @@ export function ProviderConfigurationModal({
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
 
   const currentProvider = PROVIDERS[selectedProvider];
-  const { getApiKey, setApiKey, hasApiKey, isStoringInLocalStorage } =
+  const { getApiKey, setApiKey, isStoringInLocalStorage } =
     useProviderConfig();
 
   const handleProviderChange = (provider: LLMProvider) => {
@@ -109,7 +109,7 @@ export function ProviderConfigurationModal({
   const isConfigValid = Boolean(
     selectedProvider &&
       (PROVIDERS[selectedProvider]?.requiresApiKey
-        ? hasApiKey(selectedProvider)
+        ? getApiKey(selectedProvider) !== undefined
         : true)
   );
 
@@ -142,7 +142,7 @@ export function ProviderConfigurationModal({
               <div className="text-xs opacity-75 mt-1">
                 {provider.models.length} models
               </div>
-              {hasApiKey(provider.id) && (
+              {getApiKey(provider.id) !== undefined && (
                 <div className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full"></div>
               )}
             </button>
@@ -176,7 +176,7 @@ export function ProviderConfigurationModal({
                 onChange={(e) =>
                   setApiKey(
                     selectedProvider,
-                    getApiKey(selectedProvider),
+                    getApiKey(selectedProvider) || '',
                     e.target.checked
                   )
                 }

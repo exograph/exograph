@@ -29,12 +29,8 @@ export const ApiKeyStorageUtils = {
     return { type: 'localStorage', apiKey };
   },
 
-  getApiKey(storage: ApiKeyStorage): string {
-    return storage.type === 'empty' ? '' : storage.apiKey;
-  },
-
-  hasApiKey(storage: ApiKeyStorage): boolean {
-    return storage.type !== 'empty';
+  getApiKey(storage: ApiKeyStorage): string | undefined {
+    return storage.type === 'empty' ? undefined : storage.apiKey;
   },
 
   isStoredInLocalStorage(storage: ApiKeyStorage): boolean {

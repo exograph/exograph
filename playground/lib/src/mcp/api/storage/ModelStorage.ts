@@ -9,7 +9,7 @@
 
 import { StorageAPI } from './StorageAPI';
 import { ModelId } from '../../providers/ModelId';
-import { ModelSettings } from '../../context/ModelSettingsContext';
+import { ModelSettings } from '../../context/ModelContext';
 
 const CURRENT_MODEL = 'exograph::playground::mcp::model::current';
 const MODEL_SETTINGS = 'exograph::playground::mcp::model::settings';

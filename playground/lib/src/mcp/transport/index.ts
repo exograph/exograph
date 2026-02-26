@@ -1,2 +1,3 @@
 export { ExographTransport } from './ExographTransport';
-export { Fetcher, HttpFetcher } from './fetcher';
+export { Fetcher } from './fetcher';
+export { HttpFetcher, HttpError } from './HttpFetcher';
