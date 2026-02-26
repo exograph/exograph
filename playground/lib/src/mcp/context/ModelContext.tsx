@@ -19,18 +19,7 @@ import { ModelId, LLMProvider } from "../providers/ModelId";
 import { PROVIDERS } from "../providers/config";
 import { useProviderConfig } from "./ProviderConfigContext";
 import { ModelAPI } from "../api";
-
-export interface ModelSettings {
-  temperature: number;
-  maxTokens: number;
-}
-
-export interface ModelOption {
-  id: string;
-  name: string;
-  description?: string;
-  providerId: LLMProvider;
-}
+import type { ModelSettings, ModelOption } from "../api/model/types";
 
 export interface ModelSettingsContextValue {
   getModelSettings: (modelId: ModelId) => ModelSettings;

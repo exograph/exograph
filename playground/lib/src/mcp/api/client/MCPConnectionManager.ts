@@ -8,13 +8,14 @@
 // by the Apache License, Version 2.0.
 
 import { createMCPClient, MCPClient } from '@ai-sdk/mcp';
+import type { ToolSet } from 'ai';
 import { ExographTransport, HttpFetcher } from '../../transport';
 import { JWTSource } from '../../../auth/types';
 
 export type MCPConnectionState =
   | { type: 'disconnected' }
   | { type: 'connecting' }
-  | { type: 'connected'; client: MCPClient; tools: Record<string, any> }
+  | { type: 'connected'; client: MCPClient; tools: ToolSet }
   | { type: 'failed'; error: string; retry: () => void };
 
 export class MCPConnectionManager {
@@ -145,7 +146,7 @@ export class MCPConnectionManager {
     return this.state.type === 'connected';
   }
 
-  getTools(): Record<string, any> | null {
+  getTools(): ToolSet | null {
     return this.state.type === 'connected' ? this.state.tools : null;
   }
 }

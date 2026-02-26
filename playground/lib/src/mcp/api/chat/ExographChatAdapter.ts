@@ -196,8 +196,8 @@ export function createExographAdapter(depsRef: { current: ExographAdapterDeps })
           const toolResult = step.toolResults?.find(
             (item) => item.toolCallId === toolCall.toolCallId
           );
-          const toolOutput = toolResult ? unwrapToolOutput(toolResult) : undefined;
-          const { hasError, toolError } = toolOutput
+          const toolOutput = toolResult != null ? unwrapToolOutput(toolResult) : undefined;
+          const { hasError, toolError } = toolOutput !== undefined
             ? analyzeToolOutput(toolOutput)
             : { hasError: true, toolError: ToolErrorFactory.fromUnknownError(null, `Tool "${toolCall.toolName}" returned no result`) };
 

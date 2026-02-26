@@ -9,7 +9,7 @@
 
 import type { LanguageModel } from 'ai';
 import { ModelId, LLMProvider } from '../../providers/ModelId';
-import type { ModelSettings, ModelOption } from '../../context/ModelContext';
+import type { ModelSettings, ModelOption } from './types';
 import { PROVIDERS, DEFAULT_PROVIDER, createModel } from '../../providers/config';
 import { ModelStorage } from '../storage/ModelStorage';
 import { ModelValidator } from './ModelValidator';

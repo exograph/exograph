@@ -157,7 +157,7 @@ export function ProviderConfigurationModal({
             </label>
             <input
               type="password"
-              value={getApiKey(selectedProvider)}
+              value={getApiKey(selectedProvider) ?? ''}
               onChange={(e) =>
                 setApiKey(
                   selectedProvider,
