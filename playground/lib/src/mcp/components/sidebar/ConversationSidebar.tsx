@@ -11,7 +11,7 @@ import { useState } from "react";
 import { ConversationSection } from "./ConversationSection";
 import { MCPServerSection } from "./MCPServerSection";
 import { LLMConfigSection } from "./LLMConfigSection";
-import { useConversations } from "../../context/ConversationContext";
+import { ThreadListPrimitive } from "@assistant-ui/react";
 import { Plus } from "lucide-react";
 
 interface ConversationSidebarProps {
@@ -19,16 +19,7 @@ interface ConversationSidebarProps {
 }
 
 export function ConversationSidebar({ mcpEndpoint }: ConversationSidebarProps) {
-  const {
-    createNewConversation,
-    setActiveConversation,
-  } = useConversations();
   const [collapsed, setCollapsed] = useState(false);
-
-  const handleNewConversation = () => {
-    const newConversation = createNewConversation();
-    setActiveConversation(newConversation);
-  };
 
   if (collapsed) {
     return (
@@ -43,13 +34,12 @@ export function ConversationSidebar({ mcpEndpoint }: ConversationSidebarProps) {
           >
             →
           </button>
-          <button
-            onClick={handleNewConversation}
+          <ThreadListPrimitive.New
             className="w-8 h-8 rounded-lg bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center"
             title="New conversation"
           >
             <Plus className="w-4 h-4" />
-          </button>
+          </ThreadListPrimitive.New>
         </div>
       </div>
     );
@@ -57,7 +47,7 @@ export function ConversationSidebar({ mcpEndpoint }: ConversationSidebarProps) {
 
   return (
     <div
-      className={`w-80 h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0`}
+      className={`w-80 h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0`}
     >
       <div className="flex items-center justify-end p-4 border-b border-gray-200 dark:border-gray-700">
         <button

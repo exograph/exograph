@@ -9,9 +9,9 @@
 
 import { useState } from "react";
 import { Settings } from "lucide-react";
-import { useCurrentModel } from "../../context/CurrentModelContext";
+import { useCurrentModel } from "../../context/ModelContext";
 import { ModelId } from "../../providers/ModelId";
-import { useModelSettings } from "../../context/ModelSettingsContext";
+import { useModelSettings } from "../../context/ModelContext";
 import { ProviderConfigurationModal } from "../ProviderConfigurationModal";
 
 export function LLMConfigSection() {

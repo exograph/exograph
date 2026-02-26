@@ -11,7 +11,7 @@ import { ModelId, LLMProvider } from '../../providers/ModelId';
 import { PROVIDERS } from '../../providers/config';
 
 export class ModelValidator {
-  static isModelValid(modelId: ModelId, hasApiKey: (provider: LLMProvider) => boolean): boolean {
+  static isModelValid(modelId: ModelId, getApiKey: (provider: LLMProvider) => string | undefined): boolean {
     const provider = PROVIDERS[modelId.provider];
     if (!provider) return false;
 
@@ -20,20 +20,16 @@ export class ModelValidator {
     if (!modelExists) return false;
 
     // Check API key requirement
-    if (provider.requiresApiKey && !hasApiKey(modelId.provider)) {
+    if (provider.requiresApiKey && getApiKey(modelId.provider) === undefined) {
       return false;
     }
 
     return true;
   }
 
-  static isProviderValid(provider: LLMProvider): boolean {
-    return Boolean(PROVIDERS[provider]);
-  }
-
   static getValidationError(
     modelId: ModelId,
-    hasApiKey: (provider: LLMProvider) => boolean
+    getApiKey: (provider: LLMProvider) => string | undefined
   ): string | null {
     const provider = PROVIDERS[modelId.provider];
     if (!provider) {
@@ -45,7 +41,7 @@ export class ModelValidator {
       return `Model '${modelId.model}' not found for provider '${provider.displayName}'`;
     }
 
-    if (provider.requiresApiKey && !hasApiKey(modelId.provider)) {
+    if (provider.requiresApiKey && getApiKey(modelId.provider) === undefined) {
       return `API key required for ${provider.displayName}`;
     }
 

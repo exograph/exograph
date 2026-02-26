@@ -7,4 +7,16 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-export { ConversationManager } from './ConversationManager';
+import type { LLMProvider } from '../../providers/ModelId';
+
+export interface ModelSettings {
+  temperature: number;
+  maxTokens: number;
+}
+
+export interface ModelOption {
+  id: string;
+  name: string;
+  description?: string;
+  providerId: LLMProvider;
+}

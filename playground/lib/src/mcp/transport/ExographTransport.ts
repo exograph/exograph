@@ -52,21 +52,20 @@ export class ExographTransport implements Transport {
               }
 
               const error = new Error(errorMessage);
-              this.handleError(error);
+              this.onerror?.(error);
               if (isRequest) {
                 throw error;
               }
               return;
             }
 
-            // Handle successful response
-            this.handleMessage(responseData);
+            this.onmessage?.(responseData);
           } catch (error) {
             const parseError = new Error(
               `Failed to parse JSON response: ${result.text.substring(0, 100)}${result.text.length > 100 ? '...' : ''
               }`
             );
-            this.handleError(parseError);
+            this.onerror?.(parseError);
             if (isRequest) {
               throw parseError;
             }
@@ -78,7 +77,7 @@ export class ExographTransport implements Transport {
             const emptyResponseError = new Error(
               `Empty response received for request with id: ${requestId}`
             );
-            this.handleError(emptyResponseError);
+            this.onerror?.(emptyResponseError);
             throw emptyResponseError;
           }
         }
@@ -86,9 +85,13 @@ export class ExographTransport implements Transport {
 
       case 'failure':
         // Report error via onerror callback
-        this.handleError(result.error);
+        this.onerror?.(result.error);
         // Throw for requests expecting responses
         if (isRequest) {
+          // Preserve ToolError information by attaching it to the thrown error
+          if (result.toolError) {
+            (result.error as any).toolError = result.toolError;
+          }
           throw result.error;
         }
         break;
@@ -104,18 +107,6 @@ export class ExographTransport implements Transport {
 
     if (this.onclose) {
       this.onclose();
-    }
-  }
-
-  private handleMessage(message: JSONRPCMessage): void {
-    if (this.onmessage) {
-      this.onmessage(message);
-    }
-  }
-
-  private handleError(error: Error): void {
-    if (this.onerror) {
-      this.onerror(error);
     }
   }
 }

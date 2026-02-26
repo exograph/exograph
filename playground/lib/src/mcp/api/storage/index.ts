@@ -8,6 +8,5 @@
 // by the Apache License, Version 2.0.
 
 export { StorageAPI } from './StorageAPI';
-export { ConversationStorage } from './ConversationStorage';
 export { ModelStorage } from './ModelStorage';
 export { ProviderStorage } from './ProviderStorage';

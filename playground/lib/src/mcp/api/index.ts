@@ -8,7 +8,6 @@
 // by the Apache License, Version 2.0.
 
 export * from './storage';
-export * from './conversation';
 export * from './model';
 export * from './provider';
 export * from './client';

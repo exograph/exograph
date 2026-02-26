@@ -52,24 +52,30 @@ export class ProviderAPI {
       Object.entries(this.apiKeys)
         .filter(([, value]) => ApiKeyStorageUtils.isStoredInLocalStorage(value))
         .map(([provider, value]) => [provider, ApiKeyStorageUtils.getApiKey(value)])
+        .filter(([, apiKey]) => apiKey !== undefined) as [string, string][]
     );
   }
 
-  getApiKey(provider: LLMProvider): string {
+  getApiKey(provider: LLMProvider): string | undefined {
     return ApiKeyStorageUtils.getApiKey(this.apiKeys[provider] || ApiKeyStorageUtils.empty());
   }
 
-  setApiKey(provider: LLMProvider, apiKey: string, storeInLocalStorage: boolean): void {
+  setApiKey(provider: LLMProvider, apiKey: string | undefined, storeInLocalStorage: boolean): void {
+    // Convert empty/whitespace strings to undefined for consistent API
+    const normalizedApiKey = apiKey?.trim() || undefined;
+
     this.apiKeys = {
       ...this.apiKeys,
-      [provider]: ApiKeyStorageUtils.setApiKey(apiKey, storeInLocalStorage),
+      [provider]: normalizedApiKey
+        ? ApiKeyStorageUtils.setApiKey(normalizedApiKey, storeInLocalStorage)
+        : ApiKeyStorageUtils.empty(),
     };
     this.saveStorageToLocalStorage();
     this.notifyListeners();
   }
 
-  hasApiKey(provider: LLMProvider): boolean {
-    return ApiKeyStorageUtils.hasApiKey(this.apiKeys[provider] || ApiKeyStorageUtils.empty());
+  clearApiKey(provider: LLMProvider): void {
+    this.setApiKey(provider, undefined, false);
   }
 
   isStoringInLocalStorage(provider: LLMProvider): boolean {
