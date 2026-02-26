@@ -18,6 +18,9 @@ pub enum WasmError {
     #[error("{0}")]
     AnyError(#[from] anyhow::Error),
 
+    #[error("{0}")]
+    WasmtimeError(#[from] wasmtime::Error),
+
     #[error("Unsupported WASM type '{0}'")]
     UnsupportedType(String),
 
