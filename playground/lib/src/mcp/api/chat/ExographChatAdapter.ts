@@ -126,7 +126,8 @@ function analyzeToolOutput(output: unknown): { hasError: boolean; toolError?: To
         // Check for plain-text error messages from MCP tool results (e.g. "Error: Not authorized")
         if (entry.text.startsWith('Error: ')) {
           const errorMsg = entry.text;
-          const isAuth = /not authorized|unauthorized|forbidden|access denied/i.test(errorMsg);
+          const AUTH_ERROR_PATTERN = /not authorized|unauthorized|forbidden|access denied/i;
+          const isAuth = AUTH_ERROR_PATTERN.test(errorMsg);
           const toolError = isAuth
             ? ToolErrorFactory.fromHttpError(403, errorMsg)
             : ToolErrorFactory.fromUnknownError(null, errorMsg);

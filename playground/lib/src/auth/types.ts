@@ -30,7 +30,7 @@ export function applyJWTAuth(
   const { jwtSourceCookie, jwtSourceHeader } = auth;
 
   if (jwtSourceCookie) {
-    document.cookie = `${jwtSourceCookie}=${authToken}; Secure; SameSite=Strict; Path=/`;
+    document.cookie = `${jwtSourceCookie}=${encodeURIComponent(authToken)}; Secure; SameSite=Strict; Path=/`;
     return {};
   } else {
     const headerName = jwtSourceHeader || 'Authorization';
