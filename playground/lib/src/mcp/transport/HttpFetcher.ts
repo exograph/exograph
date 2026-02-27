@@ -53,7 +53,12 @@ export class HttpFetcher implements Fetcher {
         signal: this.abortController.signal
       });
 
-      if (!response.ok) {
+      // Always read the response body, even for non-200 status codes.
+      // MCP servers may return application-level errors (auth, validation)
+      // with non-200 HTTP status but still include a valid JSON-RPC response body.
+      const text = await response.text();
+
+      if (!response.ok && !text.trim()) {
         const httpError = new HttpError(`HTTP error. Status: ${response.status}`, response.status);
         const toolError = ToolErrorFactory.fromHttpError(response.status);
 
@@ -64,7 +69,6 @@ export class HttpFetcher implements Fetcher {
         };
       }
 
-      const text = await response.text();
       return { type: 'success', text, status: response.status };
     } catch (error: unknown) {
       // Check for abort error specifically
