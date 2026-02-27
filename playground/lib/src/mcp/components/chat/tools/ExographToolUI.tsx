@@ -70,8 +70,9 @@ const ExographToolRender = memo(function ExographToolRender({
 }: ExographToolRenderProps) {
   const editorTheme = useTheme() === "dark" ? "vs-dark" : "light";
   const { isRunning, isComplete, isError } = useToolCallStatus(status);
-  const isAuth = isAuthToolError(result, status);
-  const hasError = isError || isAuth;
+  const isAuth = isAuthToolError(result);
+  const hasResultError = result != null && typeof result === 'object' && '_toolError' in (result as Record<string, unknown>);
+  const hasError = isError || isAuth || hasResultError;
   const colors = toolCallColors(hasError);
   const queryString = getQueryFromArgs(args);
 

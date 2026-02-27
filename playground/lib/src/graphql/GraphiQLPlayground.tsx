@@ -28,6 +28,7 @@ import { AuthContext } from "../auth/AuthContext";
 import { explorerPlugin } from "@graphiql/plugin-explorer";
 import { PlaygroundGraphQLProps as GraphiQLProps } from "./types";
 import { BasePlaygroundComponentProps } from "../util/component-types";
+import { applyJWTAuth } from "../auth/types";
 
 import "./index.css";
 import "graphiql/style.css";
@@ -38,7 +39,6 @@ export interface GraphiQLPlaygroundProps extends BasePlaygroundComponentProps<Gr
 
 export function GraphiQLPlayground({ tab: graphql, auth }: GraphiQLPlaygroundProps) {
   const { fetcher } = graphql;
-  const { jwtSourceHeader, jwtSourceCookie } = auth;
   const { getTokenFn } = useContext(AuthContext);
 
   const dataFetcher: Fetcher = async (
@@ -53,14 +53,10 @@ export function GraphiQLPlayground({ tab: graphql, auth }: GraphiQLPlaygroundPro
     if (getTokenFn) {
       let authToken = await getTokenFn();
 
-      if (jwtSourceCookie) {
-        document.cookie = `${jwtSourceCookie}=${authToken}`;
-      } else {
-        let authHeader = jwtSourceHeader || "Authorization";
-
+      if (authToken) {
         additionalHeaders = {
           ...additionalHeaders,
-          [authHeader]: `Bearer ${authToken}`,
+          ...applyJWTAuth(auth, authToken),
         };
       }
     }

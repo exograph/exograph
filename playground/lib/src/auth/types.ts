@@ -18,3 +18,22 @@ export interface JWTAuthentication extends JWTSource {
   oidcUrl?: string;
   jwtSecret?: JwtSecret;
 }
+
+/**
+ * Apply JWT authentication by either setting a cookie or returning headers.
+ * Returns the headers to add to the request.
+ */
+export function applyJWTAuth(
+  auth: JWTSource,
+  authToken: string
+): Record<string, string> {
+  const { jwtSourceCookie, jwtSourceHeader } = auth;
+
+  if (jwtSourceCookie) {
+    document.cookie = `${jwtSourceCookie}=${authToken}; Secure; SameSite=Strict; Path=/`;
+    return {};
+  } else {
+    const headerName = jwtSourceHeader || 'Authorization';
+    return { [headerName]: `Bearer ${authToken}` };
+  }
+}

@@ -89,18 +89,16 @@ export function extractToolError(result: unknown): ToolError | unknown {
   return result;
 }
 
-export function isAuthToolError(result: unknown, status: { type: string }): boolean {
+export function isAuthToolError(result: unknown): boolean {
   if (result != null && typeof result === 'object') {
     const obj = result as Record<string, unknown>;
     const errorObj = obj.error != null && typeof obj.error === 'object' ? obj.error as Record<string, unknown> : null;
     const resultStatus = obj.status || errorObj?.status;
     if (resultStatus === 401 || resultStatus === 403) return true;
 
-    if (isErrorStatus(status)) {
-      const error = obj.error || obj._toolError;
-      if (isToolError(error) && (error.type === "auth" || error.status === 401 || error.status === 403)) {
-        return true;
-      }
+    const error = obj.error || obj._toolError;
+    if (isToolError(error) && (error.type === "auth" || error.status === 401 || error.status === 403)) {
+      return true;
     }
   }
 

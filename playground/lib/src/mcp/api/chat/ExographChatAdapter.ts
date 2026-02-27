@@ -123,6 +123,15 @@ function analyzeToolOutput(output: unknown): { hasError: boolean; toolError?: To
         return { hasError: true, toolError: ToolErrorFactory.parseError(entry.error) };
       }
       if (typeof entry.text === 'string') {
+        // Check for plain-text error messages from MCP tool results (e.g. "Error: Not authorized")
+        if (entry.text.startsWith('Error: ')) {
+          const errorMsg = entry.text;
+          const isAuth = /not authorized|unauthorized|forbidden|access denied/i.test(errorMsg);
+          const toolError = isAuth
+            ? ToolErrorFactory.fromHttpError(403, errorMsg)
+            : ToolErrorFactory.fromUnknownError(null, errorMsg);
+          return { hasError: true, toolError };
+        }
         try {
           const parsed = JSON.parse(entry.text);
           if (parsed.error) return { hasError: true, toolError: ToolErrorFactory.parseError(parsed.error) };

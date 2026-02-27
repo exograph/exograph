@@ -10,7 +10,7 @@
 import { createMCPClient, MCPClient } from '@ai-sdk/mcp';
 import type { ToolSet } from 'ai';
 import { ExographTransport, HttpFetcher } from '../../transport';
-import { JWTSource } from '../../../auth/types';
+import { JWTSource, applyJWTAuth } from '../../../auth/types';
 
 export type MCPConnectionState =
   | { type: 'disconnected' }
@@ -48,27 +48,15 @@ export class MCPConnectionManager {
   }
 
   private async computeHeaders(): Promise<Record<string, string>> {
-    const headers: Record<string, string> = {};
-
     if (this.getTokenFn && this.currentAuth) {
-      const { jwtSourceCookie, jwtSourceHeader } = this.currentAuth;
       const authToken = await this.getTokenFn();
 
       if (authToken && typeof authToken === 'string' && authToken.trim()) {
-        if (jwtSourceCookie) {
-          // Set secure cookie with proper flags
-          const cookieValue = `${jwtSourceCookie}=${authToken}; Secure; SameSite=Strict; Path=/`;
-          document.cookie = cookieValue;
-        }
-
-        if (jwtSourceHeader) {
-          const authHeaderName = jwtSourceHeader || 'Authorization';
-          headers[authHeaderName] = `Bearer ${authToken}`;
-        }
+        return applyJWTAuth(this.currentAuth, authToken);
       }
     }
 
-    return headers;
+    return {};
   }
 
   async connect(endpoint: string, auth: JWTSource): Promise<void> {
