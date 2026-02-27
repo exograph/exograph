@@ -29,14 +29,11 @@
           "description": "Ordering for the results",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/FooOrdering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FooOrdering"
+            },
+            "nullable": true
           }
         },
         {

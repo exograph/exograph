@@ -8900,10 +8900,12 @@ dependencies = [
 name = "rpc-introspection"
 version = "0.27.0"
 dependencies = [
+ "common",
  "core-model",
  "indexmap 2.13.0",
  "serde",
  "serde_json",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

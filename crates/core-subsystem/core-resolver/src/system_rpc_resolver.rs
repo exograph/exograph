@@ -30,7 +30,7 @@ impl SystemRpcResolver {
     }
 
     /// Collect RPC schemas from all subsystems that provide them.
-    pub fn rpc_schemas(&self) -> Vec<RpcSchema> {
+    pub fn rpc_schemas(&self) -> Vec<&RpcSchema> {
         self.subsystem_resolvers
             .iter()
             .filter_map(|resolver| resolver.rpc_schema())

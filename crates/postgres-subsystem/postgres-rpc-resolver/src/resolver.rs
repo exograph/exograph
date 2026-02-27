@@ -7,11 +7,13 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
 
 use common::context::RequestContext;
+use common::value::Val;
 
 use core_model::types::OperationReturnType;
 use core_resolver::access_solver::AccessSolver;
@@ -28,12 +30,9 @@ use postgres_core_resolver::database_helper::extractor;
 use postgres_core_resolver::order_by_mapper::compute_order_by;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_core_resolver::predicate_mapper::compute_predicate;
-use postgres_core_resolver::predicate_util::json_to_val;
 use postgres_rpc_model::operation::{CollectionQuery, PkQuery};
 use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
 use rpc_introspection::RpcSchema;
-
-use common::value::Val;
 
 pub struct PostgresSubsystemRpcResolver {
     #[allow(dead_code)]
@@ -42,6 +41,25 @@ pub struct PostgresSubsystemRpcResolver {
     pub executor: Arc<DatabaseExecutor>,
     #[allow(dead_code)]
     pub api_path_prefix: String,
+    rpc_schema: RpcSchema,
+}
+
+impl PostgresSubsystemRpcResolver {
+    pub fn new(
+        id: &'static str,
+        subsystem: PostgresRpcSubsystemWithRouter,
+        executor: Arc<DatabaseExecutor>,
+        api_path_prefix: String,
+    ) -> Self {
+        let rpc_schema = crate::schema_builder::build_rpc_schema(&subsystem);
+        Self {
+            id,
+            subsystem,
+            executor,
+            api_path_prefix,
+            rpc_schema,
+        }
+    }
 }
 
 /// Enum to represent the resolved operation (either collection or pk query)
@@ -75,15 +93,25 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
             });
 
         if let Some(resolved_operation) = resolved_operation {
+            // Look up the RPC method schema and validate params
+            let rpc_method = self
+                .rpc_schema
+                .method(request_method)
+                .ok_or_else(|| SubsystemRpcError::MethodNotFound(request_method.to_string()))?;
+
+            let mut validated_params = rpc_method
+                .parse_params(request_params, &self.rpc_schema.components)
+                .map_err(|e| SubsystemRpcError::InvalidParams(e.user_message()))?;
+
             let operation = match resolved_operation {
                 ResolvedOperation::CollectionQuery(query) => {
                     query
-                        .resolve(request_params, request_context, &self.subsystem)
+                        .resolve(&mut validated_params, request_context, &self.subsystem)
                         .await?
                 }
                 ResolvedOperation::PkQuery(query) => {
                     query
-                        .resolve(request_params, request_context, &self.subsystem)
+                        .resolve(&mut validated_params, request_context, &self.subsystem)
                         .await?
                 }
             };
@@ -127,8 +155,9 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
         Ok(None)
     }
 
-    fn rpc_schema(&self) -> Option<RpcSchema> {
-        Some(crate::schema_builder::build_rpc_schema(&self.subsystem))
+    fn rpc_schema(&self) -> Option<&RpcSchema> {
+        // TODO: We could just return &RpcSchema when all resolvers support schema
+        Some(&self.rpc_schema)
     }
 }
 
@@ -138,7 +167,7 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
 trait OperationSelectionResolver {
     async fn resolve_select<'a>(
         &'a self,
-        request_params: &Option<serde_json::Value>,
+        validated_params: &mut HashMap<String, Val>,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresRpcSubsystemWithRouter,
     ) -> Result<AbstractSelect, SubsystemRpcError>;
@@ -150,7 +179,7 @@ trait OperationSelectionResolver {
 trait OperationResolver {
     async fn resolve<'a>(
         &'a self,
-        request_params: &Option<serde_json::Value>,
+        validated_params: &mut HashMap<String, Val>,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresRpcSubsystemWithRouter,
     ) -> Result<AbstractOperation, SubsystemRpcError>;
@@ -161,11 +190,11 @@ trait OperationResolver {
 impl<T: OperationSelectionResolver + Send + Sync> OperationResolver for T {
     async fn resolve<'a>(
         &'a self,
-        request_params: &Option<serde_json::Value>,
+        validated_params: &mut HashMap<String, Val>,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresRpcSubsystemWithRouter,
     ) -> Result<AbstractOperation, SubsystemRpcError> {
-        self.resolve_select(request_params, request_context, subsystem)
+        self.resolve_select(validated_params, request_context, subsystem)
             .await
             .map(AbstractOperation::Select)
     }
@@ -232,7 +261,7 @@ async fn compute_access_predicate<'a>(
 impl OperationSelectionResolver for CollectionQuery {
     async fn resolve_select<'a>(
         &'a self,
-        request_params: &Option<serde_json::Value>,
+        validated_params: &mut HashMap<String, Val>,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresRpcSubsystemWithRouter,
     ) -> Result<AbstractSelect, SubsystemRpcError> {
@@ -242,21 +271,20 @@ impl OperationSelectionResolver for CollectionQuery {
             compute_access_predicate(entity_type, request_context, subsystem).await?;
 
         // Extract the predicate parameter and compute the user predicate
-        let user_predicate =
-            match extract_param(request_params, &self.parameters.predicate_param.name) {
-                Some(where_val) => compute_predicate(
-                    &self.parameters.predicate_param,
-                    &where_val,
-                    &subsystem.core_subsystem,
-                    request_context,
-                )
-                .await
-                .map_err(from_postgres_error)?,
-                None => AbstractPredicate::True,
-            };
+        let user_predicate = match validated_params.remove(&self.parameters.predicate_param.name) {
+            Some(where_val) => compute_predicate(
+                &self.parameters.predicate_param,
+                &where_val,
+                &subsystem.core_subsystem,
+                request_context,
+            )
+            .await
+            .map_err(from_postgres_error)?,
+            None => AbstractPredicate::True,
+        };
 
         // Extract the order by parameter and compute the order by clause
-        let order_by = match extract_param(request_params, &self.parameters.order_by_param.name) {
+        let order_by = match validated_params.remove(&self.parameters.order_by_param.name) {
             Some(order_by_val) => Some(
                 compute_order_by(
                     &self.parameters.order_by_param,
@@ -275,9 +303,11 @@ impl OperationSelectionResolver for CollectionQuery {
 
         // Extract limit and offset parameters
         let limit =
-            extract_limit_offset(request_params, &self.parameters.limit_param.name).map(Limit);
+            extract_i64_from_val(validated_params.remove(&self.parameters.limit_param.name))
+                .map(Limit);
         let offset =
-            extract_limit_offset(request_params, &self.parameters.offset_param.name).map(Offset);
+            extract_i64_from_val(validated_params.remove(&self.parameters.offset_param.name))
+                .map(Offset);
 
         Ok(compute_select(
             predicate,
@@ -294,7 +324,7 @@ impl OperationSelectionResolver for CollectionQuery {
 impl OperationSelectionResolver for PkQuery {
     async fn resolve_select<'a>(
         &'a self,
-        request_params: &Option<serde_json::Value>,
+        validated_params: &mut HashMap<String, Val>,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresRpcSubsystemWithRouter,
     ) -> Result<AbstractSelect, SubsystemRpcError> {
@@ -306,9 +336,11 @@ impl OperationSelectionResolver for PkQuery {
         // Compute predicate from pk parameters - each pk field is an implicit equals
         let mut pk_predicates = Vec::new();
         for predicate_param in &self.parameters.predicate_params {
-            let param_value =
-                extract_param(request_params, &predicate_param.name).ok_or_else(|| {
-                    SubsystemRpcError::UserDisplayError(format!(
+            // Validation already ensured required params are present
+            let param_value = validated_params
+                .remove(&predicate_param.name)
+                .ok_or_else(|| {
+                    SubsystemRpcError::InvalidParams(format!(
                         "Missing required parameter: {}",
                         predicate_param.name
                     ))
@@ -354,18 +386,10 @@ fn from_postgres_error(e: PostgresExecutionError) -> SubsystemRpcError {
     }
 }
 
-/// Extract an optional parameter from request params and convert to Val.
-fn extract_param(request_params: &Option<serde_json::Value>, key: &str) -> Option<Val> {
-    request_params
-        .as_ref()
-        .and_then(|params| params.get(key))
-        .map(json_to_val)
-}
-
-/// Extract a limit or offset value from request parameters.
-fn extract_limit_offset(request_params: &Option<serde_json::Value>, key: &str) -> Option<i64> {
-    request_params
-        .as_ref()
-        .and_then(|params| params.get(key))
-        .and_then(|v| v.as_i64())
+/// Extract an i64 from a Val (for limit/offset).
+fn extract_i64_from_val(val: Option<Val>) -> Option<i64> {
+    match val {
+        Some(Val::Number(n)) => n.as_i64(),
+        _ => None,
+    }
 }

@@ -29,14 +29,11 @@
           "description": "Ordering for the results",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ChessPieceOrdering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChessPieceOrdering"
+            },
+            "nullable": true
           }
         },
         {

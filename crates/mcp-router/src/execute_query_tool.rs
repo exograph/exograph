@@ -181,7 +181,7 @@ impl Tool for ExecuteQueryTool {
                         }
                     }
                     SubsystemRpcError::ParseError
-                    | SubsystemRpcError::InvalidParams(_, _)
+                    | SubsystemRpcError::InvalidParams(_)
                     | SubsystemRpcError::InvalidRequest
                     | SubsystemRpcError::UserDisplayError(_)
                     | SubsystemRpcError::SystemResolutionError(_)

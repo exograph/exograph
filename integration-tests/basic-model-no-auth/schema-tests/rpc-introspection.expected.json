@@ -29,14 +29,11 @@
           "description": "Ordering for the results",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ConcertOrdering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConcertOrdering"
+            },
+            "nullable": true
           }
         },
         {
@@ -92,14 +89,11 @@
           "description": "Ordering for the results",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/VenueOrdering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VenueOrdering"
+            },
+            "nullable": true
           }
         },
         {

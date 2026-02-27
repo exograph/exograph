@@ -29,14 +29,11 @@
           "description": "Ordering for the results",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/NumbersOrdering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NumbersOrdering"
+            },
+            "nullable": true
           }
         },
         {
@@ -92,14 +89,11 @@
           "description": "Ordering for the results",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/OtherNumbersOrdering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OtherNumbersOrdering"
+            },
+            "nullable": true
           }
         },
         {

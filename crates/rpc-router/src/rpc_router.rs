@@ -42,7 +42,7 @@ impl RpcRouter {
 
         let mut combined = RpcSchema::new();
         for schema in system_resolver.rpc_schemas() {
-            combined.merge(schema);
+            combined.merge(schema.clone());
         }
         let openrpc_document = to_openrpc(&combined, OPENRPC_API_TITLE, OPENRPC_API_VERSION);
 
