@@ -40,6 +40,12 @@ impl RpcSchema {
         self.components.schemas.insert(name, object_type);
     }
 
+    /// Find a method by name.
+    pub fn method(&self, name: &str) -> Option<&RpcMethod> {
+        // TODO: Consider building a HashMap in `new` for faster lookups
+        self.methods.iter().find(|m| m.name == name)
+    }
+
     /// Merge another schema into this one, consuming the other schema.
     pub fn merge(&mut self, other: RpcSchema) {
         self.methods.extend(other.methods);

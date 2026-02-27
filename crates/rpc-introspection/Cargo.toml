@@ -8,7 +8,9 @@ publish = false
 indexmap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+thiserror.workspace = true
 
+common = { path = "../common" }
 core-model = { path = "../core-subsystem/core-model" }
 
 [dev-dependencies]

@@ -100,11 +100,11 @@ impl BuildRpcMethod for CollectionQuery {
 
                 CollectionQueryParam::OrderBy(p) => RpcParameter::new(
                     &p.name,
-                    RpcTypeSchema::optional(p.build_rpc_type_schema(
+                    RpcTypeSchema::optional(RpcTypeSchema::array(p.build_rpc_type_schema(
                         subsystem,
                         schema,
                         added_types,
-                    )),
+                    ))),
                 )
                 .with_description("Ordering for the results"),
 

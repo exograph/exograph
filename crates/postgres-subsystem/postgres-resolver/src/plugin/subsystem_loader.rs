@@ -100,12 +100,12 @@ impl SubsystemLoader for PostgresSubsystemLoader {
                 let mut subsystem = PostgresRpcSubsystemWithRouter::new(subsystem)?;
                 subsystem.core_subsystem = core_subsystem.clone();
                 let api_path_prefix = get_rpc_http_path(env.as_ref()).to_string();
-                Ok::<_, SubsystemLoadingError>(Box::new(PostgresSubsystemRpcResolver {
-                    id: self.id(),
+                Ok::<_, SubsystemLoadingError>(Box::new(PostgresSubsystemRpcResolver::new(
+                    self.id(),
                     subsystem,
-                    executor: executor.clone(),
+                    executor.clone(),
                     api_path_prefix,
-                })
+                ))
                     as Box<dyn SubsystemRpcResolver + Send + Sync>)
             })
             .transpose()?;

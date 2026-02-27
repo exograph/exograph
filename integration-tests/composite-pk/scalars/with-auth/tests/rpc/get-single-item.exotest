@@ -79,7 +79,7 @@ stages:
     response: |
       {
         "error": {
-          "code": -32001,
+          "code": -32602,
           "message": "Missing required parameter: lastName"
         }
       }
@@ -124,7 +124,7 @@ stages:
     response: |
       {
         "error": {
-          "code": -32001,
+          "code": -32602,
           "message": "Missing required parameter: state"
         }
       }

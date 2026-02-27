@@ -1,0 +1,111 @@
+# Test that passing invalid/non-existing parameters returns appropriate errors
+stages:
+  # Non-existing parameter on collection query
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_logs",
+          "params": {
+            "nonExistentParam": "some value"
+          }
+        }
+    response: |
+      {
+        "error": {
+          "code": -32602,
+          "message": "Unknown parameter: nonExistentParam"
+        }
+      }
+
+  # Non-existing parameter alongside valid ones on collection query
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_logs",
+          "params": {
+            "where": {"timestamp": {"gt": 5}},
+            "bogus": true
+          }
+        }
+    response: |
+      {
+        "error": {
+          "code": -32602,
+          "message": "Unknown parameter: bogus"
+        }
+      }
+
+  # Non-existing parameter on PK query
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_log",
+          "params": {
+            "id": 1,
+            "unknownField": "test"
+          }
+        }
+    response: |
+      {
+        "error": {
+          "code": -32602,
+          "message": "Unknown parameter: unknownField"
+        }
+      }
+
+  # Non-existing field in where clause
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_logs",
+          "params": {
+            "where": {"nonExistentField": {"eq": "value"}}
+          }
+        }
+    response: |
+      {
+        "error": {
+          "code": -32602,
+          "message": "Unknown field in where: nonExistentField"
+        }
+      }
+
+  # Invalid orderBy field
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_logs",
+          "params": {
+            "orderBy": [{"nonExistentField": "ASC"}]
+          }
+        }
+    response: |
+      {
+        "error": {
+          "code": -32602,
+          "message": "Unknown field in orderBy[0]: nonExistentField"
+        }
+      }
+
+  # Type mismatch: string where int is expected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_logs",
+          "params": {
+            "limit": "not a number"
+          }
+        }
+    response: |
+      {
+        "error": {
+          "code": -32602,
+          "message": "Type mismatch at 'limit': expected Int, got string"
+        }
+      }

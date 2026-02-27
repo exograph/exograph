@@ -46,7 +46,7 @@ pub trait SubsystemRpcResolver: Sync {
 
     /// Return the RPC schema for this subsystem, used for introspection.
     /// Returns `None` if this subsystem doesn't expose RPC methods.
-    fn rpc_schema(&self) -> Option<RpcSchema>;
+    fn rpc_schema(&self) -> Option<&RpcSchema>;
 }
 
 #[derive(Error, Debug)]
@@ -57,8 +57,8 @@ pub enum SubsystemRpcError {
     #[error("Internal error")]
     InternalError,
 
-    #[error("Invalid parameter {0} for {1}")]
-    InvalidParams(String, &'static str), // (field name, container type)
+    #[error("{0}")]
+    InvalidParams(String),
 
     #[error("Invalid method name: {0}")]
     MethodNotFound(String),
@@ -87,9 +87,7 @@ impl SubsystemRpcError {
         match self {
             SubsystemRpcError::ParseError => Some("Invalid JSON".to_string()),
             SubsystemRpcError::InternalError => Some("Internal error".to_string()),
-            SubsystemRpcError::InvalidParams(parameter_name, container_type) => Some(format!(
-                "Invalid parameter {parameter_name} for {container_type}"
-            )),
+            SubsystemRpcError::InvalidParams(message) => Some(message.clone()),
             SubsystemRpcError::MethodNotFound(method_name) => {
                 Some(format!("Method {method_name} not found"))
             }
@@ -121,7 +119,7 @@ impl SubsystemRpcError {
         match self {
             SubsystemRpcError::ParseError => "-32700",
             SubsystemRpcError::InternalError => "-32603",
-            SubsystemRpcError::InvalidParams(_, _) => "-32602",
+            SubsystemRpcError::InvalidParams(_) => "-32602",
             SubsystemRpcError::MethodNotFound(_) => "-32601",
             SubsystemRpcError::InvalidRequest => "-32600",
 
@@ -141,7 +139,9 @@ impl From<SystemResolutionError> for SubsystemRpcError {
                 SubsystemResolutionError::ContextExtraction(ce) => ce.into(),
                 SubsystemResolutionError::Authorization => SubsystemRpcError::Authorization,
                 SubsystemResolutionError::InvalidField(field_name, container_type) => {
-                    SubsystemRpcError::InvalidParams(field_name.clone(), container_type)
+                    SubsystemRpcError::InvalidParams(format!(
+                        "Invalid parameter {field_name} for {container_type}"
+                    ))
                 }
                 SubsystemResolutionError::UserDisplayError(message) => {
                     SubsystemRpcError::UserDisplayError(message)
