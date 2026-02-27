@@ -106,9 +106,11 @@ impl RpcMethod {
 
         // Any remaining keys are unknown parameters
         if !supplied.is_empty() {
-            let mut unknown_key = supplied.into_keys().collect::<Vec<_>>();
-            unknown_key.sort();
-            return Err(RpcValidationError::UnknownParameter(unknown_key.join(", ")));
+            let mut unknown_keys = supplied.into_keys().collect::<Vec<_>>();
+            unknown_keys.sort();
+            return Err(RpcValidationError::UnknownParameter(
+                unknown_keys.join(", "),
+            ));
         }
 
         Ok(result)
