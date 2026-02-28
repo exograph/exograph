@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use async_trait::async_trait;
-
 use async_stream::try_stream;
+use async_trait::async_trait;
 use bytes::Bytes;
 
 use common::{
@@ -13,9 +12,7 @@ use common::{
 };
 use core_resolver::{
     QueryResponse, QueryResponseBody,
-    plugin::subsystem_rpc_resolver::{
-        JsonRpcId, JsonRpcRequest, SubsystemRpcError, SubsystemRpcResponse,
-    },
+    plugin::subsystem_rpc_resolver::{JsonRpcRequest, SubsystemRpcError, SubsystemRpcResponse},
     system_rpc_resolver::SystemRpcResolver,
 };
 use exo_env::Environment;
@@ -101,48 +98,50 @@ impl<'a> Router<RequestContext<'a>> for RpcRouter {
         let body = request_context.take_body();
 
         let request: Result<JsonRpcRequest, _> =
-            serde_json::from_value(body).map_err(|_| SubsystemRpcError::ParseError);
+            serde_json::from_value(body).map_err(|_| SubsystemRpcError::InvalidRequest);
 
         let mut id = None;
         let mut headers = Headers::new();
-
         headers.insert("content-type".into(), "application/json".into());
 
-        let response = {
-            match request {
-                Ok(request) => {
-                    if request.jsonrpc != "2.0" {
-                        Err(SubsystemRpcError::InvalidRequest)
-                    } else {
-                        id = request.id;
+        let response = match request {
+            Ok(request) => {
+                if request.jsonrpc != "2.0" {
+                    Err(SubsystemRpcError::InvalidRequest)
+                } else {
+                    id = request.id;
 
-                        // Handle rpc.discover method
-                        if request.method == RPC_DISCOVER_METHOD {
-                            match serde_json::to_value(&self.openrpc_document) {
-                                Ok(openrpc_json) => Ok(Some(SubsystemRpcResponse {
-                                    response: QueryResponse {
-                                        body: QueryResponseBody::Json(openrpc_json),
-                                        headers: vec![],
-                                    },
-                                    status_code: StatusCode::OK,
-                                })),
-                                Err(e) => {
-                                    tracing::error!(
-                                        "Failed to serialize OpenRPC document: {:?}",
-                                        e
-                                    );
-                                    Err(SubsystemRpcError::InternalError)
-                                }
+                    if id.is_none() {
+                        // notification - no response needed
+                        return Some(ResponsePayload {
+                            body: ResponseBody::None,
+                            headers: Headers::new(),
+                            status_code: StatusCode::NO_CONTENT,
+                        });
+                    }
+
+                    if request.method == RPC_DISCOVER_METHOD {
+                        match serde_json::to_value(&self.openrpc_document) {
+                            Ok(openrpc_json) => Ok(Some(SubsystemRpcResponse {
+                                response: QueryResponse {
+                                    body: QueryResponseBody::Json(openrpc_json),
+                                    headers: vec![],
+                                },
+                                status_code: StatusCode::OK,
+                            })),
+                            Err(e) => {
+                                tracing::error!("Failed to serialize OpenRPC document: {:?}", e);
+                                Err(SubsystemRpcError::InternalError)
                             }
-                        } else {
-                            self.system_resolver
-                                .resolve(&request.method, &request.params, request_context)
-                                .await
                         }
+                    } else {
+                        self.system_resolver
+                            .resolve(&request.method, &request.params, request_context)
+                            .await
                     }
                 }
-                Err(_) => Err(SubsystemRpcError::ParseError),
             }
+            Err(err) => Err(err),
         };
 
         // Copy headers from response if available
@@ -156,21 +155,15 @@ impl<'a> Router<RequestContext<'a>> for RpcRouter {
             macro_rules! emit_jsonrpc_id_and_close {
                 () => {
                     yield Bytes::from_static(br#", "jsonrpc": "2.0", "id": "#);
-
-                    match id {
-                        Some(JsonRpcId::String(value)) => {
-                            yield Bytes::from_static(br#"""#);
-                            yield Bytes::from(value);
-                            yield Bytes::from_static(br#"""#);
-                        }
-                        Some(JsonRpcId::Number(value)) => {
-                            yield Bytes::from(value.to_string());
+                    match &id {
+                        Some(id_value) => {
+                            let serialized_id = serde_json::to_string(id_value).unwrap_or_else(|_| "null".to_string());
+                            yield Bytes::from(serialized_id);
                         }
                         None => {
                             yield Bytes::from_static(br#"null"#);
                         }
-                    };
-
+                    }
                     yield Bytes::from_static(br#"}"#);
                 };
             }
