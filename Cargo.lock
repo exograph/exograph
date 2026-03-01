@@ -8804,7 +8804,7 @@ dependencies = [
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-streams 0.5.0",
+ "wasm-streams",
  "web-sys",
 ]
 
@@ -11977,19 +11977,6 @@ dependencies = [
 
 [[package]]
 name = "wasm-streams"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15053d8d85c7eccdbefef60f06769760a563c7f0a9d6902a13d35c7800b0ad65"
-dependencies = [
- "futures-util",
- "js-sys",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
-]
-
-[[package]]
-name = "wasm-streams"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d1ec4f6517c9e11ae630e200b2b65d193279042e28edd4a2cda233e46670bbb"
@@ -13227,9 +13214,9 @@ dependencies = [
 
 [[package]]
 name = "worker"
-version = "0.7.4"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "244647fd7673893058f91f22a0eabd0f45bb50298e995688cb0c4b9837081b19"
+checksum = "7267f3baa986254a8dace6f6a7c6ab88aef59f00c03aaad6749e048b5faaf6f6"
 dependencies = [
  "async-trait",
  "bytes",
@@ -13250,7 +13237,7 @@ dependencies = [
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-streams 0.4.2",
+ "wasm-streams",
  "web-sys",
  "worker-macros",
  "worker-sys",
@@ -13258,9 +13245,9 @@ dependencies = [
 
 [[package]]
 name = "worker-macros"
-version = "0.7.4"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac7e73ffb164183b57bb67d3efb881681fcd93ef5515ba32a4d022c4a6acc2ce"
+checksum = "7410081121531ec2fa111ab17b911efc601d7b6d590c0a92b847874ebeff0030"
 dependencies = [
  "async-trait",
  "proc-macro2",
@@ -13274,9 +13261,9 @@ dependencies = [
 
 [[package]]
 name = "worker-sys"
-version = "0.7.4"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a2b96254fcaa9229fd82d886f04be99c4ee8e59c8d80438724aa70039dca838"
+checksum = "4777582bf8a04174a034cb336f3702eb0e5cb444a67fdaa4fd44454ff7e2dd95"
 dependencies = [
  "cfg-if 1.0.4",
  "js-sys",
