@@ -157,7 +157,7 @@ impl<'a> Router<RequestContext<'a>> for RpcRouter {
                     yield Bytes::from_static(br#", "jsonrpc": "2.0", "id": "#);
                     match &id {
                         Some(id_value) => {
-                            let serialized_id = serde_json::to_string(id_value).unwrap_or_else(|_| "null".to_string());
+                            let serialized_id = serde_json::to_string(id_value).expect("BUG: JsonRpcId serialization should not fail");
                             yield Bytes::from(serialized_id);
                         }
                         None => {
