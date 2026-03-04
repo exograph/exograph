@@ -97,6 +97,36 @@ fn convert_type_schema(schema: &RpcTypeSchema) -> JsonSchema {
             JsonSchema::Inline(JsonSchemaInline::array(items_schema))
         }
 
+        RpcTypeSchema::OneOf { variants } => {
+            let convert_variant = |v: &crate::schema::OneOfVariant| {
+                let mut obj = JsonSchemaInline::object();
+                for (name, schema) in &v.properties {
+                    obj = obj.with_property(name, convert_type_schema(schema));
+                }
+                // additionalProperties: false ensures each variant only accepts its
+                // declared fields, enabling unambiguous variant matching.
+                // For example, without this, if we have an entity with `id` as pk
+                // and unique `username`, `{"id": 1, "username": "alice"}` would
+                // match both the `(id)` and `(username)` variants.
+                obj = obj
+                    .with_required(v.required.clone())
+                    .with_additional_properties(false);
+                JsonSchema::Inline(obj)
+            };
+
+            if variants.len() == 1 {
+                // Single variant: emit the object schema directly without oneOf wrapper
+                convert_variant(&variants[0])
+            } else {
+                let one_of_schemas: Vec<JsonSchema> =
+                    variants.iter().map(convert_variant).collect();
+                JsonSchema::Inline(JsonSchemaInline {
+                    one_of: Some(one_of_schemas),
+                    ..Default::default()
+                })
+            }
+        }
+
         RpcTypeSchema::Optional { inner } => {
             let inner_schema = convert_type_schema(inner);
             match inner_schema {

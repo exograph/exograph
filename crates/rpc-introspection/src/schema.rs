@@ -160,6 +160,17 @@ pub enum RpcTypeSchema {
     Array { items: Box<RpcTypeSchema> },
     /// An optional type (wraps another type)
     Optional { inner: Box<RpcTypeSchema> },
+    /// A oneOf schema — the value must match exactly one of the variants
+    OneOf { variants: Vec<OneOfVariant> },
+}
+
+/// A variant in a oneOf schema — an object with specific required properties.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OneOfVariant {
+    /// The properties of this variant (name, schema)
+    pub properties: Vec<(String, RpcTypeSchema)>,
+    /// The required property names
+    pub required: Vec<String>,
 }
 
 impl RpcTypeSchema {
@@ -208,6 +219,11 @@ impl RpcTypeSchema {
         }
     }
 
+    /// Create a oneOf type schema
+    pub fn one_of(variants: Vec<OneOfVariant>) -> Self {
+        Self::OneOf { variants }
+    }
+
     /// Wrap this schema to make it optional (if not already)
     pub fn into_optional(self) -> Self {
         match self {
@@ -225,7 +241,7 @@ impl RpcTypeSchema {
             Self::Object { type_ref, .. } => Some(type_ref),
             Self::Optional { inner, .. } => inner.type_name(),
             Self::Array { items, .. } => items.type_name(),
-            Self::Enum { .. } => None,
+            Self::Enum { .. } | Self::OneOf { .. } => None,
         }
     }
 }

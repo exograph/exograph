@@ -67,5 +67,13 @@ pub struct PkQueryParameters {
     pub predicate_params: Vec<PredicateParameter>,
 }
 
+/// Parameters for unique constraint queries (e.g., `get_user` by username)
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UniqueQueryParameters {
+    /// Predicate parameters for each unique constraint field (implicit equality)
+    pub predicate_params: Vec<PredicateParameter>,
+}
+
 pub type CollectionQuery = PostgresOperation<CollectionQueryParameters>;
 pub type PkQuery = PostgresOperation<PkQueryParameters>;
+pub type UniqueQuery = PostgresOperation<UniqueQueryParameters>;

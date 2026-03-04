@@ -70,12 +70,20 @@
       "description": "Get a single `Image` given primary key fields",
       "params": [
         {
-          "name": "id",
-          "description": "Primary key field: id",
+          "name": "by",
           "required": true,
           "schema": {
-            "type": "string",
-            "format": "uuid"
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
           }
         }
       ],

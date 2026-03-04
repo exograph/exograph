@@ -1,0 +1,53 @@
+# Test get_<entity> with invalid param combinations via RPC
+stages:
+  # Unknown parameter inside by
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_user",
+          "params": {
+            "by": {"nonExistent": "value"}
+          }
+        }
+    response: |
+      {
+        "error": {
+          "code": -32602,
+          "message": "Provided parameters [nonExistent] do not match any lookup group. Available groups: pk(id), unique(emailDomain, primaryEmailId), unique(emailDomain, secondaryEmailId), unique(username)"
+        }
+      }
+
+  # Params that don't match any lookup group (partial unique constraint)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_user",
+          "params": {
+            "by": {"primaryEmailId": "alice"}
+          }
+        }
+    response: |
+      {
+        "error": {
+          "code": -32602,
+          "message": "Provided parameters [primaryEmailId] do not match any lookup group. Available groups: pk(id), unique(emailDomain, primaryEmailId), unique(emailDomain, secondaryEmailId), unique(username)"
+        }
+      }
+
+  # No params at all (missing by)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_user",
+          "params": {}
+        }
+    response: |
+      {
+        "error": {
+          "code": -32602,
+          "message": "Missing required parameter: by"
+        }
+      }

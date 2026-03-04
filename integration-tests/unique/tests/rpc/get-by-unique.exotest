@@ -1,0 +1,106 @@
+# Test get_<entity> with unique constraint fields via RPC
+stages:
+  # Test get_user by single-field unique constraint (username)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_user",
+          "params": {
+            "by": {"username": "Alice02"}
+          }
+        }
+    response: |
+      {
+        "result": {"id": $.alice_user_id, "username": "Alice02", "primaryEmailId": "alice", "secondaryEmailId": "alice2", "emailDomain": "example.com"}
+      }
+
+  # Test get_user by composite unique constraint (primary_email)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_user",
+          "params": {
+            "by": {"primaryEmailId": "alice", "emailDomain": "example.com"}
+          }
+        }
+    response: |
+      {
+        "result": {"id": $.alice_user_id, "username": "Alice02", "primaryEmailId": "alice", "secondaryEmailId": "alice2", "emailDomain": "example.com"}
+      }
+
+  # Test get_user by composite unique constraint (secondary_email)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_user",
+          "params": {
+            "by": {"secondaryEmailId": "alice2", "emailDomain": "example.com"}
+          }
+        }
+    response: |
+      {
+        "result": {"id": $.alice_user_id, "username": "Alice02", "primaryEmailId": "alice", "secondaryEmailId": "alice2", "emailDomain": "example.com"}
+      }
+
+  # Test get_user by unique constraint with non-existent value - returns null
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_user",
+          "params": {
+            "by": {"username": "nonexistent"}
+          }
+        }
+    response: |
+      {
+        "result": null
+      }
+
+  # Test get_user by PK (regression)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_user",
+          "params": {
+            "by": {"id": 1}
+          }
+        }
+    response: |
+      {
+        "result": {"id": $.alice_user_id, "username": "Alice02", "primaryEmailId": "alice", "secondaryEmailId": "alice2", "emailDomain": "example.com"}
+      }
+
+  # Test get_user by non-existent PK - returns null
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_user",
+          "params": {
+            "by": {"id": 99999}
+          }
+        }
+    response: |
+      {
+        "result": null
+      }
+
+  # Test get_rsvp by PK (regression)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_rsvp",
+          "params": {
+            "by": {"id": 1}
+          }
+        }
+    response: |
+      {
+        "result": {"id": $.alice_rsvp_id[0], "event": "Concert1", "count": 1}
+      }
