@@ -48,7 +48,7 @@ jobs:
       - name: Run linters
         run: |
           cargo fmt --all -- --check
-          cargo clippy --all-targets --all-features -- -D warnings --no-deps
+          cargo clippy --locked --all-targets --all-features -- -D warnings --no-deps
 
   test:
     strategy:
@@ -94,11 +94,11 @@ jobs:
           key: ${{ matrix.target }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Build
-        run: cargo build --target ${{ matrix.target }}
+        run: cargo build --locked --target ${{ matrix.target }}
       - name: Run tests
         env:
           RUST_BACKTRACE: 1
-        run: cargo test --workspace --target ${{ matrix.target }}
+        run: cargo test --locked --workspace --target ${{ matrix.target }}
       - name: Run integration tests
         env:
           RUST_BACKTRACE: 1
@@ -141,7 +141,7 @@ jobs:
         env:
           CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
           RUST_BACKTRACE: 1
-        run: cargo test --workspace --target wasm32-unknown-unknown
+        run: cargo test --locked --workspace --target wasm32-unknown-unknown
           --exclude cli --exclude lsp --exclude mcp-bridge
           --exclude postgres-resolver-dynamic --exclude postgres-core-model
           --exclude 'deno-*'
