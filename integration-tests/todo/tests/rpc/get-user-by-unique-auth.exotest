@@ -1,0 +1,80 @@
+# Test that get_user by unique constraint (email) enforces access control.
+# User type has @access(AuthContext.role == "admin"), so only admins can query users.
+stages:
+  # Admin can get user by unique email
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_user",
+          "params": {
+            "by": {"email": "one@example.com"}
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {"id": $.u1Id, "email": "one@example.com", "firstName": "F1", "lastName": "L1", "profileImageUrl": "https://example.com/1.jpg", "role": "user"}
+      }
+
+  # Non-admin is denied access when querying by unique email (returns null, not error)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_user",
+          "params": {
+            "by": {"email": "one@example.com"}
+          }
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "user"
+      }
+    response: |
+      {
+        "result": null
+      }
+
+  # Admin can get second user by unique email
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_user",
+          "params": {
+            "by": {"email": "two@example.com"}
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {"id": $.u2Id, "email": "two@example.com", "firstName": "F2", "lastName": "L2", "profileImageUrl": "https://example.com/2.jpg", "role": "user"}
+      }
+
+  # Non-admin is denied access to second user by unique email
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_user",
+          "params": {
+            "by": {"email": "two@example.com"}
+          }
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "user"
+      }
+    response: |
+      {
+        "result": null
+      }

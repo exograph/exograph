@@ -70,11 +70,19 @@
       "description": "Get a single `Document` given primary key fields",
       "params": [
         {
-          "name": "id",
-          "description": "Primary key field: id",
+          "name": "by",
           "required": true,
           "schema": {
-            "type": "integer"
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
           }
         }
       ],

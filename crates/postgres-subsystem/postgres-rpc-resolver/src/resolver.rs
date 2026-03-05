@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -30,7 +30,7 @@ use postgres_core_resolver::database_helper::extractor;
 use postgres_core_resolver::order_by_mapper::compute_order_by;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_core_resolver::predicate_mapper::compute_predicate;
-use postgres_rpc_model::operation::{CollectionQuery, PkQuery};
+use postgres_rpc_model::operation::{CollectionQuery, PkQuery, UniqueQuery};
 use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
 use rpc_introspection::RpcSchema;
 
@@ -62,10 +62,11 @@ impl PostgresSubsystemRpcResolver {
     }
 }
 
-/// Enum to represent the resolved operation (either collection or pk query)
+/// Enum to represent the resolved operation (either collection, pk, or unique query)
 enum ResolvedOperation<'a> {
-    CollectionQuery(&'a CollectionQuery),
-    PkQuery(&'a PkQuery),
+    Collection(&'a CollectionQuery),
+    Pk(&'a PkQuery),
+    Unique(&'a UniqueQuery),
 }
 
 #[async_trait]
@@ -80,36 +81,81 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
         request_params: &Option<serde_json::Value>,
         request_context: &'a RequestContext<'a>,
     ) -> Result<Option<SubsystemRpcResponse>, SubsystemRpcError> {
+        // Check if we handle this method at all
+        let Some(rpc_method) = self.rpc_schema.method(request_method) else {
+            return Ok(None);
+        };
+
+        // Validate params against schema first (catches unknown params, type mismatches)
+        let mut validated_params = rpc_method
+            .parse_params(request_params, &self.rpc_schema.components)
+            .map_err(|e| SubsystemRpcError::InvalidParams(e.user_message()))?;
+
+        // First try collection queries (these have distinct method names like get_todos)
         let resolved_operation = self
             .subsystem
-            .pk_queries
+            .collection_queries
             .get_by_key(request_method)
-            .map(ResolvedOperation::PkQuery)
-            .or_else(|| {
-                self.subsystem
-                    .collection_queries
-                    .get_by_key(request_method)
-                    .map(ResolvedOperation::CollectionQuery)
-            });
+            .map(ResolvedOperation::Collection);
+
+        // If not a collection query, try PK + unique queries (which share the same method name)
+        let resolved_operation = if resolved_operation.is_some() {
+            resolved_operation
+        } else {
+            let pk_query = self.subsystem.pk_queries.get_by_key(request_method);
+
+            // Collect unique queries with matching method name
+            let unique_queries: Vec<&UniqueQuery> = self
+                .subsystem
+                .unique_queries
+                .iter()
+                .filter(|(_, q)| q.name == request_method)
+                .map(|(_, q)| q)
+                .collect();
+
+            if pk_query.is_some() || !unique_queries.is_empty() {
+                // Extract the `by` param — it's a Val::Object containing the actual lookup fields
+                let by_val = validated_params.remove("by").ok_or_else(|| {
+                    SubsystemRpcError::InvalidParams("Missing required parameter: by".to_string())
+                })?;
+
+                let by_fields = match by_val {
+                    Val::Object(fields) => fields,
+                    _ => {
+                        return Err(SubsystemRpcError::InvalidParams(
+                            "'by' parameter must be an object".to_string(),
+                        ));
+                    }
+                };
+
+                // Replace validated_params with the unwrapped by fields
+                validated_params = by_fields;
+
+                let provided_param_names: Vec<String> = validated_params.keys().cloned().collect();
+
+                Some(find_matching_get_query(
+                    pk_query,
+                    &unique_queries,
+                    &provided_param_names,
+                )?)
+            } else {
+                None
+            }
+        };
 
         if let Some(resolved_operation) = resolved_operation {
-            // Look up the RPC method schema and validate params
-            let rpc_method = self
-                .rpc_schema
-                .method(request_method)
-                .ok_or_else(|| SubsystemRpcError::MethodNotFound(request_method.to_string()))?;
-
-            let mut validated_params = rpc_method
-                .parse_params(request_params, &self.rpc_schema.components)
-                .map_err(|e| SubsystemRpcError::InvalidParams(e.user_message()))?;
-
             let operation = match resolved_operation {
-                ResolvedOperation::CollectionQuery(query) => {
+                ResolvedOperation::Collection(query) => {
                     query
                         .resolve(&mut validated_params, request_context, &self.subsystem)
                         .await?
                 }
-                ResolvedOperation::PkQuery(query) => {
+                ResolvedOperation::Pk(query) => {
+                    query
+                        .resolve(&mut validated_params, request_context, &self.subsystem)
+                        .await?
+                }
+                ResolvedOperation::Unique(query) => {
                     query
                         .resolve(&mut validated_params, request_context, &self.subsystem)
                         .await?
@@ -159,6 +205,75 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
         // TODO: We could just return &RpcSchema when all resolvers support schema
         Some(&self.rpc_schema)
     }
+}
+
+/// Find the matching query (PK or unique) based on which params are provided.
+/// Returns an error if params don't match any known group.
+fn find_matching_get_query<'a>(
+    pk_query: Option<&'a PkQuery>,
+    unique_queries: &[&'a UniqueQuery],
+    provided_param_names: &[String],
+) -> Result<ResolvedOperation<'a>, SubsystemRpcError> {
+    let provided: HashSet<&str> = provided_param_names.iter().map(|s| s.as_str()).collect();
+
+    // Check if provided params match the PK query's param names
+    if let Some(pk) = pk_query {
+        let pk_params = &pk.parameters.predicate_params;
+        if provided.len() == pk_params.len() {
+            let pk_param_names: HashSet<&str> = pk_params.iter().map(|p| p.name.as_str()).collect();
+            if provided == pk_param_names {
+                return Ok(ResolvedOperation::Pk(pk));
+            }
+        }
+    }
+
+    // Check if provided params match any unique query's param names
+    for unique_query in unique_queries {
+        if provided.len() == unique_query.parameters.predicate_params.len() {
+            let unique_param_names: HashSet<&str> = unique_query
+                .parameters
+                .predicate_params
+                .iter()
+                .map(|p| p.name.as_str())
+                .collect();
+            if provided == unique_param_names {
+                return Ok(ResolvedOperation::Unique(unique_query));
+            }
+        }
+    }
+
+    // Params were provided but don't match any known group
+    let mut available_groups: Vec<String> = Vec::new();
+    if let Some(pk) = pk_query {
+        let mut names: Vec<&str> = pk
+            .parameters
+            .predicate_params
+            .iter()
+            .map(|p| p.name.as_str())
+            .collect();
+        names.sort();
+        available_groups.push(format!("pk({})", names.join(", ")));
+    }
+    for uq in unique_queries {
+        let mut names: Vec<&str> = uq
+            .parameters
+            .predicate_params
+            .iter()
+            .map(|p| p.name.as_str())
+            .collect();
+        names.sort();
+        available_groups.push(format!("unique({})", names.join(", ")));
+    }
+    available_groups.sort();
+
+    let mut sorted_provided: Vec<&str> = provided_param_names.iter().map(|s| s.as_str()).collect();
+    sorted_provided.sort();
+
+    Err(SubsystemRpcError::InvalidParams(format!(
+        "Provided parameters [{}] do not match any lookup group. Available groups: {}",
+        sorted_provided.join(", "),
+        available_groups.join(", ")
+    )))
 }
 
 /// Trait for resolving operations to an AbstractSelect.
@@ -320,6 +435,59 @@ impl OperationSelectionResolver for CollectionQuery {
     }
 }
 
+/// Shared logic for resolving predicate params (used by both PK and unique queries)
+async fn resolve_predicate_params<'a>(
+    predicate_params: &[postgres_core_model::predicate::PredicateParameter],
+    return_type: &OperationReturnType<EntityType>,
+    validated_params: &mut HashMap<String, Val>,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> Result<AbstractSelect, SubsystemRpcError> {
+    let entity_type = return_type.typ(&subsystem.core_subsystem.entity_types);
+
+    let access_predicate =
+        compute_access_predicate(entity_type, request_context, subsystem).await?;
+
+    let mut predicates = Vec::new();
+    for predicate_param in predicate_params {
+        let param_value = validated_params
+            .remove(&predicate_param.name)
+            .ok_or_else(|| {
+                SubsystemRpcError::InvalidParams(format!(
+                    "Missing required parameter: {}",
+                    predicate_param.name
+                ))
+            })?;
+
+        let predicate = compute_predicate(
+            predicate_param,
+            &param_value,
+            &subsystem.core_subsystem,
+            request_context,
+        )
+        .await
+        .map_err(from_postgres_error)?;
+
+        predicates.push(predicate);
+    }
+
+    let query_predicate = predicates
+        .into_iter()
+        .reduce(AbstractPredicate::and)
+        .unwrap_or(AbstractPredicate::True);
+
+    let predicate = AbstractPredicate::and(query_predicate, access_predicate);
+
+    Ok(compute_select(
+        predicate,
+        None,
+        None,
+        None,
+        entity_type,
+        return_type,
+    ))
+}
+
 #[async_trait]
 impl OperationSelectionResolver for PkQuery {
     async fn resolve_select<'a>(
@@ -328,54 +496,33 @@ impl OperationSelectionResolver for PkQuery {
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresRpcSubsystemWithRouter,
     ) -> Result<AbstractSelect, SubsystemRpcError> {
-        let entity_type = self.return_type.typ(&subsystem.core_subsystem.entity_types);
-
-        let access_predicate =
-            compute_access_predicate(entity_type, request_context, subsystem).await?;
-
-        // Compute predicate from pk parameters - each pk field is an implicit equals
-        let mut pk_predicates = Vec::new();
-        for predicate_param in &self.parameters.predicate_params {
-            // Validation already ensured required params are present
-            let param_value = validated_params
-                .remove(&predicate_param.name)
-                .ok_or_else(|| {
-                    SubsystemRpcError::InvalidParams(format!(
-                        "Missing required parameter: {}",
-                        predicate_param.name
-                    ))
-                })?;
-
-            // Use compute_predicate which handles ImplicitEqual properly
-            let predicate = compute_predicate(
-                predicate_param,
-                &param_value,
-                &subsystem.core_subsystem,
-                request_context,
-            )
-            .await
-            .map_err(from_postgres_error)?;
-
-            pk_predicates.push(predicate);
-        }
-
-        // Combine all pk predicates with AND
-        let pk_predicate = pk_predicates
-            .into_iter()
-            .reduce(AbstractPredicate::and)
-            .unwrap_or(AbstractPredicate::True);
-
-        // Combine pk predicate with access predicate
-        let predicate = AbstractPredicate::and(pk_predicate, access_predicate);
-
-        Ok(compute_select(
-            predicate,
-            None, // No ordering for single item
-            None, // No limit for single item
-            None, // No offset for single item
-            entity_type,
+        resolve_predicate_params(
+            &self.parameters.predicate_params,
             &self.return_type,
-        ))
+            validated_params,
+            request_context,
+            subsystem,
+        )
+        .await
+    }
+}
+
+#[async_trait]
+impl OperationSelectionResolver for UniqueQuery {
+    async fn resolve_select<'a>(
+        &'a self,
+        validated_params: &mut HashMap<String, Val>,
+        request_context: &'a RequestContext<'a>,
+        subsystem: &'a PostgresRpcSubsystemWithRouter,
+    ) -> Result<AbstractSelect, SubsystemRpcError> {
+        resolve_predicate_params(
+            &self.parameters.predicate_params,
+            &self.return_type,
+            validated_params,
+            request_context,
+            subsystem,
+        )
+        .await
     }
 }
 

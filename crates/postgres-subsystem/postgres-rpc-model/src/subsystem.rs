@@ -9,7 +9,7 @@
 
 use std::sync::Arc;
 
-use core_model::mapped_arena::MappedArena;
+use core_model::mapped_arena::{MappedArena, SerializableSlab};
 use core_plugin_interface::interface::SubsystemLoadingError;
 use core_plugin_shared::system_serializer::{
     ModelSerializationError, SystemSerializer, postcard_deserialize, postcard_serialize,
@@ -17,11 +17,12 @@ use core_plugin_shared::system_serializer::{
 use postgres_core_model::subsystem::PostgresCoreSubsystem;
 use serde::{Deserialize, Serialize};
 
-use crate::operation::{CollectionQuery, PkQuery};
+use crate::operation::{CollectionQuery, PkQuery, UniqueQuery};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PostgresRpcSubsystem {
     pub pk_queries: MappedArena<PkQuery>,
+    pub unique_queries: SerializableSlab<UniqueQuery>,
     pub collection_queries: MappedArena<CollectionQuery>,
     // Future: pub mutations: MappedArena<RpcMutation>,
     #[serde(skip)]
@@ -31,6 +32,7 @@ pub struct PostgresRpcSubsystem {
 #[derive(Debug)]
 pub struct PostgresRpcSubsystemWithRouter {
     pub pk_queries: MappedArena<PkQuery>,
+    pub unique_queries: SerializableSlab<UniqueQuery>,
     pub collection_queries: MappedArena<CollectionQuery>,
     pub core_subsystem: Arc<PostgresCoreSubsystem>,
 }
@@ -39,6 +41,7 @@ impl PostgresRpcSubsystemWithRouter {
     pub fn new(subsystem: PostgresRpcSubsystem) -> Result<Self, SubsystemLoadingError> {
         Ok(Self {
             pk_queries: subsystem.pk_queries,
+            unique_queries: subsystem.unique_queries,
             collection_queries: subsystem.collection_queries,
             core_subsystem: subsystem.core_subsystem.clone(),
         })

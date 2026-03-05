@@ -9,8 +9,7 @@ stages:
         {
           "method": "get_person",
           "params": {
-            "firstName": "John",
-            "lastName": "DoeAlbany"
+            "by": {"firstName": "John", "lastName": "DoeAlbany"}
           }
         }
     auth: |
@@ -29,8 +28,7 @@ stages:
         {
           "method": "get_person",
           "params": {
-            "firstName": "Jane",
-            "lastName": "SmithBoston"
+            "by": {"firstName": "Jane", "lastName": "SmithBoston"}
           }
         }
     auth: |
@@ -49,8 +47,7 @@ stages:
         {
           "method": "get_person",
           "params": {
-            "firstName": "NonExistent",
-            "lastName": "Person"
+            "by": {"firstName": "NonExistent", "lastName": "Person"}
           }
         }
     auth: |
@@ -69,7 +66,7 @@ stages:
         {
           "method": "get_person",
           "params": {
-            "firstName": "John"
+            "by": {"firstName": "John"}
           }
         }
     auth: |
@@ -80,7 +77,7 @@ stages:
       {
         "error": {
           "code": -32602,
-          "message": "Missing required parameter: lastName"
+          "message": "Provided parameters [firstName] do not match any lookup group. Available groups: pk(firstName, lastName)"
         }
       }
 
@@ -91,10 +88,7 @@ stages:
         {
           "method": "get_address",
           "params": {
-            "street": "2 Main St",
-            "city": "Boston",
-            "state": "MA",
-            "zip": 22101
+            "by": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101}
           }
         }
     auth: |
@@ -106,15 +100,14 @@ stages:
         "result": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101}
       }
 
-  # Test get_address with missing pk fields - returns error for first missing field
+  # Test get_address with missing pk fields - returns error
   - operation:
       type: rpc
       payload: |
         {
           "method": "get_address",
           "params": {
-            "street": "2 Main St",
-            "city": "Boston"
+            "by": {"street": "2 Main St", "city": "Boston"}
           }
         }
     auth: |
@@ -125,6 +118,6 @@ stages:
       {
         "error": {
           "code": -32602,
-          "message": "Missing required parameter: state"
+          "message": "Provided parameters [city, street] do not match any lookup group. Available groups: pk(city, state, street, zip)"
         }
       }

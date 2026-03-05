@@ -268,6 +268,13 @@ pub struct JsonSchemaInline {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub format: Option<String>,
 
+    /// Whether additional properties are allowed for objects
+    #[serde(
+        rename = "additionalProperties",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub additional_properties: Option<bool>,
+
     /// oneOf schemas (for nullable references)
     #[serde(rename = "oneOf", skip_serializing_if = "Option::is_none")]
     pub one_of: Option<Vec<JsonSchema>>,
@@ -360,6 +367,11 @@ impl JsonSchemaInline {
 
     pub fn with_required(mut self, required: Vec<String>) -> Self {
         self.required = Some(required);
+        self
+    }
+
+    pub fn with_additional_properties(mut self, value: bool) -> Self {
+        self.additional_properties = Some(value);
         self
     }
 

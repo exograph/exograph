@@ -201,6 +201,23 @@ fn parse_value(
             }
         }
 
+        RpcTypeSchema::OneOf { .. } => {
+            // Schema-less pass-through: convert JSON to Val without type validation.
+            // The resolver handles structural matching (which variant applies).
+            match json {
+                serde_json::Value::Object(map) => Ok(Val::Object(
+                    map.iter()
+                        .map(|(k, v)| (k.clone(), json_to_val(v)))
+                        .collect(),
+                )),
+                _ => Err(RpcValidationError::TypeMismatch {
+                    expected: "object".to_string(),
+                    got: json_type_name(json),
+                    path: path.to_string(),
+                }),
+            }
+        }
+
         RpcTypeSchema::Array { items } => match json {
             serde_json::Value::Array(arr) => {
                 let vals: Result<Vec<Val>, _> = arr
@@ -219,6 +236,30 @@ fn parse_value(
                 path: path.to_string(),
             }),
         },
+    }
+}
+
+/// Convert a JSON value to a `Val` without schema validation.
+fn json_to_val(json: &serde_json::Value) -> Val {
+    match json {
+        serde_json::Value::Null => Val::Null,
+        serde_json::Value::Bool(b) => Val::Bool(*b),
+        serde_json::Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                Val::Number(ValNumber::I64(i))
+            } else if let Some(f) = n.as_f64() {
+                Val::Number(ValNumber::F64(f))
+            } else {
+                Val::String(n.to_string())
+            }
+        }
+        serde_json::Value::String(s) => Val::String(s.clone()),
+        serde_json::Value::Array(arr) => Val::List(arr.iter().map(json_to_val).collect()),
+        serde_json::Value::Object(map) => Val::Object(
+            map.iter()
+                .map(|(k, v)| (k.clone(), json_to_val(v)))
+                .collect(),
+        ),
     }
 }
 

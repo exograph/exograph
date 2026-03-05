@@ -9,7 +9,7 @@
 
 use std::sync::Arc;
 
-use core_model::mapped_arena::MappedArena;
+use core_model::mapped_arena::{MappedArena, SerializableSlab};
 use core_model::types::{BaseOperationReturnType, FieldType, Named, OperationReturnType};
 use core_model_builder::plugin::RpcSubsystemBuild;
 use core_plugin_shared::{
@@ -19,7 +19,7 @@ use core_plugin_shared::{
 use core_model_builder::error::ModelBuildingError;
 
 use postgres_core_builder::order_by_builder::new_root_param;
-use postgres_core_builder::predicate_builder::get_filter_type_name;
+use postgres_core_builder::predicate_builder::{get_filter_type_name, get_unique_filter_type_name};
 use postgres_core_builder::resolved_type::ResolvedType;
 use postgres_core_builder::resolved_type::ResolvedTypeEnv;
 use postgres_core_model::doc_comments;
@@ -28,8 +28,17 @@ use postgres_core_model::relation::PostgresRelation;
 use postgres_core_model::types::EntityRepresentation;
 use postgres_rpc_model::operation::{
     CollectionQuery, CollectionQueryParameters, PkQuery, PkQueryParameters, ScalarParam,
+    UniqueQuery, UniqueQueryParameters,
 };
 use postgres_rpc_model::subsystem::PostgresRpcSubsystem;
+
+fn get_single_method_name(entity_name: &str) -> String {
+    format!("get_{}", entity_name.to_lowercase())
+}
+
+fn get_collection_method_name(plural_name: &str) -> String {
+    format!("get_{}", plural_name.to_lowercase())
+}
 
 pub struct PostgresRpcSubsystemBuilder {}
 
@@ -41,6 +50,7 @@ impl PostgresRpcSubsystemBuilder {
     ) -> Result<Option<RpcSubsystemBuild>, ModelBuildingError> {
         let mut collection_queries = MappedArena::default();
         let mut pk_queries = MappedArena::default();
+        let mut unique_queries = SerializableSlab::new();
 
         for typ in resolved_env.resolved_types.iter() {
             if let ResolvedType::Composite(composite) = typ.1 {
@@ -59,7 +69,7 @@ impl PostgresRpcSubsystemBuilder {
                 let entity_type = &core_subsystem_building.entity_types[entity_type_id];
 
                 // Build collection query (such as get_todos) - returns multiple items
-                let collection_method = format!("get_{}", composite.plural_name.to_lowercase());
+                let collection_method = get_collection_method_name(&composite.plural_name);
 
                 let predicate_param = {
                     let param_type_name = get_filter_type_name(&composite.name);
@@ -126,6 +136,9 @@ impl PostgresRpcSubsystemBuilder {
 
                 collection_queries.add(&collection_method, collection_query);
 
+                // Method name for single-entity lookup (shared by PK and unique queries)
+                let get_method = get_single_method_name(&composite.name);
+
                 // Build pk query (get_todo) - returns single item by primary key
                 // Only create pk query if all pk fields are scalar (simple pk, not composite with relations)
                 let pk_fields = entity_type.pk_fields();
@@ -134,8 +147,6 @@ impl PostgresRpcSubsystemBuilder {
                     .all(|field| matches!(field.relation, PostgresRelation::Scalar { .. }));
 
                 if !pk_fields.is_empty() && all_scalar {
-                    let pk_method = format!("get_{}", composite.name.to_lowercase());
-
                     let pk_params: Vec<PredicateParameter> = pk_fields
                         .iter()
                         .map(|field| {
@@ -171,7 +182,7 @@ impl PostgresRpcSubsystemBuilder {
                         })));
 
                     let pk_query = PkQuery {
-                        name: pk_method.clone(),
+                        name: get_method.clone(),
                         parameters: PkQueryParameters {
                             predicate_params: pk_params,
                         },
@@ -179,17 +190,100 @@ impl PostgresRpcSubsystemBuilder {
                         doc_comments: Some(doc_comments::pk_query_description(&composite.name)),
                     };
 
-                    pk_queries.add(&pk_method, pk_query);
+                    pk_queries.add(&get_method, pk_query);
+                }
+
+                // Build unique constraint queries
+                // Each unique constraint gets its own internal query, but they share the
+                // same user-facing method name (get_<entity>) with the PK query.
+                // The resolver dispatches based on which params the caller provides.
+                for (_constraint_name, constraint_fields) in composite.unique_constraints() {
+                    let entity_fields: Vec<_> = constraint_fields
+                        .iter()
+                        .map(|field| entity_type.field_by_name(&field.name).unwrap())
+                        .collect();
+
+                    let predicate_params: Vec<PredicateParameter> = entity_fields
+                        .iter()
+                        .map(|field| match &field.relation {
+                            PostgresRelation::Scalar { .. } => {
+                                let predicate_type_name = field.typ.name().to_owned();
+                                let param_type_id = core_subsystem_building
+                                    .predicate_types
+                                    .get_id(&predicate_type_name)
+                                    .unwrap();
+                                let param_type = PredicateParameterTypeWrapper {
+                                    name: predicate_type_name,
+                                    type_id: param_type_id,
+                                };
+
+                                Ok(PredicateParameter {
+                                    name: field.name.to_string(),
+                                    typ: FieldType::Plain(param_type),
+                                    column_path_link: Some(
+                                        field
+                                            .relation
+                                            .column_path_link(&core_subsystem_building.database),
+                                    ),
+                                    access: None,
+                                    vector_distance_function: None,
+                                })
+                            }
+                            PostgresRelation::ManyToOne { .. } => {
+                                let param_type_name = get_unique_filter_type_name(field.typ.name());
+                                let param_type_id = core_subsystem_building
+                                    .predicate_types
+                                    .get_id(&param_type_name)
+                                    .unwrap();
+                                let param_type = PredicateParameterTypeWrapper {
+                                    name: param_type_name,
+                                    type_id: param_type_id,
+                                };
+
+                                Ok(PredicateParameter {
+                                    name: field.name.to_string(),
+                                    typ: FieldType::Plain(param_type),
+                                    column_path_link: Some(
+                                        field
+                                            .relation
+                                            .column_path_link(&core_subsystem_building.database),
+                                    ),
+                                    access: None,
+                                    vector_distance_function: None,
+                                })
+                            }
+                            _ => Err(ModelBuildingError::Generic(format!(
+                                "Unsupported relation type in unique constraint: {:?}",
+                                field.relation
+                            ))),
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+
+                    let return_type: OperationReturnType<_> =
+                        FieldType::Optional(Box::new(FieldType::Plain(BaseOperationReturnType {
+                            associated_type_id: entity_type_id,
+                            type_name: composite.name.clone(),
+                        })));
+
+                    let unique_query = UniqueQuery {
+                        name: get_method.clone(),
+                        parameters: UniqueQueryParameters { predicate_params },
+                        return_type,
+                        doc_comments: Some(doc_comments::unique_query_description(&composite.name)),
+                    };
+
+                    unique_queries.insert(unique_query);
                 }
             }
         }
 
-        if collection_queries.is_empty() && pk_queries.is_empty() {
+        if collection_queries.is_empty() && pk_queries.is_empty() && unique_queries.is_empty() {
             return Ok(None);
         }
 
         let subsystem = PostgresRpcSubsystem {
             pk_queries,
+            unique_queries,
             collection_queries,
             core_subsystem: Default::default(),
         };
