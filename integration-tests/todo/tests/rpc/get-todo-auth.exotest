@@ -9,7 +9,7 @@ stages:
         {
           "method": "get_todo",
           "params": {
-            "by": {"id": 1}
+            "by": {"id": $.u1TodoIds[0]}
           }
         }
     auth: |
@@ -28,7 +28,7 @@ stages:
         {
           "method": "get_todo",
           "params": {
-            "by": {"id": 1}
+            "by": {"id": $.u1TodoIds[0]}
           }
         }
     auth: |
@@ -48,7 +48,7 @@ stages:
         {
           "method": "get_todo",
           "params": {
-            "by": {"id": 1}
+            "by": {"id": $.u1TodoIds[0]}
           }
         }
     auth: |
