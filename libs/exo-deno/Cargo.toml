@@ -39,10 +39,14 @@ include_dir.workspace = true
 
 exo-env = { path = "../exo-env" }
 
-[target.'cfg(windows)'.dependencies]
 # deno_io uses winapi without the "std" feature, causing winapi::ctypes::c_void to be a
-# different type from core::ffi::c_void. Adding winapi with "std" forces feature unification,
-# making them the same type and fixing the Windows build.
+# different type from core::ffi::c_void on Windows. Adding winapi with "std" forces feature
+# unification, making them the same type and fixing the Windows build. Needed in both
+# [dependencies] and [build-dependencies] since deno_runtime (build-dep) also pulls in deno_io.
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3.9", features = ["std"] }
+
+[target.'cfg(windows)'.build-dependencies]
 winapi = { version = "0.3.9", features = ["std"] }
 
 [dev-dependencies]
