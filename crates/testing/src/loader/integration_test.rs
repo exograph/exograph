@@ -265,16 +265,6 @@ impl IntegrationTest {
                                     .ok_or(anyhow::anyhow!("RPC operation missing payload field"))?
                                     .clone();
 
-                                // Validate that payload is valid JSON with at least a "method" field
-                                let payload_value: serde_json::Value = serde_json::from_str(&payload)
-                                    .context("RPC payload must be a valid JSON object")?;
-
-                                match payload_value.as_object() {
-                                    Some(obj) if obj.contains_key("method") => { /* Valid */ }
-                                    Some(_) => bail!("RPC payload must have a 'method' field"),
-                                    None => bail!("RPC payload must be a JSON object"),
-                                }
-
                                 let unordered_paths = typed.unordered_paths.as_ref()
                                     .map(|paths| {
                                         paths.iter()
