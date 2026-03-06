@@ -351,6 +351,8 @@ async fn compute_select<'a>(
         // Row-dependent predicates are skipped since RPC can't conditionally null per row.
         let field_access_predicate =
             compute_field_access_predicate(field, request_context, subsystem).await?;
+        // TODO: Make this less strict. We will first need to make schema make access controlled fields nullable,
+        // then we can include fields with row-dependent access predicates.
         if field_access_predicate != AbstractPredicate::True {
             continue;
         }
@@ -369,21 +371,27 @@ async fn compute_select<'a>(
                 let foreign_access_predicate =
                     compute_access_predicate(foreign_entity, request_context, subsystem).await?;
 
-                // Select only PK scalar fields of the foreign entity
-                let pk_elements: Vec<AliasedSelectionElement> = foreign_entity
-                    .pk_fields()
-                    .iter()
-                    .filter_map(|pk_field| {
-                        if let PostgresRelation::Scalar { column_id, .. } = pk_field.relation {
-                            Some(AliasedSelectionElement::new(
-                                pk_field.name.clone(),
-                                SelectionElement::Physical(column_id),
-                            ))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
+                // Select only PK scalar fields of the foreign entity that are accessible
+                // TODO: We should warn users during model building that adding access control to pk field will have implications
+                let mut pk_elements = Vec::new();
+                for pk_field in foreign_entity.pk_fields() {
+                    let column_id = match pk_field.relation {
+                        PostgresRelation::Scalar { column_id, .. } => column_id,
+                        _ => continue,
+                    };
+
+                    let pk_field_access =
+                        compute_field_access_predicate(pk_field, request_context, subsystem)
+                            .await?;
+                    if pk_field_access != AbstractPredicate::True {
+                        continue;
+                    }
+
+                    pk_elements.push(AliasedSelectionElement::new(
+                        pk_field.name.clone(),
+                        SelectionElement::Physical(column_id),
+                    ));
+                }
 
                 let nested_select = AbstractSelect {
                     table_id: foreign_entity.table_id,
