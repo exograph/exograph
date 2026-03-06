@@ -198,6 +198,17 @@
   ],
   "components": {
     "schemas": {
+      "VenueRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "Concert": {
         "type": "object",
         "properties": {
@@ -206,6 +217,9 @@
           },
           "title": {
             "type": "string"
+          },
+          "venue": {
+            "$ref": "#/components/schemas/VenueRef"
           },
           "published": {
             "type": "boolean"
@@ -217,6 +231,7 @@
         "required": [
           "id",
           "title",
+          "venue",
           "published",
           "price"
         ]

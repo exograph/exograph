@@ -1,0 +1,46 @@
+# A non-admin user cannot see the email field even for their own row.
+# email has @access(self.authId == AuthContext.id || AuthContext.role == "admin").
+# Since this is row-dependent and can't be unconditionally resolved to true,
+# the field is omitted from the RPC response entirely (TODO: this needs to be fixed to return the email when row-level access is granted).
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_people"
+    }
+  unorderedPaths:
+    - result
+auth: |
+  {
+    "sub": 1,
+    "role": "user"
+  }
+response: |
+  {
+    "result": [
+      {
+        "id": $.p1id,
+        "name": "P1",
+        "age": 10,
+        "authId": 1
+      },
+      {
+        "id": $.p2id,
+        "name": "P2",
+        "age": 20,
+        "authId": 2
+      },
+      {
+        "id": $.p3id,
+        "name": "P3",
+        "age": 30,
+        "authId": 3
+      },
+      {
+        "id": $.p4id,
+        "name": "P4",
+        "age": 40,
+        "authId": 4
+      }
+    ]
+  }

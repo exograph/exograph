@@ -381,6 +381,17 @@
   ],
   "components": {
     "schemas": {
+      "UserRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "Rsvp": {
         "type": "object",
         "properties": {
@@ -390,6 +401,9 @@
           "event": {
             "type": "string"
           },
+          "user": {
+            "$ref": "#/components/schemas/UserRef"
+          },
           "count": {
             "type": "integer"
           }
@@ -397,6 +411,7 @@
         "required": [
           "id",
           "event",
+          "user",
           "count"
         ]
       },
@@ -831,6 +846,9 @@
           "event": {
             "type": "string"
           },
+          "user": {
+            "$ref": "#/components/schemas/UserRef"
+          },
           "count": {
             "type": "integer"
           }
@@ -838,6 +856,7 @@
         "required": [
           "id",
           "event",
+          "user",
           "count"
         ]
       },

@@ -460,6 +460,14 @@ fn ensure_entity_type_added(
     }
 
     for field in &entity_type.fields {
+        let add_field = |obj_type: RpcObjectType, field_schema: RpcTypeSchema| {
+            let mut obj_field = RpcObjectField::new(&field.name, field_schema);
+            if let Some(doc) = &field.doc_comments {
+                obj_field = obj_field.with_description(doc);
+            }
+            obj_type.with_field(obj_field)
+        };
+
         match &field.relation {
             PostgresRelation::Scalar { .. } => {
                 let field_schema = build_field_type_schema(
@@ -470,12 +478,7 @@ fn ensure_entity_type_added(
                     added_types,
                 );
 
-                let mut obj_field = RpcObjectField::new(&field.name, field_schema);
-                if let Some(doc) = &field.doc_comments {
-                    obj_field = obj_field.with_description(doc);
-                }
-
-                obj_type = obj_type.with_field(obj_field);
+                obj_type = add_field(obj_type, field_schema);
             }
             PostgresRelation::ManyToOne { relation, .. } => {
                 let foreign_entity =
@@ -510,11 +513,7 @@ fn ensure_entity_type_added(
                     _ => RpcTypeSchema::object(&ref_type_name),
                 };
 
-                let mut obj_field = RpcObjectField::new(&field.name, ref_schema);
-                if let Some(doc) = &field.doc_comments {
-                    obj_field = obj_field.with_description(doc);
-                }
-                obj_type = obj_type.with_field(obj_field);
+                obj_type = add_field(obj_type, ref_schema);
             }
             _ => {}
         }

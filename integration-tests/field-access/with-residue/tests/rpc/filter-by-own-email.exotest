@@ -15,6 +15,11 @@ auth: |
 response: |
   {
     "result": [
-      {"id": $.p1id, "name": "P1", "age": 10, "authId": 1, "email": "p1@example.com"}
+      {
+        "id": $.p1id, 
+        "name": "P1", 
+        "age": 10, 
+        "authId": 1
+      }
     ]
   }

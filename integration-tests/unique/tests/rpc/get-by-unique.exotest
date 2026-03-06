@@ -102,5 +102,12 @@ stages:
         }
     response: |
       {
-        "result": {"id": $.alice_rsvp_id[0], "event": "Concert1", "count": 1}
+        "result": {
+          "id": $.alice_rsvp_id[0],
+          "event": "Concert1",
+          "user": {
+            "id": $.alice_user_id
+          },
+          "count": 1
+        }
       }

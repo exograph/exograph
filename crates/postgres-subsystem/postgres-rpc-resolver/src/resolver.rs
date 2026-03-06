@@ -25,7 +25,7 @@ use exo_sql::{
     DatabaseExecutor, Limit, Offset, RelationId, Selection, SelectionCardinality, SelectionElement,
 };
 use postgres_core_model::relation::PostgresRelation;
-use postgres_core_model::types::EntityType;
+use postgres_core_model::types::{EntityType, PostgresField};
 use postgres_core_resolver::database_helper::extractor;
 use postgres_core_resolver::order_by_mapper::compute_order_by;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
@@ -315,19 +315,30 @@ impl<T: OperationSelectionResolver + Send + Sync> OperationResolver for T {
     }
 }
 
-/// Shared function to compute the final AbstractSelect.
-/// Similar to GraphQL's compute_select pattern.
-#[allow(clippy::too_many_arguments)]
-async fn compute_select<'a>(
+struct ComputeSelectOpts<'a> {
     predicate: AbstractPredicate,
     order_by: Option<AbstractOrderBy>,
     limit: Option<Limit>,
     offset: Option<Offset>,
-    entity_type: &EntityType,
-    return_type: &OperationReturnType<EntityType>,
+    entity_type: &'a EntityType,
+    return_type: &'a OperationReturnType<EntityType>,
+}
+
+/// Shared function to compute the final AbstractSelect.
+/// Similar to GraphQL's compute_select pattern.
+async fn compute_select<'a>(
+    opts: ComputeSelectOpts<'a>,
     request_context: &'a RequestContext<'a>,
     subsystem: &'a PostgresRpcSubsystemWithRouter,
 ) -> Result<AbstractSelect, SubsystemRpcError> {
+    let ComputeSelectOpts {
+        predicate,
+        order_by,
+        limit,
+        offset,
+        entity_type,
+        return_type,
+    } = opts;
     let selection_cardinality = match return_type {
         OperationReturnType::List(_) => SelectionCardinality::Many,
         _ => SelectionCardinality::One,
@@ -336,6 +347,14 @@ async fn compute_select<'a>(
     let mut elements = Vec::new();
 
     for field in &entity_type.fields {
+        // Check field-level read access; only include fields that resolve to unconditional True.
+        // Row-dependent predicates are skipped since RPC can't conditionally null per row.
+        let field_access_predicate =
+            compute_field_access_predicate(field, request_context, subsystem).await?;
+        if field_access_predicate != AbstractPredicate::True {
+            continue;
+        }
+
         match &field.relation {
             PostgresRelation::Scalar { column_id, .. } => {
                 elements.push(AliasedSelectionElement::new(
@@ -397,6 +416,22 @@ async fn compute_select<'a>(
         offset,
         limit,
     })
+}
+
+/// Helper to compute field-level read access predicate
+async fn compute_field_access_predicate<'a>(
+    field: &PostgresField<EntityType>,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> Result<AbstractPredicate, SubsystemRpcError> {
+    let access_expr = &subsystem.core_subsystem.database_access_expressions[field.access.read];
+
+    subsystem
+        .core_subsystem
+        .solve(request_context, None, access_expr)
+        .await
+        .map_err(|_| SubsystemRpcError::Authorization)
+        .map(|result| result.map(|p| p.0).resolve())
 }
 
 /// Helper to compute access predicate for an entity type
@@ -469,12 +504,14 @@ impl OperationSelectionResolver for CollectionQuery {
                 .map(Offset);
 
         compute_select(
-            predicate,
-            order_by,
-            limit,
-            offset,
-            entity_type,
-            &self.return_type,
+            ComputeSelectOpts {
+                predicate,
+                order_by,
+                limit,
+                offset,
+                entity_type,
+                return_type: &self.return_type,
+            },
             request_context,
             subsystem,
         )
@@ -526,12 +563,14 @@ async fn resolve_predicate_params<'a>(
     let predicate = AbstractPredicate::and(query_predicate, access_predicate);
 
     compute_select(
-        predicate,
-        None,
-        None,
-        None,
-        entity_type,
-        return_type,
+        ComputeSelectOpts {
+            predicate,
+            order_by: None,
+            limit: None,
+            offset: None,
+            entity_type,
+            return_type,
+        },
         request_context,
         subsystem,
     )
