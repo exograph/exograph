@@ -18,9 +18,41 @@ auth: |
 response: |
   {
     "result": [
-      {"id": $.u1TodoIds[0], "title": "U1-T1", "completed": false, "priority": "MEDIUM"},
-      {"id": $.u1TodoIds[2], "title": "U1-T3", "completed": false, "priority": "HIGH"},
-      {"id": $.u2TodoIds[0], "title": "U2-T1", "completed": false, "priority": "MEDIUM"},
-      {"id": $.u2TodoIds[2], "title": "U2-T3", "completed": false, "priority": "LOW"}
+      {
+        "id": $.u1TodoIds[0],
+        "title": "U1-T1",
+        "completed": false,
+        "priority": "MEDIUM",
+        "user": {
+          "id": $.u1Id
+        }
+      },
+      {
+        "id": $.u1TodoIds[2],
+        "title": "U1-T3",
+        "completed": false,
+        "priority": "HIGH",
+        "user": {
+          "id": $.u1Id
+        }
+      },
+      {
+        "id": $.u2TodoIds[0],
+        "title": "U2-T1",
+        "completed": false,
+        "priority": "MEDIUM",
+        "user": {
+          "id": $.u2Id
+        }
+      },
+      {
+        "id": $.u2TodoIds[2],
+        "title": "U2-T3",
+        "completed": false,
+        "priority": "LOW",
+        "user": {
+          "id": $.u2Id
+        }
+      }
     ]
   }

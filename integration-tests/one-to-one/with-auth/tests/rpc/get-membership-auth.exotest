@@ -1,0 +1,75 @@
+# Test get_membership by PK enforces ownership access control.
+# Membership has @access(AuthContext.role == "ADMIN" || AuthContext.id == self.user.id).
+# User has @access(AuthContext.role == "ADMIN" || AuthContext.id == self.id).
+stages:
+  # Admin can get any membership
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_membership",
+          "params": {
+            "by": {"id": 1}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "kind": "individual",
+          "user": {
+            "id": 2
+          }
+        }
+      }
+
+  # Owner can get their own membership, and sees the user ref (it's their own user)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_membership",
+          "params": {
+            "by": {"id": 1}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "kind": "individual",
+          "user": {
+            "id": 2
+          }
+        }
+      }
+
+  # Non-owner cannot get another user's membership (returns null)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_membership",
+          "params": {
+            "by": {"id": 1}
+          }
+        }
+    auth: |
+      {
+        "sub": 3,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": null
+      }

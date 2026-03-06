@@ -15,8 +15,26 @@ auth: |
 response: |
   {
     "result": [
-      {"id": $.u1TodoIds[0], "title": "U1-T1", "completed": false, "priority": "MEDIUM"},
-      {"id": $.u1TodoIds[1], "title": "U1-T2", "completed": true, "priority": "MEDIUM"},
-      {"id": $.u1TodoIds[2], "title": "U1-T3", "completed": false, "priority": "HIGH"}
+      {
+        "id": $.u1TodoIds[0],
+        "title": "U1-T1",
+        "completed": false,
+        "priority": "MEDIUM",
+        "user": null
+      },
+      {
+        "id": $.u1TodoIds[1],
+        "title": "U1-T2",
+        "completed": true,
+        "priority": "MEDIUM",
+        "user": null
+      },
+      {
+        "id": $.u1TodoIds[2],
+        "title": "U1-T3",
+        "completed": false,
+        "priority": "HIGH",
+        "user": null
+      }
     ]
   }

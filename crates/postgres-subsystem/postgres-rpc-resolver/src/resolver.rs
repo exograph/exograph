@@ -22,10 +22,10 @@ use core_resolver::plugin::subsystem_rpc_resolver::{SubsystemRpcError, Subsystem
 use core_resolver::{QueryResponse, QueryResponseBody};
 use exo_sql::{
     AbstractOperation, AbstractOrderBy, AbstractPredicate, AbstractSelect, AliasedSelectionElement,
-    DatabaseExecutor, Limit, Offset, Selection, SelectionCardinality, SelectionElement,
+    DatabaseExecutor, Limit, Offset, RelationId, Selection, SelectionCardinality, SelectionElement,
 };
 use postgres_core_model::relation::PostgresRelation;
-use postgres_core_model::types::EntityType;
+use postgres_core_model::types::{EntityType, PostgresField};
 use postgres_core_resolver::database_helper::extractor;
 use postgres_core_resolver::order_by_mapper::compute_order_by;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
@@ -315,44 +315,131 @@ impl<T: OperationSelectionResolver + Send + Sync> OperationResolver for T {
     }
 }
 
-/// Shared function to compute the final AbstractSelect.
-/// Similar to GraphQL's compute_select pattern.
-fn compute_select(
+struct ComputeSelectOpts<'a> {
     predicate: AbstractPredicate,
     order_by: Option<AbstractOrderBy>,
     limit: Option<Limit>,
     offset: Option<Offset>,
-    entity_type: &EntityType,
-    return_type: &OperationReturnType<EntityType>,
-) -> AbstractSelect {
+    entity_type: &'a EntityType,
+    return_type: &'a OperationReturnType<EntityType>,
+}
+
+/// Shared function to compute the final AbstractSelect.
+/// Similar to GraphQL's compute_select pattern.
+async fn compute_select<'a>(
+    opts: ComputeSelectOpts<'a>,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> Result<AbstractSelect, SubsystemRpcError> {
+    let ComputeSelectOpts {
+        predicate,
+        order_by,
+        limit,
+        offset,
+        entity_type,
+        return_type,
+    } = opts;
     let selection_cardinality = match return_type {
         OperationReturnType::List(_) => SelectionCardinality::Many,
         _ => SelectionCardinality::One,
     };
 
-    let selection = Selection::Json(
-        entity_type
-            .fields
-            .iter()
-            .filter_map(|field| match field.relation {
-                PostgresRelation::Scalar { column_id, .. } => Some(AliasedSelectionElement::new(
-                    field.name.clone(),
-                    SelectionElement::Physical(column_id),
-                )),
-                _ => None,
-            })
-            .collect(),
-        selection_cardinality,
-    );
+    let mut elements = Vec::new();
 
-    AbstractSelect {
+    for field in &entity_type.fields {
+        // Check field-level read access; only include fields that resolve to unconditional True.
+        // Row-dependent predicates are skipped since RPC can't conditionally null per row.
+        let field_access_predicate =
+            compute_field_access_predicate(field, request_context, subsystem).await?;
+        // TODO: Make this less strict. We will first need to make schema make access controlled fields nullable,
+        // then we can include fields with row-dependent access predicates.
+        if field_access_predicate != AbstractPredicate::True {
+            continue;
+        }
+
+        match &field.relation {
+            PostgresRelation::Scalar { column_id, .. } => {
+                elements.push(AliasedSelectionElement::new(
+                    field.name.clone(),
+                    SelectionElement::Physical(*column_id),
+                ));
+            }
+            PostgresRelation::ManyToOne { relation, .. } => {
+                let foreign_entity =
+                    &subsystem.core_subsystem.entity_types[relation.foreign_entity_id];
+
+                let foreign_access_predicate =
+                    compute_access_predicate(foreign_entity, request_context, subsystem).await?;
+
+                // Select only PK scalar fields of the foreign entity that are accessible
+                // TODO: We should warn users during model building that adding access control to pk field will have implications
+                let mut pk_elements = Vec::new();
+                for pk_field in foreign_entity.pk_fields() {
+                    let column_id = match pk_field.relation {
+                        PostgresRelation::Scalar { column_id, .. } => column_id,
+                        _ => continue,
+                    };
+
+                    let pk_field_access =
+                        compute_field_access_predicate(pk_field, request_context, subsystem)
+                            .await?;
+                    if pk_field_access != AbstractPredicate::True {
+                        continue;
+                    }
+
+                    pk_elements.push(AliasedSelectionElement::new(
+                        pk_field.name.clone(),
+                        SelectionElement::Physical(column_id),
+                    ));
+                }
+
+                let nested_select = AbstractSelect {
+                    table_id: foreign_entity.table_id,
+                    selection: Selection::Json(pk_elements, SelectionCardinality::One),
+                    predicate: foreign_access_predicate,
+                    order_by: None,
+                    offset: None,
+                    limit: None,
+                };
+
+                elements.push(AliasedSelectionElement::new(
+                    field.name.clone(),
+                    SelectionElement::SubSelect(
+                        RelationId::ManyToOne(relation.relation_id),
+                        Box::new(nested_select),
+                    ),
+                ));
+            }
+            _ => {}
+        }
+    }
+
+    let selection = Selection::Json(elements, selection_cardinality);
+
+    Ok(AbstractSelect {
         table_id: entity_type.table_id,
         selection,
         predicate,
         order_by,
         offset,
         limit,
-    }
+    })
+}
+
+/// Helper to compute field-level read access predicate
+async fn compute_field_access_predicate<'a>(
+    field: &PostgresField<EntityType>,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> Result<AbstractPredicate, SubsystemRpcError> {
+    let access_expr = &subsystem.core_subsystem.database_access_expressions[field.access.read];
+
+    subsystem
+        .core_subsystem
+        .solve(request_context, None, access_expr)
+        .await
+        .map_err(|_| SubsystemRpcError::Authorization)
+        .map(|result| result.map(|p| p.0).resolve())
 }
 
 /// Helper to compute access predicate for an entity type
@@ -424,14 +511,19 @@ impl OperationSelectionResolver for CollectionQuery {
             extract_i64_from_val(validated_params.remove(&self.parameters.offset_param.name))
                 .map(Offset);
 
-        Ok(compute_select(
-            predicate,
-            order_by,
-            limit,
-            offset,
-            entity_type,
-            &self.return_type,
-        ))
+        compute_select(
+            ComputeSelectOpts {
+                predicate,
+                order_by,
+                limit,
+                offset,
+                entity_type,
+                return_type: &self.return_type,
+            },
+            request_context,
+            subsystem,
+        )
+        .await
     }
 }
 
@@ -478,14 +570,19 @@ async fn resolve_predicate_params<'a>(
 
     let predicate = AbstractPredicate::and(query_predicate, access_predicate);
 
-    Ok(compute_select(
-        predicate,
-        None,
-        None,
-        None,
-        entity_type,
-        return_type,
-    ))
+    compute_select(
+        ComputeSelectOpts {
+            predicate,
+            order_by: None,
+            limit: None,
+            offset: None,
+            entity_type,
+            return_type,
+        },
+        request_context,
+        subsystem,
+    )
+    .await
 }
 
 #[async_trait]

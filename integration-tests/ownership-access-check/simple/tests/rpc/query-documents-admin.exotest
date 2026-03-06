@@ -1,0 +1,47 @@
+# Admin can query all documents via RPC, with user reference included
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_documents"
+    }
+  unorderedPaths:
+    - result
+auth: |
+  {
+    "sub": 2,
+    "role": "ADMIN"
+  }
+response: |
+  {
+    "result": [
+      {
+        "id": 1,
+        "content": "content1",
+        "user": {
+          "id": 2
+        }
+      },
+      {
+        "id": 2,
+        "content": "content2",
+        "user": {
+          "id": 2
+        }
+      },
+      {
+        "id": 3,
+        "content": "content3",
+        "user": {
+          "id": 1
+        }
+      },
+      {
+        "id": 4,
+        "content": "content4",
+        "user": {
+          "id": 3
+        }
+      }
+    ]
+  }
