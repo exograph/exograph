@@ -18,7 +18,27 @@ stages:
     response: |
       {
         "result": [
-          {"firstName": "John", "lastName": "DoeAlbany", "age": 20},
-          {"firstName": "John", "lastName": "DoeBoston", "age": 30}
+          {
+            "firstName": "John",
+            "lastName": "DoeAlbany",
+            "age": 20,
+            "address": {
+              "street": "1 Main St",
+              "city": "Albany",
+              "state": "NY",
+              "zip": 10001
+            }
+          },
+          {
+            "firstName": "John",
+            "lastName": "DoeBoston",
+            "age": 30,
+            "address": {
+              "street": "2 Main St",
+              "city": "Boston",
+              "state": "MA",
+              "zip": 22101
+            }
+          }
         ]
       }

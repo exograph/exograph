@@ -18,7 +18,15 @@ stages:
       }
     response: |
       {
-        "result": {"id": $.u1TodoIds[0], "title": "U1-T1", "completed": false, "priority": "MEDIUM"}
+        "result": {
+          "id": $.u1TodoIds[0],
+          "title": "U1-T1",
+          "completed": false,
+          "priority": "MEDIUM",
+          "user": {
+            "id": $.u1Id
+          }
+        }
       }
 
   # User1 can get their own todo
@@ -38,7 +46,13 @@ stages:
       }
     response: |
       {
-        "result": {"id": $.u1TodoIds[0], "title": "U1-T1", "completed": false, "priority": "MEDIUM"}
+        "result": {
+          "id": $.u1TodoIds[0],
+          "title": "U1-T1",
+          "completed": false,
+          "priority": "MEDIUM",
+          "user": null
+        }
       }
 
   # User2 cannot get user1's todo (returns null, not error)

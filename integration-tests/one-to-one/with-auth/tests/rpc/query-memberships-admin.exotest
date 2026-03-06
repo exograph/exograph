@@ -1,0 +1,48 @@
+# Admin can query all memberships via RPC, with user reference included.
+# Both User and Membership have ownership-based access, but admin bypasses it.
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_memberships"
+    }
+  unorderedPaths:
+    - result
+auth: |
+  {
+    "sub": 2,
+    "role": "ADMIN"
+  }
+response: |
+  {
+    "result": [
+      {
+        "id": 1,
+        "kind": "individual",
+        "user": {
+          "id": 2
+        }
+      },
+      {
+        "id": 2,
+        "kind": "family",
+        "user": {
+          "id": 3
+        }
+      },
+      {
+        "id": 3,
+        "kind": "individual",
+        "user": {
+          "id": 4
+        }
+      },
+      {
+        "id": 4,
+        "kind": "family",
+        "user": {
+          "id": 5
+        }
+      }
+    ]
+  }

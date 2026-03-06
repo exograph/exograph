@@ -18,6 +18,14 @@ auth: |
 response: |
   {
     "result": [
-      {"id": $.u1TodoIds[2], "title": "U1-T3", "completed": false, "priority": "HIGH"}
+      {
+        "id": $.u1TodoIds[2],
+        "title": "U1-T3",
+        "completed": false,
+        "priority": "HIGH",
+        "user": {
+          "id": $.u1Id
+        }
+      }
     ]
   }

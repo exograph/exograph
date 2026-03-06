@@ -1,0 +1,108 @@
+# Non-admin users can only query permissions where self.user.id == AuthContext.id && self.read.
+# Document ref visible if user has read permission on it. User ref visible if self.id == AuthContext.id.
+stages:
+  # User3 sees 2 permissions (read=true on both d1 and d2).
+  # Document refs visible (u3 has read on both). User ref visible (self.id == AuthContext.id).
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_permissions"
+        }
+      unorderedPaths:
+        - result
+    auth: |
+      {
+        "sub": $.u3Id,
+        "role": "user"
+      }
+    response: |
+      {
+        "result": [
+          {
+            "id": $.d1PermissionIds[2],
+            "read": true,
+            "write": false,
+            "document": {
+              "id": $.d1Id
+            },
+            "user": {
+              "id": $.u3Id
+            }
+          },
+          {
+            "id": $.d2PermissionIds[2],
+            "read": true,
+            "write": false,
+            "document": {
+              "id": $.d2Id
+            },
+            "user": {
+              "id": $.u3Id
+            }
+          }
+        ]
+      }
+
+  # User2 sees 1 permission (read=true on d2 only; read=false on d1 is hidden).
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_permissions"
+        }
+      unorderedPaths:
+        - result
+    auth: |
+      {
+        "sub": $.u2Id,
+        "role": "user"
+      }
+    response: |
+      {
+        "result": [
+          {
+            "id": $.d2PermissionIds[1],
+            "read": true,
+            "write": true,
+            "document": {
+              "id": $.d2Id
+            },
+            "user": {
+              "id": $.u2Id
+            }
+          }
+        ]
+      }
+
+  # User4 sees 1 permission (read=true on d3).
+  # User ref: u4 is accessing self -> visible.
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_permissions"
+        }
+      unorderedPaths:
+        - result
+    auth: |
+      {
+        "sub": $.u4Id,
+        "role": "user"
+      }
+    response: |
+      {
+        "result": [
+          {
+            "id": $.d3PermissionIds[0],
+            "read": true,
+            "write": false,
+            "document": {
+              "id": $.d3Id
+            },
+            "user": {
+              "id": $.u4Id
+            }
+          }
+        ]
+      }

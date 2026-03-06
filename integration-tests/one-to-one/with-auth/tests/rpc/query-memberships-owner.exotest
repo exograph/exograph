@@ -1,0 +1,29 @@
+# User can only query their own membership via RPC.
+# User 2 owns membership 1 (individual).
+# User has @access(AuthContext.id == self.id), so the user reference is visible
+# (the owner is querying their own user record).
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_memberships"
+    }
+  unorderedPaths:
+    - result
+auth: |
+  {
+    "sub": 2,
+    "role": "USER"
+  }
+response: |
+  {
+    "result": [
+      {
+        "id": 1,
+        "kind": "individual",
+        "user": {
+          "id": 2
+        }
+      }
+    ]
+  }

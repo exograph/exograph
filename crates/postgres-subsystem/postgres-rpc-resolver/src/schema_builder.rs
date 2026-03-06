@@ -460,22 +460,63 @@ fn ensure_entity_type_added(
     }
 
     for field in &entity_type.fields {
-        // Only include scalar fields (not relations)
-        if let PostgresRelation::Scalar { .. } = field.relation {
-            let field_schema = build_field_type_schema(
-                &field.typ,
-                field.type_validation.as_ref(),
-                subsystem,
-                schema,
-                added_types,
-            );
+        match &field.relation {
+            PostgresRelation::Scalar { .. } => {
+                let field_schema = build_field_type_schema(
+                    &field.typ,
+                    field.type_validation.as_ref(),
+                    subsystem,
+                    schema,
+                    added_types,
+                );
 
-            let mut obj_field = RpcObjectField::new(&field.name, field_schema);
-            if let Some(doc) = &field.doc_comments {
-                obj_field = obj_field.with_description(doc);
+                let mut obj_field = RpcObjectField::new(&field.name, field_schema);
+                if let Some(doc) = &field.doc_comments {
+                    obj_field = obj_field.with_description(doc);
+                }
+
+                obj_type = obj_type.with_field(obj_field);
             }
+            PostgresRelation::ManyToOne { relation, .. } => {
+                let foreign_entity =
+                    &subsystem.core_subsystem.entity_types[relation.foreign_entity_id];
 
-            obj_type = obj_type.with_field(obj_field);
+                // Build a PK-only reference type (e.g., "UserRef")
+                let ref_type_name = format!("{}Ref", foreign_entity.name);
+                if !added_types.contains(&ref_type_name) {
+                    added_types.insert(ref_type_name.clone());
+                    let mut ref_obj = RpcObjectType::new(&ref_type_name);
+                    for pk_field in foreign_entity.pk_fields() {
+                        if let PostgresRelation::Scalar { .. } = pk_field.relation {
+                            let pk_schema = build_field_type_schema(
+                                &pk_field.typ,
+                                pk_field.type_validation.as_ref(),
+                                subsystem,
+                                schema,
+                                added_types,
+                            );
+                            ref_obj =
+                                ref_obj.with_field(RpcObjectField::new(&pk_field.name, pk_schema));
+                        }
+                    }
+                    schema.add_object_type(ref_type_name.clone(), ref_obj);
+                }
+
+                // Handle optional relations
+                let ref_schema = match &field.typ {
+                    FieldType::Optional(_) => {
+                        RpcTypeSchema::optional(RpcTypeSchema::object(&ref_type_name))
+                    }
+                    _ => RpcTypeSchema::object(&ref_type_name),
+                };
+
+                let mut obj_field = RpcObjectField::new(&field.name, ref_schema);
+                if let Some(doc) = &field.doc_comments {
+                    obj_field = obj_field.with_description(doc);
+                }
+                obj_type = obj_type.with_field(obj_field);
+            }
+            _ => {}
         }
     }
 

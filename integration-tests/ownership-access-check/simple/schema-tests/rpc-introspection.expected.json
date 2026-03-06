@@ -6,17 +6,17 @@
   },
   "methods": [
     {
-      "name": "get_people",
-      "description": "Get multiple `Person`s given the provided `where` filter, order by, limit, and offset",
+      "name": "get_users",
+      "description": "Get multiple `User`s given the provided `where` filter, order by, limit, and offset",
       "params": [
         {
           "name": "where",
-          "description": "Filter conditions for People",
+          "description": "Filter conditions for Users",
           "required": false,
           "schema": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/PersonFilter"
+                "$ref": "#/components/schemas/UserFilter"
               },
               {
                 "type": "null"
@@ -31,7 +31,7 @@
           "schema": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/PersonOrdering"
+              "$ref": "#/components/schemas/UserOrdering"
             },
             "nullable": true
           }
@@ -60,23 +60,23 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Person"
+            "$ref": "#/components/schemas/User"
           }
         }
       }
     },
     {
-      "name": "get_addresses",
-      "description": "Get multiple `Address`s given the provided `where` filter, order by, limit, and offset",
+      "name": "get_documents",
+      "description": "Get multiple `Document`s given the provided `where` filter, order by, limit, and offset",
       "params": [
         {
           "name": "where",
-          "description": "Filter conditions for Addresses",
+          "description": "Filter conditions for Documents",
           "required": false,
           "schema": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/AddressFilter"
+                "$ref": "#/components/schemas/DocumentFilter"
               },
               {
                 "type": "null"
@@ -91,7 +91,7 @@
           "schema": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/AddressOrdering"
+              "$ref": "#/components/schemas/DocumentOrdering"
             },
             "nullable": true
           }
@@ -120,14 +120,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Address"
+            "$ref": "#/components/schemas/Document"
           }
         }
       }
     },
     {
-      "name": "get_person",
-      "description": "Get a single `Person` given primary key fields",
+      "name": "get_user",
+      "description": "Get a single `User` given primary key fields",
       "params": [
         {
           "name": "by",
@@ -135,16 +135,12 @@
           "schema": {
             "type": "object",
             "properties": {
-              "firstName": {
-                "type": "string"
-              },
-              "lastName": {
-                "type": "string"
+              "id": {
+                "type": "integer"
               }
             },
             "required": [
-              "firstName",
-              "lastName"
+              "id"
             ],
             "additionalProperties": false
           }
@@ -155,7 +151,7 @@
         "schema": {
           "oneOf": [
             {
-              "$ref": "#/components/schemas/Person"
+              "$ref": "#/components/schemas/User"
             },
             {
               "type": "null"
@@ -165,8 +161,8 @@
       }
     },
     {
-      "name": "get_address",
-      "description": "Get a single `Address` given primary key fields",
+      "name": "get_document",
+      "description": "Get a single `Document` given primary key fields",
       "params": [
         {
           "name": "by",
@@ -174,24 +170,12 @@
           "schema": {
             "type": "object",
             "properties": {
-              "street": {
-                "type": "string"
-              },
-              "city": {
-                "type": "string"
-              },
-              "state": {
-                "type": "string"
-              },
-              "zip": {
+              "id": {
                 "type": "integer"
               }
             },
             "required": [
-              "street",
-              "city",
-              "state",
-              "zip"
+              "id"
             ],
             "additionalProperties": false
           }
@@ -202,7 +186,7 @@
         "schema": {
           "oneOf": [
             {
-              "$ref": "#/components/schemas/Address"
+              "$ref": "#/components/schemas/Document"
             },
             {
               "type": "null"
@@ -214,57 +198,49 @@
   ],
   "components": {
     "schemas": {
-      "AddressRef": {
+      "User": {
         "type": "object",
         "properties": {
-          "street": {
-            "type": "string"
-          },
-          "city": {
-            "type": "string"
-          },
-          "state": {
-            "type": "string"
-          },
-          "zip": {
+          "id": {
             "type": "integer"
+          },
+          "name": {
+            "type": "string"
           }
         },
         "required": [
-          "street",
-          "city",
-          "state",
-          "zip"
+          "id",
+          "name"
         ]
       },
-      "Person": {
+      "IntFilter": {
         "type": "object",
         "properties": {
-          "firstName": {
-            "type": "string"
+          "eq": {
+            "type": "integer",
+            "nullable": true
           },
-          "lastName": {
-            "type": "string"
+          "neq": {
+            "type": "integer",
+            "nullable": true
           },
-          "age": {
-            "type": "integer"
+          "lt": {
+            "type": "integer",
+            "nullable": true
           },
-          "address": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/AddressRef"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "lte": {
+            "type": "integer",
+            "nullable": true
+          },
+          "gt": {
+            "type": "integer",
+            "nullable": true
+          },
+          "gte": {
+            "type": "integer",
+            "nullable": true
           }
-        },
-        "required": [
-          "firstName",
-          "lastName",
-          "age"
-        ]
+        }
       },
       "StringFilter": {
         "type": "object",
@@ -311,69 +287,10 @@
           }
         }
       },
-      "IntFilter": {
+      "DocumentFilter": {
         "type": "object",
         "properties": {
-          "eq": {
-            "type": "integer",
-            "nullable": true
-          },
-          "neq": {
-            "type": "integer",
-            "nullable": true
-          },
-          "lt": {
-            "type": "integer",
-            "nullable": true
-          },
-          "lte": {
-            "type": "integer",
-            "nullable": true
-          },
-          "gt": {
-            "type": "integer",
-            "nullable": true
-          },
-          "gte": {
-            "type": "integer",
-            "nullable": true
-          }
-        }
-      },
-      "AddressFilter": {
-        "type": "object",
-        "properties": {
-          "street": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "city": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "state": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "zip": {
+          "id": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/IntFilter"
@@ -383,7 +300,7 @@
               }
             ]
           },
-          "info": {
+          "content": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/StringFilter"
@@ -393,10 +310,10 @@
               }
             ]
           },
-          "people": {
+          "user": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/PersonFilter"
+                "$ref": "#/components/schemas/UserFilter"
               },
               {
                 "type": "null"
@@ -406,21 +323,21 @@
           "and": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/AddressFilter"
+              "$ref": "#/components/schemas/DocumentFilter"
             },
             "nullable": true
           },
           "or": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/AddressFilter"
+              "$ref": "#/components/schemas/DocumentFilter"
             },
             "nullable": true
           },
           "not": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/AddressFilter"
+                "$ref": "#/components/schemas/DocumentFilter"
               },
               {
                 "type": "null"
@@ -429,30 +346,10 @@
           }
         }
       },
-      "PersonFilter": {
+      "UserFilter": {
         "type": "object",
         "properties": {
-          "firstName": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "lastName": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "age": {
+          "id": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/IntFilter"
@@ -462,10 +359,20 @@
               }
             ]
           },
-          "address": {
+          "name": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/AddressFilter"
+                "$ref": "#/components/schemas/StringFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "documents": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocumentFilter"
               },
               {
                 "type": "null"
@@ -475,21 +382,21 @@
           "and": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/PersonFilter"
+              "$ref": "#/components/schemas/UserFilter"
             },
             "nullable": true
           },
           "or": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/PersonFilter"
+              "$ref": "#/components/schemas/UserFilter"
             },
             "nullable": true
           },
           "not": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/PersonFilter"
+                "$ref": "#/components/schemas/UserFilter"
               },
               {
                 "type": "null"
@@ -498,10 +405,10 @@
           }
         }
       },
-      "AddressOrdering": {
+      "UserOrdering": {
         "type": "object",
         "properties": {
-          "street": {
+          "id": {
             "type": "string",
             "enum": [
               "ASC",
@@ -509,31 +416,7 @@
             ],
             "nullable": true
           },
-          "city": {
-            "type": "string",
-            "enum": [
-              "ASC",
-              "DESC"
-            ],
-            "nullable": true
-          },
-          "state": {
-            "type": "string",
-            "enum": [
-              "ASC",
-              "DESC"
-            ],
-            "nullable": true
-          },
-          "zip": {
-            "type": "string",
-            "enum": [
-              "ASC",
-              "DESC"
-            ],
-            "nullable": true
-          },
-          "info": {
+          "name": {
             "type": "string",
             "enum": [
               "ASC",
@@ -543,71 +426,66 @@
           }
         }
       },
-      "PersonOrdering": {
+      "UserRef": {
         "type": "object",
         "properties": {
-          "firstName": {
-            "type": "string",
-            "enum": [
-              "ASC",
-              "DESC"
-            ],
-            "nullable": true
-          },
-          "lastName": {
-            "type": "string",
-            "enum": [
-              "ASC",
-              "DESC"
-            ],
-            "nullable": true
-          },
-          "age": {
-            "type": "string",
-            "enum": [
-              "ASC",
-              "DESC"
-            ],
-            "nullable": true
-          },
-          "address": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/AddressOrdering"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "Address": {
-        "type": "object",
-        "properties": {
-          "street": {
-            "type": "string"
-          },
-          "city": {
-            "type": "string"
-          },
-          "state": {
-            "type": "string"
-          },
-          "zip": {
+          "id": {
             "type": "integer"
-          },
-          "info": {
-            "type": "string",
-            "nullable": true
           }
         },
         "required": [
-          "street",
-          "city",
-          "state",
-          "zip"
+          "id"
         ]
+      },
+      "Document": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserRef"
+          }
+        },
+        "required": [
+          "id",
+          "content",
+          "user"
+        ]
+      },
+      "DocumentOrdering": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
+          },
+          "content": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "nullable": true
+          },
+          "user": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserOrdering"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
       }
     }
   }

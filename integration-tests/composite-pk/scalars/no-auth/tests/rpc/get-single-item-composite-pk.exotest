@@ -14,7 +14,17 @@ stages:
         }
     response: |
       {
-        "result": {"firstName": "John", "lastName": "DoeAlbany", "age": 20}
+        "result": {
+          "firstName": "John",
+          "lastName": "DoeAlbany",
+          "age": 20,
+          "address": {
+            "street": "1 Main St",
+            "city": "Albany",
+            "state": "NY",
+            "zip": 10001
+          }
+        }
       }
 
   # Test get_person with different composite pk values
@@ -29,7 +39,17 @@ stages:
         }
     response: |
       {
-        "result": {"firstName": "Jane", "lastName": "SmithBoston", "age": 35}
+        "result": {
+          "firstName": "Jane",
+          "lastName": "SmithBoston",
+          "age": 35,
+          "address": {
+            "street": "2 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": 22101
+          }
+        }
       }
 
   # Test get_person with non-existent composite pk - returns null
@@ -77,7 +97,13 @@ stages:
         }
     response: |
       {
-        "result": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101, "info": null}
+        "result": {
+          "street": "2 Main St",
+          "city": "Boston",
+          "state": "MA",
+          "zip": 22101,
+          "info": null
+        }
       }
 
   # Test get_address with missing pk fields - returns error

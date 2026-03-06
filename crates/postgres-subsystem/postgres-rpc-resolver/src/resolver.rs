@@ -22,7 +22,7 @@ use core_resolver::plugin::subsystem_rpc_resolver::{SubsystemRpcError, Subsystem
 use core_resolver::{QueryResponse, QueryResponseBody};
 use exo_sql::{
     AbstractOperation, AbstractOrderBy, AbstractPredicate, AbstractSelect, AliasedSelectionElement,
-    DatabaseExecutor, Limit, Offset, Selection, SelectionCardinality, SelectionElement,
+    DatabaseExecutor, Limit, Offset, RelationId, Selection, SelectionCardinality, SelectionElement,
 };
 use postgres_core_model::relation::PostgresRelation;
 use postgres_core_model::types::EntityType;
@@ -317,42 +317,86 @@ impl<T: OperationSelectionResolver + Send + Sync> OperationResolver for T {
 
 /// Shared function to compute the final AbstractSelect.
 /// Similar to GraphQL's compute_select pattern.
-fn compute_select(
+#[allow(clippy::too_many_arguments)]
+async fn compute_select<'a>(
     predicate: AbstractPredicate,
     order_by: Option<AbstractOrderBy>,
     limit: Option<Limit>,
     offset: Option<Offset>,
     entity_type: &EntityType,
     return_type: &OperationReturnType<EntityType>,
-) -> AbstractSelect {
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> Result<AbstractSelect, SubsystemRpcError> {
     let selection_cardinality = match return_type {
         OperationReturnType::List(_) => SelectionCardinality::Many,
         _ => SelectionCardinality::One,
     };
 
-    let selection = Selection::Json(
-        entity_type
-            .fields
-            .iter()
-            .filter_map(|field| match field.relation {
-                PostgresRelation::Scalar { column_id, .. } => Some(AliasedSelectionElement::new(
-                    field.name.clone(),
-                    SelectionElement::Physical(column_id),
-                )),
-                _ => None,
-            })
-            .collect(),
-        selection_cardinality,
-    );
+    let mut elements = Vec::new();
 
-    AbstractSelect {
+    for field in &entity_type.fields {
+        match &field.relation {
+            PostgresRelation::Scalar { column_id, .. } => {
+                elements.push(AliasedSelectionElement::new(
+                    field.name.clone(),
+                    SelectionElement::Physical(*column_id),
+                ));
+            }
+            PostgresRelation::ManyToOne { relation, .. } => {
+                let foreign_entity =
+                    &subsystem.core_subsystem.entity_types[relation.foreign_entity_id];
+
+                let foreign_access_predicate =
+                    compute_access_predicate(foreign_entity, request_context, subsystem).await?;
+
+                // Select only PK scalar fields of the foreign entity
+                let pk_elements: Vec<AliasedSelectionElement> = foreign_entity
+                    .pk_fields()
+                    .iter()
+                    .filter_map(|pk_field| {
+                        if let PostgresRelation::Scalar { column_id, .. } = pk_field.relation {
+                            Some(AliasedSelectionElement::new(
+                                pk_field.name.clone(),
+                                SelectionElement::Physical(column_id),
+                            ))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                let nested_select = AbstractSelect {
+                    table_id: foreign_entity.table_id,
+                    selection: Selection::Json(pk_elements, SelectionCardinality::One),
+                    predicate: foreign_access_predicate,
+                    order_by: None,
+                    offset: None,
+                    limit: None,
+                };
+
+                elements.push(AliasedSelectionElement::new(
+                    field.name.clone(),
+                    SelectionElement::SubSelect(
+                        RelationId::ManyToOne(relation.relation_id),
+                        Box::new(nested_select),
+                    ),
+                ));
+            }
+            _ => {}
+        }
+    }
+
+    let selection = Selection::Json(elements, selection_cardinality);
+
+    Ok(AbstractSelect {
         table_id: entity_type.table_id,
         selection,
         predicate,
         order_by,
         offset,
         limit,
-    }
+    })
 }
 
 /// Helper to compute access predicate for an entity type
@@ -424,14 +468,17 @@ impl OperationSelectionResolver for CollectionQuery {
             extract_i64_from_val(validated_params.remove(&self.parameters.offset_param.name))
                 .map(Offset);
 
-        Ok(compute_select(
+        compute_select(
             predicate,
             order_by,
             limit,
             offset,
             entity_type,
             &self.return_type,
-        ))
+            request_context,
+            subsystem,
+        )
+        .await
     }
 }
 
@@ -478,14 +525,17 @@ async fn resolve_predicate_params<'a>(
 
     let predicate = AbstractPredicate::and(query_predicate, access_predicate);
 
-    Ok(compute_select(
+    compute_select(
         predicate,
         None,
         None,
         None,
         entity_type,
         return_type,
-    ))
+        request_context,
+        subsystem,
+    )
+    .await
 }
 
 #[async_trait]
