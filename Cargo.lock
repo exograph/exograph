@@ -1415,7 +1415,7 @@ dependencies = [
  "toml 1.0.4+spec-1.1.0",
  "tracing",
  "wasm-builder",
- "which 8.0.0",
+ "which 8.0.1",
  "wildmatch",
  "zip",
 ]
@@ -3327,7 +3327,7 @@ dependencies = [
  "sys_traits",
  "thiserror 2.0.18",
  "url",
- "which 8.0.0",
+ "which 8.0.1",
  "winapi",
  "windows-sys 0.59.0",
 ]
@@ -4408,7 +4408,7 @@ dependencies = [
  "uuid",
  "wasm-bindgen-test",
  "wasm-bindgen-test-macro",
- "which 8.0.0",
+ "which 8.0.1",
  "wildmatch",
 ]
 
@@ -5922,7 +5922,7 @@ dependencies = [
  "include_dir",
  "serde_json",
  "tokio",
- "which 8.0.0",
+ "which 8.0.1",
 ]
 
 [[package]]
@@ -7861,7 +7861,7 @@ dependencies = [
  "mime_guess",
  "serde",
  "serde_json",
- "which 8.0.0",
+ "which 8.0.1",
 ]
 
 [[package]]
@@ -12552,9 +12552,9 @@ dependencies = [
 
 [[package]]
 name = "which"
-version = "8.0.0"
+version = "8.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3fabb953106c3c8eea8306e4393700d7657561cb43122571b172bbfb7c7ba1d"
+checksum = "3a824aeba0fbb27264f815ada4cff43d65b1741b7a4ed7629ff9089148c4a4e0"
 dependencies = [
  "env_home",
  "rustix 1.1.4",
