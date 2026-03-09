@@ -1415,7 +1415,7 @@ dependencies = [
  "toml 1.0.6+spec-1.1.0",
  "tracing",
  "wasm-builder",
- "which 8.0.1",
+ "which 8.0.2",
  "wildmatch",
  "zip",
 ]
@@ -3327,7 +3327,7 @@ dependencies = [
  "sys_traits",
  "thiserror 2.0.18",
  "url",
- "which 8.0.1",
+ "which 8.0.2",
  "winapi",
  "windows-sys 0.59.0",
 ]
@@ -4260,12 +4260,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "env_home"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7f84e12ccf0a7ddc17a6c41c93326024c42920d7ee630d04950e6926645c0fe"
-
-[[package]]
 name = "env_logger"
 version = "0.11.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4408,7 +4402,7 @@ dependencies = [
  "uuid",
  "wasm-bindgen-test",
  "wasm-bindgen-test-macro",
- "which 8.0.1",
+ "which 8.0.2",
  "wildmatch",
 ]
 
@@ -5922,7 +5916,7 @@ dependencies = [
  "include_dir",
  "serde_json",
  "tokio",
- "which 8.0.1",
+ "which 8.0.2",
 ]
 
 [[package]]
@@ -7861,7 +7855,7 @@ dependencies = [
  "mime_guess",
  "serde",
  "serde_json",
- "which 8.0.1",
+ "which 8.0.2",
 ]
 
 [[package]]
@@ -10553,7 +10547,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82a72c767771b47409d2345987fda8628641887d5466101319899796367354a0"
 dependencies = [
  "fastrand",
- "getrandom 0.3.4",
+ "getrandom 0.4.2",
  "once_cell",
  "rustix 1.1.4",
  "windows-sys 0.61.2",
@@ -12552,13 +12546,11 @@ dependencies = [
 
 [[package]]
 name = "which"
-version = "8.0.1"
+version = "8.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a824aeba0fbb27264f815ada4cff43d65b1741b7a4ed7629ff9089148c4a4e0"
+checksum = "81995fafaaaf6ae47a7d0cc83c67caf92aeb7e5331650ae6ff856f7c0c60c459"
 dependencies = [
- "env_home",
- "rustix 1.1.4",
- "winsafe",
+ "libc",
 ]
 
 [[package]]
