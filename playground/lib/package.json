@@ -22,7 +22,7 @@
     "@assistant-ui/react": "^0.12.16",
     "@assistant-ui/react-markdown": "^0.12.5",
     "@auth0/auth0-react": "^2.15.0",
-    "@clerk/clerk-react": "5.61.1",
+    "@clerk/clerk-react": "5.61.3",
     "@clerk/themes": "2.4.57",
     "@graphiql/plugin-explorer": "5.1.1",
     "@graphiql/toolkit": "0.11.3",
