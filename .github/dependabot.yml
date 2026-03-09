@@ -61,6 +61,24 @@ updates:
           - "@tailwindcss/*"
           - "postcss"
           - "autoprefixer"
+      ai:
+        patterns:
+          - "ai"
+          - "@ai-sdk/*"
+          - "@assistant-ui/*"
+          - "@modelcontextprotocol/*"
+      auth:
+        patterns:
+          - "@auth0/*"
+          - "@clerk/*"
+      graphiql:
+        patterns:
+          - "graphiql"
+          - "@graphiql/*"
+      monaco:
+        patterns:
+          - "monaco-editor"
+          - "@monaco-editor/*"
       docusaurus:
         patterns:
           - "@docusaurus/*"
