@@ -29,7 +29,7 @@
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@monaco-editor/react": "^4.7.0",
     "@tailwindcss/typography": "^0.5.19",
-    "ai": "^6.0.121",
+    "ai": "^6.0.122",
     "graphiql": "5.2.2",
     "jose": "6.2.1",
     "lucide-react": "^0.577.0",
