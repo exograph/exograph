@@ -14,14 +14,7 @@
           "description": "Filter conditions for Images",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ImageFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/ImageFilter"
           }
         },
         {
@@ -32,8 +25,7 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ImageOrdering"
-            },
-            "nullable": true
+            }
           }
         },
         {
@@ -41,8 +33,7 @@
           "description": "Maximum number of results to return",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         },
         {
@@ -50,8 +41,7 @@
           "description": "Number of results to skip",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         }
       ],
@@ -81,14 +71,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/Image"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/Image",
+          "nullable": true
         }
       }
     },
@@ -101,14 +85,7 @@
           "description": "Filter conditions for Images",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ImageFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/ImageFilter"
           }
         }
       ],
@@ -138,14 +115,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/ImagePK"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/ImagePK",
+          "nullable": true
         }
       }
     }
@@ -178,12 +149,10 @@
         "properties": {
           "eq": {
             "type": "string",
-            "nullable": true,
             "format": "uuid"
           },
           "neq": {
             "type": "string",
-            "nullable": true,
             "format": "uuid"
           }
         }
@@ -192,44 +161,34 @@
         "type": "object",
         "properties": {
           "eq": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "neq": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "lt": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "lte": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "gt": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "gte": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "like": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "ilike": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "startsWith": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "endsWith": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           }
         }
       },
@@ -237,53 +196,29 @@
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/UuidFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/UuidFilter"
           },
           "name": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/StringFilter"
           },
           "data": {
             "type": "string",
-            "nullable": true,
             "format": "byte"
           },
           "and": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ImageFilter"
-            },
-            "nullable": true
+            }
           },
           "or": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ImageFilter"
-            },
-            "nullable": true
+            }
           },
           "not": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ImageFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/ImageFilter"
           }
         }
       },
@@ -295,24 +230,21 @@
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "name": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "data": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           }
         }
       },

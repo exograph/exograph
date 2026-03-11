@@ -17,7 +17,7 @@
 //!
 //! ```
 //! use rpc_introspection::schema::{RpcSchema, RpcMethod, RpcTypeSchema};
-//! use rpc_introspection::conversion::to_openrpc;
+//! use rpc_introspection::conversion::{to_rpc_document, SchemaGeneration};
 //!
 //! let mut schema = RpcSchema::new();
 //! schema.add_method(RpcMethod::new(
@@ -25,16 +25,18 @@
 //!     RpcTypeSchema::scalar("String"),
 //! ));
 //!
-//! let openrpc = to_openrpc(&schema, "My API", "1.0.0");
+//! let doc = to_rpc_document(&schema, SchemaGeneration::OpenRpc);
 //! ```
 
 pub mod conversion;
 pub mod openrpc;
+pub mod rpc_schema_doc;
 pub mod schema;
 pub mod validation;
 
 // Re-export commonly used types
-pub use conversion::to_openrpc;
+pub use conversion::{SchemaGeneration, to_rpc_document};
 pub use openrpc::OpenRpcDocument;
+pub use rpc_schema_doc::RpcDocument;
 pub use schema::{RpcMethod, RpcParameter, RpcSchema, RpcTypeSchema};
 pub use validation::RpcValidationError;
