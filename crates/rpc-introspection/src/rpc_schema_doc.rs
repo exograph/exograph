@@ -12,7 +12,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Format-agnostic RPC schema document shared between OpenRPC and MCP formats.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RpcDocument {
     /// The available RPC methods
     pub methods: Vec<MethodObject>,
@@ -23,10 +23,7 @@ pub struct RpcDocument {
 
 impl RpcDocument {
     pub fn new() -> Self {
-        Self {
-            methods: Vec::new(),
-            components: None,
-        }
+        Self::default()
     }
 
     pub fn with_method(mut self, method: MethodObject) -> Self {
@@ -37,12 +34,6 @@ impl RpcDocument {
     pub fn with_components(mut self, components: Components) -> Self {
         self.components = Some(components);
         self
-    }
-}
-
-impl Default for RpcDocument {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -156,7 +147,7 @@ pub struct Components {
 
 impl Components {
     pub fn new() -> Self {
-        Self { schemas: None }
+        Self::default()
     }
 
     pub fn with_schema(mut self, name: impl Into<String>, schema: JsonSchema) -> Self {
