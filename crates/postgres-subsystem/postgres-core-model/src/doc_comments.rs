@@ -20,3 +20,7 @@ pub fn pk_query_description(entity_name: &str) -> String {
 pub fn unique_query_description(entity_name: &str) -> String {
     format!("Get a single `{entity_name}` given unique fields")
 }
+
+pub fn collection_delete_description(entity_name: &str) -> String {
+    format!("Delete multiple `{entity_name}`s given the provided `where` filter")
+}

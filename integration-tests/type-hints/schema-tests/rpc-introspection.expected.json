@@ -67,22 +67,13 @@
     },
     {
       "name": "get_video",
-      "description": "Get a single `Video` given primary key fields",
+      "description": "Get a single `Video` by primary key.",
       "params": [
         {
           "name": "by",
           "required": true,
           "schema": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "integer"
-              }
-            },
-            "required": [
-              "id"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/VideoPK"
           }
         }
       ],
@@ -92,6 +83,62 @@
           "oneOf": [
             {
               "$ref": "#/components/schemas/Video"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_videos",
+      "description": "Delete multiple `Video`s given the provided `where` filter",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Videos",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VideoFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/VideoPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete_video",
+      "description": "Delete a single `Video` by primary key.",
+      "params": [
+        {
+          "name": "by",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/VideoPK"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/VideoPK"
             },
             {
               "type": "null"
@@ -352,6 +399,18 @@
             "nullable": true
           }
         }
+      },
+      "VideoPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
       }
     }
   }

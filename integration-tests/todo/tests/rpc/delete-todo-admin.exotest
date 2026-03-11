@@ -1,0 +1,39 @@
+# Test admin can delete any todo by PK
+stages:
+  # Admin deletes user1's todo
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_todo",
+          "params": {
+            "by": {"id": $.u1TodoIds[0]}
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {"id": $.u1TodoIds[0]}
+      }
+
+  # Verify deletion
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todo",
+          "params": {
+            "by": {"id": $.u1TodoIds[0]}
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": null
+      }

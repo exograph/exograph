@@ -1,0 +1,39 @@
+# Test delete with composite primary key + auth
+stages:
+  # Admin can delete person with composite PK
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_person",
+          "params": {
+            "by": {"firstName": "John", "lastName": "DoeAlbany"}
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {"firstName": "John", "lastName": "DoeAlbany"}
+      }
+
+  # Verify deletion
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_person",
+          "params": {
+            "by": {"firstName": "John", "lastName": "DoeAlbany"}
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": null
+      }

@@ -1,0 +1,39 @@
+# Test admin can delete concert via RPC
+stages:
+  # Admin deletes concert
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_concert",
+          "params": {
+            "by": {"id": 2}
+          }
+        }
+    auth: |
+      {
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": {"id": 2}
+      }
+
+  # Verify deletion
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {
+            "by": {"id": 2}
+          }
+        }
+    auth: |
+      {
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": null
+      }

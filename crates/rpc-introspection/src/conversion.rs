@@ -98,20 +98,28 @@ fn convert_type_schema(schema: &RpcTypeSchema) -> JsonSchema {
         }
 
         RpcTypeSchema::OneOf { variants } => {
-            let convert_variant = |v: &crate::schema::OneOfVariant| {
-                let mut obj = JsonSchemaInline::object();
-                for (name, schema) in &v.properties {
-                    obj = obj.with_property(name, convert_type_schema(schema));
+            let convert_variant = |v: &crate::schema::OneOfVariant| match v {
+                crate::schema::OneOfVariant::Inline {
+                    properties,
+                    required,
+                } => {
+                    let mut obj = JsonSchemaInline::object();
+                    for (name, schema) in properties {
+                        obj = obj.with_property(name, convert_type_schema(schema));
+                    }
+                    // additionalProperties: false ensures each variant only accepts its
+                    // declared fields, enabling unambiguous variant matching.
+                    // For example, without this, if we have an entity with `id` as pk
+                    // and unique `username`, `{"id": 1, "username": "alice"}` would
+                    // match both the `(id)` and `(username)` variants.
+                    obj = obj
+                        .with_required(required.clone())
+                        .with_additional_properties(false);
+                    JsonSchema::Inline(obj)
                 }
-                // additionalProperties: false ensures each variant only accepts its
-                // declared fields, enabling unambiguous variant matching.
-                // For example, without this, if we have an entity with `id` as pk
-                // and unique `username`, `{"id": 1, "username": "alice"}` would
-                // match both the `(id)` and `(username)` variants.
-                obj = obj
-                    .with_required(v.required.clone())
-                    .with_additional_properties(false);
-                JsonSchema::Inline(obj)
+                crate::schema::OneOfVariant::Ref(type_ref) => {
+                    JsonSchema::Ref(JsonSchemaRef::component(type_ref))
+                }
             };
 
             if variants.len() == 1 {
@@ -228,6 +236,10 @@ fn convert_object_type(obj_type: &RpcObjectType) -> JsonSchema {
 
     if !required_fields.is_empty() {
         schema = schema.with_required(required_fields);
+    }
+
+    if obj_type.additional_properties_false {
+        schema = schema.with_additional_properties(false);
     }
 
     JsonSchema::Inline(schema)

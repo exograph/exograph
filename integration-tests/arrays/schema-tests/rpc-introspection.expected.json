@@ -67,22 +67,13 @@
     },
     {
       "name": "get_chesspiece",
-      "description": "Get a single `ChessPiece` given primary key fields",
+      "description": "Get a single `ChessPiece` by primary key.",
       "params": [
         {
           "name": "by",
           "required": true,
           "schema": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "integer"
-              }
-            },
-            "required": [
-              "id"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/ChessPiecePK"
           }
         }
       ],
@@ -92,6 +83,62 @@
           "oneOf": [
             {
               "$ref": "#/components/schemas/ChessPiece"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_chesspieces",
+      "description": "Delete multiple `ChessPiece`s given the provided `where` filter",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for ChessPieces",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ChessPieceFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/ChessPiecePK"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete_chesspiece",
+      "description": "Delete a single `ChessPiece` by primary key.",
+      "params": [
+        {
+          "name": "by",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ChessPiecePK"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/ChessPiecePK"
             },
             {
               "type": "null"
@@ -298,6 +345,18 @@
             "nullable": true
           }
         }
+      },
+      "ChessPiecePK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
       }
     }
   }

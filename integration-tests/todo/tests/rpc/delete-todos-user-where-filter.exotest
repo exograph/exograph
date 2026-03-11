@@ -1,0 +1,67 @@
+# Test collection delete with user-level auth (row-level predicate filtering)
+stages:
+  # User1 deletes completed todos - only their own are affected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_todos",
+          "params": {
+            "where": {"completed": {"eq": true}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.u1Id,
+        "role": "user"
+      }
+    response: |
+      {
+        "result": [{"id": $.u1TodoIds[1]}]
+      }
+
+  # Verify user1's completed todo (U1-T2) is gone
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todo",
+          "params": {
+            "by": {"id": $.u1TodoIds[1]}
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": null
+      }
+
+  # Verify user2's completed todo (U2-T2) still exists (row-level predicate filtered it out)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todo",
+          "params": {
+            "by": {"id": $.u2TodoIds[1]}
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {
+          "id": $.u2TodoIds[1],
+          "title": "U2-T2",
+          "completed": true,
+          "priority": "MEDIUM",
+          "user": {
+            "id": $.u2Id
+          }
+        }
+      }

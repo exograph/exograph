@@ -127,22 +127,13 @@
     },
     {
       "name": "get_concert",
-      "description": "Get a single `Concert` given primary key fields",
+      "description": "Get a single `Concert` by primary key.",
       "params": [
         {
           "name": "by",
           "required": true,
           "schema": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "integer"
-              }
-            },
-            "required": [
-              "id"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/ConcertPK"
           }
         }
       ],
@@ -162,22 +153,13 @@
     },
     {
       "name": "get_venue",
-      "description": "Get a single `Venue` given primary key fields",
+      "description": "Get a single `Venue` by primary key.",
       "params": [
         {
           "name": "by",
           "required": true,
           "schema": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "integer"
-              }
-            },
-            "required": [
-              "id"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/VenuePK"
           }
         }
       ],
@@ -187,6 +169,118 @@
           "oneOf": [
             {
               "$ref": "#/components/schemas/Venue"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_concerts",
+      "description": "Delete multiple `Concert`s given the provided `where` filter",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Concerts",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ConcertFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/ConcertPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete_venues",
+      "description": "Delete multiple `Venue`s given the provided `where` filter",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Venues",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VenueFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/VenuePK"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete_concert",
+      "description": "Delete a single `Concert` by primary key.",
+      "params": [
+        {
+          "name": "by",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ConcertPK"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/ConcertPK"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_venue",
+      "description": "Delete a single `Venue` by primary key.",
+      "params": [
+        {
+          "name": "by",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/VenuePK"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/VenuePK"
             },
             {
               "type": "null"
@@ -645,6 +739,30 @@
           "published",
           "latitude"
         ]
+      },
+      "ConcertPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "VenuePK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
       }
     }
   }

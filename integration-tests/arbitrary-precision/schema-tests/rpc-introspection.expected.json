@@ -67,22 +67,13 @@
     },
     {
       "name": "get_foo",
-      "description": "Get a single `Foo` given primary key fields",
+      "description": "Get a single `Foo` by primary key.",
       "params": [
         {
           "name": "by",
           "required": true,
           "schema": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "integer"
-              }
-            },
-            "required": [
-              "id"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/FooPK"
           }
         }
       ],
@@ -92,6 +83,62 @@
           "oneOf": [
             {
               "$ref": "#/components/schemas/Foo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_foos",
+      "description": "Delete multiple `Foo`s given the provided `where` filter",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Foos",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FooFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/FooPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete_foo",
+      "description": "Delete a single `Foo` by primary key.",
+      "params": [
+        {
+          "name": "by",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/FooPK"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/FooPK"
             },
             {
               "type": "null"
@@ -245,6 +292,18 @@
             "nullable": true
           }
         }
+      },
+      "FooPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
       }
     }
   }

@@ -67,22 +67,13 @@
     },
     {
       "name": "get_todo",
-      "description": "Get a single `Todo` given primary key fields",
+      "description": "Get a single `Todo` by primary key.",
       "params": [
         {
           "name": "by",
           "required": true,
           "schema": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "integer"
-              }
-            },
-            "required": [
-              "id"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/TodoPK"
           }
         }
       ],
@@ -92,6 +83,62 @@
           "oneOf": [
             {
               "$ref": "#/components/schemas/Todo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_todos",
+      "description": "Delete multiple `Todo`s given the provided `where` filter",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Todos",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TodoFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/TodoPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete_todo",
+      "description": "Delete a single `Todo` by primary key.",
+      "params": [
+        {
+          "name": "by",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/TodoPK"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/TodoPK"
             },
             {
               "type": "null"
@@ -281,6 +328,18 @@
             "nullable": true
           }
         }
+      },
+      "TodoPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
       }
     }
   }

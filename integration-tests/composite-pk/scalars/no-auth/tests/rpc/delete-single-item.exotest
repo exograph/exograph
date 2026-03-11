@@ -1,0 +1,46 @@
+# Test delete with composite primary key (no auth)
+stages:
+  # Delete person with composite PK - returns composite PK fields
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_person",
+          "params": {
+            "by": {"firstName": "John", "lastName": "DoeAlbany"}
+          }
+        }
+    response: |
+      {
+        "result": {"firstName": "John", "lastName": "DoeAlbany"}
+      }
+
+  # Verify deletion
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_person",
+          "params": {
+            "by": {"firstName": "John", "lastName": "DoeAlbany"}
+          }
+        }
+    response: |
+      {
+        "result": null
+      }
+
+  # Delete non-existent composite PK - returns null
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_person",
+          "params": {
+            "by": {"firstName": "NonExistent", "lastName": "Person"}
+          }
+        }
+    response: |
+      {
+        "result": null
+      }

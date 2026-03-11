@@ -127,22 +127,13 @@
     },
     {
       "name": "get_numbers",
-      "description": "Get a single `Numbers` given primary key fields",
+      "description": "Get a single `Numbers` by primary key.",
       "params": [
         {
           "name": "by",
           "required": true,
           "schema": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "integer"
-              }
-            },
-            "required": [
-              "id"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/NumbersPK"
           }
         }
       ],
@@ -162,22 +153,13 @@
     },
     {
       "name": "get_othernumbers",
-      "description": "Get a single `OtherNumbers` given primary key fields",
+      "description": "Get a single `OtherNumbers` by primary key.",
       "params": [
         {
           "name": "by",
           "required": true,
           "schema": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "integer"
-              }
-            },
-            "required": [
-              "id"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OtherNumbersPK"
           }
         }
       ],
@@ -187,6 +169,118 @@
           "oneOf": [
             {
               "$ref": "#/components/schemas/OtherNumbers"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_numberss",
+      "description": "Delete multiple `Numbers`s given the provided `where` filter",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Numberss",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/NumbersFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/NumbersPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete_othernumberss",
+      "description": "Delete multiple `OtherNumbers`s given the provided `where` filter",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for OtherNumberss",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OtherNumbersFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/OtherNumbersPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete_numbers",
+      "description": "Delete a single `Numbers` by primary key.",
+      "params": [
+        {
+          "name": "by",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/NumbersPK"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/NumbersPK"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_othernumbers",
+      "description": "Delete a single `OtherNumbers` by primary key.",
+      "params": [
+        {
+          "name": "by",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/OtherNumbersPK"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/OtherNumbersPK"
             },
             {
               "type": "null"
@@ -565,6 +659,30 @@
             "nullable": true
           }
         }
+      },
+      "NumbersPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "OtherNumbersPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
       }
     }
   }

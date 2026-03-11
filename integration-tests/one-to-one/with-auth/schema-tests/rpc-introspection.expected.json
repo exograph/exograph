@@ -127,22 +127,13 @@
     },
     {
       "name": "get_user",
-      "description": "Get a single `User` given primary key fields",
+      "description": "Get a single `User` by primary key.",
       "params": [
         {
           "name": "by",
           "required": true,
           "schema": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "integer"
-              }
-            },
-            "required": [
-              "id"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/UserPK"
           }
         }
       ],
@@ -170,16 +161,7 @@
           "schema": {
             "oneOf": [
               {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "id"
-                ],
-                "additionalProperties": false
+                "$ref": "#/components/schemas/MembershipPK"
               },
               {
                 "type": "object",
@@ -203,6 +185,134 @@
           "oneOf": [
             {
               "$ref": "#/components/schemas/Membership"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_users",
+      "description": "Delete multiple `User`s given the provided `where` filter",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Users",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/UserPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete_memberships",
+      "description": "Delete multiple `Membership`s given the provided `where` filter",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Memberships",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MembershipFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/MembershipPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete_user",
+      "description": "Delete a single `User` by primary key.",
+      "params": [
+        {
+          "name": "by",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserPK"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_membership",
+      "description": "Delete a single `Membership`. Provide one of: (id), (user)",
+      "params": [
+        {
+          "name": "by",
+          "required": true,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MembershipPK"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "user": {
+                    "$ref": "#/components/schemas/UserUniqueFilter"
+                  }
+                },
+                "required": [
+                  "user"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/MembershipPK"
             },
             {
               "type": "null"
@@ -512,6 +622,30 @@
           "kind",
           "user"
         ]
+      },
+      "UserPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "MembershipPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
       },
       "UserUniqueFilter": {
         "type": "object",

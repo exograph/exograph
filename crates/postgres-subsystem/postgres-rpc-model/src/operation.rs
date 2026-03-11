@@ -60,20 +60,76 @@ impl CollectionQueryParameters {
     }
 }
 
+/// Trait for parameter types that have a list of predicate params (used for PK/unique lookup matching).
+pub trait HasPredicateParams {
+    fn predicate_params(&self) -> &[PredicateParameter];
+}
+
 /// Parameters for pk queries (e.g., `get_todo`)
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PkQueryParameters {
-    /// Predicate parameters for each pk field (implicit equality)
     pub predicate_params: Vec<PredicateParameter>,
 }
 
 /// Parameters for unique constraint queries (e.g., `get_user` by username)
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UniqueQueryParameters {
-    /// Predicate parameters for each unique constraint field (implicit equality)
     pub predicate_params: Vec<PredicateParameter>,
 }
+
+/// Parameters for single delete by PK (e.g., `delete_todo`)
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PkDeleteParameters {
+    pub predicate_params: Vec<PredicateParameter>,
+}
+
+/// Parameters for single delete by unique constraint
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UniqueDeleteParameters {
+    pub predicate_params: Vec<PredicateParameter>,
+}
+
+// Implement HasPredicateParams and From<Vec<PredicateParameter>> for all predicate-list parameter types.
+macro_rules! impl_predicate_list {
+    ($($name:ident),+ $(,)?) => { $(
+        impl HasPredicateParams for $name {
+            fn predicate_params(&self) -> &[PredicateParameter] {
+                &self.predicate_params
+            }
+        }
+
+        impl From<Vec<PredicateParameter>> for $name {
+            fn from(predicate_params: Vec<PredicateParameter>) -> Self {
+                Self { predicate_params }
+            }
+        }
+    )+ };
+}
+
+impl_predicate_list!(
+    PkQueryParameters,
+    UniqueQueryParameters,
+    PkDeleteParameters,
+    UniqueDeleteParameters,
+);
 
 pub type CollectionQuery = PostgresOperation<CollectionQueryParameters>;
 pub type PkQuery = PostgresOperation<PkQueryParameters>;
 pub type UniqueQuery = PostgresOperation<UniqueQueryParameters>;
+
+/// Parameters for collection delete (e.g., `delete_todos`)
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CollectionDeleteParameters {
+    pub predicate_param: PredicateParameter,
+}
+
+pub type PkDelete = PostgresOperation<PkDeleteParameters>;
+pub type UniqueDelete = PostgresOperation<UniqueDeleteParameters>;
+pub type CollectionDelete = PostgresOperation<CollectionDeleteParameters>;
+
+/// Delegate to the inner parameters type.
+impl<P: HasPredicateParams> HasPredicateParams for PostgresOperation<P> {
+    fn predicate_params(&self) -> &[PredicateParameter] {
+        self.parameters.predicate_params()
+    }
+}

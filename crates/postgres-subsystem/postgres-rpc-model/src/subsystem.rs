@@ -17,14 +17,18 @@ use core_plugin_shared::system_serializer::{
 use postgres_core_model::subsystem::PostgresCoreSubsystem;
 use serde::{Deserialize, Serialize};
 
-use crate::operation::{CollectionQuery, PkQuery, UniqueQuery};
+use crate::operation::{
+    CollectionDelete, CollectionQuery, PkDelete, PkQuery, UniqueDelete, UniqueQuery,
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PostgresRpcSubsystem {
     pub pk_queries: MappedArena<PkQuery>,
     pub unique_queries: SerializableSlab<UniqueQuery>,
     pub collection_queries: MappedArena<CollectionQuery>,
-    // Future: pub mutations: MappedArena<RpcMutation>,
+    pub pk_deletes: MappedArena<PkDelete>,
+    pub unique_deletes: SerializableSlab<UniqueDelete>,
+    pub collection_deletes: MappedArena<CollectionDelete>,
     #[serde(skip)]
     pub core_subsystem: Arc<PostgresCoreSubsystem>,
 }
@@ -34,6 +38,9 @@ pub struct PostgresRpcSubsystemWithRouter {
     pub pk_queries: MappedArena<PkQuery>,
     pub unique_queries: SerializableSlab<UniqueQuery>,
     pub collection_queries: MappedArena<CollectionQuery>,
+    pub pk_deletes: MappedArena<PkDelete>,
+    pub unique_deletes: SerializableSlab<UniqueDelete>,
+    pub collection_deletes: MappedArena<CollectionDelete>,
     pub core_subsystem: Arc<PostgresCoreSubsystem>,
 }
 
@@ -43,6 +50,9 @@ impl PostgresRpcSubsystemWithRouter {
             pk_queries: subsystem.pk_queries,
             unique_queries: subsystem.unique_queries,
             collection_queries: subsystem.collection_queries,
+            pk_deletes: subsystem.pk_deletes,
+            unique_deletes: subsystem.unique_deletes,
+            collection_deletes: subsystem.collection_deletes,
             core_subsystem: subsystem.core_subsystem.clone(),
         })
     }
