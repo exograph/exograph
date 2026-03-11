@@ -8,7 +8,7 @@ stages:
         {
           "method": "get_log",
           "params": {
-            "by": {"id": 1}
+            "id": 1
           }
         }
     response: |
@@ -23,7 +23,7 @@ stages:
         {
           "method": "get_log",
           "params": {
-            "by": {"id": 3}
+            "id": 3
           }
         }
     response: |
@@ -38,7 +38,7 @@ stages:
         {
           "method": "get_log",
           "params": {
-            "by": {"id": 99999}
+            "id": 99999
           }
         }
     response: |
@@ -46,7 +46,7 @@ stages:
         "result": null
       }
 
-  # Test get_log with missing required by parameter - returns error
+  # Test get_log with missing required id parameter - returns error
   - operation:
       type: rpc
       payload: |
@@ -58,6 +58,6 @@ stages:
       {
         "error": {
           "code": -32602,
-          "message": "Missing required parameter: by"
+          "message": "Missing required parameter: id"
         }
       }

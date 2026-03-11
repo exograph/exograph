@@ -213,7 +213,7 @@ input UserUpdateInput {
 }
 
 type Query {
-  """Get a single `Todo` given primary key fields"""
+  """Get a single `Todo` by primary key"""
   todo(id: Int!): Todo
 
   """
@@ -226,10 +226,10 @@ type Query {
   """
   todosAgg(where: TodoFilter): TodoAgg!
 
-  """Get a single `User` given primary key fields"""
+  """Get a single `User` by primary key"""
   user(id: Int!): User
 
-  """Get a single `User` given unique fields"""
+  """Get a single `User` by email"""
   userByEmail(email: String!): User
 
   """

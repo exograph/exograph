@@ -470,10 +470,10 @@ input UserUpdateInput {
 }
 
 type Query {
-  """Get a single `AdminDoc` given primary key fields"""
+  """Get a single `AdminDoc` by primary key"""
   adminDoc(id: Int!): AdminDoc
 
-  """Get a single `AdminDocWithContains` given primary key fields"""
+  """Get a single `AdminDocWithContains` by primary key"""
   adminDocWithContains(id: Int!): AdminDocWithContains
 
   """
@@ -496,7 +496,7 @@ type Query {
   """
   adminDocsAgg(where: AdminDocFilter): AdminDocAgg!
 
-  """Get a single `AdminNote` given primary key fields"""
+  """Get a single `AdminNote` by primary key"""
   adminNote(id: Int!): AdminNote
 
   """
@@ -509,7 +509,7 @@ type Query {
   """
   adminNotesAgg(where: AdminNoteFilter): AdminNoteAgg!
 
-  """Get a single `AuthenticatedDoc` given primary key fields"""
+  """Get a single `AuthenticatedDoc` by primary key"""
   authenticatedDoc(id: Int!): AuthenticatedDoc
 
   """
@@ -522,7 +522,7 @@ type Query {
   """
   authenticatedDocsAgg(where: AuthenticatedDocFilter): AuthenticatedDocAgg!
 
-  """Get a single `Doc` given primary key fields"""
+  """Get a single `Doc` by primary key"""
   doc(id: Int!): Doc
 
   """
@@ -535,7 +535,7 @@ type Query {
   """
   docsAgg(where: DocFilter): DocAgg!
 
-  """Get a single `ExternalDoc` given primary key fields"""
+  """Get a single `ExternalDoc` by primary key"""
   externalDoc(id: Int!): ExternalDoc
 
   """
@@ -551,10 +551,10 @@ type Query {
   getAuthenticatedSecret: String!
   getUnauthenticatedSecret: String!
 
-  """Get a single `Membership` given primary key fields"""
+  """Get a single `Membership` by primary key"""
   membership(id: Int!): Membership
 
-  """Get a single `Membership` given unique fields"""
+  """Get a single `Membership` by user"""
   membershipByUser(user: UserUniqueFilter!): Membership
 
   """
@@ -567,7 +567,7 @@ type Query {
   """
   membershipsAgg(where: MembershipFilter): MembershipAgg!
 
-  """Get a single `UnauthenticatedDoc` given primary key fields"""
+  """Get a single `UnauthenticatedDoc` by primary key"""
   unauthenticatedDoc(id: Int!): UnauthenticatedDoc
 
   """
@@ -580,7 +580,7 @@ type Query {
   """
   unauthenticatedDocsAgg(where: UnauthenticatedDocFilter): UnauthenticatedDocAgg!
 
-  """Get a single `User` given primary key fields"""
+  """Get a single `User` by primary key"""
   user(id: Int!): User
 
   """

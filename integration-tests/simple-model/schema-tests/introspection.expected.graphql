@@ -84,7 +84,7 @@ input StringFilter {
 }
 
 type Query {
-  """Get a single `Log` given primary key fields"""
+  """Get a single `Log` by primary key"""
   log(id: Int!): Log
 
   """

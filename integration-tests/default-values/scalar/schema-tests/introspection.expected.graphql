@@ -330,7 +330,7 @@ input UuidFilter {
 }
 
 type Query {
-  """Get a single `Event` given primary key fields"""
+  """Get a single `Event` by primary key"""
   event(id: Int!): Event
 
   """
@@ -343,7 +343,7 @@ type Query {
   """
   eventsAgg(where: EventFilter): EventAgg!
 
-  """Get a single `Item` given primary key fields"""
+  """Get a single `Item` by primary key"""
   item(id: Int!): Item
 
   """

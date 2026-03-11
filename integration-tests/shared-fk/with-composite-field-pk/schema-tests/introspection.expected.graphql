@@ -222,7 +222,7 @@ input TenantUpdateInput {
 }
 
 type Query {
-  """Get a single `Member` given primary key fields"""
+  """Get a single `Member` by primary key"""
   member(memberId: String!, memberTenantId: String!): Member
 
   """
@@ -235,7 +235,7 @@ type Query {
   """
   membersAgg(where: MemberFilter): MemberAgg!
 
-  """Get a single `Membership` given primary key fields"""
+  """Get a single `Membership` by primary key"""
   membership(membershipId: String!, tenant: TenantUniqueFilter!): Membership
 
   """
@@ -248,7 +248,7 @@ type Query {
   """
   membershipsAgg(where: MembershipFilter): MembershipAgg!
 
-  """Get a single `Tenant` given primary key fields"""
+  """Get a single `Tenant` by primary key"""
   tenant(tenantId: String!): Tenant
 
   """

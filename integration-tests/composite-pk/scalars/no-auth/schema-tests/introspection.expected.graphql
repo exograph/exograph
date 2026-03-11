@@ -182,7 +182,7 @@ input StringFilter {
 }
 
 type Query {
-  """Get a single `Address` given primary key fields"""
+  """Get a single `Address` by primary key"""
   address(street: String!, city: String!, state: String!, zip: Int!): Address
 
   """
@@ -205,7 +205,7 @@ type Query {
   """
   peopleAgg(where: PersonFilter): PersonAgg!
 
-  """Get a single `Person` given primary key fields"""
+  """Get a single `Person` by primary key"""
   person(firstName: String!, lastName: String!): Person
 }
 

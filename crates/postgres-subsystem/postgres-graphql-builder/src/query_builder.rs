@@ -146,7 +146,7 @@ fn shallow_unique_query(
     name: String,
     entity_type_id: SerializableSlabIndex<EntityType>,
     return_type: &ResolvedCompositeType,
-    pk_query: bool, // false if unique query is for a unique constraint
+    description: String,
 ) -> UniqueQuery {
     UniqueQuery {
         name,
@@ -159,11 +159,7 @@ fn shallow_unique_query(
                 type_name: return_type.name.clone(),
             },
         ))),
-        doc_comments: Some(if pk_query {
-            doc_comments::pk_query_description(&return_type.name)
-        } else {
-            doc_comments::unique_query_description(&return_type.name)
-        }),
+        doc_comments: Some(description),
     }
 }
 
@@ -171,7 +167,12 @@ fn shallow_pk_query(
     entity_type_id: SerializableSlabIndex<EntityType>,
     return_type: &ResolvedCompositeType,
 ) -> UniqueQuery {
-    shallow_unique_query(return_type.pk_query(), entity_type_id, return_type, true)
+    shallow_unique_query(
+        return_type.pk_query(),
+        entity_type_id,
+        return_type,
+        doc_comments::pk_query_description(&return_type.name),
+    )
 }
 
 fn shallow_unique_queries(
@@ -181,12 +182,12 @@ fn shallow_unique_queries(
     resolved_entity_type
         .unique_constraints()
         .keys()
-        .map(|name| {
+        .map(|constraint_name| {
             shallow_unique_query(
-                resolved_entity_type.unique_query(name),
+                resolved_entity_type.unique_query(constraint_name),
                 entity_type_id,
                 resolved_entity_type,
-                false,
+                doc_comments::unique_query_description(&resolved_entity_type.name, constraint_name),
             )
         })
         .collect()

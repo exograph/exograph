@@ -126,7 +126,7 @@
       }
     },
     {
-      "name": "get_internalrsvps",
+      "name": "get_internal_rsvps",
       "description": "Get multiple `InternalRsvp`s given the provided `where` filter, order by, limit, and offset",
       "params": [
         {
@@ -187,33 +187,13 @@
     },
     {
       "name": "get_rsvp",
-      "description": "Get a single `Rsvp`. Provide one of: (id), (event, user)",
+      "description": "Get a single `Rsvp` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/RsvpPK"
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "event": {
-                    "type": "string"
-                  },
-                  "user": {
-                    "$ref": "#/components/schemas/UserUniqueFilter"
-                  }
-                },
-                "required": [
-                  "event",
-                  "user"
-                ],
-                "additionalProperties": false
-              }
-            ]
+            "type": "integer"
           }
         }
       ],
@@ -233,61 +213,13 @@
     },
     {
       "name": "get_user",
-      "description": "Get a single `User`. Provide one of: (id), (primaryEmailId, emailDomain), (secondaryEmailId, emailDomain), (username)",
+      "description": "Get a single `User` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/UserPK"
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "primaryEmailId": {
-                    "type": "string"
-                  },
-                  "emailDomain": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "primaryEmailId",
-                  "emailDomain"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "secondaryEmailId": {
-                    "type": "string"
-                  },
-                  "emailDomain": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "secondaryEmailId",
-                  "emailDomain"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "username": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "username"
-                ],
-                "additionalProperties": false
-              }
-            ]
+            "type": "integer"
           }
         }
       ],
@@ -306,34 +238,172 @@
       }
     },
     {
-      "name": "get_internalrsvp",
-      "description": "Get a single `InternalRsvp`. Provide one of: (id), (event, user)",
+      "name": "get_internal_rsvp",
+      "description": "Get a single `InternalRsvp` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/InternalRsvpPK"
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "event": {
-                    "type": "string"
-                  },
-                  "user": {
-                    "$ref": "#/components/schemas/UserUniqueFilter"
-                  }
-                },
-                "required": [
-                  "event",
-                  "user"
-                ],
-                "additionalProperties": false
-              }
-            ]
+            "type": "integer"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/InternalRsvp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "get_rsvp_by_event_rsvp",
+      "description": "Get a single `Rsvp` by eventRsvp",
+      "params": [
+        {
+          "name": "event",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "user",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUniqueFilter"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/Rsvp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "get_user_by_username",
+      "description": "Get a single `User` by username",
+      "params": [
+        {
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/User"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "get_user_by_secondary_email",
+      "description": "Get a single `User` by secondary email",
+      "params": [
+        {
+          "name": "secondaryEmailId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "emailDomain",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/User"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "get_user_by_primary_email",
+      "description": "Get a single `User` by primary email",
+      "params": [
+        {
+          "name": "primaryEmailId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "emailDomain",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/User"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "get_internal_rsvp_by_event_rsvp",
+      "description": "Get a single `InternalRsvp` by eventRsvp",
+      "params": [
+        {
+          "name": "event",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "user",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUniqueFilter"
           }
         }
       ],
@@ -412,7 +482,7 @@
       }
     },
     {
-      "name": "delete_internalrsvps",
+      "name": "delete_internal_rsvps",
       "description": "Delete multiple `InternalRsvp`s given the provided `where` filter",
       "params": [
         {
@@ -443,33 +513,13 @@
     },
     {
       "name": "delete_rsvp",
-      "description": "Delete a single `Rsvp`. Provide one of: (id), (event, user)",
+      "description": "Delete a single `Rsvp` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/RsvpPK"
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "event": {
-                    "type": "string"
-                  },
-                  "user": {
-                    "$ref": "#/components/schemas/UserUniqueFilter"
-                  }
-                },
-                "required": [
-                  "event",
-                  "user"
-                ],
-                "additionalProperties": false
-              }
-            ]
+            "type": "integer"
           }
         }
       ],
@@ -489,61 +539,13 @@
     },
     {
       "name": "delete_user",
-      "description": "Delete a single `User`. Provide one of: (id), (primaryEmailId, emailDomain), (secondaryEmailId, emailDomain), (username)",
+      "description": "Delete a single `User` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/UserPK"
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "primaryEmailId": {
-                    "type": "string"
-                  },
-                  "emailDomain": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "primaryEmailId",
-                  "emailDomain"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "secondaryEmailId": {
-                    "type": "string"
-                  },
-                  "emailDomain": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "secondaryEmailId",
-                  "emailDomain"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "username": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "username"
-                ],
-                "additionalProperties": false
-              }
-            ]
+            "type": "integer"
           }
         }
       ],
@@ -562,34 +564,172 @@
       }
     },
     {
-      "name": "delete_internalrsvp",
-      "description": "Delete a single `InternalRsvp`. Provide one of: (id), (event, user)",
+      "name": "delete_internal_rsvp",
+      "description": "Delete a single `InternalRsvp` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/InternalRsvpPK"
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "event": {
-                    "type": "string"
-                  },
-                  "user": {
-                    "$ref": "#/components/schemas/UserUniqueFilter"
-                  }
-                },
-                "required": [
-                  "event",
-                  "user"
-                ],
-                "additionalProperties": false
-              }
-            ]
+            "type": "integer"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/InternalRsvpPK"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_rsvp_by_event_rsvp",
+      "description": "Delete a single `Rsvp` by eventRsvp",
+      "params": [
+        {
+          "name": "event",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "user",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUniqueFilter"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/RsvpPK"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_user_by_username",
+      "description": "Delete a single `User` by username",
+      "params": [
+        {
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_user_by_primary_email",
+      "description": "Delete a single `User` by primary email",
+      "params": [
+        {
+          "name": "primaryEmailId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "emailDomain",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_user_by_secondary_email",
+      "description": "Delete a single `User` by secondary email",
+      "params": [
+        {
+          "name": "secondaryEmailId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "emailDomain",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_internal_rsvp_by_event_rsvp",
+      "description": "Delete a single `InternalRsvp` by eventRsvp",
+      "params": [
+        {
+          "name": "event",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "user",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUniqueFilter"
           }
         }
       ],
@@ -1128,6 +1268,15 @@
           }
         }
       },
+      "UserUniqueFilter": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      },
       "RsvpPK": {
         "type": "object",
         "properties": {
@@ -1139,15 +1288,6 @@
           "id"
         ],
         "additionalProperties": false
-      },
-      "UserUniqueFilter": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "nullable": true
-          }
-        }
       },
       "UserPK": {
         "type": "object",

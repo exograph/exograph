@@ -255,10 +255,10 @@ input UserUpdateInput {
 }
 
 type Query {
-  """Get a single `InternalRsvp` given primary key fields"""
+  """Get a single `InternalRsvp` by primary key"""
   internalRsvp(id: Int!): InternalRsvp
 
-  """Get a single `InternalRsvp` given unique fields"""
+  """Get a single `InternalRsvp` by eventRsvp"""
   internalRsvpByEventRsvp(event: String!, user: UserUniqueFilter!): InternalRsvp
 
   """
@@ -271,10 +271,10 @@ type Query {
   """
   internalRsvpsAgg(where: InternalRsvpFilter): InternalRsvpAgg!
 
-  """Get a single `Rsvp` given primary key fields"""
+  """Get a single `Rsvp` by primary key"""
   rsvp(id: Int!): Rsvp
 
-  """Get a single `Rsvp` given unique fields"""
+  """Get a single `Rsvp` by eventRsvp"""
   rsvpByEventRsvp(event: String!, user: UserUniqueFilter!): Rsvp
 
   """
@@ -287,16 +287,16 @@ type Query {
   """
   rsvpsAgg(where: RsvpFilter): RsvpAgg!
 
-  """Get a single `User` given primary key fields"""
+  """Get a single `User` by primary key"""
   user(id: Int!): User
 
-  """Get a single `User` given unique fields"""
+  """Get a single `User` by primary email"""
   userByPrimaryEmail(primaryEmailId: String!, emailDomain: String!): User
 
-  """Get a single `User` given unique fields"""
+  """Get a single `User` by secondary email"""
   userBySecondaryEmail(secondaryEmailId: String!, emailDomain: String!): User
 
-  """Get a single `User` given unique fields"""
+  """Get a single `User` by username"""
   userByUsername(username: String!): User
 
   """

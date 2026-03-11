@@ -85,7 +85,7 @@ input TodoUpdateInput {
 type Query {
   serve(intArg: Int!, stringArg: String!): OperationParams
 
-  """Get a single `Todo` given primary key fields"""
+  """Get a single `Todo` by primary key"""
   todo(id: Int!): Todo
 
   """

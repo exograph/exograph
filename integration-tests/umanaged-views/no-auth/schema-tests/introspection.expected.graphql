@@ -161,10 +161,10 @@ input StringFilter {
 }
 
 type Query {
-  """Get a single `Product` given primary key fields"""
+  """Get a single `Product` by primary key"""
   product(id: Int!): Product
 
-  """Get a single `ProductProfit` given primary key fields"""
+  """Get a single `ProductProfit` by primary key"""
   productProfit(id: Int!): ProductProfit
 
   """

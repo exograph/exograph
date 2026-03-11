@@ -149,7 +149,7 @@ input UserUpdateInput {
 }
 
 type Query {
-  """Get a single `Document` given primary key fields"""
+  """Get a single `Document` by primary key"""
   document(id: Int!): Document
 
   """
@@ -162,7 +162,7 @@ type Query {
   """
   documentsAgg(where: DocumentFilter): DocumentAgg!
 
-  """Get a single `User` given primary key fields"""
+  """Get a single `User` by primary key"""
   user(id: Int!): User
 
   """

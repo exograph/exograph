@@ -133,7 +133,7 @@ input UuidFilter {
 }
 
 type Query {
-  """Get a single `CaptchaChallengeRecord` given primary key fields"""
+  """Get a single `CaptchaChallengeRecord` by primary key"""
   captchaChallengeRecord(uuid: Uuid!): CaptchaChallengeRecord
 
   """
@@ -146,7 +146,7 @@ type Query {
   """
   captchaChallengeRecordsAgg(where: CaptchaChallengeRecordFilter): CaptchaChallengeRecordAgg!
 
-  """Get a single `Comment` given primary key fields"""
+  """Get a single `Comment` by primary key"""
   comment(id: Int!): Comment
 
   """

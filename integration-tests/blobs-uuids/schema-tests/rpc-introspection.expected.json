@@ -67,13 +67,14 @@
     },
     {
       "name": "get_image",
-      "description": "Get a single `Image` by primary key.",
+      "description": "Get a single `Image` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/ImagePK"
+            "type": "string",
+            "format": "uuid"
           }
         }
       ],
@@ -123,13 +124,14 @@
     },
     {
       "name": "delete_image",
-      "description": "Delete a single `Image` by primary key.",
+      "description": "Delete a single `Image` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/ImagePK"
+            "type": "string",
+            "format": "uuid"
           }
         }
       ],

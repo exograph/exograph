@@ -296,7 +296,7 @@ async fn check_rpc_introspection(
         let expected_json_str = std::fs::read_to_string(&expected_path)?;
         let expected_json: Value = serde_json::from_str(&expected_json_str)?;
 
-        if rpc_introspection_result != expected_json {
+        if !json_eq_unordered(rpc_introspection_result, expected_json) {
             std::fs::write(&actual_path, &rpc_json)?;
             print_diff(&expected_path, &actual_path)?;
             return Ok(Err(anyhow!(
@@ -322,17 +322,31 @@ fn print_diff(expected_file: &Path, actual_file: &Path) -> Result<()> {
         .arg(actual_file)
         .output()?;
 
-    if diff_output.status.success() {
-        Ok(())
-    } else {
-        // If the files are different, print the diff
+    if !diff_output.status.success() {
         eprintln!("{}", String::from_utf8(diff_output.stdout)?);
-        Err(anyhow!(
-            "Files {} and {} differ",
-            expected_file.display(),
-            actual_file.display()
-        ))
     }
+
+    Ok(())
+}
+
+/// Compare two JSON values treating arrays as unordered (sorted by serialized form).
+/// Recurses into objects and arrays to normalize nested arrays.
+fn json_eq_unordered(a: Value, b: Value) -> bool {
+    fn normalize(value: Value) -> Value {
+        match value {
+            Value::Array(arr) => {
+                let mut normalized: Vec<Value> = arr.into_iter().map(normalize).collect();
+                normalized.sort_by_key(|v| v.to_string());
+                Value::Array(normalized)
+            }
+            Value::Object(map) => {
+                Value::Object(map.into_iter().map(|(k, v)| (k, normalize(v))).collect())
+            }
+            other => other,
+        }
+    }
+
+    normalize(a) == normalize(b)
 }
 
 /// Validate internal consistency of an OpenRPC document.

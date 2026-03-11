@@ -7,7 +7,7 @@ stages:
         {
           "method": "delete_person",
           "params": {
-            "by": {"firstName": "John", "lastName": "DoeAlbany"}
+            "firstName": "John", "lastName": "DoeAlbany"
           }
         }
     auth: |
@@ -26,7 +26,7 @@ stages:
         {
           "method": "get_person",
           "params": {
-            "by": {"firstName": "John", "lastName": "DoeAlbany"}
+            "firstName": "John", "lastName": "DoeAlbany"
           }
         }
     auth: |

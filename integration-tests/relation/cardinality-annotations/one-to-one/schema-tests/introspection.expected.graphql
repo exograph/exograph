@@ -126,13 +126,13 @@ input UserUpdateInput {
 }
 
 type Query {
-  """Get a single `User` given primary key fields"""
+  """Get a single `User` by primary key"""
   user(id: Int!): User
 
-  """Get a single `UserProfile` given primary key fields"""
+  """Get a single `UserProfile` by primary key"""
   userProfile(user: UserUniqueFilter!): UserProfile
 
-  """Get a single `UserProfile` given unique fields"""
+  """Get a single `UserProfile` by user"""
   userProfileByUser(user: UserUniqueFilter!): UserProfile
 
   """

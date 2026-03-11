@@ -84,7 +84,7 @@ input UserUpdateInput {
 }
 
 type Query {
-  """Get a single `User` given primary key fields"""
+  """Get a single `User` by primary key"""
   user(id: Int!): User
 
   """

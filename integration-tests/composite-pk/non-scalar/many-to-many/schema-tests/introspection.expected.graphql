@@ -306,10 +306,10 @@ input UserUpdateInput {
 }
 
 type Query {
-  """Get a single `Chat` given primary key fields"""
+  """Get a single `Chat` by primary key"""
   chat(id: Int!): Chat
 
-  """Get a single `ChatParticipation` given primary key fields"""
+  """Get a single `ChatParticipation` by primary key"""
   chatParticipation(chat: ChatUniqueFilter!, user: UserUniqueFilter!): ChatParticipation
 
   """
@@ -332,7 +332,7 @@ type Query {
   """
   chatsAgg(where: ChatFilter): ChatAgg!
 
-  """Get a single `Mood` given primary key fields"""
+  """Get a single `Mood` by primary key"""
   mood(id: Int!): Mood
 
   """
@@ -345,7 +345,7 @@ type Query {
   """
   moodsAgg(where: MoodFilter): MoodAgg!
 
-  """Get a single `User` given primary key fields"""
+  """Get a single `User` by primary key"""
   user(id: Int!): User
 
   """

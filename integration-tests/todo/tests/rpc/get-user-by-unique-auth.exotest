@@ -6,9 +6,9 @@ stages:
       type: rpc
       payload: |
         {
-          "method": "get_user",
+          "method": "get_user_by_email",
           "params": {
-            "by": {"email": "one@example.com"}
+            "email": "one@example.com"
           }
         }
     auth: |
@@ -25,9 +25,9 @@ stages:
       type: rpc
       payload: |
         {
-          "method": "get_user",
+          "method": "get_user_by_email",
           "params": {
-            "by": {"email": "one@example.com"}
+            "email": "one@example.com"
           }
         }
     auth: |
@@ -45,9 +45,9 @@ stages:
       type: rpc
       payload: |
         {
-          "method": "get_user",
+          "method": "get_user_by_email",
           "params": {
-            "by": {"email": "two@example.com"}
+            "email": "two@example.com"
           }
         }
     auth: |
@@ -64,9 +64,9 @@ stages:
       type: rpc
       payload: |
         {
-          "method": "get_user",
+          "method": "get_user_by_email",
           "params": {
-            "by": {"email": "two@example.com"}
+            "email": "two@example.com"
           }
         }
     auth: |

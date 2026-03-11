@@ -140,7 +140,7 @@ input TodoUpdateInput {
 }
 
 type Query {
-  """Get a single `Audit` given primary key fields"""
+  """Get a single `Audit` by primary key"""
   audit(id: Int!): Audit
 
   """
@@ -153,7 +153,7 @@ type Query {
   """
   auditsAgg(where: AuditFilter): AuditAgg!
 
-  """Get a single `Todo` given primary key fields"""
+  """Get a single `Todo` by primary key"""
   todo(id: Int!): Todo
 
   """

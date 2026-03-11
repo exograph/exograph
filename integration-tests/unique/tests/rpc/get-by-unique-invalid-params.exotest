@@ -1,42 +1,61 @@
 # Test get_<entity> with invalid param combinations via RPC
 stages:
-  # Unknown parameter inside by
+  # Unknown parameter
   - operation:
       type: rpc
       payload: |
         {
           "method": "get_user",
           "params": {
-            "by": {"nonExistent": "value"}
+            "nonExistent": "value"
           }
         }
     response: |
       {
         "error": {
           "code": -32602,
-          "message": "Provided parameters [nonExistent] do not match any lookup group. Available groups: pk(id), unique(emailDomain, primaryEmailId), unique(emailDomain, secondaryEmailId), unique(username)"
+          "message": "Missing required parameter: id"
         }
       }
 
-  # Params that don't match any lookup group (partial unique constraint)
+  # Unknown parameter with extraneous param present
   - operation:
       type: rpc
       payload: |
         {
           "method": "get_user",
           "params": {
-            "by": {"primaryEmailId": "alice"}
+            "id": 1,
+            "nonExistent": "value"
           }
         }
     response: |
       {
         "error": {
           "code": -32602,
-          "message": "Provided parameters [primaryEmailId] do not match any lookup group. Available groups: pk(id), unique(emailDomain, primaryEmailId), unique(emailDomain, secondaryEmailId), unique(username)"
+          "message": "Unknown parameter: nonExistent"
         }
       }
 
-  # No params at all (missing by)
+  # Params that don't match PK params (primaryEmailId is not a valid param for get_user)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_user",
+          "params": {
+            "primaryEmailId": "alice"
+          }
+        }
+    response: |
+      {
+        "error": {
+          "code": -32602,
+          "message": "Missing required parameter: id"
+        }
+      }
+
+  # No params at all (missing id)
   - operation:
       type: rpc
       payload: |
@@ -48,6 +67,6 @@ stages:
       {
         "error": {
           "code": -32602,
-          "message": "Missing required parameter: by"
+          "message": "Missing required parameter: id"
         }
       }

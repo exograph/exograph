@@ -200,7 +200,7 @@ input VectorOrdering {
 }
 
 type Query {
-  """Get a single `Chunk` given primary key fields"""
+  """Get a single `Chunk` by primary key"""
   chunk(id: Int!): Chunk
 
   """
@@ -213,7 +213,7 @@ type Query {
   """
   chunksAgg(where: ChunkFilter): ChunkAgg!
 
-  """Get a single `Todo` given primary key fields"""
+  """Get a single `Todo` by primary key"""
   todo(id: Int!): Todo
 
   """

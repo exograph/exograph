@@ -217,7 +217,7 @@ input UuidFilter {
 }
 
 type Query {
-  """Get a single `Project` given primary key fields"""
+  """Get a single `Project` by primary key"""
   project(id: Uuid!): Project
 
   """
@@ -230,7 +230,7 @@ type Query {
   """
   projectsAgg(where: ProjectFilter): ProjectAgg!
 
-  """Get a single `Question` given primary key fields"""
+  """Get a single `Question` by primary key"""
   question(id: Uuid!): Question
 
   """
@@ -243,7 +243,7 @@ type Query {
   """
   questionsAgg(where: QuestionFilter): QuestionAgg!
 
-  """Get a single `User` given primary key fields"""
+  """Get a single `User` by primary key"""
   user(id: Uuid!): User
 
   """

@@ -7,7 +7,7 @@ stages:
         {
           "method": "delete_person",
           "params": {
-            "by": {"firstName": "John", "lastName": "DoeAlbany"}
+            "firstName": "John", "lastName": "DoeAlbany"
           }
         }
     response: |
@@ -22,7 +22,7 @@ stages:
         {
           "method": "get_person",
           "params": {
-            "by": {"firstName": "John", "lastName": "DoeAlbany"}
+            "firstName": "John", "lastName": "DoeAlbany"
           }
         }
     response: |
@@ -37,7 +37,7 @@ stages:
         {
           "method": "delete_person",
           "params": {
-            "by": {"firstName": "NonExistent", "lastName": "Person"}
+            "firstName": "NonExistent", "lastName": "Person"
           }
         }
     response: |

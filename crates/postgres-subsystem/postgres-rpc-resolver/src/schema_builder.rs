@@ -24,13 +24,13 @@ use postgres_core_model::predicate::{PredicateParameter, PredicateParameterTypeK
 use postgres_core_model::relation::PostgresRelation;
 use postgres_core_model::types::{EntityType, PostgresFieldType, PostgresPrimitiveTypeKind};
 use postgres_rpc_model::operation::{
-    CollectionDelete, CollectionQuery, CollectionQueryParam, HasPredicateParams, PostgresOperation,
+    CollectionDelete, CollectionQuery, CollectionQueryParam, HasPredicateParams,
 };
 use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
 use rpc_introspection::schema::{
-    OneOfVariant, RpcMethod, RpcObjectField, RpcObjectType, RpcParameter, RpcSchema, RpcTypeSchema,
+    RpcMethod, RpcObjectField, RpcObjectType, RpcParameter, RpcSchema, RpcTypeSchema,
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 /// Trait for converting a query into an `RpcMethod`.
 trait BuildRpcMethod {
@@ -62,16 +62,29 @@ pub fn build_rpc_schema(subsystem: &PostgresRpcSubsystemWithRouter) -> RpcSchema
         schema.add_method(method);
     }
 
-    // Build merged get_<entity> methods from PK + unique queries
-    build_merged_by_methods(
-        &subsystem.pk_queries,
-        &subsystem.unique_queries,
-        ReturnTypeKind::Full,
-        "Get",
-        subsystem,
-        &mut schema,
-        &mut added_types,
-    );
+    // Build PK query methods (get_<entity>)
+    for (_, pk_query) in subsystem.pk_queries.iter() {
+        let method = build_predicate_params_method(
+            pk_query,
+            ReturnTypeKind::Full,
+            subsystem,
+            &mut schema,
+            &mut added_types,
+        );
+        schema.add_method(method);
+    }
+
+    // Build unique query methods (get_<entity>_by_<constraint>)
+    for (_, unique_query) in subsystem.unique_queries.iter() {
+        let method = build_predicate_params_method(
+            unique_query,
+            ReturnTypeKind::Full,
+            subsystem,
+            &mut schema,
+            &mut added_types,
+        );
+        schema.add_method(method);
+    }
 
     // Build collection delete methods (delete_<entities>)
     for (_, delete) in subsystem.collection_deletes.iter() {
@@ -79,228 +92,87 @@ pub fn build_rpc_schema(subsystem: &PostgresRpcSubsystemWithRouter) -> RpcSchema
         schema.add_method(method);
     }
 
-    // Build merged delete_<entity> methods from PK + unique deletes
-    build_merged_by_methods(
-        &subsystem.pk_deletes,
-        &subsystem.unique_deletes,
-        ReturnTypeKind::PkOnly,
-        "Delete",
-        subsystem,
-        &mut schema,
-        &mut added_types,
-    );
+    // Build PK delete methods (delete_<entity>)
+    for (_, pk_delete) in subsystem.pk_deletes.iter() {
+        let method = build_predicate_params_method(
+            pk_delete,
+            ReturnTypeKind::PkOnly,
+            subsystem,
+            &mut schema,
+            &mut added_types,
+        );
+        schema.add_method(method);
+    }
+
+    // Build unique delete methods (delete_<entity>_by_<constraint>)
+    for (_, unique_delete) in subsystem.unique_deletes.iter() {
+        let method = build_predicate_params_method(
+            unique_delete,
+            ReturnTypeKind::PkOnly,
+            subsystem,
+            &mut schema,
+            &mut added_types,
+        );
+        schema.add_method(method);
+    }
 
     schema
 }
 
-/// Build merged methods that use a `by` param with oneOf schema.
-/// Works for both get (PkQuery/UniqueQuery) and delete (PkDelete/UniqueDelete).
-fn build_merged_by_methods<PK, UQ>(
-    pk_ops: &core_model::mapped_arena::MappedArena<PK>,
-    unique_ops: &core_model::mapped_arena::SerializableSlab<UQ>,
+/// Build an RPC method from an operation with predicate params (PK or unique query/delete).
+/// Each method gets flat parameters — no `by` wrapper.
+fn build_predicate_params_method<T>(
+    op: &T,
     return_type_kind: ReturnTypeKind,
-    verb: &str,
-    subsystem: &PostgresRpcSubsystemWithRouter,
-    schema: &mut RpcSchema,
-    added_types: &mut HashSet<String>,
-) where
-    PK: HasPredicateParams + HasNameAndReturnType,
-    UQ: HasPredicateParams + HasNameAndReturnType,
-{
-    // Group unique ops by their user-facing method name
-    let mut unique_by_method: HashMap<&str, Vec<&UQ>> = HashMap::new();
-    for (_, op) in unique_ops.iter() {
-        unique_by_method.entry(op.name()).or_default().push(op);
-    }
-
-    let mut added_methods: HashSet<String> = HashSet::new();
-
-    // Build methods for entities that have PK ops
-    for (_, pk_op) in pk_ops.iter() {
-        let unique = unique_by_method.remove(pk_op.name()).unwrap_or_default();
-        let method = build_merged_by_method(
-            Some(pk_op),
-            &unique,
-            return_type_kind,
-            verb,
-            subsystem,
-            schema,
-            added_types,
-        );
-        schema.add_method(method);
-        added_methods.insert(pk_op.name().to_string());
-    }
-
-    // Handle remaining unique ops (entities without PK ops)
-    let mut remaining: Vec<_> = unique_by_method.into_iter().collect();
-    remaining.sort_by_key(|(name, _)| *name);
-    for (method_name, unique) in remaining {
-        if !added_methods.contains(method_name) {
-            let method = build_merged_by_method::<PK, UQ>(
-                None,
-                &unique,
-                return_type_kind,
-                verb,
-                subsystem,
-                schema,
-                added_types,
-            );
-            schema.add_method(method);
-        }
-    }
-}
-
-/// Trait to access name and return_type from PostgresOperation<P>.
-trait HasNameAndReturnType {
-    fn name(&self) -> &str;
-    fn return_type(&self) -> &OperationReturnType<EntityType>;
-}
-
-impl<P> HasNameAndReturnType for PostgresOperation<P> {
-    fn name(&self) -> &str {
-        &self.name
-    }
-    fn return_type(&self) -> &OperationReturnType<EntityType> {
-        &self.return_type
-    }
-}
-
-/// Build a merged RPC method that combines PK and unique constraint params into a `by` param.
-/// Generic over query/delete types.
-fn build_merged_by_method<PK, UQ>(
-    pk_op: Option<&PK>,
-    unique_ops: &[&UQ],
-    return_type_kind: ReturnTypeKind,
-    verb: &str,
     subsystem: &PostgresRpcSubsystemWithRouter,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) -> RpcMethod
 where
-    PK: HasPredicateParams + HasNameAndReturnType,
-    UQ: HasPredicateParams + HasNameAndReturnType,
+    T: HasPredicateParams + HasMethodNameAndReturnType,
 {
-    let (method_name, return_type) = if let Some(pk) = pk_op {
-        (pk.name(), pk.return_type())
-    } else {
-        let uq = unique_ops[0];
-        (uq.name(), uq.return_type())
-    };
-
     let result_schema = build_return_type_schema_with(
-        return_type,
+        op.return_type(),
         return_type_kind,
         subsystem,
         schema,
         added_types,
     );
-    let entity_name = &return_type.typ(&subsystem.core_subsystem.entity_types).name;
 
-    // Sort unique ops by param names for deterministic output
-    let mut sorted_unique = unique_ops.to_vec();
-    sorted_unique.sort_by_key(|op| {
-        op.predicate_params()
-            .iter()
-            .map(|p| p.name.clone())
-            .collect::<Vec<_>>()
-    });
+    let mut method = RpcMethod::new(op.method_name().to_string(), result_schema);
 
-    // Build description listing all valid lookup groups
-    let mut groups: Vec<Vec<String>> = Vec::new();
-    if let Some(pk) = pk_op {
-        groups.push(
-            pk.predicate_params()
-                .iter()
-                .map(|p| p.name.clone())
-                .collect(),
-        );
-    }
-    for uq in &sorted_unique {
-        groups.push(
-            uq.predicate_params()
-                .iter()
-                .map(|p| p.name.clone())
-                .collect(),
-        );
+    if let Some(doc) = op.doc_comments() {
+        method = method.with_description(doc);
     }
 
-    let description = if groups.len() <= 1 && pk_op.is_some() {
-        format!("{verb} a single `{entity_name}` by primary key.")
-    } else if groups.len() <= 1 {
-        format!("{verb} a single `{entity_name}` by unique constraint.")
-    } else {
-        let groups_str = groups
-            .iter()
-            .map(|g| format!("({})", g.join(", ")))
-            .collect::<Vec<_>>()
-            .join(", ");
-        format!("{verb} a single `{entity_name}`. Provide one of: {groups_str}")
-    };
+    for param in op.predicate_params() {
+        let param_schema = param.build_rpc_type_schema(subsystem, schema, added_types);
+        let rpc_param = RpcParameter::new(&param.name, param_schema);
+        method = method.with_param(rpc_param);
+    }
 
-    // Build oneOf variants for the `by` param
-    let variants = build_by_variants(
-        pk_op.is_some(),
-        &sorted_unique
-            .iter()
-            .map(|op| op.predicate_params())
-            .collect::<Vec<_>>(),
-        entity_name,
-        subsystem,
-        schema,
-        added_types,
-    );
-
-    let by_schema = RpcTypeSchema::one_of(variants);
-    let by_param = RpcParameter::new("by", by_schema);
-
-    RpcMethod::new(method_name.to_string(), result_schema)
-        .with_description(&description)
-        .with_param(by_param)
+    method
 }
 
-/// Build oneOf variants for a `by` parameter, using a `$ref` to the PK type for the PK variant
-/// and inline properties for unique constraint variants.
-fn build_by_variants(
-    has_pk: bool,
-    unique_params_list: &[&[PredicateParameter]],
-    entity_name: &str,
-    subsystem: &PostgresRpcSubsystemWithRouter,
-    schema: &mut RpcSchema,
-    added_types: &mut HashSet<String>,
-) -> Vec<OneOfVariant> {
-    let mut variants: Vec<OneOfVariant> = Vec::new();
+/// Trait to access name, return_type, and doc_comments from operation types.
+trait HasMethodNameAndReturnType {
+    fn method_name(&self) -> &str;
+    fn return_type(&self) -> &OperationReturnType<EntityType>;
+    fn doc_comments(&self) -> Option<&str>;
+}
 
-    // PK variant — reference the *PK type
-    if has_pk {
-        let entity_type = subsystem
-            .core_subsystem
-            .entity_types
-            .iter()
-            .find(|(_, et)| et.name == entity_name)
-            .map(|(_, et)| et)
-            .unwrap();
-        ensure_pk_type_added(entity_type, subsystem, schema, added_types);
-
-        variants.push(OneOfVariant::Ref(pk_type_name(entity_name)));
+impl<P> HasMethodNameAndReturnType for postgres_rpc_model::operation::PostgresOperation<P> {
+    fn method_name(&self) -> &str {
+        &self.name
     }
 
-    // Unique constraint variants — inline
-    for unique_params in unique_params_list {
-        let properties: Vec<(String, RpcTypeSchema)> = unique_params
-            .iter()
-            .map(|p| {
-                let param_schema = p.build_rpc_type_schema(subsystem, schema, added_types);
-                (p.name.clone(), param_schema)
-            })
-            .collect();
-        let required: Vec<String> = properties.iter().map(|(n, _)| n.clone()).collect();
-        variants.push(OneOfVariant::Inline {
-            properties,
-            required,
-        });
+    fn return_type(&self) -> &OperationReturnType<EntityType> {
+        &self.return_type
     }
 
-    variants
+    fn doc_comments(&self) -> Option<&str> {
+        self.doc_comments.as_deref()
+    }
 }
 
 impl BuildRpcMethod for CollectionDelete {

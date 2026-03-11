@@ -150,7 +150,7 @@ input OtherNumbersUpdateInput {
 }
 
 type Query {
-  """Get a single `Numbers` given primary key fields"""
+  """Get a single `Numbers` by primary key"""
   numbers(id: Int!): Numbers
 
   """
@@ -163,7 +163,7 @@ type Query {
   """
   numberssAgg(where: NumbersFilter): NumbersAgg!
 
-  """Get a single `OtherNumbers` given primary key fields"""
+  """Get a single `OtherNumbers` by primary key"""
   otherNumbers(id: Int!): OtherNumbers
 
   """

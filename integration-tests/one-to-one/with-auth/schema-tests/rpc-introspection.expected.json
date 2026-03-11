@@ -127,13 +127,13 @@
     },
     {
       "name": "get_user",
-      "description": "Get a single `User` by primary key.",
+      "description": "Get a single `User` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/UserPK"
+            "type": "integer"
           }
         }
       ],
@@ -153,29 +153,39 @@
     },
     {
       "name": "get_membership",
-      "description": "Get a single `Membership`. Provide one of: (id), (user)",
+      "description": "Get a single `Membership` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/MembershipPK"
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "user": {
-                    "$ref": "#/components/schemas/UserUniqueFilter"
-                  }
-                },
-                "required": [
-                  "user"
-                ],
-                "additionalProperties": false
-              }
-            ]
+            "type": "integer"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/Membership"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "get_membership_by_user",
+      "description": "Get a single `Membership` by user",
+      "params": [
+        {
+          "name": "user",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUniqueFilter"
           }
         }
       ],
@@ -255,13 +265,13 @@
     },
     {
       "name": "delete_user",
-      "description": "Delete a single `User` by primary key.",
+      "description": "Delete a single `User` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/UserPK"
+            "type": "integer"
           }
         }
       ],
@@ -281,29 +291,39 @@
     },
     {
       "name": "delete_membership",
-      "description": "Delete a single `Membership`. Provide one of: (id), (user)",
+      "description": "Delete a single `Membership` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/MembershipPK"
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "user": {
-                    "$ref": "#/components/schemas/UserUniqueFilter"
-                  }
-                },
-                "required": [
-                  "user"
-                ],
-                "additionalProperties": false
-              }
-            ]
+            "type": "integer"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/MembershipPK"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_membership_by_user",
+      "description": "Delete a single `Membership` by user",
+      "params": [
+        {
+          "name": "user",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUniqueFilter"
           }
         }
       ],
@@ -623,6 +643,15 @@
           "user"
         ]
       },
+      "UserUniqueFilter": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      },
       "UserPK": {
         "type": "object",
         "properties": {
@@ -646,15 +675,6 @@
           "id"
         ],
         "additionalProperties": false
-      },
-      "UserUniqueFilter": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "nullable": true
-          }
-        }
       }
     }
   }

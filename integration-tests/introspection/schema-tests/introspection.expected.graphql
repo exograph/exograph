@@ -95,7 +95,7 @@ type Query {
   """
   peopleAgg(where: PersonFilter): PersonAgg!
 
-  """Get a single `Person` given primary key fields"""
+  """Get a single `Person` by primary key"""
   person(id: Int!): Person
 }
 

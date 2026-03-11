@@ -149,7 +149,7 @@ input UserUpdateInput {
 }
 
 type Query {
-  """Get a single `Issue` given primary key fields"""
+  """Get a single `Issue` by primary key"""
   issue(id: Int!): Issue
 
   """
@@ -162,7 +162,7 @@ type Query {
   """
   issuesAgg(where: IssueFilter): IssueAgg!
 
-  """Get a single `User` given primary key fields"""
+  """Get a single `User` by primary key"""
   user(id: Int!): User
 
   """

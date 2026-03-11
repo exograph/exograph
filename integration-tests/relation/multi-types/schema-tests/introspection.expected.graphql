@@ -159,7 +159,7 @@ input VenueUpdateInput {
 }
 
 type Query {
-  """Get a single `Concert` given primary key fields"""
+  """Get a single `Concert` by primary key"""
   concert(id: Int!): Concert
 
   """
@@ -172,7 +172,7 @@ type Query {
   """
   concertsAgg(where: ConcertFilter): ConcertAgg!
 
-  """Get a single `Venue` given primary key fields"""
+  """Get a single `Venue` by primary key"""
   venue(id: Int!): Venue
 
   """
