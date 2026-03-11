@@ -14,14 +14,7 @@
           "description": "Filter conditions for Numberss",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/NumbersFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/NumbersFilter"
           }
         },
         {
@@ -32,8 +25,7 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/NumbersOrdering"
-            },
-            "nullable": true
+            }
           }
         },
         {
@@ -41,8 +33,7 @@
           "description": "Maximum number of results to return",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         },
         {
@@ -50,8 +41,7 @@
           "description": "Number of results to skip",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         }
       ],
@@ -74,14 +64,7 @@
           "description": "Filter conditions for OtherNumberss",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/OtherNumbersFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/OtherNumbersFilter"
           }
         },
         {
@@ -92,8 +75,7 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/OtherNumbersOrdering"
-            },
-            "nullable": true
+            }
           }
         },
         {
@@ -101,8 +83,7 @@
           "description": "Maximum number of results to return",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         },
         {
@@ -110,8 +91,7 @@
           "description": "Number of results to skip",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         }
       ],
@@ -140,14 +120,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/Numbers"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/Numbers",
+          "nullable": true
         }
       }
     },
@@ -166,14 +140,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/OtherNumbers"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/OtherNumbers",
+          "nullable": true
         }
       }
     },
@@ -186,14 +154,7 @@
           "description": "Filter conditions for Numberss",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/NumbersFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/NumbersFilter"
           }
         }
       ],
@@ -216,14 +177,7 @@
           "description": "Filter conditions for OtherNumberss",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/OtherNumbersFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/OtherNumbersFilter"
           }
         }
       ],
@@ -252,14 +206,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/NumbersPK"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/NumbersPK",
+          "nullable": true
         }
       }
     },
@@ -278,14 +226,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/OtherNumbersPK"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/OtherNumbersPK",
+          "nullable": true
         }
       }
     }
@@ -300,23 +242,19 @@
           },
           "limit": {
             "type": "integer",
-            "nullable": true,
             "minimum": 0,
             "maximum": 2
           },
           "age": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "float_limit": {
             "type": "number",
-            "nullable": true,
             "minimum": -1.0,
             "maximum": 3.0
           },
           "price": {
-            "type": "number",
-            "nullable": true
+            "type": "number"
           }
         },
         "required": [
@@ -327,28 +265,22 @@
         "type": "object",
         "properties": {
           "eq": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "neq": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "lt": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "lte": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "gt": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "gte": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         }
       },
@@ -356,28 +288,22 @@
         "type": "object",
         "properties": {
           "eq": {
-            "type": "number",
-            "nullable": true
+            "type": "number"
           },
           "neq": {
-            "type": "number",
-            "nullable": true
+            "type": "number"
           },
           "lt": {
-            "type": "number",
-            "nullable": true
+            "type": "number"
           },
           "lte": {
-            "type": "number",
-            "nullable": true
+            "type": "number"
           },
           "gt": {
-            "type": "number",
-            "nullable": true
+            "type": "number"
           },
           "gte": {
-            "type": "number",
-            "nullable": true
+            "type": "number"
           }
         }
       },
@@ -385,78 +311,34 @@
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/IntFilter"
           },
           "limit": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/IntFilter"
           },
           "age": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/IntFilter"
           },
           "float_limit": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/FloatFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/FloatFilter"
           },
           "price": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/FloatFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/FloatFilter"
           },
           "and": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/NumbersFilter"
-            },
-            "nullable": true
+            }
           },
           "or": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/NumbersFilter"
-            },
-            "nullable": true
+            }
           },
           "not": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/NumbersFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/NumbersFilter"
           }
         }
       },
@@ -468,40 +350,35 @@
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "limit": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "age": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "float_limit": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "price": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           }
         }
       },
@@ -513,23 +390,19 @@
           },
           "limit": {
             "type": "integer",
-            "nullable": true,
             "minimum": 10,
             "maximum": 12345
           },
           "age": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "float_limit": {
             "type": "number",
-            "nullable": true,
             "minimum": -5.0,
             "maximum": 12345.0
           },
           "price": {
-            "type": "number",
-            "nullable": true
+            "type": "number"
           }
         },
         "required": [
@@ -540,78 +413,34 @@
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/IntFilter"
           },
           "limit": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/IntFilter"
           },
           "age": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/IntFilter"
           },
           "float_limit": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/FloatFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/FloatFilter"
           },
           "price": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/FloatFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/FloatFilter"
           },
           "and": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/OtherNumbersFilter"
-            },
-            "nullable": true
+            }
           },
           "or": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/OtherNumbersFilter"
-            },
-            "nullable": true
+            }
           },
           "not": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/OtherNumbersFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/OtherNumbersFilter"
           }
         }
       },
@@ -623,40 +452,35 @@
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "limit": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "age": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "float_limit": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "price": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           }
         }
       },

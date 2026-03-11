@@ -14,14 +14,7 @@
           "description": "Filter conditions for Rsvps",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/RsvpFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/RsvpFilter"
           }
         },
         {
@@ -32,8 +25,7 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RsvpOrdering"
-            },
-            "nullable": true
+            }
           }
         },
         {
@@ -41,8 +33,7 @@
           "description": "Maximum number of results to return",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         },
         {
@@ -50,8 +41,7 @@
           "description": "Number of results to skip",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         }
       ],
@@ -74,14 +64,7 @@
           "description": "Filter conditions for Users",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/UserFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/UserFilter"
           }
         },
         {
@@ -92,8 +75,7 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/UserOrdering"
-            },
-            "nullable": true
+            }
           }
         },
         {
@@ -101,8 +83,7 @@
           "description": "Maximum number of results to return",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         },
         {
@@ -110,8 +91,7 @@
           "description": "Number of results to skip",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         }
       ],
@@ -134,14 +114,7 @@
           "description": "Filter conditions for InternalRsvps",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/InternalRsvpFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/InternalRsvpFilter"
           }
         },
         {
@@ -152,8 +125,7 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/InternalRsvpOrdering"
-            },
-            "nullable": true
+            }
           }
         },
         {
@@ -161,8 +133,7 @@
           "description": "Maximum number of results to return",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         },
         {
@@ -170,8 +141,7 @@
           "description": "Number of results to skip",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         }
       ],
@@ -200,14 +170,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/Rsvp"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/Rsvp",
+          "nullable": true
         }
       }
     },
@@ -226,14 +190,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/User"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/User",
+          "nullable": true
         }
       }
     },
@@ -252,14 +210,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/InternalRsvp"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/InternalRsvp",
+          "nullable": true
         }
       }
     },
@@ -285,14 +237,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/Rsvp"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/Rsvp",
+          "nullable": true
         }
       }
     },
@@ -311,14 +257,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/User"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/User",
+          "nullable": true
         }
       }
     },
@@ -344,14 +284,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/User"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/User",
+          "nullable": true
         }
       }
     },
@@ -377,14 +311,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/User"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/User",
+          "nullable": true
         }
       }
     },
@@ -410,14 +338,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/InternalRsvp"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/InternalRsvp",
+          "nullable": true
         }
       }
     },
@@ -430,14 +352,7 @@
           "description": "Filter conditions for Rsvps",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/RsvpFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/RsvpFilter"
           }
         }
       ],
@@ -460,14 +375,7 @@
           "description": "Filter conditions for Users",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/UserFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/UserFilter"
           }
         }
       ],
@@ -490,14 +398,7 @@
           "description": "Filter conditions for InternalRsvps",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/InternalRsvpFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/InternalRsvpFilter"
           }
         }
       ],
@@ -526,14 +427,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/RsvpPK"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/RsvpPK",
+          "nullable": true
         }
       }
     },
@@ -552,14 +447,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/UserPK"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/UserPK",
+          "nullable": true
         }
       }
     },
@@ -578,14 +467,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/InternalRsvpPK"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/InternalRsvpPK",
+          "nullable": true
         }
       }
     },
@@ -611,14 +494,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/RsvpPK"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/RsvpPK",
+          "nullable": true
         }
       }
     },
@@ -637,14 +514,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/UserPK"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/UserPK",
+          "nullable": true
         }
       }
     },
@@ -670,14 +541,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/UserPK"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/UserPK",
+          "nullable": true
         }
       }
     },
@@ -703,14 +568,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/UserPK"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/UserPK",
+          "nullable": true
         }
       }
     },
@@ -736,14 +595,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/InternalRsvpPK"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/InternalRsvpPK",
+          "nullable": true
         }
       }
     }
@@ -788,28 +641,22 @@
         "type": "object",
         "properties": {
           "eq": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "neq": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "lt": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "lte": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "gt": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "gte": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         }
       },
@@ -817,44 +664,34 @@
         "type": "object",
         "properties": {
           "eq": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "neq": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "lt": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "lte": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "gt": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "gte": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "like": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "ilike": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "startsWith": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "endsWith": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           }
         }
       },
@@ -862,68 +699,31 @@
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/IntFilter"
           },
           "event": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/StringFilter"
           },
           "user": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/UserFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/UserFilter"
           },
           "count": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/IntFilter"
           },
           "and": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/InternalRsvpFilter"
-            },
-            "nullable": true
+            }
           },
           "or": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/InternalRsvpFilter"
-            },
-            "nullable": true
+            }
           },
           "not": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/InternalRsvpFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/InternalRsvpFilter"
           }
         }
       },
@@ -931,98 +731,40 @@
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/IntFilter"
           },
           "username": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/StringFilter"
           },
           "primaryEmailId": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/StringFilter"
           },
           "secondaryEmailId": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/StringFilter"
           },
           "emailDomain": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/StringFilter"
           },
           "rsvps": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/RsvpFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/RsvpFilter"
           },
           "internalRsvps": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/InternalRsvpFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/InternalRsvpFilter"
           },
           "and": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/UserFilter"
-            },
-            "nullable": true
+            }
           },
           "or": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/UserFilter"
-            },
-            "nullable": true
+            }
           },
           "not": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/UserFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/UserFilter"
           }
         }
       },
@@ -1030,68 +772,31 @@
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/IntFilter"
           },
           "event": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/StringFilter"
           },
           "user": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/UserFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/UserFilter"
           },
           "count": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/IntFilter"
           },
           "and": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RsvpFilter"
-            },
-            "nullable": true
+            }
           },
           "or": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RsvpFilter"
-            },
-            "nullable": true
+            }
           },
           "not": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/RsvpFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/RsvpFilter"
           }
         }
       },
@@ -1103,40 +808,35 @@
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "username": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "primaryEmailId": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "secondaryEmailId": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "emailDomain": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           }
         }
       },
@@ -1148,34 +848,24 @@
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "event": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "user": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/UserOrdering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/UserOrdering"
           },
           "count": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           }
         }
       },
@@ -1192,8 +882,7 @@
             "type": "string"
           },
           "secondaryEmailId": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "emailDomain": {
             "type": "string"
@@ -1237,34 +926,24 @@
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "event": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "user": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/UserOrdering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/UserOrdering"
           },
           "count": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           }
         }
       },
@@ -1272,8 +951,7 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         }
       },

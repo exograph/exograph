@@ -14,14 +14,7 @@
           "description": "Filter conditions for Users",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/UserFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/UserFilter"
           }
         },
         {
@@ -32,8 +25,7 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/UserOrdering"
-            },
-            "nullable": true
+            }
           }
         },
         {
@@ -41,8 +33,7 @@
           "description": "Maximum number of results to return",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         },
         {
@@ -50,8 +41,7 @@
           "description": "Number of results to skip",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         }
       ],
@@ -74,14 +64,7 @@
           "description": "Filter conditions for Memberships",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/MembershipFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/MembershipFilter"
           }
         },
         {
@@ -92,8 +75,7 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MembershipOrdering"
-            },
-            "nullable": true
+            }
           }
         },
         {
@@ -101,8 +83,7 @@
           "description": "Maximum number of results to return",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         },
         {
@@ -110,8 +91,7 @@
           "description": "Number of results to skip",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         }
       ],
@@ -140,14 +120,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/User"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/User",
+          "nullable": true
         }
       }
     },
@@ -166,14 +140,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/Membership"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/Membership",
+          "nullable": true
         }
       }
     },
@@ -192,14 +160,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/Membership"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/Membership",
+          "nullable": true
         }
       }
     },
@@ -212,14 +174,7 @@
           "description": "Filter conditions for Users",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/UserFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/UserFilter"
           }
         }
       ],
@@ -242,14 +197,7 @@
           "description": "Filter conditions for Memberships",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/MembershipFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/MembershipFilter"
           }
         }
       ],
@@ -278,14 +226,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/UserPK"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/UserPK",
+          "nullable": true
         }
       }
     },
@@ -304,14 +246,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/MembershipPK"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/MembershipPK",
+          "nullable": true
         }
       }
     },
@@ -330,14 +266,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/MembershipPK"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/MembershipPK",
+          "nullable": true
         }
       }
     }
@@ -363,28 +293,22 @@
         "type": "object",
         "properties": {
           "eq": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "neq": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "lt": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "lte": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "gt": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "gte": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         }
       },
@@ -392,44 +316,34 @@
         "type": "object",
         "properties": {
           "eq": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "neq": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "lt": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "lte": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "gt": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "gte": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "like": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "ilike": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "startsWith": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "endsWith": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           }
         }
       },
@@ -437,58 +351,28 @@
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/IntFilter"
           },
           "kind": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/StringFilter"
           },
           "user": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/UserFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/UserFilter"
           },
           "and": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MembershipFilter"
-            },
-            "nullable": true
+            }
           },
           "or": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MembershipFilter"
-            },
-            "nullable": true
+            }
           },
           "not": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/MembershipFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/MembershipFilter"
           }
         }
       },
@@ -496,58 +380,28 @@
         "type": "object",
         "properties": {
           "id": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/IntFilter"
           },
           "name": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/StringFilter"
           },
           "membership": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/MembershipFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/MembershipFilter"
           },
           "and": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/UserFilter"
-            },
-            "nullable": true
+            }
           },
           "or": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/UserFilter"
-            },
-            "nullable": true
+            }
           },
           "not": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/UserFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/UserFilter"
           }
         }
       },
@@ -559,26 +413,17 @@
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "kind": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "user": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/UserOrdering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/UserOrdering"
           }
         }
       },
@@ -590,26 +435,17 @@
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "name": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "membership": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/MembershipOrdering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/MembershipOrdering"
           }
         }
       },
@@ -647,8 +483,7 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         }
       },

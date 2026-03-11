@@ -11,21 +11,28 @@
 
 use core_model::types::TypeValidation;
 
-use crate::openrpc::{
+use crate::rpc_schema_doc::{
     Components, ContentDescriptor, JsonSchema, JsonSchemaInline, JsonSchemaRef, MethodObject,
-    OpenRpcDocument,
+    MethodParams, RpcDocument,
 };
-use crate::schema::{
-    RpcComponents, RpcMethod, RpcObjectType, RpcParameter, RpcSchema, RpcTypeSchema,
-};
+use crate::schema::{RpcComponents, RpcMethod, RpcObjectType, RpcSchema, RpcTypeSchema};
 
-/// Convert an RpcSchema to an OpenRPC document.
-pub fn to_openrpc(schema: &RpcSchema, title: &str, version: &str) -> OpenRpcDocument {
-    let mut doc = OpenRpcDocument::new(title, version);
+/// Controls the output format for schema generation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SchemaGeneration {
+    /// OpenRPC spec-compliant: params as ContentDescriptor array with per-param `required`
+    OpenRpc,
+    /// MCP/LLM-optimized: params as JSON Schema object with `properties` + `required` array
+    Mcp,
+}
+
+/// Convert an RpcSchema to a format-agnostic RPC document.
+pub fn to_rpc_document(schema: &RpcSchema, mode: SchemaGeneration) -> RpcDocument {
+    let mut doc = RpcDocument::new();
 
     // Convert methods
     for method in &schema.methods {
-        doc.methods.push(convert_method(method));
+        doc.methods.push(convert_method(method, mode));
     }
 
     // Convert component schemas
@@ -36,7 +43,7 @@ pub fn to_openrpc(schema: &RpcSchema, title: &str, version: &str) -> OpenRpcDocu
     doc
 }
 
-fn convert_method(method: &RpcMethod) -> MethodObject {
+fn convert_method(method: &RpcMethod, mode: SchemaGeneration) -> MethodObject {
     let result_schema = convert_type_schema(&method.result);
     let mut method_obj = MethodObject::new(
         &method.name,
@@ -47,28 +54,63 @@ fn convert_method(method: &RpcMethod) -> MethodObject {
         method_obj = method_obj.with_description(desc);
     }
 
-    for param in &method.params {
-        method_obj = method_obj.with_param(convert_parameter(param));
+    match mode {
+        SchemaGeneration::OpenRpc => {
+            for param in &method.params {
+                // Unwrap Optional: optionality conveyed by `required: false`
+                let (schema, is_optional) = unwrap_optional(&param.schema);
+                let schema = convert_type_schema(schema);
+
+                let mut descriptor = ContentDescriptor::new(&param.name, schema);
+                if let Some(desc) = &param.description {
+                    descriptor = descriptor.with_description(desc);
+                }
+                if is_optional {
+                    descriptor = descriptor.optional();
+                } else {
+                    descriptor = descriptor.required();
+                }
+                method_obj = method_obj.with_param(descriptor);
+            }
+        }
+        SchemaGeneration::Mcp => {
+            let mut params_schema = JsonSchemaInline::object();
+            let mut required_params = Vec::new();
+
+            for param in &method.params {
+                // Unwrap Optional: optionality conveyed by not being in `required` array
+                let (inner, is_optional) = unwrap_optional(&param.schema);
+                let schema = convert_type_schema(inner);
+
+                // Move param description into the property schema
+                let schema = match &param.description {
+                    Some(desc) => schema.with_description(desc),
+                    None => schema,
+                };
+
+                if !is_optional {
+                    required_params.push(param.name.clone());
+                }
+                params_schema = params_schema.with_property(&param.name, schema);
+            }
+
+            if !required_params.is_empty() {
+                params_schema = params_schema.with_required(required_params);
+            }
+
+            method_obj.params = MethodParams::Schema(Box::new(JsonSchema::Inline(params_schema)));
+        }
     }
 
     method_obj
 }
 
-fn convert_parameter(param: &RpcParameter) -> ContentDescriptor {
-    let schema = convert_type_schema(&param.schema);
-    let mut descriptor = ContentDescriptor::new(&param.name, schema);
-
-    if let Some(desc) = &param.description {
-        descriptor = descriptor.with_description(desc);
+/// Unwrap an Optional schema, returning the inner schema and whether it was optional.
+fn unwrap_optional(schema: &RpcTypeSchema) -> (&RpcTypeSchema, bool) {
+    match schema {
+        RpcTypeSchema::Optional { inner } => (inner, true),
+        other => (other, false),
     }
-
-    if param.is_required() {
-        descriptor = descriptor.required();
-    } else {
-        descriptor = descriptor.optional();
-    }
-
-    descriptor
 }
 
 fn convert_type_schema(schema: &RpcTypeSchema) -> JsonSchema {
@@ -136,13 +178,11 @@ fn convert_type_schema(schema: &RpcTypeSchema) -> JsonSchema {
         }
 
         RpcTypeSchema::Optional { inner } => {
+            // This arm is now only reached for return types (params/fields unwrap Optional before calling)
             let inner_schema = convert_type_schema(inner);
             match inner_schema {
                 JsonSchema::Inline(inline) => JsonSchema::Inline(inline.with_nullable()),
-                JsonSchema::Ref(ref_schema) => {
-                    // Use oneOf pattern for nullable references: oneOf: [{$ref: "..."}, {type: "null"}]
-                    JsonSchema::Inline(JsonSchemaInline::nullable_ref(ref_schema))
-                }
+                JsonSchema::Ref(ref_schema) => JsonSchema::Ref(ref_schema.with_nullable()),
             }
         }
     }
@@ -224,10 +264,11 @@ fn convert_object_type(obj_type: &RpcObjectType) -> JsonSchema {
     let mut required_fields = Vec::new();
 
     for field in &obj_type.fields {
-        let field_schema = convert_type_schema(&field.schema);
+        // Unwrap Optional: optionality conveyed by not being in `required` array
+        let (inner, is_optional) = unwrap_optional(&field.schema);
+        let field_schema = convert_type_schema(inner);
 
-        // Check if field is required (not optional)
-        if !matches!(field.schema, RpcTypeSchema::Optional { .. }) {
+        if !is_optional {
             required_fields.push(field.name.clone());
         }
 
@@ -248,11 +289,11 @@ fn convert_object_type(obj_type: &RpcObjectType) -> JsonSchema {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::schema::{RpcMethod, RpcObjectField, RpcObjectType, RpcParameter, RpcSchema};
+    use crate::schema::{RpcMethod, RpcObjectField, RpcObjectType, RpcSchema};
     use core_model::types::IntConstraints;
 
     #[test]
-    fn test_convert_simple_schema() {
+    fn convert_simple_schema() {
         let mut schema = RpcSchema::new();
 
         let todo_type = RpcObjectType::new("Todo")
@@ -269,16 +310,14 @@ mod tests {
         );
         schema.add_method(method);
 
-        let doc = to_openrpc(&schema, "Test API", "1.0.0");
+        let doc = to_rpc_document(&schema, SchemaGeneration::OpenRpc);
 
-        assert_eq!(doc.openrpc, "1.3.2");
-        assert_eq!(doc.info.title, "Test API");
         assert_eq!(doc.methods.len(), 1);
         assert_eq!(doc.methods[0].name, "get_todos");
     }
 
     #[test]
-    fn test_convert_with_validation() {
+    fn convert_with_validation() {
         let schema_type = RpcTypeSchema::scalar_with_validation(
             "Int",
             TypeValidation::Int(IntConstraints::from_range(1, 100)),
@@ -293,14 +332,15 @@ mod tests {
     }
 
     #[test]
-    fn test_convert_optional_parameter() {
-        let param = RpcParameter::new(
-            "filter",
-            RpcTypeSchema::optional(RpcTypeSchema::scalar("String")),
-        );
+    fn unwrap_optional_schema() {
+        let schema = RpcTypeSchema::optional(RpcTypeSchema::scalar("String"));
+        let (inner, is_optional) = unwrap_optional(&schema);
+        assert!(is_optional);
+        assert!(matches!(inner, RpcTypeSchema::Scalar { type_name, .. } if type_name == "String"));
 
-        let descriptor = convert_parameter(&param);
-
-        assert_eq!(descriptor.required, Some(false));
+        let schema = RpcTypeSchema::scalar("Int");
+        let (inner, is_optional) = unwrap_optional(&schema);
+        assert!(!is_optional);
+        assert!(matches!(inner, RpcTypeSchema::Scalar { type_name, .. } if type_name == "Int"));
     }
 }

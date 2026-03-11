@@ -17,7 +17,7 @@ use core_resolver::{
 };
 use exo_env::Environment;
 use http::StatusCode;
-use rpc_introspection::{OpenRpcDocument, RpcSchema, to_openrpc};
+use rpc_introspection::{OpenRpcDocument, RpcSchema, SchemaGeneration, to_rpc_document};
 
 const OPENRPC_API_TITLE: &str = "Exograph RPC API";
 const OPENRPC_API_VERSION: &str = "1.0.0";
@@ -41,7 +41,9 @@ impl RpcRouter {
         for schema in system_resolver.rpc_schemas() {
             combined.merge(schema.clone());
         }
-        let openrpc_document = to_openrpc(&combined, OPENRPC_API_TITLE, OPENRPC_API_VERSION);
+        let rpc_document = to_rpc_document(&combined, SchemaGeneration::OpenRpc);
+        let openrpc_document = OpenRpcDocument::new(OPENRPC_API_TITLE, OPENRPC_API_VERSION)
+            .with_document(rpc_document);
 
         Self {
             system_resolver,

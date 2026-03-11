@@ -14,14 +14,7 @@
           "description": "Filter conditions for People",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/PersonFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/PersonFilter"
           }
         },
         {
@@ -32,8 +25,7 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/PersonOrdering"
-            },
-            "nullable": true
+            }
           }
         },
         {
@@ -41,8 +33,7 @@
           "description": "Maximum number of results to return",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         },
         {
@@ -50,8 +41,7 @@
           "description": "Number of results to skip",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         }
       ],
@@ -74,14 +64,7 @@
           "description": "Filter conditions for Addresses",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/AddressFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/AddressFilter"
           }
         },
         {
@@ -92,8 +75,7 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AddressOrdering"
-            },
-            "nullable": true
+            }
           }
         },
         {
@@ -101,8 +83,7 @@
           "description": "Maximum number of results to return",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         },
         {
@@ -110,8 +91,7 @@
           "description": "Number of results to skip",
           "required": false,
           "schema": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         }
       ],
@@ -147,14 +127,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/Person"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/Person",
+          "nullable": true
         }
       }
     },
@@ -194,14 +168,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/Address"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/Address",
+          "nullable": true
         }
       }
     },
@@ -214,14 +182,7 @@
           "description": "Filter conditions for People",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/PersonFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/PersonFilter"
           }
         }
       ],
@@ -244,14 +205,7 @@
           "description": "Filter conditions for Addresses",
           "required": false,
           "schema": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/AddressFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/AddressFilter"
           }
         }
       ],
@@ -287,14 +241,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/PersonPK"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/PersonPK",
+          "nullable": true
         }
       }
     },
@@ -334,14 +282,8 @@
       "result": {
         "name": "result",
         "schema": {
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/AddressPK"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/components/schemas/AddressPK",
+          "nullable": true
         }
       }
     }
@@ -384,14 +326,7 @@
             "type": "integer"
           },
           "address": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/AddressRef"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/AddressRef"
           }
         },
         "required": [
@@ -404,44 +339,34 @@
         "type": "object",
         "properties": {
           "eq": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "neq": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "lt": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "lte": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "gt": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "gte": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "like": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "ilike": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "startsWith": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "endsWith": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           }
         }
       },
@@ -449,28 +374,22 @@
         "type": "object",
         "properties": {
           "eq": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "neq": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "lt": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "lte": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "gt": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           },
           "gte": {
-            "type": "integer",
-            "nullable": true
+            "type": "integer"
           }
         }
       },
@@ -478,88 +397,37 @@
         "type": "object",
         "properties": {
           "street": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/StringFilter"
           },
           "city": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/StringFilter"
           },
           "state": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/StringFilter"
           },
           "zip": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/IntFilter"
           },
           "info": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/StringFilter"
           },
           "people": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/PersonFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/PersonFilter"
           },
           "and": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AddressFilter"
-            },
-            "nullable": true
+            }
           },
           "or": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AddressFilter"
-            },
-            "nullable": true
+            }
           },
           "not": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/AddressFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/AddressFilter"
           }
         }
       },
@@ -567,68 +435,31 @@
         "type": "object",
         "properties": {
           "firstName": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/StringFilter"
           },
           "lastName": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/StringFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/StringFilter"
           },
           "age": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/IntFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/IntFilter"
           },
           "address": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/AddressFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/AddressFilter"
           },
           "and": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/PersonFilter"
-            },
-            "nullable": true
+            }
           },
           "or": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/PersonFilter"
-            },
-            "nullable": true
+            }
           },
           "not": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/PersonFilter"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/PersonFilter"
           }
         }
       },
@@ -640,40 +471,35 @@
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "city": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "state": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "zip": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "info": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           }
         }
       },
@@ -685,34 +511,24 @@
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "lastName": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "age": {
             "type": "string",
             "enum": [
               "ASC",
               "DESC"
-            ],
-            "nullable": true
+            ]
           },
           "address": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/AddressOrdering"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/AddressOrdering"
           }
         }
       },
@@ -732,8 +548,7 @@
             "type": "integer"
           },
           "info": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           }
         },
         "required": [
