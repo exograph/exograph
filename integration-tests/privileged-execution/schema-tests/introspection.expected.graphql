@@ -89,7 +89,7 @@ input StringFilter {
 }
 
 type Query {
-  """Get a single `Rsvp` given primary key fields"""
+  """Get a single `Rsvp` by primary key"""
   rsvp(id: Int!): Rsvp
 
   """

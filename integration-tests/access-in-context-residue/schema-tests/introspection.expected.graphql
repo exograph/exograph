@@ -79,7 +79,7 @@ input StringFilter {
 }
 
 type Query {
-  """Get a single `ProfileMetric` given primary key fields"""
+  """Get a single `ProfileMetric` by primary key"""
   profileMetric(id: String!): ProfileMetric
 
   """

@@ -9,7 +9,7 @@
 
 use std::sync::Arc;
 
-use core_model::mapped_arena::{MappedArena, SerializableSlab};
+use core_model::mapped_arena::MappedArena;
 use core_plugin_interface::interface::SubsystemLoadingError;
 use core_plugin_shared::system_serializer::{
     ModelSerializationError, SystemSerializer, postcard_deserialize, postcard_serialize,
@@ -24,10 +24,10 @@ use crate::operation::{
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PostgresRpcSubsystem {
     pub pk_queries: MappedArena<PkQuery>,
-    pub unique_queries: SerializableSlab<UniqueQuery>,
+    pub unique_queries: MappedArena<UniqueQuery>,
     pub collection_queries: MappedArena<CollectionQuery>,
     pub pk_deletes: MappedArena<PkDelete>,
-    pub unique_deletes: SerializableSlab<UniqueDelete>,
+    pub unique_deletes: MappedArena<UniqueDelete>,
     pub collection_deletes: MappedArena<CollectionDelete>,
     #[serde(skip)]
     pub core_subsystem: Arc<PostgresCoreSubsystem>,
@@ -36,10 +36,10 @@ pub struct PostgresRpcSubsystem {
 #[derive(Debug)]
 pub struct PostgresRpcSubsystemWithRouter {
     pub pk_queries: MappedArena<PkQuery>,
-    pub unique_queries: SerializableSlab<UniqueQuery>,
+    pub unique_queries: MappedArena<UniqueQuery>,
     pub collection_queries: MappedArena<CollectionQuery>,
     pub pk_deletes: MappedArena<PkDelete>,
-    pub unique_deletes: SerializableSlab<UniqueDelete>,
+    pub unique_deletes: MappedArena<UniqueDelete>,
     pub collection_deletes: MappedArena<CollectionDelete>,
     pub core_subsystem: Arc<PostgresCoreSubsystem>,
 }

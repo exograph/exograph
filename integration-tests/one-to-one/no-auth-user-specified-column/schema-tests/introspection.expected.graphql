@@ -154,10 +154,10 @@ input UserUpdateInput {
 }
 
 type Query {
-  """Get a single `Membership` given primary key fields"""
+  """Get a single `Membership` by primary key"""
   membership(id: Int!): Membership
 
-  """Get a single `Membership` given unique fields"""
+  """Get a single `Membership` by user"""
   membershipByUser(user: UserUniqueFilter!): Membership
 
   """
@@ -170,7 +170,7 @@ type Query {
   """
   membershipsAgg(where: MembershipFilter): MembershipAgg!
 
-  """Get a single `User` given primary key fields"""
+  """Get a single `User` by primary key"""
   user(id: Int!): User
 
   """

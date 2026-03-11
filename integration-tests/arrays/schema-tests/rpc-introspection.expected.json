@@ -6,7 +6,7 @@
   },
   "methods": [
     {
-      "name": "get_chesspieces",
+      "name": "get_chess_pieces",
       "description": "Get multiple `ChessPiece`s given the provided `where` filter, order by, limit, and offset",
       "params": [
         {
@@ -66,14 +66,14 @@
       }
     },
     {
-      "name": "get_chesspiece",
-      "description": "Get a single `ChessPiece` by primary key.",
+      "name": "get_chess_piece",
+      "description": "Get a single `ChessPiece` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/ChessPiecePK"
+            "type": "integer"
           }
         }
       ],
@@ -92,7 +92,7 @@
       }
     },
     {
-      "name": "delete_chesspieces",
+      "name": "delete_chess_pieces",
       "description": "Delete multiple `ChessPiece`s given the provided `where` filter",
       "params": [
         {
@@ -122,14 +122,14 @@
       }
     },
     {
-      "name": "delete_chesspiece",
-      "description": "Delete a single `ChessPiece` by primary key.",
+      "name": "delete_chess_piece",
+      "description": "Delete a single `ChessPiece` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/ChessPiecePK"
+            "type": "integer"
           }
         }
       ],

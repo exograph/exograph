@@ -9,7 +9,7 @@ stages:
         {
           "method": "get_person",
           "params": {
-            "by": {"firstName": "John", "lastName": "DoeAlbany"}
+            "firstName": "John", "lastName": "DoeAlbany"
           }
         }
     response: |
@@ -34,7 +34,7 @@ stages:
         {
           "method": "get_person",
           "params": {
-            "by": {"firstName": "Jane", "lastName": "SmithBoston"}
+            "firstName": "Jane", "lastName": "SmithBoston"
           }
         }
     response: |
@@ -59,7 +59,7 @@ stages:
         {
           "method": "get_person",
           "params": {
-            "by": {"firstName": "NonExistent", "lastName": "Person"}
+            "firstName": "NonExistent", "lastName": "Person"
           }
         }
     response: |
@@ -74,14 +74,14 @@ stages:
         {
           "method": "get_person",
           "params": {
-            "by": {"firstName": "John"}
+            "firstName": "John"
           }
         }
     response: |
       {
         "error": {
           "code": -32602,
-          "message": "Provided parameters [firstName] do not match any lookup group. Available groups: pk(firstName, lastName)"
+          "message": "Missing required parameter: lastName"
         }
       }
 
@@ -92,7 +92,7 @@ stages:
         {
           "method": "get_address",
           "params": {
-            "by": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101}
+            "street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101
           }
         }
     response: |
@@ -113,13 +113,13 @@ stages:
         {
           "method": "get_address",
           "params": {
-            "by": {"street": "2 Main St", "city": "Boston"}
+            "street": "2 Main St", "city": "Boston"
           }
         }
     response: |
       {
         "error": {
           "code": -32602,
-          "message": "Provided parameters [city, street] do not match any lookup group. Available groups: pk(city, state, street, zip)"
+          "message": "Missing required parameter: state"
         }
       }

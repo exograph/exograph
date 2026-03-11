@@ -127,13 +127,13 @@
     },
     {
       "name": "get_concert",
-      "description": "Get a single `Concert` by primary key.",
+      "description": "Get a single `Concert` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/ConcertPK"
+            "type": "integer"
           }
         }
       ],
@@ -153,13 +153,13 @@
     },
     {
       "name": "get_venue",
-      "description": "Get a single `Venue` by primary key.",
+      "description": "Get a single `Venue` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/VenuePK"
+            "type": "integer"
           }
         }
       ],
@@ -239,13 +239,13 @@
     },
     {
       "name": "delete_concert",
-      "description": "Delete a single `Concert` by primary key.",
+      "description": "Delete a single `Concert` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/ConcertPK"
+            "type": "integer"
           }
         }
       ],
@@ -265,13 +265,13 @@
     },
     {
       "name": "delete_venue",
-      "description": "Delete a single `Venue` by primary key.",
+      "description": "Delete a single `Venue` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/VenuePK"
+            "type": "integer"
           }
         }
       ],

@@ -96,7 +96,7 @@ type Query {
   """
   journalEntriesAgg(where: JournalEntryFilter): JournalEntryAgg!
 
-  """Get a single `JournalEntry` given primary key fields"""
+  """Get a single `JournalEntry` by primary key"""
   journalEntry(id: Int!): JournalEntry
   shouldTrack: Boolean!
 }

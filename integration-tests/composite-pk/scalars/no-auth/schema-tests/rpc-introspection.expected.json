@@ -127,13 +127,20 @@
     },
     {
       "name": "get_person",
-      "description": "Get a single `Person` by primary key.",
+      "description": "Get a single `Person` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "firstName",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/PersonPK"
+            "type": "string"
+          }
+        },
+        {
+          "name": "lastName",
+          "required": true,
+          "schema": {
+            "type": "string"
           }
         }
       ],
@@ -153,13 +160,34 @@
     },
     {
       "name": "get_address",
-      "description": "Get a single `Address` by primary key.",
+      "description": "Get a single `Address` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "street",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/AddressPK"
+            "type": "string"
+          }
+        },
+        {
+          "name": "city",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "state",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "zip",
+          "required": true,
+          "schema": {
+            "type": "integer"
           }
         }
       ],
@@ -239,13 +267,20 @@
     },
     {
       "name": "delete_person",
-      "description": "Delete a single `Person` by primary key.",
+      "description": "Delete a single `Person` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "firstName",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/PersonPK"
+            "type": "string"
+          }
+        },
+        {
+          "name": "lastName",
+          "required": true,
+          "schema": {
+            "type": "string"
           }
         }
       ],
@@ -265,13 +300,34 @@
     },
     {
       "name": "delete_address",
-      "description": "Delete a single `Address` by primary key.",
+      "description": "Delete a single `Address` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "street",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/AddressPK"
+            "type": "string"
+          }
+        },
+        {
+          "name": "city",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "state",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "zip",
+          "required": true,
+          "schema": {
+            "type": "integer"
           }
         }
       ],

@@ -14,11 +14,21 @@ pub fn collection_query_description(entity_name: &str) -> String {
 }
 
 pub fn pk_query_description(entity_name: &str) -> String {
-    format!("Get a single `{entity_name}` given primary key fields")
+    format!("Get a single `{entity_name}` by primary key")
 }
 
-pub fn unique_query_description(entity_name: &str) -> String {
-    format!("Get a single `{entity_name}` given unique fields")
+pub fn unique_query_description(entity_name: &str, constraint_name: &str) -> String {
+    let readable_name = constraint_name.replace('_', " ");
+    format!("Get a single `{entity_name}` by {readable_name}")
+}
+
+pub fn pk_delete_description(entity_name: &str) -> String {
+    format!("Delete a single `{entity_name}` by primary key")
+}
+
+pub fn unique_delete_description(entity_name: &str, constraint_name: &str) -> String {
+    let readable_name = constraint_name.replace('_', " ");
+    format!("Delete a single `{entity_name}` by {readable_name}")
 }
 
 pub fn collection_delete_description(entity_name: &str) -> String {

@@ -152,7 +152,7 @@ input StringFilter {
 }
 
 type Query {
-  """Get a single `Department` given primary key fields"""
+  """Get a single `Department` by primary key"""
   department(id: String!): Department
 
   """
@@ -165,7 +165,7 @@ type Query {
   """
   departmentsAgg(where: DepartmentFilter): DepartmentAgg!
 
-  """Get a single `Product` given primary key fields"""
+  """Get a single `Product` by primary key"""
   product(id: Int!): Product
 
   """

@@ -93,7 +93,7 @@ type Query {
   currentUnixEpoch: Int!
   divide(x: Int!, y: Int!): DivisionResult!
 
-  """Get a single `Foo` given primary key fields"""
+  """Get a single `Foo` by primary key"""
   foo(id: Int!): Foo
 
   """

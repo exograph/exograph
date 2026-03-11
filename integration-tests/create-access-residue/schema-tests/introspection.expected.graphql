@@ -155,7 +155,7 @@ input StringFilter {
 }
 
 type Query {
-  """Get a single `Employee` given primary key fields"""
+  """Get a single `Employee` by primary key"""
   employee(id: Int!): Employee
 
   """
@@ -168,7 +168,7 @@ type Query {
   """
   employeesAgg(where: EmployeeFilter): EmployeeAgg!
 
-  """Get a single `Issue` given primary key fields"""
+  """Get a single `Issue` by primary key"""
   issue(id: Int!): Issue
 
   """

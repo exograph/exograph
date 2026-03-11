@@ -8318,6 +8318,7 @@ dependencies = [
  "core-model",
  "core-model-builder",
  "core-plugin-shared",
+ "heck",
  "postgres-core-builder",
  "postgres-core-model",
  "postgres-rpc-model",

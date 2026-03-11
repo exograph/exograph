@@ -162,7 +162,7 @@ input StringFilter {
 }
 
 type Query {
-  """Get a single `Book` given primary key fields"""
+  """Get a single `Book` by primary key"""
   book(id: Int!): Book
 
   """

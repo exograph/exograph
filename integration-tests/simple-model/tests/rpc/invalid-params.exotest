@@ -37,21 +37,21 @@ stages:
         }
       }
 
-  # Non-existing parameter on PK query (unknown field inside by)
+  # Non-existing parameter on PK query (unknown field alongside valid ones)
   - operation:
       type: rpc
       payload: |
         {
           "method": "get_log",
           "params": {
-            "by": {"id": 1, "unknownField": "test"}
+            "id": 1, "unknownField": "test"
           }
         }
     response: |
       {
         "error": {
           "code": -32602,
-          "message": "Provided parameters [id, unknownField] do not match any lookup group. Available groups: pk(id)"
+          "message": "Unknown parameter: unknownField"
         }
       }
 

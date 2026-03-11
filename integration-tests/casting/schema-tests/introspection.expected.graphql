@@ -88,7 +88,7 @@ enum Ordering {
 }
 
 type Query {
-  """Get a single `Number` given primary key fields"""
+  """Get a single `Number` by primary key"""
   number(id: Int!): Number
 
   """

@@ -8,9 +8,7 @@ stages:
         {
           "method": "get_document",
           "params": {
-            "by": {
-              "id": $.d1Id
-            }
+            "id": $.d1Id
           }
         }
     auth: |
@@ -32,9 +30,7 @@ stages:
         {
           "method": "get_document",
           "params": {
-            "by": {
-              "id": $.d1Id
-            }
+            "id": $.d1Id
           }
         }
     auth: |
@@ -57,9 +53,7 @@ stages:
         {
           "method": "get_document",
           "params": {
-            "by": {
-              "id": $.d2Id
-            }
+            "id": $.d2Id
           }
         }
     auth: |
@@ -79,9 +73,7 @@ stages:
         {
           "method": "get_document",
           "params": {
-            "by": {
-              "id": $.d1Id
-            }
+            "id": $.d1Id
           }
         }
     auth: |
@@ -101,9 +93,7 @@ stages:
         {
           "method": "get_document",
           "params": {
-            "by": {
-              "id": $.d3Id
-            }
+            "id": $.d3Id
           }
         }
     auth: |

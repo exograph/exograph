@@ -102,7 +102,7 @@ input VideoUpdateInput {
 }
 
 type Query {
-  """Get a single `Video` given primary key fields"""
+  """Get a single `Video` by primary key"""
   video(id: Int!): Video
 
   """

@@ -10,7 +10,7 @@
 use std::sync::Arc;
 
 use core_model::access::AccessPredicateExpression;
-use core_model::mapped_arena::{MappedArena, SerializableSlab};
+use core_model::mapped_arena::MappedArena;
 use core_model_builder::error::ModelBuildingError;
 
 use postgres_core_builder::order_by_builder::new_root_param;
@@ -36,9 +36,9 @@ pub fn build(
 ) -> Result<Option<PostgresRpcSubsystem>, ModelBuildingError> {
     let mut collection_queries = MappedArena::default();
     let mut pk_queries = MappedArena::default();
-    let mut unique_queries = SerializableSlab::new();
+    let mut unique_queries = MappedArena::default();
     let mut pk_deletes = MappedArena::default();
-    let mut unique_deletes = SerializableSlab::new();
+    let mut unique_deletes = MappedArena::default();
     let mut collection_deletes = MappedArena::default();
 
     for typ in resolved_env.resolved_types.iter() {
@@ -107,7 +107,7 @@ fn build_queries(
     core_subsystem_building: &postgres_core_builder::SystemContextBuilding,
     collection_queries: &mut MappedArena<CollectionQuery>,
     pk_queries: &mut MappedArena<PkQuery>,
-    unique_queries: &mut SerializableSlab<UniqueQuery>,
+    unique_queries: &mut MappedArena<UniqueQuery>,
 ) -> Result<(), ModelBuildingError> {
     // Build collection query (get_todos) - returns multiple items
     let collection_method = naming::get_collection(&composite.plural_name);
@@ -146,16 +146,26 @@ fn build_queries(
 
     collection_queries.add(&collection_method, collection_query);
 
-    // Build pk and unique queries (get_todo) - returns single item by primary key or unique constraint
+    // Build PK query (get_todo)
     let get_method = naming::get_single(&composite.name);
-
-    build_pk_and_unique_operations(
+    build_pk_operation(
         composite,
         entity_type,
         entity_type_id,
         core_subsystem_building,
         &get_method,
+        &doc_comments::pk_query_description(&composite.name),
         pk_queries,
+    );
+
+    // Build unique queries (get_todo_by_username, etc.)
+    build_unique_operations(
+        composite,
+        entity_type,
+        entity_type_id,
+        core_subsystem_building,
+        |constraint_name| naming::get_single_by_unique(&composite.name, constraint_name),
+        |constraint_name| doc_comments::unique_query_description(&composite.name, constraint_name),
         unique_queries,
     )?;
 
@@ -168,7 +178,7 @@ fn build_deletes(
     entity_type_id: core_model::mapped_arena::SerializableSlabIndex<EntityType>,
     core_subsystem_building: &postgres_core_builder::SystemContextBuilding,
     pk_deletes: &mut MappedArena<PkDelete>,
-    unique_deletes: &mut SerializableSlab<UniqueDelete>,
+    unique_deletes: &mut MappedArena<UniqueDelete>,
     collection_deletes: &mut MappedArena<CollectionDelete>,
 ) -> Result<(), ModelBuildingError> {
     // Skip if delete access is explicitly false
@@ -187,14 +197,25 @@ fn build_deletes(
     let delete_method = naming::delete_single(&composite.name);
     let delete_collection_method = naming::delete_collection(&composite.plural_name);
 
-    // Build PK and unique constraint deletes
-    build_pk_and_unique_operations(
+    // Build PK delete (delete_todo)
+    build_pk_operation(
         composite,
         entity_type,
         entity_type_id,
         core_subsystem_building,
         &delete_method,
+        &doc_comments::pk_delete_description(&composite.name),
         pk_deletes,
+    );
+
+    // Build unique deletes (delete_todo_by_username, etc.)
+    build_unique_operations(
+        composite,
+        entity_type,
+        entity_type_id,
+        core_subsystem_building,
+        |constraint_name| naming::delete_single_by_unique(&composite.name, constraint_name),
+        |constraint_name| doc_comments::unique_delete_description(&composite.name, constraint_name),
         unique_deletes,
     )?;
 
@@ -213,48 +234,61 @@ fn build_deletes(
     Ok(())
 }
 
-/// Build PK and unique constraint operations (shared by queries and deletes).
-fn build_pk_and_unique_operations<PkP, UniqueP>(
+fn build_pk_operation<P>(
     composite: &postgres_core_builder::resolved_type::ResolvedCompositeType,
     entity_type: &EntityType,
     entity_type_id: core_model::mapped_arena::SerializableSlabIndex<EntityType>,
     core_subsystem_building: &postgres_core_builder::SystemContextBuilding,
     method_name: &str,
-    pk_ops: &mut MappedArena<PostgresOperation<PkP>>,
-    unique_ops: &mut SerializableSlab<PostgresOperation<UniqueP>>,
-) -> Result<(), ModelBuildingError>
-where
-    PkP: From<Vec<PredicateParameter>>,
-    UniqueP: From<Vec<PredicateParameter>>,
+    description: &str,
+    ops: &mut MappedArena<PostgresOperation<P>>,
+) where
+    P: From<Vec<PredicateParameter>>,
 {
     let pk_fields = entity_type.pk_fields();
 
     if let Some(pk_params) = build_pk_predicate_params(&pk_fields, core_subsystem_building) {
         let pk_op = PostgresOperation {
             name: method_name.to_string(),
-            parameters: PkP::from(pk_params),
+            parameters: P::from(pk_params),
             return_type: optional_return_type(entity_type_id, &composite.name),
-            doc_comments: None,
+            doc_comments: Some(description.to_string()),
         };
 
-        pk_ops.add(method_name, pk_op);
+        ops.add(method_name, pk_op);
     }
+}
 
-    for (_constraint_name, constraint_fields) in composite.unique_constraints() {
+/// Build unique constraint operations for an entity.
+fn build_unique_operations<P>(
+    composite: &postgres_core_builder::resolved_type::ResolvedCompositeType,
+    entity_type: &EntityType,
+    entity_type_id: core_model::mapped_arena::SerializableSlabIndex<EntityType>,
+    core_subsystem_building: &postgres_core_builder::SystemContextBuilding,
+    method_name_fn: impl Fn(&str) -> String,
+    description_fn: impl Fn(&str) -> String,
+    ops: &mut MappedArena<PostgresOperation<P>>,
+) -> Result<(), ModelBuildingError>
+where
+    P: From<Vec<PredicateParameter>>,
+{
+    for (constraint_name, constraint_fields) in composite.unique_constraints() {
         let predicate_params = build_unique_predicate_params(
             &constraint_fields,
             entity_type,
             core_subsystem_building,
         )?;
 
+        let method_name = method_name_fn(&constraint_name);
+        let description = description_fn(&constraint_name);
         let unique_op = PostgresOperation {
-            name: method_name.to_string(),
-            parameters: UniqueP::from(predicate_params),
+            name: method_name.clone(),
+            parameters: P::from(predicate_params),
             return_type: optional_return_type(entity_type_id, &composite.name),
-            doc_comments: None,
+            doc_comments: Some(description),
         };
 
-        unique_ops.insert(unique_op);
+        ops.add(&method_name, unique_op);
     }
 
     Ok(())

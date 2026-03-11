@@ -127,7 +127,7 @@ input VectorOrdering {
 }
 
 type Query {
-  """Get a single `Document` given primary key fields"""
+  """Get a single `Document` by primary key"""
   document(id: Int!): Document
 
   """

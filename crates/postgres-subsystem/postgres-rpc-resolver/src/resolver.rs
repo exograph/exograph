@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -32,8 +32,7 @@ use postgres_core_resolver::order_by_mapper::compute_order_by;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_core_resolver::predicate_mapper::compute_predicate;
 use postgres_rpc_model::operation::{
-    CollectionDelete, CollectionQuery, HasPredicateParams, PkDelete, PkQuery, UniqueDelete,
-    UniqueQuery,
+    CollectionDelete, CollectionQuery, PkDelete, PkQuery, UniqueDelete, UniqueQuery,
 };
 use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
 use rpc_introspection::RpcSchema;
@@ -88,7 +87,7 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
             .parse_params(request_params, &self.rpc_schema.components)
             .map_err(|e| SubsystemRpcError::InvalidParams(e.user_message()))?;
 
-        // Try to find the matching operation: collection query/delete, then PK/unique query/delete
+        // Try to find the matching operation by method name (queries before deletes)
         let resolved: Option<&dyn OperationResolver> = self
             .subsystem
             .collection_queries
@@ -96,33 +95,34 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
             .map(|q| q as &dyn OperationResolver)
             .or_else(|| {
                 self.subsystem
+                    .pk_queries
+                    .get_by_key(request_method)
+                    .map(|q| q as &dyn OperationResolver)
+            })
+            .or_else(|| {
+                self.subsystem
+                    .unique_queries
+                    .get_by_key(request_method)
+                    .map(|q| q as &dyn OperationResolver)
+            })
+            .or_else(|| {
+                self.subsystem
                     .collection_deletes
                     .get_by_key(request_method)
                     .map(|d| d as &dyn OperationResolver)
-            });
-
-        // For PK/unique lookups, unwrap `by` once and search across both queries and deletes
-        let resolved = if let Some(r) = resolved {
-            Some(r)
-        } else {
-            resolve_by_lookup(
-                self.subsystem.pk_queries.get_by_key(request_method),
+            })
+            .or_else(|| {
                 self.subsystem
-                    .unique_queries
-                    .iter()
-                    .filter(|(_, q)| q.name == request_method)
-                    .map(|(_, q)| q)
-                    .collect(),
-                self.subsystem.pk_deletes.get_by_key(request_method),
+                    .pk_deletes
+                    .get_by_key(request_method)
+                    .map(|d| d as &dyn OperationResolver)
+            })
+            .or_else(|| {
                 self.subsystem
                     .unique_deletes
-                    .iter()
-                    .filter(|(_, d)| d.name == request_method)
-                    .map(|(_, d)| d)
-                    .collect(),
-                &mut validated_params,
-            )?
-        };
+                    .get_by_key(request_method)
+                    .map(|d| d as &dyn OperationResolver)
+            });
 
         if let Some(resolver) = resolved {
             let operation = resolver
@@ -172,102 +172,6 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
         // TODO: We could just return &RpcSchema when all resolvers support schema
         Some(&self.rpc_schema)
     }
-}
-
-/// Unwrap the `by` param and find the matching PK or unique operation across queries and deletes.
-fn resolve_by_lookup<'a>(
-    pk_query: Option<&'a (impl HasPredicateParams + OperationResolver)>,
-    unique_queries: Vec<&'a (impl HasPredicateParams + OperationResolver)>,
-    pk_delete: Option<&'a (impl HasPredicateParams + OperationResolver)>,
-    unique_deletes: Vec<&'a (impl HasPredicateParams + OperationResolver)>,
-    validated_params: &mut HashMap<String, Val>,
-) -> Result<Option<&'a dyn OperationResolver>, SubsystemRpcError> {
-    if pk_query.is_none()
-        && unique_queries.is_empty()
-        && pk_delete.is_none()
-        && unique_deletes.is_empty()
-    {
-        return Ok(None);
-    }
-
-    // Extract the `by` param once
-    let by_val = validated_params.remove("by").ok_or_else(|| {
-        SubsystemRpcError::InvalidParams("Missing required parameter: by".to_string())
-    })?;
-    let by_fields = match by_val {
-        Val::Object(fields) => fields,
-        _ => {
-            return Err(SubsystemRpcError::InvalidParams(
-                "'by' parameter must be an object".to_string(),
-            ));
-        }
-    };
-
-    let provided: HashSet<&str> = by_fields.keys().map(|s| s.as_str()).collect();
-
-    // Try to match queries first, then deletes
-    let matched: Option<&dyn OperationResolver> = None;
-
-    let matched = matched.or_else(|| {
-        if let Some(pk) = pk_query
-            && provided == param_name_set(pk.predicate_params())
-        {
-            return Some(pk as &dyn OperationResolver);
-        }
-        unique_queries
-            .iter()
-            .find(|op| provided == param_name_set(op.predicate_params()))
-            .map(|op| *op as &dyn OperationResolver)
-    });
-
-    let matched = matched.or_else(|| {
-        if let Some(pk) = pk_delete
-            && provided == param_name_set(pk.predicate_params())
-        {
-            return Some(pk as &dyn OperationResolver);
-        }
-        unique_deletes
-            .iter()
-            .find(|op| provided == param_name_set(op.predicate_params()))
-            .map(|op| *op as &dyn OperationResolver)
-    });
-
-    if let Some(op) = matched {
-        *validated_params = by_fields;
-        return Ok(Some(op));
-    }
-
-    // Build error message with available groups from all op sources
-    let mut available_groups: Vec<String> = Vec::new();
-    if let Some(pk) = pk_query {
-        available_groups.push(format!("pk({})", sorted_param_names(pk.predicate_params())));
-    }
-    for uq in &unique_queries {
-        available_groups.push(format!(
-            "unique({})",
-            sorted_param_names(uq.predicate_params())
-        ));
-    }
-    if let Some(pk) = pk_delete {
-        available_groups.push(format!("pk({})", sorted_param_names(pk.predicate_params())));
-    }
-    for ud in &unique_deletes {
-        available_groups.push(format!(
-            "unique({})",
-            sorted_param_names(ud.predicate_params())
-        ));
-    }
-    available_groups.sort();
-    available_groups.dedup();
-
-    let mut sorted_provided: Vec<&str> = provided.into_iter().collect();
-    sorted_provided.sort();
-
-    Err(SubsystemRpcError::InvalidParams(format!(
-        "Provided parameters [{}] do not match any lookup group. Available groups: {}",
-        sorted_provided.join(", "),
-        available_groups.join(", ")
-    )))
 }
 
 /// Trait for resolving operations to an AbstractSelect.
@@ -805,14 +709,4 @@ fn extract_i64_from_val(val: Option<Val>) -> Option<i64> {
         Some(Val::Number(n)) => n.as_i64(),
         _ => None,
     }
-}
-
-fn param_name_set(params: &[postgres_core_model::predicate::PredicateParameter]) -> HashSet<&str> {
-    params.iter().map(|p| p.name.as_str()).collect()
-}
-
-fn sorted_param_names(params: &[postgres_core_model::predicate::PredicateParameter]) -> String {
-    let mut names: Vec<&str> = params.iter().map(|p| p.name.as_str()).collect();
-    names.sort();
-    names.join(", ")
 }

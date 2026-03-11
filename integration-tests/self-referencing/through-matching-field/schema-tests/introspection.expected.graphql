@@ -169,10 +169,10 @@ type Query {
   """
   companiesAgg(where: CompanyFilter): CompanyAgg!
 
-  """Get a single `Company` given primary key fields"""
+  """Get a single `Company` by primary key"""
   company(id: Int!): Company
 
-  """Get a single `Employee` given primary key fields"""
+  """Get a single `Employee` by primary key"""
   employee(id: Int!): Employee
 
   """

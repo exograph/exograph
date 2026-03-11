@@ -210,7 +210,7 @@ input UserUpdateInput {
 }
 
 type Query {
-  """Get a single `MailingList` given primary key fields"""
+  """Get a single `MailingList` by primary key"""
   mailingList(id: Int!): MailingList
 
   """
@@ -223,10 +223,10 @@ type Query {
   """
   mailingListsAgg(where: MailingListFilter): MailingListAgg!
 
-  """Get a single `User` given primary key fields"""
+  """Get a single `User` by primary key"""
   user(id: Int!): User
 
-  """Get a single `UserSubscription` given primary key fields"""
+  """Get a single `UserSubscription` by primary key"""
   userSubscription(id: Int!): UserSubscription
 
   """

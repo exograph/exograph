@@ -5,9 +5,9 @@ stages:
       type: rpc
       payload: |
         {
-          "method": "delete_user",
+          "method": "delete_user_by_username",
           "params": {
-            "by": {"username": "NonExistentUser"}
+            "username": "NonExistentUser"
           }
         }
     response: |
@@ -20,9 +20,9 @@ stages:
       type: rpc
       payload: |
         {
-          "method": "delete_rsvp",
+          "method": "delete_rsvp_by_event_rsvp",
           "params": {
-            "by": {"event": "NonExistentEvent", "user": {"id": $.alice_user_id}}
+            "event": "NonExistentEvent", "user": {"id": $.alice_user_id}
           }
         }
     response: |

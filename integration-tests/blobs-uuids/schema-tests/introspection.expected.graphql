@@ -88,7 +88,7 @@ input UuidFilter {
 }
 
 type Query {
-  """Get a single `Image` given primary key fields"""
+  """Get a single `Image` by primary key"""
   image(id: Uuid!): Image
 
   """

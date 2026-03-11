@@ -5,9 +5,9 @@ stages:
       type: rpc
       payload: |
         {
-          "method": "delete_rsvp",
+          "method": "delete_rsvp_by_event_rsvp",
           "params": {
-            "by": {"event": "Concert1", "user": {"id": $.alice_user_id}}
+            "event": "Concert1", "user": {"id": $.alice_user_id}
           }
         }
     response: |
@@ -22,7 +22,7 @@ stages:
         {
           "method": "get_rsvp",
           "params": {
-            "by": {"id": $.alice_rsvp_id[0]}
+            "id": $.alice_rsvp_id[0]
           }
         }
     response: |
@@ -35,9 +35,9 @@ stages:
       type: rpc
       payload: |
         {
-          "method": "delete_internalrsvp",
+          "method": "delete_internal_rsvp_by_event_rsvp",
           "params": {
-            "by": {"event": "InternalConcert1", "user": {"id": $.alice_user_id}}
+            "event": "InternalConcert1", "user": {"id": $.alice_user_id}
           }
         }
     response: |
@@ -50,9 +50,9 @@ stages:
       type: rpc
       payload: |
         {
-          "method": "get_internalrsvp",
+          "method": "get_internal_rsvp",
           "params": {
-            "by": {"id": $.alice_internal_rsvp_id[0]}
+            "id": $.alice_internal_rsvp_id[0]
           }
         }
     response: |
@@ -65,9 +65,9 @@ stages:
       type: rpc
       payload: |
         {
-          "method": "delete_user",
+          "method": "delete_user_by_username",
           "params": {
-            "by": {"username": "Alice02"}
+            "username": "Alice02"
           }
         }
     response: |
@@ -80,9 +80,9 @@ stages:
       type: rpc
       payload: |
         {
-          "method": "get_user",
+          "method": "get_user_by_username",
           "params": {
-            "by": {"username": "Alice02"}
+            "username": "Alice02"
           }
         }
     response: |

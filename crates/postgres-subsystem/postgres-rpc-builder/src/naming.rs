@@ -7,18 +7,36 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use heck::ToSnakeCase;
+
 pub fn get_single(entity_name: &str) -> String {
-    format!("get_{}", entity_name.to_lowercase())
+    format!("get_{}", entity_name.to_snake_case())
 }
 
 pub fn get_collection(plural_name: &str) -> String {
-    format!("get_{}", plural_name.to_lowercase())
+    format!("get_{}", plural_name.to_snake_case())
 }
 
 pub fn delete_single(entity_name: &str) -> String {
-    format!("delete_{}", entity_name.to_lowercase())
+    format!("delete_{}", entity_name.to_snake_case())
 }
 
 pub fn delete_collection(plural_name: &str) -> String {
-    format!("delete_{}", plural_name.to_lowercase())
+    format!("delete_{}", plural_name.to_snake_case())
+}
+
+pub fn get_single_by_unique(entity_name: &str, constraint_name: &str) -> String {
+    format!(
+        "get_{}_by_{}",
+        entity_name.to_snake_case(),
+        constraint_name.to_snake_case()
+    )
+}
+
+pub fn delete_single_by_unique(entity_name: &str, constraint_name: &str) -> String {
+    format!(
+        "delete_{}_by_{}",
+        entity_name.to_snake_case(),
+        constraint_name.to_snake_case()
+    )
 }

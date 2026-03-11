@@ -66,7 +66,7 @@
       }
     },
     {
-      "name": "get_othernumberss",
+      "name": "get_other_numberss",
       "description": "Get multiple `OtherNumbers`s given the provided `where` filter, order by, limit, and offset",
       "params": [
         {
@@ -127,13 +127,13 @@
     },
     {
       "name": "get_numbers",
-      "description": "Get a single `Numbers` by primary key.",
+      "description": "Get a single `Numbers` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/NumbersPK"
+            "type": "integer"
           }
         }
       ],
@@ -152,14 +152,14 @@
       }
     },
     {
-      "name": "get_othernumbers",
-      "description": "Get a single `OtherNumbers` by primary key.",
+      "name": "get_other_numbers",
+      "description": "Get a single `OtherNumbers` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/OtherNumbersPK"
+            "type": "integer"
           }
         }
       ],
@@ -208,7 +208,7 @@
       }
     },
     {
-      "name": "delete_othernumberss",
+      "name": "delete_other_numberss",
       "description": "Delete multiple `OtherNumbers`s given the provided `where` filter",
       "params": [
         {
@@ -239,13 +239,13 @@
     },
     {
       "name": "delete_numbers",
-      "description": "Delete a single `Numbers` by primary key.",
+      "description": "Delete a single `Numbers` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/NumbersPK"
+            "type": "integer"
           }
         }
       ],
@@ -264,14 +264,14 @@
       }
     },
     {
-      "name": "delete_othernumbers",
-      "description": "Delete a single `OtherNumbers` by primary key.",
+      "name": "delete_other_numbers",
+      "description": "Delete a single `OtherNumbers` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/OtherNumbersPK"
+            "type": "integer"
           }
         }
       ],

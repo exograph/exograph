@@ -154,7 +154,7 @@ input TodoUpdateInput {
 }
 
 type Query {
-  """Get a single `Document` given primary key fields"""
+  """Get a single `Document` by primary key"""
   document(id: Int!): Document
 
   """
@@ -167,7 +167,7 @@ type Query {
   """
   documentsAgg(where: DocumentFilter): DocumentAgg!
 
-  """Get a single `Todo` given primary key fields"""
+  """Get a single `Todo` by primary key"""
   todo(id: Int!): Todo
 
   """

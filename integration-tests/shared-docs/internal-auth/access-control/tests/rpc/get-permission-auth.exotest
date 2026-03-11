@@ -10,7 +10,7 @@ stages:
         {
           "method": "get_permission",
           "params": {
-            "by": {"id": $.d1PermissionIds[0]}
+            "id": $.d1PermissionIds[0]
           }
         }
     auth: |
@@ -39,7 +39,7 @@ stages:
         {
           "method": "get_permission",
           "params": {
-            "by": {"id": $.d1PermissionIds[0]}
+            "id": $.d1PermissionIds[0]
           }
         }
     auth: |
@@ -69,7 +69,7 @@ stages:
         {
           "method": "get_permission",
           "params": {
-            "by": {"id": $.d1PermissionIds[0]}
+            "id": $.d1PermissionIds[0]
           }
         }
     auth: |
@@ -89,7 +89,7 @@ stages:
         {
           "method": "get_permission",
           "params": {
-            "by": {"id": $.d2PermissionIds[0]}
+            "id": $.d2PermissionIds[0]
           }
         }
     auth: |

@@ -7,7 +7,7 @@ stages:
         {
           "method": "delete_concert",
           "params": {
-            "by": {"id": 2}
+            "id": 2
           }
         }
     auth: |
@@ -26,7 +26,7 @@ stages:
         {
           "method": "get_concert",
           "params": {
-            "by": {"id": 2}
+            "id": 2
           }
         }
     auth: |

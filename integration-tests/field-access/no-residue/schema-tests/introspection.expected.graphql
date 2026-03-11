@@ -90,7 +90,7 @@ input StringFilter {
 }
 
 type Query {
-  """Get a single `Customer` given primary key fields"""
+  """Get a single `Customer` by primary key"""
   customer(id: Int!): Customer
 
   """

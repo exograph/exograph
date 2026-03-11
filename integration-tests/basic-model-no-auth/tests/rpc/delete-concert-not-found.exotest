@@ -5,7 +5,7 @@ operation:
     {
       "method": "delete_concert",
       "params": {
-        "by": {"id": 99999}
+        "id": 99999
       }
     }
 response: |

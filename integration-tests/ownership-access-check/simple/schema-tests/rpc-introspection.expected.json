@@ -127,13 +127,13 @@
     },
     {
       "name": "get_user",
-      "description": "Get a single `User` by primary key.",
+      "description": "Get a single `User` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/UserPK"
+            "type": "integer"
           }
         }
       ],
@@ -153,13 +153,13 @@
     },
     {
       "name": "get_document",
-      "description": "Get a single `Document` by primary key.",
+      "description": "Get a single `Document` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/DocumentPK"
+            "type": "integer"
           }
         }
       ],
@@ -239,13 +239,13 @@
     },
     {
       "name": "delete_user",
-      "description": "Delete a single `User` by primary key.",
+      "description": "Delete a single `User` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/UserPK"
+            "type": "integer"
           }
         }
       ],
@@ -265,13 +265,13 @@
     },
     {
       "name": "delete_document",
-      "description": "Delete a single `Document` by primary key.",
+      "description": "Delete a single `Document` by primary key",
       "params": [
         {
-          "name": "by",
+          "name": "id",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/DocumentPK"
+            "type": "integer"
           }
         }
       ],

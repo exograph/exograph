@@ -157,7 +157,7 @@ input StringFilter {
 }
 
 type Query {
-  """Get a single `Event` given primary key fields"""
+  """Get a single `Event` by primary key"""
   event(id: Int!): Event
 
   """
@@ -170,7 +170,7 @@ type Query {
   """
   eventsAgg(where: EventFilter): EventAgg!
 
-  """Get a single `Notification` given primary key fields"""
+  """Get a single `Notification` by primary key"""
   notification(id: Int!): Notification
 
   """

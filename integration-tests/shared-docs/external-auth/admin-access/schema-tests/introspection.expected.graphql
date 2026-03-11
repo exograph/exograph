@@ -174,10 +174,10 @@ input StringFilter {
 }
 
 type Query {
-  """Get a single `Document` given primary key fields"""
+  """Get a single `Document` by primary key"""
   document(id: Int!): Document
 
-  """Get a single `DocumentUser` given primary key fields"""
+  """Get a single `DocumentUser` by primary key"""
   documentUser(id: Int!): DocumentUser
 
   """

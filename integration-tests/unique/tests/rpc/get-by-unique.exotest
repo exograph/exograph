@@ -5,9 +5,9 @@ stages:
       type: rpc
       payload: |
         {
-          "method": "get_user",
+          "method": "get_user_by_username",
           "params": {
-            "by": {"username": "Alice02"}
+            "username": "Alice02"
           }
         }
     response: |
@@ -20,9 +20,9 @@ stages:
       type: rpc
       payload: |
         {
-          "method": "get_user",
+          "method": "get_user_by_primary_email",
           "params": {
-            "by": {"primaryEmailId": "alice", "emailDomain": "example.com"}
+            "primaryEmailId": "alice", "emailDomain": "example.com"
           }
         }
     response: |
@@ -35,9 +35,9 @@ stages:
       type: rpc
       payload: |
         {
-          "method": "get_user",
+          "method": "get_user_by_secondary_email",
           "params": {
-            "by": {"secondaryEmailId": "alice2", "emailDomain": "example.com"}
+            "secondaryEmailId": "alice2", "emailDomain": "example.com"
           }
         }
     response: |
@@ -50,9 +50,9 @@ stages:
       type: rpc
       payload: |
         {
-          "method": "get_user",
+          "method": "get_user_by_username",
           "params": {
-            "by": {"username": "nonexistent"}
+            "username": "nonexistent"
           }
         }
     response: |
@@ -67,7 +67,7 @@ stages:
         {
           "method": "get_user",
           "params": {
-            "by": {"id": 1}
+            "id": 1
           }
         }
     response: |
@@ -82,7 +82,7 @@ stages:
         {
           "method": "get_user",
           "params": {
-            "by": {"id": 99999}
+            "id": 99999
           }
         }
     response: |
@@ -97,7 +97,7 @@ stages:
         {
           "method": "get_rsvp",
           "params": {
-            "by": {"id": 1}
+            "id": 1
           }
         }
     response: |

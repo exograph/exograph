@@ -149,7 +149,7 @@ input UserUpdateInput {
 }
 
 type Query {
-  """Get a single `Project` given primary key fields"""
+  """Get a single `Project` by primary key"""
   project(id: Int!): Project
 
   """
@@ -162,7 +162,7 @@ type Query {
   """
   projectsAgg(where: ProjectFilter): ProjectAgg!
 
-  """Get a single `User` given primary key fields"""
+  """Get a single `User` by primary key"""
   user(id: Int!): User
 
   """

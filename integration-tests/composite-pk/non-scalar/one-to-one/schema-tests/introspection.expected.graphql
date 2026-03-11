@@ -158,10 +158,10 @@ input UserUpdateInput {
 }
 
 type Query {
-  """Get a single `Profile` given primary key fields"""
+  """Get a single `Profile` by primary key"""
   profile(user: UserUniqueFilter!): Profile
 
-  """Get a single `Profile` given unique fields"""
+  """Get a single `Profile` by user"""
   profileByUser(user: UserUniqueFilter!): Profile
 
   """
@@ -174,7 +174,7 @@ type Query {
   """
   profilesAgg(where: ProfileFilter): ProfileAgg!
 
-  """Get a single `User` given primary key fields"""
+  """Get a single `User` by primary key"""
   user(orgId: Int!, email: String!): User
 
   """
