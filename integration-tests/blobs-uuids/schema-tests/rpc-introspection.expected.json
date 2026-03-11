@@ -67,23 +67,13 @@
     },
     {
       "name": "get_image",
-      "description": "Get a single `Image` given primary key fields",
+      "description": "Get a single `Image` by primary key.",
       "params": [
         {
           "name": "by",
           "required": true,
           "schema": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "format": "uuid"
-              }
-            },
-            "required": [
-              "id"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/ImagePK"
           }
         }
       ],
@@ -93,6 +83,62 @@
           "oneOf": [
             {
               "$ref": "#/components/schemas/Image"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_images",
+      "description": "Delete multiple `Image`s given the provided `where` filter",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Images",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ImageFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/ImagePK"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete_image",
+      "description": "Delete a single `Image` by primary key.",
+      "params": [
+        {
+          "name": "by",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ImagePK"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/ImagePK"
             },
             {
               "type": "null"
@@ -267,6 +313,19 @@
             "nullable": true
           }
         }
+      },
+      "ImagePK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
       }
     }
   }

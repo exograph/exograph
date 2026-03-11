@@ -1,0 +1,31 @@
+# Test delete by unique constraint fields when entity does not exist returns null
+stages:
+  # Delete user by non-existent username
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_user",
+          "params": {
+            "by": {"username": "NonExistentUser"}
+          }
+        }
+    response: |
+      {
+        "result": null
+      }
+
+  # Delete rsvp by non-existent composite unique (event + user)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_rsvp",
+          "params": {
+            "by": {"event": "NonExistentEvent", "user": {"id": $.alice_user_id}}
+          }
+        }
+    response: |
+      {
+        "result": null
+      }

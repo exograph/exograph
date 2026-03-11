@@ -1,0 +1,14 @@
+# Test delete of non-existent PK returns null
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "delete_concert",
+      "params": {
+        "by": {"id": 99999}
+      }
+    }
+response: |
+  {
+    "result": null
+  }

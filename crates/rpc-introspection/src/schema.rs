@@ -164,13 +164,18 @@ pub enum RpcTypeSchema {
     OneOf { variants: Vec<OneOfVariant> },
 }
 
-/// A variant in a oneOf schema — an object with specific required properties.
+/// A variant in a oneOf schema.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OneOfVariant {
-    /// The properties of this variant (name, schema)
-    pub properties: Vec<(String, RpcTypeSchema)>,
-    /// The required property names
-    pub required: Vec<String>,
+pub enum OneOfVariant {
+    /// An inline object with specific required properties
+    Inline {
+        /// The properties of this variant (name, schema)
+        properties: Vec<(String, RpcTypeSchema)>,
+        /// The required property names
+        required: Vec<String>,
+    },
+    /// A reference to a named type in components
+    Ref(String),
 }
 
 impl RpcTypeSchema {
@@ -255,6 +260,8 @@ pub struct RpcObjectType {
     pub description: Option<String>,
     /// The fields of this object
     pub fields: Vec<RpcObjectField>,
+    /// Whether additional properties are disallowed (used for disambiguation in oneOf)
+    pub additional_properties_false: bool,
 }
 
 impl RpcObjectType {
@@ -263,7 +270,13 @@ impl RpcObjectType {
             name: name.into(),
             description: None,
             fields: Vec::new(),
+            additional_properties_false: false,
         }
+    }
+
+    pub fn with_additional_properties_false(mut self) -> Self {
+        self.additional_properties_false = true;
+        self
     }
 
     pub fn with_description(mut self, description: impl Into<String>) -> Self {

@@ -1,0 +1,34 @@
+# Test collection delete with where filter matching nothing returns empty list
+stages:
+  # Delete concerts with a filter that matches no rows
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_concerts",
+          "params": {
+            "where": {"title": {"eq": "NonExistent"}}
+          }
+        }
+    response: |
+      {
+        "result": []
+      }
+
+  # Verify all concerts still exist
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {}
+        }
+    response: |
+      {
+        "result": [
+          {"id": 1, "title": "Concert1", "published": true, "price": "20.50", "venue": {"id": 1}},
+          {"id": 2, "title": "Concert2", "published": false, "price": "12.50", "venue": {"id": 2}},
+          {"id": 3, "title": "Concert3", "published": true, "price": "30.50", "venue": {"id": 1}},
+          {"id": 4, "title": "Concert4", "published": false, "price": "22.50", "venue": {"id": 2}}
+        ]
+      }

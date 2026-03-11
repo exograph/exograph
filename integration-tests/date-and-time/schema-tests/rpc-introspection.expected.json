@@ -67,22 +67,13 @@
     },
     {
       "name": "get_book",
-      "description": "Get a single `Book` given primary key fields",
+      "description": "Get a single `Book` by primary key.",
       "params": [
         {
           "name": "by",
           "required": true,
           "schema": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "integer"
-              }
-            },
-            "required": [
-              "id"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/BookPK"
           }
         }
       ],
@@ -92,6 +83,62 @@
           "oneOf": [
             {
               "$ref": "#/components/schemas/Book"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_books",
+      "description": "Delete multiple `Book`s given the provided `where` filter",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Books",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BookFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/BookPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete_book",
+      "description": "Delete a single `Book` by primary key.",
+      "params": [
+        {
+          "name": "by",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/BookPK"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/BookPK"
             },
             {
               "type": "null"
@@ -493,6 +540,18 @@
             "nullable": true
           }
         }
+      },
+      "BookPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
       }
     }
   }

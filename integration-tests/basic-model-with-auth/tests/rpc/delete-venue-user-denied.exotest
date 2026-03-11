@@ -1,0 +1,48 @@
+# Test non-admin gets auth error when trying to delete, and entity is not deleted
+stages:
+  # Non-admin tries to delete - gets auth error
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_concert",
+          "params": {
+            "by": {"id": 1}
+          }
+        }
+    auth: |
+      {
+        "role": "ROLE_USER"
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+
+  # Verify the concert still exists
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {
+            "by": {"id": 1}
+          }
+        }
+    auth: |
+      {
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "title": "Concert1",
+          "published": true,
+          "price": "20.50",
+          "venue": {"id": 1}
+        }
+      }

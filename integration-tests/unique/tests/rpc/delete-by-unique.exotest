@@ -1,0 +1,91 @@
+# Test delete by unique constraint fields via RPC
+stages:
+  # Delete rsvp by composite unique constraint (event + user)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_rsvp",
+          "params": {
+            "by": {"event": "Concert1", "user": {"id": $.alice_user_id}}
+          }
+        }
+    response: |
+      {
+        "result": {"id": $.alice_rsvp_id[0]}
+      }
+
+  # Verify rsvp deletion
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_rsvp",
+          "params": {
+            "by": {"id": $.alice_rsvp_id[0]}
+          }
+        }
+    response: |
+      {
+        "result": null
+      }
+
+  # Delete internal rsvp by composite unique constraint (event + user)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_internalrsvp",
+          "params": {
+            "by": {"event": "InternalConcert1", "user": {"id": $.alice_user_id}}
+          }
+        }
+    response: |
+      {
+        "result": {"id": $.alice_internal_rsvp_id[0]}
+      }
+
+  # Verify internal rsvp deletion
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_internalrsvp",
+          "params": {
+            "by": {"id": $.alice_internal_rsvp_id[0]}
+          }
+        }
+    response: |
+      {
+        "result": null
+      }
+
+  # Delete user by unique constraint (username) - returns PK only
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_user",
+          "params": {
+            "by": {"username": "Alice02"}
+          }
+        }
+    response: |
+      {
+        "result": {"id": $.alice_user_id}
+      }
+
+  # Verify user deletion
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_user",
+          "params": {
+            "by": {"username": "Alice02"}
+          }
+        }
+    response: |
+      {
+        "result": null
+      }

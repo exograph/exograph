@@ -195,16 +195,7 @@
           "schema": {
             "oneOf": [
               {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "id"
-                ],
-                "additionalProperties": false
+                "$ref": "#/components/schemas/RsvpPK"
               },
               {
                 "type": "object",
@@ -250,16 +241,7 @@
           "schema": {
             "oneOf": [
               {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "id"
-                ],
-                "additionalProperties": false
+                "$ref": "#/components/schemas/UserPK"
               },
               {
                 "type": "object",
@@ -333,16 +315,7 @@
           "schema": {
             "oneOf": [
               {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "id"
-                ],
-                "additionalProperties": false
+                "$ref": "#/components/schemas/InternalRsvpPK"
               },
               {
                 "type": "object",
@@ -370,6 +343,262 @@
           "oneOf": [
             {
               "$ref": "#/components/schemas/InternalRsvp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_rsvps",
+      "description": "Delete multiple `Rsvp`s given the provided `where` filter",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Rsvps",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RsvpFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/RsvpPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete_users",
+      "description": "Delete multiple `User`s given the provided `where` filter",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Users",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/UserPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete_internalrsvps",
+      "description": "Delete multiple `InternalRsvp`s given the provided `where` filter",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for InternalRsvps",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/InternalRsvpFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/InternalRsvpPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete_rsvp",
+      "description": "Delete a single `Rsvp`. Provide one of: (id), (event, user)",
+      "params": [
+        {
+          "name": "by",
+          "required": true,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RsvpPK"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "event": {
+                    "type": "string"
+                  },
+                  "user": {
+                    "$ref": "#/components/schemas/UserUniqueFilter"
+                  }
+                },
+                "required": [
+                  "event",
+                  "user"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/RsvpPK"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_user",
+      "description": "Delete a single `User`. Provide one of: (id), (primaryEmailId, emailDomain), (secondaryEmailId, emailDomain), (username)",
+      "params": [
+        {
+          "name": "by",
+          "required": true,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserPK"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "primaryEmailId": {
+                    "type": "string"
+                  },
+                  "emailDomain": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "primaryEmailId",
+                  "emailDomain"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "secondaryEmailId": {
+                    "type": "string"
+                  },
+                  "emailDomain": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "secondaryEmailId",
+                  "emailDomain"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "username"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_internalrsvp",
+      "description": "Delete a single `InternalRsvp`. Provide one of: (id), (event, user)",
+      "params": [
+        {
+          "name": "by",
+          "required": true,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/InternalRsvpPK"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "event": {
+                    "type": "string"
+                  },
+                  "user": {
+                    "$ref": "#/components/schemas/UserUniqueFilter"
+                  }
+                },
+                "required": [
+                  "event",
+                  "user"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/InternalRsvpPK"
             },
             {
               "type": "null"
@@ -899,6 +1128,18 @@
           }
         }
       },
+      "RsvpPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
       "UserUniqueFilter": {
         "type": "object",
         "properties": {
@@ -907,6 +1148,30 @@
             "nullable": true
           }
         }
+      },
+      "UserPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "InternalRsvpPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
       }
     }
   }

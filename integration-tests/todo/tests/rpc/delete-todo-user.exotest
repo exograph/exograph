@@ -1,0 +1,87 @@
+# Test user can delete own todo (row-level access control)
+stages:
+  # User1 deletes their own todo - should succeed
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_todo",
+          "params": {
+            "by": {"id": $.u1TodoIds[1]}
+          }
+        }
+    auth: |
+      {
+        "sub": $.u1Id,
+        "role": "user"
+      }
+    response: |
+      {
+        "result": {"id": $.u1TodoIds[1]}
+      }
+
+  # Verify user1's todo is deleted
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todo",
+          "params": {
+            "by": {"id": $.u1TodoIds[1]}
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": null
+      }
+
+  # User1 tries to delete user2's todo - returns null (row-level predicate filters it out)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_todo",
+          "params": {
+            "by": {"id": $.u2TodoIds[0]}
+          }
+        }
+    auth: |
+      {
+        "sub": $.u1Id,
+        "role": "user"
+      }
+    response: |
+      {
+        "result": null
+      }
+
+  # Verify user2's todo still exists
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todo",
+          "params": {
+            "by": {"id": $.u2TodoIds[0]}
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {
+          "id": $.u2TodoIds[0],
+          "title": "U2-T1",
+          "completed": false,
+          "priority": "MEDIUM",
+          "user": {
+            "id": $.u2Id
+          }
+        }
+      }

@@ -1,0 +1,31 @@
+# Test single delete by PK via RPC - returns PK only
+stages:
+  # Delete concert by PK
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_concert",
+          "params": {
+            "by": {"id": 1}
+          }
+        }
+    response: |
+      {
+        "result": {"id": 1}
+      }
+
+  # Verify it's deleted - get returns null
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {
+            "by": {"id": 1}
+          }
+        }
+    response: |
+      {
+        "result": null
+      }

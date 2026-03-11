@@ -127,26 +127,13 @@
     },
     {
       "name": "get_person",
-      "description": "Get a single `Person` given primary key fields",
+      "description": "Get a single `Person` by primary key.",
       "params": [
         {
           "name": "by",
           "required": true,
           "schema": {
-            "type": "object",
-            "properties": {
-              "firstName": {
-                "type": "string"
-              },
-              "lastName": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "firstName",
-              "lastName"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/PersonPK"
           }
         }
       ],
@@ -166,34 +153,13 @@
     },
     {
       "name": "get_address",
-      "description": "Get a single `Address` given primary key fields",
+      "description": "Get a single `Address` by primary key.",
       "params": [
         {
           "name": "by",
           "required": true,
           "schema": {
-            "type": "object",
-            "properties": {
-              "street": {
-                "type": "string"
-              },
-              "city": {
-                "type": "string"
-              },
-              "state": {
-                "type": "string"
-              },
-              "zip": {
-                "type": "integer"
-              }
-            },
-            "required": [
-              "street",
-              "city",
-              "state",
-              "zip"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/AddressPK"
           }
         }
       ],
@@ -203,6 +169,118 @@
           "oneOf": [
             {
               "$ref": "#/components/schemas/Address"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_people",
+      "description": "Delete multiple `Person`s given the provided `where` filter",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for People",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PersonFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/PersonPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete_addresses",
+      "description": "Delete multiple `Address`s given the provided `where` filter",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Addresses",
+          "required": false,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AddressFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/AddressPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete_person",
+      "description": "Delete a single `Person` by primary key.",
+      "params": [
+        {
+          "name": "by",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/PersonPK"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/PersonPK"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_address",
+      "description": "Delete a single `Address` by primary key.",
+      "params": [
+        {
+          "name": "by",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/AddressPK"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/AddressPK"
             },
             {
               "type": "null"
@@ -608,6 +686,46 @@
           "state",
           "zip"
         ]
+      },
+      "PersonPK": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName"
+        ],
+        "additionalProperties": false
+      },
+      "AddressPK": {
+        "type": "object",
+        "properties": {
+          "street": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "zip": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "street",
+          "city",
+          "state",
+          "zip"
+        ],
+        "additionalProperties": false
       }
     }
   }
