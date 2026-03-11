@@ -101,7 +101,7 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
                     .map(|d| d as &dyn OperationResolver)
             });
 
-        // For PK/unique lookups, we need to unwrap the `by` param — try queries first, then deletes
+        // For PK/unique lookups, unwrap `by` once and search across both queries and deletes
         let resolved = if let Some(r) = resolved {
             Some(r)
         } else {
@@ -113,9 +113,6 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
                     .filter(|(_, q)| q.name == request_method)
                     .map(|(_, q)| q)
                     .collect(),
-                &mut validated_params,
-            )?
-            .or(resolve_by_lookup(
                 self.subsystem.pk_deletes.get_by_key(request_method),
                 self.subsystem
                     .unique_deletes
@@ -124,7 +121,7 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
                     .map(|(_, d)| d)
                     .collect(),
                 &mut validated_params,
-            )?)
+            )?
         };
 
         if let Some(resolver) = resolved {
@@ -177,22 +174,26 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
     }
 }
 
-/// Unwrap the `by` param and find the matching PK or unique operation based on provided param names.
-/// Shared by both get queries and deletes.
+/// Unwrap the `by` param and find the matching PK or unique operation across queries and deletes.
 fn resolve_by_lookup<'a>(
-    pk_op: Option<&'a (impl HasPredicateParams + OperationResolver)>,
-    unique_ops: Vec<&'a (impl HasPredicateParams + OperationResolver)>,
+    pk_query: Option<&'a (impl HasPredicateParams + OperationResolver)>,
+    unique_queries: Vec<&'a (impl HasPredicateParams + OperationResolver)>,
+    pk_delete: Option<&'a (impl HasPredicateParams + OperationResolver)>,
+    unique_deletes: Vec<&'a (impl HasPredicateParams + OperationResolver)>,
     validated_params: &mut HashMap<String, Val>,
 ) -> Result<Option<&'a dyn OperationResolver>, SubsystemRpcError> {
-    if pk_op.is_none() && unique_ops.is_empty() {
+    if pk_query.is_none()
+        && unique_queries.is_empty()
+        && pk_delete.is_none()
+        && unique_deletes.is_empty()
+    {
         return Ok(None);
     }
 
-    // Extract the `by` param — it's a Val::Object containing the actual lookup fields
+    // Extract the `by` param once
     let by_val = validated_params.remove("by").ok_or_else(|| {
         SubsystemRpcError::InvalidParams("Missing required parameter: by".to_string())
     })?;
-
     let by_fields = match by_val {
         Val::Object(fields) => fields,
         _ => {
@@ -202,37 +203,62 @@ fn resolve_by_lookup<'a>(
         }
     };
 
-    // Replace validated_params with the unwrapped by fields
-    *validated_params = by_fields;
+    let provided: HashSet<&str> = by_fields.keys().map(|s| s.as_str()).collect();
 
-    let provided: HashSet<&str> = validated_params.keys().map(|s| s.as_str()).collect();
+    // Try to match queries first, then deletes
+    let matched: Option<&dyn OperationResolver> = None;
 
-    // Check if provided params match the PK operation's param names
-    if let Some(pk) = pk_op
-        && provided == param_name_set(pk.predicate_params())
-    {
-        return Ok(Some(pk));
-    }
-
-    // Check if provided params match any unique operation's param names
-    for unique_op in &unique_ops {
-        if provided == param_name_set(unique_op.predicate_params()) {
-            return Ok(Some(*unique_op));
+    let matched = matched.or_else(|| {
+        if let Some(pk) = pk_query
+            && provided == param_name_set(pk.predicate_params())
+        {
+            return Some(pk as &dyn OperationResolver);
         }
+        unique_queries
+            .iter()
+            .find(|op| provided == param_name_set(op.predicate_params()))
+            .map(|op| *op as &dyn OperationResolver)
+    });
+
+    let matched = matched.or_else(|| {
+        if let Some(pk) = pk_delete
+            && provided == param_name_set(pk.predicate_params())
+        {
+            return Some(pk as &dyn OperationResolver);
+        }
+        unique_deletes
+            .iter()
+            .find(|op| provided == param_name_set(op.predicate_params()))
+            .map(|op| *op as &dyn OperationResolver)
+    });
+
+    if let Some(op) = matched {
+        *validated_params = by_fields;
+        return Ok(Some(op));
     }
 
-    // Build error message with available groups
+    // Build error message with available groups from all op sources
     let mut available_groups: Vec<String> = Vec::new();
-    if let Some(pk) = pk_op {
+    if let Some(pk) = pk_query {
         available_groups.push(format!("pk({})", sorted_param_names(pk.predicate_params())));
     }
-    for unique_op in &unique_ops {
+    for uq in &unique_queries {
         available_groups.push(format!(
             "unique({})",
-            sorted_param_names(unique_op.predicate_params())
+            sorted_param_names(uq.predicate_params())
+        ));
+    }
+    if let Some(pk) = pk_delete {
+        available_groups.push(format!("pk({})", sorted_param_names(pk.predicate_params())));
+    }
+    for ud in &unique_deletes {
+        available_groups.push(format!(
+            "unique({})",
+            sorted_param_names(ud.predicate_params())
         ));
     }
     available_groups.sort();
+    available_groups.dedup();
 
     let mut sorted_provided: Vec<&str> = provided.into_iter().collect();
     sorted_provided.sort();
