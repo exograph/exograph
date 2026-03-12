@@ -20,7 +20,8 @@ use postgres_core_model::predicate::PredicateParameter;
 use postgres_core_model::types::{EntityRepresentation, EntityType};
 use postgres_rpc_model::operation::{
     CollectionDelete, CollectionDeleteParameters, CollectionQuery, CollectionQueryParameters,
-    PkDelete, PkQuery, PostgresOperation, ScalarParam, UniqueDelete, UniqueQuery,
+    CollectionUpdate, CollectionUpdateParameters, PkDelete, PkQuery, PkUpdate, PostgresOperation,
+    ScalarParam, UniqueDelete, UniqueQuery, UniqueUpdate,
 };
 use postgres_rpc_model::subsystem::PostgresRpcSubsystem;
 
@@ -40,6 +41,9 @@ pub fn build(
     let mut pk_deletes = MappedArena::default();
     let mut unique_deletes = MappedArena::default();
     let mut collection_deletes = MappedArena::default();
+    let mut pk_updates = MappedArena::default();
+    let mut unique_updates = MappedArena::default();
+    let mut collection_updates = MappedArena::default();
 
     for typ in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(composite) = typ.1 {
@@ -76,6 +80,16 @@ pub fn build(
                 &mut unique_deletes,
                 &mut collection_deletes,
             )?;
+
+            build_updates(
+                composite,
+                entity_type,
+                entity_type_id,
+                &core_subsystem_building,
+                &mut pk_updates,
+                &mut unique_updates,
+                &mut collection_updates,
+            )?;
         }
     }
 
@@ -85,6 +99,9 @@ pub fn build(
         && pk_deletes.is_empty()
         && unique_deletes.is_empty()
         && collection_deletes.is_empty()
+        && pk_updates.is_empty()
+        && unique_updates.is_empty()
+        && collection_updates.is_empty()
     {
         return Ok(None);
     }
@@ -96,6 +113,9 @@ pub fn build(
         pk_deletes,
         unique_deletes,
         collection_deletes,
+        pk_updates,
+        unique_updates,
+        collection_updates,
         core_subsystem: Default::default(),
     }))
 }
@@ -230,6 +250,68 @@ fn build_deletes(
     };
 
     collection_deletes.add(&delete_collection_method, collection_delete);
+
+    Ok(())
+}
+
+fn build_updates(
+    composite: &postgres_core_builder::resolved_type::ResolvedCompositeType,
+    entity_type: &EntityType,
+    entity_type_id: core_model::mapped_arena::SerializableSlabIndex<EntityType>,
+    core_subsystem_building: &postgres_core_builder::SystemContextBuilding,
+    pk_updates: &mut MappedArena<PkUpdate>,
+    unique_updates: &mut MappedArena<UniqueUpdate>,
+    collection_updates: &mut MappedArena<CollectionUpdate>,
+) -> Result<(), ModelBuildingError> {
+    // Skip if update access is explicitly false
+    let skip_update = matches!(
+        core_subsystem_building
+            .database_access_expressions
+            .lock()
+            .unwrap()[entity_type.access.update.database],
+        AccessPredicateExpression::BooleanLiteral(false)
+    );
+
+    if skip_update {
+        return Ok(());
+    }
+
+    let update_method = naming::update_single(&composite.name);
+    let update_collection_method = naming::update_collection(&composite.plural_name);
+
+    // Build PK update (update_todo)
+    build_pk_operation(
+        composite,
+        entity_type,
+        entity_type_id,
+        core_subsystem_building,
+        &update_method,
+        &doc_comments::pk_update_description(&composite.name),
+        pk_updates,
+    );
+
+    // Build unique updates (update_todo_by_username, etc.)
+    build_unique_operations(
+        composite,
+        entity_type,
+        entity_type_id,
+        core_subsystem_building,
+        |constraint_name| naming::update_single_by_unique(&composite.name, constraint_name),
+        |constraint_name| doc_comments::unique_update_description(&composite.name, constraint_name),
+        unique_updates,
+    )?;
+
+    // Build collection update (update_todos) - returns List<PK>
+    let predicate_param = build_filter_predicate_param(&composite.name, core_subsystem_building)?;
+
+    let collection_update = CollectionUpdate {
+        name: update_collection_method.clone(),
+        parameters: CollectionUpdateParameters { predicate_param },
+        return_type: list_return_type(entity_type_id, &composite.name),
+        doc_comments: Some(doc_comments::collection_update_description(&composite.name)),
+    };
+
+    collection_updates.add(&update_collection_method, collection_update);
 
     Ok(())
 }

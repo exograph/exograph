@@ -1,14 +1,17 @@
-# Test delete with composite primary key + auth
+# Test update with composite primary key + auth
 stages:
-  # Admin can delete person with composite PK
+  # Admin can update person with composite PK
   - operation:
       type: rpc
       payload: |
         {
-          "method": "delete_person",
+          "method": "update_person",
           "params": {
             "firstName": "John",
-            "lastName": "DoeAlbany"
+            "lastName": "DoeAlbany",
+            "data": {
+              "age": 21
+            }
           }
         }
     auth: |
@@ -23,7 +26,7 @@ stages:
         }
       }
 
-  # Verify deletion
+  # Verify update
   - operation:
       type: rpc
       payload: |
@@ -40,5 +43,15 @@ stages:
       }
     response: |
       {
-        "result": null
+        "result": {
+          "firstName": "John",
+          "lastName": "DoeAlbany",
+          "age": 21,
+          "address": {
+            "street": "1 Main St",
+            "city": "Albany",
+            "state": "NY",
+            "zip": 10001
+          }
+        }
       }

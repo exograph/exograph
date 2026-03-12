@@ -1,0 +1,56 @@
+# Bulk update with where filter only affects documents owned by the user
+stages:
+  # User 2 updates documents with id > 0 (all), but access restricts to their own (doc 1 and 2)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_documents",
+          "params": {
+            "where": {"id": {"gt": 0}},
+            "data": {"content": "where-updated"}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": [{"id": 1}, {"id": 2}]
+      }
+
+  # Verify user 2's document was updated
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_document",
+          "params": {"id": 2}
+        }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": {"id": 2, "content": "where-updated", "user": {"id": 2}}
+      }
+
+  # Verify user 1's document was NOT updated
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_document",
+          "params": {"id": 3}
+        }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": {"id": 3, "content": "content3", "user": {"id": 1}}
+      }

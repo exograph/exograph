@@ -270,6 +270,152 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "update_users",
+      "description": "Update multiple `User`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Users",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/UserFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching Users",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/UserPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_memberships",
+      "description": "Update multiple `Membership`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Memberships",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/MembershipFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching Memberships",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/MembershipUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/MembershipPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_user",
+      "description": "Update a single `User` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for User",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/UserPK",
+          "nullable": true
+        }
+      }
+    },
+    {
+      "name": "update_membership",
+      "description": "Update a single `Membership` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for Membership",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/MembershipUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/MembershipPK",
+          "nullable": true
+        }
+      }
+    },
+    {
+      "name": "update_membership_by_user",
+      "description": "Update a single `Membership` by user with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "user",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUniqueFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for Membership",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/MembershipUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/MembershipPK",
+          "nullable": true
+        }
+      }
     }
   ],
   "components": {
@@ -510,6 +656,25 @@
           "id"
         ],
         "additionalProperties": false
+      },
+      "UserUpdateInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "MembershipUpdateInput": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserRef"
+          }
+        }
       }
     }
   }

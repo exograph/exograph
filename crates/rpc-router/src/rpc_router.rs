@@ -146,6 +146,11 @@ impl<'a> Router<RequestContext<'a>> for RpcRouter {
             Err(err) => Err(err),
         };
 
+        // Finalize the transaction (commit on success, rollback on error)
+        if let Err(e) = request_context.finalize_transaction(response.is_ok()).await {
+            tracing::error!("Error while finalizing transaction: {:?}", e);
+        }
+
         // Copy headers from response if available
         if let Ok(Some(ref response)) = response {
             for (key, value) in response.response.headers.iter() {

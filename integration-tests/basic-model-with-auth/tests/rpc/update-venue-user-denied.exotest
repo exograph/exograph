@@ -1,0 +1,49 @@
+# Test non-admin gets auth error when trying to update, and entity is not updated
+stages:
+  # Non-admin tries to update - gets auth error
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_concert",
+          "params": {
+            "id": 1,
+            "data": {"title": "Concert1-hacked"}
+          }
+        }
+    auth: |
+      {
+        "role": "ROLE_USER"
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+
+  # Verify the concert was not updated
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {
+            "id": 1
+          }
+        }
+    auth: |
+      {
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "title": "Concert1",
+          "published": true,
+          "price": "20.50",
+          "venue": {"id": 1}
+        }
+      }

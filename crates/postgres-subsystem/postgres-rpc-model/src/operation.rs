@@ -65,67 +65,68 @@ pub trait HasPredicateParams {
     fn predicate_params(&self) -> &[PredicateParameter];
 }
 
-/// Parameters for pk queries (e.g., `get_todo`)
-#[derive(Serialize, Deserialize, Debug)]
-pub struct PkQueryParameters {
-    pub predicate_params: Vec<PredicateParameter>,
-}
+/// Define a predicate-list parameter struct with HasPredicateParams and From impls,
+/// plus a type alias for PostgresOperation<...>.
+macro_rules! define_predicate_params {
+    ($($(#[doc = $doc:expr])* $params_name:ident => $op_alias:ident),+ $(,)?) => { $(
+        $(#[doc = $doc])*
+        #[derive(Serialize, Deserialize, Debug)]
+        pub struct $params_name {
+            pub predicate_params: Vec<PredicateParameter>,
+        }
 
-/// Parameters for unique constraint queries (e.g., `get_user` by username)
-#[derive(Serialize, Deserialize, Debug)]
-pub struct UniqueQueryParameters {
-    pub predicate_params: Vec<PredicateParameter>,
-}
-
-/// Parameters for single delete by PK (e.g., `delete_todo`)
-#[derive(Serialize, Deserialize, Debug)]
-pub struct PkDeleteParameters {
-    pub predicate_params: Vec<PredicateParameter>,
-}
-
-/// Parameters for single delete by unique constraint
-#[derive(Serialize, Deserialize, Debug)]
-pub struct UniqueDeleteParameters {
-    pub predicate_params: Vec<PredicateParameter>,
-}
-
-// Implement HasPredicateParams and From<Vec<PredicateParameter>> for all predicate-list parameter types.
-macro_rules! impl_predicate_list {
-    ($($name:ident),+ $(,)?) => { $(
-        impl HasPredicateParams for $name {
+        impl HasPredicateParams for $params_name {
             fn predicate_params(&self) -> &[PredicateParameter] {
                 &self.predicate_params
             }
         }
 
-        impl From<Vec<PredicateParameter>> for $name {
+        impl From<Vec<PredicateParameter>> for $params_name {
             fn from(predicate_params: Vec<PredicateParameter>) -> Self {
                 Self { predicate_params }
             }
         }
+
+        pub type $op_alias = PostgresOperation<$params_name>;
     )+ };
 }
 
-impl_predicate_list!(
-    PkQueryParameters,
-    UniqueQueryParameters,
-    PkDeleteParameters,
-    UniqueDeleteParameters,
+define_predicate_params!(
+    /// Parameters for pk queries (e.g., `get_todo`)
+    PkQueryParameters => PkQuery,
+    /// Parameters for unique constraint queries (e.g., `get_user` by username)
+    UniqueQueryParameters => UniqueQuery,
+    /// Parameters for single delete by PK (e.g., `delete_todo`)
+    PkDeleteParameters => PkDelete,
+    /// Parameters for single delete by unique constraint
+    UniqueDeleteParameters => UniqueDelete,
+    /// Parameters for single update by PK (e.g., `update_todo`)
+    PkUpdateParameters => PkUpdate,
+    /// Parameters for single update by unique constraint
+    UniqueUpdateParameters => UniqueUpdate,
 );
 
-pub type CollectionQuery = PostgresOperation<CollectionQueryParameters>;
-pub type PkQuery = PostgresOperation<PkQueryParameters>;
-pub type UniqueQuery = PostgresOperation<UniqueQueryParameters>;
+/// Define a collection parameter struct (single predicate_param) plus a type alias.
+macro_rules! define_collection_params {
+    ($($(#[doc = $doc:expr])* $params_name:ident => $op_alias:ident),+ $(,)?) => { $(
+        $(#[doc = $doc])*
+        #[derive(Serialize, Deserialize, Debug)]
+        pub struct $params_name {
+            pub predicate_param: PredicateParameter,
+        }
 
-/// Parameters for collection delete (e.g., `delete_todos`)
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CollectionDeleteParameters {
-    pub predicate_param: PredicateParameter,
+        pub type $op_alias = PostgresOperation<$params_name>;
+    )+ };
 }
 
-pub type PkDelete = PostgresOperation<PkDeleteParameters>;
-pub type UniqueDelete = PostgresOperation<UniqueDeleteParameters>;
-pub type CollectionDelete = PostgresOperation<CollectionDeleteParameters>;
+pub type CollectionQuery = PostgresOperation<CollectionQueryParameters>;
+
+define_collection_params!(
+    /// Parameters for collection delete (e.g., `delete_todos`)
+    CollectionDeleteParameters => CollectionDelete,
+    /// Parameters for collection update (e.g., `update_todos`)
+    CollectionUpdateParameters => CollectionUpdate,
+);
 
 /// Delegate to the inner parameters type.
 impl<P: HasPredicateParams> HasPredicateParams for PostgresOperation<P> {

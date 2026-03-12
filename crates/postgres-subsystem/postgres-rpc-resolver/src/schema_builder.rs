@@ -24,7 +24,7 @@ use postgres_core_model::predicate::{PredicateParameter, PredicateParameterTypeK
 use postgres_core_model::relation::PostgresRelation;
 use postgres_core_model::types::{EntityType, PostgresFieldType, PostgresPrimitiveTypeKind};
 use postgres_rpc_model::operation::{
-    CollectionDelete, CollectionQuery, CollectionQueryParam, HasPredicateParams,
+    CollectionDelete, CollectionQuery, CollectionQueryParam, CollectionUpdate, HasPredicateParams,
 };
 use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
 use rpc_introspection::schema::{
@@ -109,6 +109,34 @@ pub fn build_rpc_schema(subsystem: &PostgresRpcSubsystemWithRouter) -> RpcSchema
         let method = build_predicate_params_method(
             unique_delete,
             ReturnTypeKind::PkOnly,
+            subsystem,
+            &mut schema,
+            &mut added_types,
+        );
+        schema.add_method(method);
+    }
+
+    // Build collection update methods (update_<entities>)
+    for (_, update) in subsystem.collection_updates.iter() {
+        let method = update.build_rpc_method(subsystem, &mut schema, &mut added_types);
+        schema.add_method(method);
+    }
+
+    // Build PK update methods (update_<entity>)
+    for (_, pk_update) in subsystem.pk_updates.iter() {
+        let method = build_update_predicate_params_method(
+            pk_update,
+            subsystem,
+            &mut schema,
+            &mut added_types,
+        );
+        schema.add_method(method);
+    }
+
+    // Build unique update methods (update_<entity>_by_<constraint>)
+    for (_, unique_update) in subsystem.unique_updates.iter() {
+        let method = build_update_predicate_params_method(
+            unique_update,
             subsystem,
             &mut schema,
             &mut added_types,
@@ -210,6 +238,184 @@ impl BuildRpcMethod for CollectionDelete {
 
         method
     }
+}
+
+impl BuildRpcMethod for CollectionUpdate {
+    fn build_rpc_method(
+        &self,
+        subsystem: &PostgresRpcSubsystemWithRouter,
+        schema: &mut RpcSchema,
+        added_types: &mut HashSet<String>,
+    ) -> RpcMethod {
+        let entity_type = self.return_type.typ(&subsystem.core_subsystem.entity_types);
+        let result_schema = build_return_type_schema_with(
+            &self.return_type,
+            ReturnTypeKind::PkOnly,
+            subsystem,
+            schema,
+            added_types,
+        );
+
+        let mut method = RpcMethod::new(self.name.clone(), result_schema);
+        if let Some(doc) = &self.doc_comments {
+            method = method.with_description(doc);
+        }
+
+        // Add `where` parameter
+        let where_param = RpcParameter::new(
+            &self.parameters.predicate_param.name,
+            RpcTypeSchema::optional(self.parameters.predicate_param.build_rpc_type_schema(
+                subsystem,
+                schema,
+                added_types,
+            )),
+        )
+        .with_description(format!("Filter conditions for {}", entity_type.plural_name));
+        method = method.with_param(where_param);
+
+        // Add `data` parameter
+        method = append_update_data_param(
+            method,
+            entity_type,
+            &format!("Data to update for matching {}", entity_type.plural_name),
+            subsystem,
+            schema,
+            added_types,
+        );
+
+        method
+    }
+}
+
+/// Build an RPC method from an update operation with predicate params (PK or unique).
+fn build_update_predicate_params_method<T>(
+    op: &T,
+    subsystem: &PostgresRpcSubsystemWithRouter,
+    schema: &mut RpcSchema,
+    added_types: &mut HashSet<String>,
+) -> RpcMethod
+where
+    T: HasPredicateParams + HasMethodNameAndReturnType,
+{
+    let mut method =
+        build_predicate_params_method(op, ReturnTypeKind::PkOnly, subsystem, schema, added_types);
+
+    // Append `data` parameter
+    let entity_type = op.return_type().typ(&subsystem.core_subsystem.entity_types);
+    method = append_update_data_param(
+        method,
+        entity_type,
+        &format!("Data to update for {}", entity_type.name),
+        subsystem,
+        schema,
+        added_types,
+    );
+
+    method
+}
+
+fn update_input_type_name(entity_name: &str) -> String {
+    format!("{entity_name}UpdateInput")
+}
+
+/// Append the `data` parameter to an RPC method for update operations.
+fn append_update_data_param(
+    method: RpcMethod,
+    entity_type: &EntityType,
+    description: &str,
+    subsystem: &PostgresRpcSubsystemWithRouter,
+    schema: &mut RpcSchema,
+    added_types: &mut HashSet<String>,
+) -> RpcMethod {
+    ensure_update_input_type_added(entity_type, subsystem, schema, added_types);
+    let data_param = RpcParameter::new(
+        crate::resolver::DATA_PARAM_NAME,
+        RpcTypeSchema::object(update_input_type_name(&entity_type.name)),
+    )
+    .with_description(description);
+    method.with_param(data_param)
+}
+
+/// Ensure a PK-only reference type (e.g., "VenueRef") is added to the schema.
+fn ensure_ref_type_added(
+    foreign_entity: &EntityType,
+    subsystem: &PostgresRpcSubsystemWithRouter,
+    schema: &mut RpcSchema,
+    added_types: &mut HashSet<String>,
+) -> String {
+    let ref_type_name = format!("{}Ref", foreign_entity.name);
+    if !added_types.contains(&ref_type_name) {
+        added_types.insert(ref_type_name.clone());
+        let mut ref_obj = RpcObjectType::new(&ref_type_name);
+        for pk_field in foreign_entity.pk_fields() {
+            if let PostgresRelation::Scalar { .. } = pk_field.relation {
+                let pk_schema = build_field_type_schema(
+                    &pk_field.typ,
+                    pk_field.type_validation.as_ref(),
+                    subsystem,
+                    schema,
+                    added_types,
+                );
+                ref_obj = ref_obj.with_field(RpcObjectField::new(&pk_field.name, pk_schema));
+            }
+        }
+        schema.add_object_type(ref_type_name.clone(), ref_obj);
+    }
+    ref_type_name
+}
+
+/// Ensure the update input type for an entity is added to the schema.
+/// All non-PK scalar fields are optional.
+fn ensure_update_input_type_added(
+    entity_type: &EntityType,
+    subsystem: &PostgresRpcSubsystemWithRouter,
+    schema: &mut RpcSchema,
+    added_types: &mut HashSet<String>,
+) {
+    let type_name = update_input_type_name(&entity_type.name);
+
+    if added_types.contains(&type_name) {
+        return;
+    }
+    added_types.insert(type_name.clone());
+
+    let mut update_obj = RpcObjectType::new(&type_name);
+
+    for field in &entity_type.fields {
+        // Skip PK fields
+        if field.relation.is_pk() {
+            continue;
+        }
+
+        match &field.relation {
+            PostgresRelation::Scalar { .. } => {
+                let field_schema = build_field_type_schema(
+                    &field.typ,
+                    field.type_validation.as_ref(),
+                    subsystem,
+                    schema,
+                    added_types,
+                );
+                // All update fields are optional
+                let optional_schema = RpcTypeSchema::optional(field_schema);
+                update_obj =
+                    update_obj.with_field(RpcObjectField::new(&field.name, optional_schema));
+            }
+            PostgresRelation::ManyToOne { relation, .. } => {
+                let foreign_entity =
+                    &subsystem.core_subsystem.entity_types[relation.foreign_entity_id];
+                let ref_type_name =
+                    ensure_ref_type_added(foreign_entity, subsystem, schema, added_types);
+
+                // ManyToOne references are always optional in update input
+                let ref_schema = RpcTypeSchema::optional(RpcTypeSchema::object(&ref_type_name));
+                update_obj = update_obj.with_field(RpcObjectField::new(&field.name, ref_schema));
+            }
+            _ => {}
+        }
+    }
+
+    schema.add_object_type(type_name, update_obj);
 }
 
 impl BuildRpcMethod for CollectionQuery {
@@ -529,27 +735,8 @@ fn ensure_entity_type_added(
             PostgresRelation::ManyToOne { relation, .. } => {
                 let foreign_entity =
                     &subsystem.core_subsystem.entity_types[relation.foreign_entity_id];
-
-                // Build a PK-only reference type (e.g., "UserRef")
-                let ref_type_name = format!("{}Ref", foreign_entity.name);
-                if !added_types.contains(&ref_type_name) {
-                    added_types.insert(ref_type_name.clone());
-                    let mut ref_obj = RpcObjectType::new(&ref_type_name);
-                    for pk_field in foreign_entity.pk_fields() {
-                        if let PostgresRelation::Scalar { .. } = pk_field.relation {
-                            let pk_schema = build_field_type_schema(
-                                &pk_field.typ,
-                                pk_field.type_validation.as_ref(),
-                                subsystem,
-                                schema,
-                                added_types,
-                            );
-                            ref_obj =
-                                ref_obj.with_field(RpcObjectField::new(&pk_field.name, pk_schema));
-                        }
-                    }
-                    schema.add_object_type(ref_type_name.clone(), ref_obj);
-                }
+                let ref_type_name =
+                    ensure_ref_type_added(foreign_entity, subsystem, schema, added_types);
 
                 // Handle optional relations
                 let ref_schema = match &field.typ {

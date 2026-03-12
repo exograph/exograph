@@ -1,0 +1,44 @@
+# Test single update by PK via RPC - returns PK only
+stages:
+  # Update concert title by PK
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_concert",
+          "params": {
+            "id": 1,
+            "data": {
+              "title": "Concert1-updated"
+            }
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 1
+        }
+      }
+
+  # Verify the update
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {
+            "id": 1
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "title": "Concert1-updated",
+          "published": true,
+          "price": "20.50",
+          "venue": {
+            "id": 1
+          }
+        }
+      }

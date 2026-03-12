@@ -286,6 +286,152 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "update_people",
+      "description": "Update multiple `Person`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for People",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/PersonFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching People",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/PersonUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/PersonPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_addresses",
+      "description": "Update multiple `Address`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Addresses",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/AddressFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching Addresses",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/AddressUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/AddressPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_person",
+      "description": "Update a single `Person` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "firstName",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "lastName",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for Person",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/PersonUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/PersonPK",
+          "nullable": true
+        }
+      }
+    },
+    {
+      "name": "update_address",
+      "description": "Update a single `Address` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "street",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "city",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "state",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "zip",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for Address",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/AddressUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/AddressPK",
+          "nullable": true
+        }
+      }
     }
   ],
   "components": {
@@ -597,6 +743,26 @@
           "zip"
         ],
         "additionalProperties": false
+      },
+      "PersonUpdateInput": {
+        "type": "object",
+        "properties": {
+          "age": {
+            "type": "integer"
+          },
+          "address": {
+            "$ref": "#/components/schemas/AddressRef"
+          }
+        }
+      },
+      "AddressUpdateInput": {
+        "type": "object",
+        "properties": {
+          "info": {
+            "type": "string",
+            "nullable": true
+          }
+        }
       }
     }
   }

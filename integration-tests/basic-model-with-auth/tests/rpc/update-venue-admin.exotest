@@ -1,0 +1,40 @@
+# Test admin can update venue via RPC
+stages:
+  # Admin updates venue
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_venue",
+          "params": {
+            "id": 1,
+            "data": {"name": "Venue1-updated"}
+          }
+        }
+    auth: |
+      {
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": {"id": 1}
+      }
+
+  # Verify update
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venue",
+          "params": {
+            "id": 1
+          }
+        }
+    auth: |
+      {
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": {"id": 1, "name": "Venue1-updated", "published": true, "latitude": 37.7749}
+      }

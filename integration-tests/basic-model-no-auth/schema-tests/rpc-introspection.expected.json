@@ -230,6 +230,124 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "update_concerts",
+      "description": "Update multiple `Concert`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Concerts",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/ConcertFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching Concerts",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ConcertUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/ConcertPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_venues",
+      "description": "Update multiple `Venue`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Venues",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/VenueFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching Venues",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/VenueUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/VenuePK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_concert",
+      "description": "Update a single `Concert` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for Concert",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ConcertUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ConcertPK",
+          "nullable": true
+        }
+      }
+    },
+    {
+      "name": "update_venue",
+      "description": "Update a single `Venue` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for Venue",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/VenueUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/VenuePK",
+          "nullable": true
+        }
+      }
     }
   ],
   "components": {
@@ -572,6 +690,37 @@
           "id"
         ],
         "additionalProperties": false
+      },
+      "ConcertUpdateInput": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "venue": {
+            "$ref": "#/components/schemas/VenueRef"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "price": {
+            "type": "string"
+          }
+        }
+      },
+      "VenueUpdateInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "latitude": {
+            "type": "number"
+          }
+        }
       }
     }
   }

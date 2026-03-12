@@ -1,0 +1,33 @@
+# Test update by unique constraint fields when entity does not exist returns null
+stages:
+  # Update user by non-existent username
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_user_by_username",
+          "params": {
+            "username": "NonExistentUser",
+            "data": {"primaryEmailId": "new-email"}
+          }
+        }
+    response: |
+      {
+        "result": null
+      }
+
+  # Update rsvp by non-existent composite unique (event + user)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_rsvp_by_event_rsvp",
+          "params": {
+            "event": "NonExistentEvent", "user": {"id": $.alice_user_id},
+            "data": {"count": 99}
+          }
+        }
+    response: |
+      {
+        "result": null
+      }

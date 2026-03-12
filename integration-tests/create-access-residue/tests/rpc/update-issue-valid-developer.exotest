@@ -1,0 +1,21 @@
+# Test developer can update their own issue (precheck passes: self.assignee.id == AuthContext.id && self.assignee.position == "developer")
+stages:
+  # Developer U1 updates their own issue
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_issue",
+          "params": {
+            "id": $.issue1Id,
+            "data": {"title": "I1-updated", "assignee": {"id": $.u1id}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.u1id
+      }
+    response: |
+      {
+        "result": {"id": $.issue1Id}
+      }

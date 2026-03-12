@@ -117,6 +117,65 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "update_videos",
+      "description": "Update multiple `Video`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Videos",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/VideoFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching Videos",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/VideoUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/VideoPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_video",
+      "description": "Update a single `Video` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for Video",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/VideoUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/VideoPK",
+          "nullable": true
+        }
+      }
     }
   ],
   "components": {
@@ -309,6 +368,29 @@
           "id"
         ],
         "additionalProperties": false
+      },
+      "VideoUpdateInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "nonce": {
+            "type": "integer"
+          },
+          "views": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9999999999
+          },
+          "filesize": {
+            "type": "integer"
+          }
+        }
       }
     }
   }

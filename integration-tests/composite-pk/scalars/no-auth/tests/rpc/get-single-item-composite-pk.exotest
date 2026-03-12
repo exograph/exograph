@@ -9,7 +9,8 @@ stages:
         {
           "method": "get_person",
           "params": {
-            "firstName": "John", "lastName": "DoeAlbany"
+            "firstName": "John",
+            "lastName": "DoeAlbany"
           }
         }
     response: |
@@ -34,7 +35,8 @@ stages:
         {
           "method": "get_person",
           "params": {
-            "firstName": "Jane", "lastName": "SmithBoston"
+            "firstName": "Jane",
+            "lastName": "SmithBoston"
           }
         }
     response: |
@@ -59,7 +61,8 @@ stages:
         {
           "method": "get_person",
           "params": {
-            "firstName": "NonExistent", "lastName": "Person"
+            "firstName": "NonExistent",
+            "lastName": "Person"
           }
         }
     response: |
@@ -92,7 +95,10 @@ stages:
         {
           "method": "get_address",
           "params": {
-            "street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101
+            "street": "2 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": 22101
           }
         }
     response: |
@@ -113,7 +119,8 @@ stages:
         {
           "method": "get_address",
           "params": {
-            "street": "2 Main St", "city": "Boston"
+            "street": "2 Main St",
+            "city": "Boston"
           }
         }
     response: |

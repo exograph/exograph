@@ -117,6 +117,65 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "update_todos",
+      "description": "Update multiple `Todo`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Todos",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/TodoFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching Todos",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/TodoUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/TodoPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_todo",
+      "description": "Update a single `Todo` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for Todo",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/TodoUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/TodoPK",
+          "nullable": true
+        }
+      }
     }
   ],
   "components": {
@@ -263,6 +322,21 @@
           "id"
         ],
         "additionalProperties": false
+      },
+      "TodoUpdateInput": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/Metadata"
+          },
+          "info": {
+            "$ref": "#/components/schemas/Info",
+            "nullable": true
+          }
+        }
       }
     }
   }

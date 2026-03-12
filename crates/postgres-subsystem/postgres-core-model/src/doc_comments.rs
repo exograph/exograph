@@ -34,3 +34,22 @@ pub fn unique_delete_description(entity_name: &str, constraint_name: &str) -> St
 pub fn collection_delete_description(entity_name: &str) -> String {
     format!("Delete multiple `{entity_name}`s given the provided `where` filter")
 }
+
+pub fn pk_update_description(entity_name: &str) -> String {
+    format!(
+        "Update a single `{entity_name}` by primary key with the provided data. Any fields not provided will remain unchanged"
+    )
+}
+
+pub fn unique_update_description(entity_name: &str, constraint_name: &str) -> String {
+    let readable_name = constraint_name.replace('_', " ");
+    format!(
+        "Update a single `{entity_name}` by {readable_name} with the provided data. Any fields not provided will remain unchanged"
+    )
+}
+
+pub fn collection_update_description(entity_name: &str) -> String {
+    format!(
+        "Update multiple `{entity_name}`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged"
+    )
+}

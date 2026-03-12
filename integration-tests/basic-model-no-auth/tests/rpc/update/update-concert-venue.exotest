@@ -1,0 +1,46 @@
+# Test updating a many-to-one relation (change concert's venue)
+stages:
+  # Move concert 1 from venue 1 to venue 2
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_concert",
+          "params": {
+            "id": 1,
+            "data": {
+              "venue": {
+                "id": 2
+              }
+            }
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 1
+        }
+      }
+
+  # Verify the update
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {
+            "id": 1
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "title": "Concert1",
+          "published": true,
+          "price": "20.50",
+          "venue": {
+            "id": 2
+          }
+        }
+      }

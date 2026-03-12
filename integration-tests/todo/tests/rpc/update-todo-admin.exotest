@@ -1,0 +1,48 @@
+# Test admin can update any todo by PK
+stages:
+  # Admin updates user1's todo
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_todo",
+          "params": {
+            "id": $.u1TodoIds[0],
+            "data": {"title": "U1-T1-updated"}
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {"id": $.u1TodoIds[0]}
+      }
+
+  # Verify update
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todo",
+          "params": {
+            "id": $.u1TodoIds[0]
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {
+          "id": $.u1TodoIds[0],
+          "title": "U1-T1-updated",
+          "completed": false,
+          "priority": "MEDIUM",
+          "user": {
+            "id": $.u1Id
+          }
+        }
+      }

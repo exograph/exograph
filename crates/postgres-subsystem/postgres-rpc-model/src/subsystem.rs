@@ -18,7 +18,8 @@ use postgres_core_model::subsystem::PostgresCoreSubsystem;
 use serde::{Deserialize, Serialize};
 
 use crate::operation::{
-    CollectionDelete, CollectionQuery, PkDelete, PkQuery, UniqueDelete, UniqueQuery,
+    CollectionDelete, CollectionQuery, CollectionUpdate, PkDelete, PkQuery, PkUpdate, UniqueDelete,
+    UniqueQuery, UniqueUpdate,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -29,6 +30,9 @@ pub struct PostgresRpcSubsystem {
     pub pk_deletes: MappedArena<PkDelete>,
     pub unique_deletes: MappedArena<UniqueDelete>,
     pub collection_deletes: MappedArena<CollectionDelete>,
+    pub pk_updates: MappedArena<PkUpdate>,
+    pub unique_updates: MappedArena<UniqueUpdate>,
+    pub collection_updates: MappedArena<CollectionUpdate>,
     #[serde(skip)]
     pub core_subsystem: Arc<PostgresCoreSubsystem>,
 }
@@ -41,6 +45,9 @@ pub struct PostgresRpcSubsystemWithRouter {
     pub pk_deletes: MappedArena<PkDelete>,
     pub unique_deletes: MappedArena<UniqueDelete>,
     pub collection_deletes: MappedArena<CollectionDelete>,
+    pub pk_updates: MappedArena<PkUpdate>,
+    pub unique_updates: MappedArena<UniqueUpdate>,
+    pub collection_updates: MappedArena<CollectionUpdate>,
     pub core_subsystem: Arc<PostgresCoreSubsystem>,
 }
 
@@ -53,6 +60,9 @@ impl PostgresRpcSubsystemWithRouter {
             pk_deletes: subsystem.pk_deletes,
             unique_deletes: subsystem.unique_deletes,
             collection_deletes: subsystem.collection_deletes,
+            pk_updates: subsystem.pk_updates,
+            unique_updates: subsystem.unique_updates,
+            collection_updates: subsystem.collection_updates,
             core_subsystem: subsystem.core_subsystem.clone(),
         })
     }
