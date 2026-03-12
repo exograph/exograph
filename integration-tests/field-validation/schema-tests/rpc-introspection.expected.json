@@ -230,6 +230,124 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "update_numberss",
+      "description": "Update multiple `Numbers`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Numberss",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/NumbersFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching Numberss",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/NumbersUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/NumbersPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_other_numberss",
+      "description": "Update multiple `OtherNumbers`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for OtherNumberss",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/OtherNumbersFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching OtherNumberss",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/OtherNumbersUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/OtherNumbersPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_numbers",
+      "description": "Update a single `Numbers` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for Numbers",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/NumbersUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/NumbersPK",
+          "nullable": true
+        }
+      }
+    },
+    {
+      "name": "update_other_numbers",
+      "description": "Update a single `OtherNumbers` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for OtherNumbers",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/OtherNumbersUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/OtherNumbersPK",
+          "nullable": true
+        }
+      }
     }
   ],
   "components": {
@@ -507,6 +625,56 @@
           "id"
         ],
         "additionalProperties": false
+      },
+      "NumbersUpdateInput": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 2
+          },
+          "age": {
+            "type": "integer",
+            "nullable": true
+          },
+          "float_limit": {
+            "type": "number",
+            "nullable": true,
+            "minimum": -1.0,
+            "maximum": 3.0
+          },
+          "price": {
+            "type": "number",
+            "nullable": true
+          }
+        }
+      },
+      "OtherNumbersUpdateInput": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 10,
+            "maximum": 12345
+          },
+          "age": {
+            "type": "integer",
+            "nullable": true
+          },
+          "float_limit": {
+            "type": "number",
+            "nullable": true,
+            "minimum": -5.0,
+            "maximum": 12345.0
+          },
+          "price": {
+            "type": "number",
+            "nullable": true
+          }
+        }
       }
     }
   }

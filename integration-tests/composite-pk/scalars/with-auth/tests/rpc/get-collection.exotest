@@ -6,8 +6,16 @@ stages:
         {
           "method": "get_people",
           "params": {
-            "where": {"firstName": {"eq": "John"}},
-            "orderBy": [{"lastName": "ASC"}],
+            "where": {
+              "firstName": {
+                "eq": "John"
+              }
+            },
+            "orderBy": [
+              {
+                "lastName": "ASC"
+              }
+            ],
             "limit": 2
           }
         }

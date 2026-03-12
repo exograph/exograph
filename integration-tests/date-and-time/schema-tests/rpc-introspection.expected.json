@@ -117,6 +117,65 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "update_books",
+      "description": "Update multiple `Book`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Books",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/BookFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching Books",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/BookUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/BookPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_book",
+      "description": "Update a single `Book` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for Book",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/BookUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/BookPK",
+          "nullable": true
+        }
+      }
     }
   ],
   "components": {
@@ -426,6 +485,30 @@
           "id"
         ],
         "additionalProperties": false
+      },
+      "BookUpdateInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "published_on": {
+            "type": "string",
+            "format": "date"
+          },
+          "modified_time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "modified_time_stripped": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reading_club_time": {
+            "type": "string",
+            "format": "time"
+          }
+        }
       }
     }
   }

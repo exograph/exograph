@@ -1,0 +1,39 @@
+# Test admin can update issue
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_issue",
+          "params": {
+            "id": $.issue1Id,
+            "data": {"title": "I1-admin-updated"}
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {"id": $.issue1Id}
+      }
+
+  # Verify update
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_issue",
+          "params": {
+            "id": $.issue1Id
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {"id": $.issue1Id, "title": "I1-admin-updated", "assignee": {"id": $.u1id}}
+      }

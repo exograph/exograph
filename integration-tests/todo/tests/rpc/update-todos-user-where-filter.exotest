@@ -1,0 +1,76 @@
+# Test collection update with user-level auth (row-level predicate filtering)
+stages:
+  # User1 updates completed todos - only their own are affected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_todos",
+          "params": {
+            "where": {"completed": {"eq": true}},
+            "data": {"title": "completed-updated"}
+          }
+        }
+    auth: |
+      {
+        "sub": $.u1Id,
+        "role": "user"
+      }
+    response: |
+      {
+        "result": [{"id": $.u1TodoIds[1]}]
+      }
+
+  # Verify user1's completed todo (U1-T2) is updated
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todo",
+          "params": {
+            "id": $.u1TodoIds[1]
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {
+          "id": $.u1TodoIds[1],
+          "title": "completed-updated",
+          "completed": true,
+          "priority": "MEDIUM",
+          "user": {
+            "id": $.u1Id
+          }
+        }
+      }
+
+  # Verify user2's completed todo (U2-T2) is unchanged (row-level predicate filtered it out)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todo",
+          "params": {
+            "id": $.u2TodoIds[1]
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {
+          "id": $.u2TodoIds[1],
+          "title": "U2-T2",
+          "completed": true,
+          "priority": "MEDIUM",
+          "user": {
+            "id": $.u2Id
+          }
+        }
+      }

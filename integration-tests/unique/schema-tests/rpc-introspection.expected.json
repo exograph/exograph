@@ -263,11 +263,11 @@
       }
     },
     {
-      "name": "get_user_by_secondary_email",
-      "description": "Get a single `User` by secondary email",
+      "name": "get_user_by_primary_email",
+      "description": "Get a single `User` by primary email",
       "params": [
         {
-          "name": "secondaryEmailId",
+          "name": "primaryEmailId",
           "required": true,
           "schema": {
             "type": "string"
@@ -290,11 +290,11 @@
       }
     },
     {
-      "name": "get_user_by_primary_email",
-      "description": "Get a single `User` by primary email",
+      "name": "get_user_by_secondary_email",
+      "description": "Get a single `User` by secondary email",
       "params": [
         {
-          "name": "primaryEmailId",
+          "name": "secondaryEmailId",
           "required": true,
           "schema": {
             "type": "string"
@@ -589,6 +589,351 @@
           "required": true,
           "schema": {
             "$ref": "#/components/schemas/UserUniqueFilter"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/InternalRsvpPK",
+          "nullable": true
+        }
+      }
+    },
+    {
+      "name": "update_rsvps",
+      "description": "Update multiple `Rsvp`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Rsvps",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/RsvpFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching Rsvps",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/RsvpUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/RsvpPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_users",
+      "description": "Update multiple `User`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Users",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/UserFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching Users",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/UserPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_internal_rsvps",
+      "description": "Update multiple `InternalRsvp`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for InternalRsvps",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/InternalRsvpFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching InternalRsvps",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/InternalRsvpUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/InternalRsvpPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_rsvp",
+      "description": "Update a single `Rsvp` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for Rsvp",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/RsvpUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/RsvpPK",
+          "nullable": true
+        }
+      }
+    },
+    {
+      "name": "update_user",
+      "description": "Update a single `User` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for User",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/UserPK",
+          "nullable": true
+        }
+      }
+    },
+    {
+      "name": "update_internal_rsvp",
+      "description": "Update a single `InternalRsvp` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for InternalRsvp",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/InternalRsvpUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/InternalRsvpPK",
+          "nullable": true
+        }
+      }
+    },
+    {
+      "name": "update_rsvp_by_event_rsvp",
+      "description": "Update a single `Rsvp` by eventRsvp with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "event",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "user",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUniqueFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for Rsvp",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/RsvpUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/RsvpPK",
+          "nullable": true
+        }
+      }
+    },
+    {
+      "name": "update_user_by_primary_email",
+      "description": "Update a single `User` by primary email with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "primaryEmailId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "emailDomain",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for User",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/UserPK",
+          "nullable": true
+        }
+      }
+    },
+    {
+      "name": "update_user_by_secondary_email",
+      "description": "Update a single `User` by secondary email with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "secondaryEmailId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "emailDomain",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for User",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/UserPK",
+          "nullable": true
+        }
+      }
+    },
+    {
+      "name": "update_user_by_username",
+      "description": "Update a single `User` by username with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for User",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/UserPK",
+          "nullable": true
+        }
+      }
+    },
+    {
+      "name": "update_internal_rsvp_by_event_rsvp",
+      "description": "Update a single `InternalRsvp` by eventRsvp with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "event",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "user",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUniqueFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for InternalRsvp",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/InternalRsvpUpdateInput"
           }
         }
       ],
@@ -990,6 +1335,52 @@
           "id"
         ],
         "additionalProperties": false
+      },
+      "RsvpUpdateInput": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "count": {
+            "type": "integer"
+          }
+        }
+      },
+      "UserUpdateInput": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "primaryEmailId": {
+            "type": "string"
+          },
+          "secondaryEmailId": {
+            "type": "string",
+            "nullable": true
+          },
+          "emailDomain": {
+            "type": "string"
+          }
+        }
+      },
+      "InternalRsvpUpdateInput": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "count": {
+            "type": "integer"
+          }
+        }
       }
     }
   }

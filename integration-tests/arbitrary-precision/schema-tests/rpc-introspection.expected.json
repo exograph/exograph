@@ -117,6 +117,65 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "update_foos",
+      "description": "Update multiple `Foo`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Foos",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/FooFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching Foos",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/FooUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/FooPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_foo",
+      "description": "Update a single `Foo` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for Foo",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/FooUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/FooPK",
+          "nullable": true
+        }
+      }
     }
   ],
   "components": {
@@ -238,6 +297,14 @@
           "id"
         ],
         "additionalProperties": false
+      },
+      "FooUpdateInput": {
+        "type": "object",
+        "properties": {
+          "verylong": {
+            "type": "string"
+          }
+        }
       }
     }
   }

@@ -1,0 +1,32 @@
+# Test non-developer cannot update issue assigning to themselves
+# Precheck fails: self.assignee.position == "developer" is false for U3 (sales)
+stages:
+  # Sales person U3 tries to update issue, assigning to themselves - precheck should reject
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_issue",
+          "params": {
+            "id": $.issue1Id,
+            "data": {
+              "title": "I1-updated",
+              "assignee": {
+                "id": $.u3id
+              }
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": $.u3id
+      }
+    invariants:
+      - path: ../system-state.gql
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }

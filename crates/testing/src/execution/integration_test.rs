@@ -448,9 +448,6 @@ async fn execute_api_operation(
     operation: &ApiOperation,
     ctx: &mut TestfileContext,
 ) -> Result<Value> {
-    // Clear any previous RPC metadata
-    ctx.rpc_request_metadata = None;
-
     match &operation.operation {
         Operation::GraphQL(gql_op) => execute_graphql_operation(operation, gql_op, ctx).await,
         Operation::Rpc(rpc_op) => execute_rpc_operation(operation, rpc_op, ctx).await,

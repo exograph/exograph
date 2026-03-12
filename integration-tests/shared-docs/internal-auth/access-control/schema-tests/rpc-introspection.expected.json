@@ -343,6 +343,183 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "update_documents",
+      "description": "Update multiple `Document`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Documents",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/DocumentFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching Documents",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/DocumentUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/DocumentPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_permissions",
+      "description": "Update multiple `Permission`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Permissions",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/PermissionFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching Permissions",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/PermissionUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/PermissionPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_users",
+      "description": "Update multiple `User`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Users",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/UserFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching Users",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/UserPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_document",
+      "description": "Update a single `Document` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for Document",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/DocumentUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/DocumentPK",
+          "nullable": true
+        }
+      }
+    },
+    {
+      "name": "update_permission",
+      "description": "Update a single `Permission` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for Permission",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/PermissionUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/PermissionPK",
+          "nullable": true
+        }
+      }
+    },
+    {
+      "name": "update_user",
+      "description": "Update a single `User` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for User",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/UserPK",
+          "nullable": true
+        }
+      }
     }
   ],
   "components": {
@@ -693,6 +870,39 @@
           "id"
         ],
         "additionalProperties": false
+      },
+      "DocumentUpdateInput": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          }
+        }
+      },
+      "PermissionUpdateInput": {
+        "type": "object",
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/DocumentRef"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "write": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UserUpdateInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
       }
     }
   }

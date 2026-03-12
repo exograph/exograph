@@ -40,3 +40,19 @@ pub fn delete_single_by_unique(entity_name: &str, constraint_name: &str) -> Stri
         constraint_name.to_snake_case()
     )
 }
+
+pub fn update_single(entity_name: &str) -> String {
+    format!("update_{}", entity_name.to_snake_case())
+}
+
+pub fn update_collection(plural_name: &str) -> String {
+    format!("update_{}", plural_name.to_snake_case())
+}
+
+pub fn update_single_by_unique(entity_name: &str, constraint_name: &str) -> String {
+    format!(
+        "update_{}_by_{}",
+        entity_name.to_snake_case(),
+        constraint_name.to_snake_case()
+    )
+}

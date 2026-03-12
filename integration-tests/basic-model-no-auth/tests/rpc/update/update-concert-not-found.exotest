@@ -1,0 +1,18 @@
+# Test update of non-existent concert by PK - returns null
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_concert",
+          "params": {
+            "id": 999,
+            "data": {
+              "title": "does-not-exist"
+            }
+          }
+        }
+    response: |
+      {
+        "result": null
+      }

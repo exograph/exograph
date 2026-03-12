@@ -119,6 +119,66 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "update_images",
+      "description": "Update multiple `Image`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for Images",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/ImageFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching Images",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ImageUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/ImagePK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_image",
+      "description": "Update a single `Image` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for Image",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ImageUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ImagePK",
+          "nullable": true
+        }
+      }
     }
   ],
   "components": {
@@ -260,6 +320,18 @@
           "id"
         ],
         "additionalProperties": false
+      },
+      "ImageUpdateInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string",
+            "format": "byte"
+          }
+        }
       }
     }
   }

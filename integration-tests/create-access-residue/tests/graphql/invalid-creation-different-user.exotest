@@ -1,5 +1,5 @@
 invariants:
-  - path: system-state.gql
+  - path: ../system-state.gql
 operation: |
   mutation($uId: Int!) {
       createIssue(data: {title: "I-new", assignee: {id: $uId}}) {
@@ -14,11 +14,11 @@ operation: |
   }
 variable: |
   {
-    "uId": $.u3id
+    "uId": $.u1id
   }
 auth: |
   {
-    "sub": $.u3id
+    "sub": $.u2id
   }
 response: |
   {

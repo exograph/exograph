@@ -117,6 +117,65 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "update_chess_pieces",
+      "description": "Update multiple `ChessPiece`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "where",
+          "description": "Filter conditions for ChessPieces",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/ChessPieceFilter"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for matching ChessPieces",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ChessPieceUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/ChessPiecePK"
+          }
+        }
+      }
+    },
+    {
+      "name": "update_chess_piece",
+      "description": "Update a single `ChessPiece` by primary key with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for ChessPiece",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ChessPieceUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ChessPiecePK",
+          "nullable": true
+        }
+      }
     }
   ],
   "components": {
@@ -273,6 +332,29 @@
           "id"
         ],
         "additionalProperties": false
+      },
+      "ChessPieceUpdateInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "position_history": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "neighbor_info": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
       }
     }
   }
