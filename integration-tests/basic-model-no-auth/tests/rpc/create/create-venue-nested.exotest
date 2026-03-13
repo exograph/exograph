@@ -1,0 +1,61 @@
+stages:
+  # Create a venue with nested concerts
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_venue",
+          "params": {
+            "data": {
+              "name": "New Venue",
+              "published": true,
+              "latitude": 40.7128,
+              "concerts": [
+                {"title": "Concert A", "published": true, "price": "10.00"},
+                {"title": "Concert B", "published": false, "price": "25.50"}
+              ]
+            }
+          }
+        }
+    response: |
+      {
+        "result": {"id": 3}
+      }
+
+  # Verify the venue was created with its concerts
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venue",
+          "params": {
+            "id": 3
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 3,
+          "name": "New Venue",
+          "published": true,
+          "latitude": 40.7128
+        }
+      }
+
+  # Verify concerts were created via collection query
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "where": {"venue": {"id": {"eq": 3}}}
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": 5, "title": "Concert A", "venue": {"id": 3}, "published": true, "price": "10.00"},
+          {"id": 6, "title": "Concert B", "venue": {"id": 3}, "published": false, "price": "25.50"}
+        ]
+      }

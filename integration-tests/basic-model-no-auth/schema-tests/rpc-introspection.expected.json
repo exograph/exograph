@@ -800,11 +800,87 @@
           }
         }
       },
+      "ConcertCreateInputFromVenue": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "price": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "published",
+          "price"
+        ]
+      },
+      "ConcertNestedUpdateInputFromVenue": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "price": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "ConcertRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "ConcertUpdateOpsFromVenue": {
+        "type": "object",
+        "properties": {
+          "create": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConcertCreateInputFromVenue"
+            }
+          },
+          "update": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConcertNestedUpdateInputFromVenue"
+            }
+          },
+          "delete": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConcertRef"
+            }
+          }
+        }
+      },
       "VenueUpdateInput": {
         "type": "object",
         "properties": {
           "name": {
             "type": "string"
+          },
+          "concerts": {
+            "$ref": "#/components/schemas/ConcertUpdateOpsFromVenue"
           },
           "published": {
             "type": "boolean"
@@ -842,6 +918,12 @@
         "properties": {
           "name": {
             "type": "string"
+          },
+          "concerts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConcertCreateInputFromVenue"
+            }
           },
           "published": {
             "type": "boolean"

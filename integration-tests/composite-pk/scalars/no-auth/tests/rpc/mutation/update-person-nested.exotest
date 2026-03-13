@@ -1,0 +1,41 @@
+# Test update person with nested address change via RPC
+# John DoeBoston moves to Albany address
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_person",
+          "params": {
+            "firstName": "John",
+            "lastName": "DoeBoston",
+            "data": {
+              "address": {"street": "1 Main St", "city": "Albany", "state": "NY", "zip": 10001}
+            }
+          }
+        }
+    response: |
+      {
+        "result": {"firstName": "John", "lastName": "DoeBoston"}
+      }
+
+  # Verify person's address was updated
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_person",
+          "params": {
+            "firstName": "John",
+            "lastName": "DoeBoston"
+          }
+        }
+    response: |
+      {
+        "result": {
+          "firstName": "John",
+          "lastName": "DoeBoston",
+          "age": 30,
+          "address": {"street": "1 Main St", "city": "Albany", "state": "NY", "zip": 10001}
+        }
+      }

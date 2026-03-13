@@ -24,14 +24,17 @@ use core_resolver::plugin::subsystem_rpc_resolver::{SubsystemRpcError, Subsystem
 use core_resolver::{QueryResponse, QueryResponseBody};
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractOrderBy, AbstractPredicate,
-    AbstractSelect, AbstractUpdate, AliasedSelectionElement, Column, ColumnId, ColumnValuePair,
-    DatabaseExecutor, InsertionElement, InsertionRow, Limit, ManyToOne, Offset, RelationId,
-    Selection, SelectionCardinality, SelectionElement,
+    AbstractSelect, AbstractUpdate, AliasedSelectionElement, Column, ColumnId, ColumnPath,
+    ColumnValuePair, DatabaseExecutor, InsertionElement, InsertionRow, Limit, ManyToOne,
+    NestedAbstractDelete, NestedAbstractInsert, NestedAbstractInsertSet, NestedAbstractUpdate,
+    NestedInsertion, Offset, OneToMany, PhysicalColumnPath, RelationId, Selection,
+    SelectionCardinality, SelectionElement,
 };
 use postgres_core_model::access::{
     DatabaseAccessPrimitiveExpression, PrecheckAccessPrimitiveExpression,
 };
 use postgres_core_model::relation::ManyToOneRelation;
+use postgres_core_model::relation::OneToManyRelation;
 use postgres_core_model::relation::PostgresRelation;
 use postgres_core_model::types::{EntityType, PostgresField};
 use postgres_core_resolver::cast;
@@ -512,14 +515,54 @@ where
 }
 
 /// Compute column values from the `data` parameter for a create operation.
-fn compute_create_columns(
-    entity_type: &EntityType,
-    data_val: &Val,
+/// `parent_entity` is the parent entity for nested creates (used to skip back-references).
+fn compute_create_columns<'a>(
+    entity_type: &'a EntityType,
+    data_val: &'a Val,
+    parent_entity: Option<&'a EntityType>,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> futures::future::BoxFuture<'a, Result<Vec<InsertionElement>, SubsystemRpcError>> {
+    Box::pin(compute_create_columns_inner(
+        entity_type,
+        data_val,
+        parent_entity,
+        request_context,
+        subsystem,
+    ))
+}
+
+/// Check if a field is a ManyToOne back-reference to the parent entity.
+fn is_back_reference(
+    field: &PostgresField<EntityType>,
+    parent_entity: Option<&EntityType>,
     subsystem: &PostgresRpcSubsystemWithRouter,
+) -> bool {
+    if let (Some(parent), PostgresRelation::ManyToOne { relation, .. }) =
+        (parent_entity, &field.relation)
+    {
+        let target_entity = &subsystem.core_subsystem.entity_types[relation.foreign_entity_id];
+        target_entity.table_id == parent.table_id
+    } else {
+        false
+    }
+}
+
+async fn compute_create_columns_inner<'a>(
+    entity_type: &'a EntityType,
+    data_val: &'a Val,
+    parent_entity: Option<&'a EntityType>,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
 ) -> Result<Vec<InsertionElement>, SubsystemRpcError> {
     let mut elements = Vec::new();
 
     for field in &entity_type.fields {
+        // Skip ManyToOne fields that reference back to the parent entity
+        if is_back_reference(field, parent_entity, subsystem) {
+            continue;
+        }
+
         match &field.relation {
             PostgresRelation::Scalar { column_id, .. } => {
                 if let Some(value) = get_argument_field(data_val, &field.name) {
@@ -584,11 +627,66 @@ fn compute_create_columns(
                     None => {}
                 }
             }
+            PostgresRelation::OneToMany(one_to_many_relation) => {
+                if let Some(nested_val) = get_argument_field(data_val, &field.name) {
+                    let foreign_entity = &subsystem.core_subsystem.entity_types
+                        [one_to_many_relation.foreign_entity_id];
+                    let (insertions, precheck_predicates) = build_nested_insertions(
+                        foreign_entity,
+                        Some(entity_type),
+                        nested_val,
+                        request_context,
+                        subsystem,
+                    )
+                    .await?;
+                    elements.push(InsertionElement::NestedInsert(NestedInsertion {
+                        relation_id: one_to_many_relation.relation_id,
+                        insertions,
+                        precheck_predicates,
+                    }));
+                }
+            }
             _ => {}
         }
     }
 
     Ok(elements)
+}
+
+type NestedInsertionsResult =
+    Result<(Vec<InsertionRow>, Vec<AbstractPredicate>), SubsystemRpcError>;
+
+/// Build nested insertions from a Val (list or single object) for OneToMany creates.
+fn build_nested_insertions<'a>(
+    foreign_entity: &'a EntityType,
+    parent_entity: Option<&'a EntityType>,
+    nested_val: &'a Val,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> futures::future::BoxFuture<'a, NestedInsertionsResult> {
+    Box::pin(async move {
+        let items = val_as_items(nested_val);
+
+        let mut rows = Vec::new();
+        let mut precheck_predicates = Vec::new();
+
+        for item in items {
+            let precheck =
+                compute_create_access(foreign_entity, item, request_context, subsystem).await?;
+            let elements = compute_create_columns(
+                foreign_entity,
+                item,
+                parent_entity,
+                request_context,
+                subsystem,
+            )
+            .await?;
+            rows.push(InsertionRow { elems: elements });
+            precheck_predicates.push(precheck);
+        }
+
+        Ok((rows, precheck_predicates))
+    })
 }
 
 /// Build an insert operation from a single data value.
@@ -601,7 +699,8 @@ async fn build_single_insert<'a>(
     let precheck_predicate =
         compute_create_access(entity_type, &data_val, request_context, subsystem).await?;
 
-    let elements = compute_create_columns(entity_type, &data_val, subsystem)?;
+    let elements =
+        compute_create_columns(entity_type, &data_val, None, request_context, subsystem).await?;
 
     Ok((InsertionRow { elems: elements }, precheck_predicate))
 }
@@ -891,14 +990,17 @@ async fn build_update_operation<'a>(
     let column_values = compute_update_columns(entity_type, &data_val, subsystem)?;
     let selection = compute_pk_only_select(entity_type, return_type);
 
+    let (nested_updates, nested_inserts, nested_deletes) =
+        compute_nested_update_ops(entity_type, &data_val, request_context, subsystem).await?;
+
     Ok(AbstractOperation::Update(AbstractUpdate {
         table_id: entity_type.table_id,
         predicate,
         column_values,
         selection,
-        nested_updates: vec![],
-        nested_inserts: vec![],
-        nested_deletes: vec![],
+        nested_updates,
+        nested_inserts,
+        nested_deletes,
         precheck_predicates: vec![precheck_predicate],
     }))
 }
@@ -1262,6 +1364,284 @@ macro_rules! impl_query_selection_resolver {
 }
 
 impl_query_selection_resolver!(PkQuery, UniqueQuery);
+
+/// Compute all nested operations (create/update/delete) for OneToMany relations in an update.
+async fn compute_nested_update_ops<'a>(
+    entity_type: &EntityType,
+    data_val: &'a Val,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> Result<
+    (
+        Vec<NestedAbstractUpdate>,
+        Vec<NestedAbstractInsertSet>,
+        Vec<NestedAbstractDelete>,
+    ),
+    SubsystemRpcError,
+> {
+    let mut nested_updates = Vec::new();
+    let mut nested_inserts = Vec::new();
+    let mut nested_deletes = Vec::new();
+
+    for field in &entity_type.fields {
+        let PostgresRelation::OneToMany(OneToManyRelation {
+            relation_id,
+            foreign_entity_id,
+            ..
+        }) = &field.relation
+        else {
+            continue;
+        };
+
+        let Some(ops_val) = get_argument_field(data_val, &field.name) else {
+            continue;
+        };
+
+        let foreign_entity = &subsystem.core_subsystem.entity_types[*foreign_entity_id];
+        let nesting_relation = relation_id.deref(&subsystem.core_subsystem.database);
+
+        // Handle "create" sub-field
+        if let Some(create_arg) = get_argument_field(ops_val, "create") {
+            nested_inserts.push(
+                compute_nested_create_for_update(
+                    foreign_entity,
+                    entity_type,
+                    create_arg,
+                    &nesting_relation,
+                    request_context,
+                    subsystem,
+                )
+                .await?,
+            );
+        }
+
+        // Handle "update" sub-field
+        if let Some(update_arg) = get_argument_field(ops_val, "update") {
+            nested_updates.extend(
+                compute_nested_update_items(
+                    foreign_entity,
+                    update_arg,
+                    &nesting_relation,
+                    request_context,
+                    subsystem,
+                )
+                .await?,
+            );
+        }
+
+        // Handle "delete" sub-field
+        if let Some(delete_arg) = get_argument_field(ops_val, "delete") {
+            nested_deletes.extend(
+                compute_nested_delete_items(
+                    foreign_entity,
+                    delete_arg,
+                    &nesting_relation,
+                    request_context,
+                    subsystem,
+                )
+                .await?,
+            );
+        }
+    }
+
+    Ok((nested_updates, nested_inserts, nested_deletes))
+}
+
+/// Compute nested create operations within an update (the "create" sub-field).
+async fn compute_nested_create_for_update<'a>(
+    foreign_entity: &EntityType,
+    parent_entity: &EntityType,
+    create_arg: &'a Val,
+    nesting_relation: &OneToMany,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> Result<NestedAbstractInsertSet, SubsystemRpcError> {
+    let items = val_as_items(create_arg);
+
+    let relation_column_ids: Vec<_> = nesting_relation
+        .column_pairs
+        .iter()
+        .map(|pair| pair.foreign_column_id)
+        .collect();
+
+    let mut inserts = Vec::new();
+
+    for item in items {
+        let precheck =
+            compute_create_access(foreign_entity, item, request_context, subsystem).await?;
+        let elements = compute_create_columns(
+            foreign_entity,
+            item,
+            Some(parent_entity),
+            request_context,
+            subsystem,
+        )
+        .await?;
+
+        inserts.push(NestedAbstractInsert {
+            relation_column_ids: relation_column_ids.clone(),
+            insert: AbstractInsert {
+                table_id: foreign_entity.table_id,
+                rows: vec![InsertionRow { elems: elements }],
+                precheck_predicates: vec![precheck],
+                selection: AbstractSelect {
+                    table_id: foreign_entity.table_id,
+                    selection: Selection::Seq(vec![]),
+                    predicate: AbstractPredicate::True,
+                    order_by: None,
+                    offset: None,
+                    limit: None,
+                },
+            },
+        });
+    }
+
+    // Creation access is precheck-only (no database-level predicate for creates)
+    Ok(NestedAbstractInsertSet::new(
+        inserts,
+        AbstractPredicate::True,
+    ))
+}
+
+/// Compute nested update items (the "update" sub-field).
+async fn compute_nested_update_items<'a>(
+    foreign_entity: &EntityType,
+    update_arg: &'a Val,
+    nesting_relation: &OneToMany,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> Result<Vec<NestedAbstractUpdate>, SubsystemRpcError> {
+    let items = val_as_items(update_arg);
+
+    let mut updates = Vec::new();
+
+    for item in items {
+        let (precheck_predicate, entity_predicate) =
+            compute_update_access(foreign_entity, item, request_context, subsystem).await?;
+
+        // Build predicate from PK values for row identification
+        let arg_predicate = build_pk_predicate(foreign_entity, item, subsystem)?;
+        let predicate = AbstractPredicate::and(arg_predicate, entity_predicate);
+
+        // Compute non-PK column values (reuses compute_update_columns which skips PKs)
+        let update_columns = compute_update_columns(foreign_entity, item, subsystem)?;
+
+        updates.push(NestedAbstractUpdate {
+            nesting_relation: nesting_relation.clone(),
+            update: AbstractUpdate {
+                table_id: foreign_entity.table_id,
+                predicate,
+                column_values: update_columns,
+                selection: AbstractSelect {
+                    table_id: foreign_entity.table_id,
+                    selection: Selection::Seq(vec![]),
+                    predicate: AbstractPredicate::True,
+                    order_by: None,
+                    offset: None,
+                    limit: None,
+                },
+                nested_updates: vec![],
+                nested_inserts: vec![],
+                nested_deletes: vec![],
+                precheck_predicates: vec![precheck_predicate],
+            },
+        });
+    }
+
+    Ok(updates)
+}
+
+/// Compute nested delete items (the "delete" sub-field).
+async fn compute_nested_delete_items<'a>(
+    foreign_entity: &EntityType,
+    delete_arg: &'a Val,
+    nesting_relation: &OneToMany,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> Result<Vec<NestedAbstractDelete>, SubsystemRpcError> {
+    let items = val_as_items(delete_arg);
+
+    // Check delete access once (does not depend on individual items)
+    let access_predicate = compute_entity_access_predicate(
+        foreign_entity,
+        AccessKind::Delete,
+        request_context,
+        subsystem,
+    )
+    .await?;
+
+    let mut deletes = Vec::new();
+
+    for item in items {
+        // Extract PK values and build predicate
+        let pk_predicate = build_pk_predicate(foreign_entity, item, subsystem)?;
+        let predicate = AbstractPredicate::and(pk_predicate, access_predicate.clone());
+
+        deletes.push(NestedAbstractDelete {
+            nesting_relation: nesting_relation.clone(),
+            delete: AbstractDelete {
+                table_id: foreign_entity.table_id,
+                predicate,
+                selection: AbstractSelect {
+                    table_id: foreign_entity.table_id,
+                    selection: Selection::Seq(vec![]),
+                    predicate: AbstractPredicate::True,
+                    order_by: None,
+                    offset: None,
+                    limit: None,
+                },
+                precheck_predicates: vec![AbstractPredicate::True],
+            },
+        });
+    }
+
+    Ok(deletes)
+}
+
+/// Normalize a Val into a list of items (handles both single objects and arrays).
+fn val_as_items(val: &Val) -> Vec<&Val> {
+    match val {
+        Val::List(items) => items.iter().collect(),
+        other => vec![other],
+    }
+}
+
+/// Build a predicate from PK values in the given data value.
+fn build_pk_predicate(
+    entity_type: &EntityType,
+    data_val: &Val,
+    subsystem: &PostgresRpcSubsystemWithRouter,
+) -> Result<AbstractPredicate, SubsystemRpcError> {
+    let mut predicate = AbstractPredicate::True;
+
+    for pk_field in entity_type.pk_fields() {
+        let PostgresRelation::Scalar { column_id, .. } = &pk_field.relation else {
+            continue;
+        };
+        let Some(value) = get_argument_field(data_val, &pk_field.name) else {
+            continue;
+        };
+        let column = column_id.get_column(&subsystem.core_subsystem.database);
+        let value_column = cast::literal_column(value, column)
+            .map_err(|e| SubsystemRpcError::UserDisplayError(e.user_error_message()))?;
+        let Column::Param(param) = value_column else {
+            return Err(SubsystemRpcError::UserDisplayError(format!(
+                "Expected a literal value for PK field '{}'",
+                pk_field.name
+            )));
+        };
+        let value_path = ColumnPath::Param(param);
+        predicate = AbstractPredicate::and(
+            predicate,
+            AbstractPredicate::eq(
+                ColumnPath::Physical(PhysicalColumnPath::leaf(*column_id)),
+                value_path,
+            ),
+        );
+    }
+
+    Ok(predicate)
+}
 
 fn from_postgres_error(e: PostgresExecutionError) -> SubsystemRpcError {
     match e {

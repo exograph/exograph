@@ -1,0 +1,52 @@
+# Test update address with nested create - access control
+stages:
+  # Admin can update address and create a nested person
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_address",
+          "params": {
+            "street": "2 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": 22101,
+            "data": {
+              "people": {
+                "create": [{"firstName": "Alex", "lastName": "NewBoston", "age": 20}]
+              }
+            }
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101}
+      }
+
+  # Verify all people at that address
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_people",
+          "params": {
+            "where": {"address": {"street": {"eq": "2 Main St"}, "city": {"eq": "Boston"}}},
+            "orderBy": [{"lastName": "ASC"}, {"firstName": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": [
+          {"firstName": "John", "lastName": "DoeBoston", "age": 30, "address": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101}},
+          {"firstName": "Alex", "lastName": "NewBoston", "age": 20, "address": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101}},
+          {"firstName": "Jane", "lastName": "SmithBoston", "age": 35, "address": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101}}
+        ]
+      }

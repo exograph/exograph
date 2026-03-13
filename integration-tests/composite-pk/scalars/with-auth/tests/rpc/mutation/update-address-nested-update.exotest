@@ -1,0 +1,51 @@
+# Test update address with nested update - access control
+stages:
+  # Admin can update address and update a nested person
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_address",
+          "params": {
+            "street": "2 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": 22101,
+            "data": {
+              "people": {
+                "update": [{"firstName": "John", "lastName": "DoeBoston", "age": 20}]
+              }
+            }
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101}
+      }
+
+  # Verify all people at that address: updated one changed, other unchanged
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_people",
+          "params": {
+            "where": {"address": {"street": {"eq": "2 Main St"}, "city": {"eq": "Boston"}}},
+            "orderBy": [{"lastName": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": [
+          {"firstName": "John", "lastName": "DoeBoston", "age": 20, "address": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101}},
+          {"firstName": "Jane", "lastName": "SmithBoston", "age": 35, "address": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101}}
+        ]
+      }

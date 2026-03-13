@@ -1,0 +1,45 @@
+# Test update address with nested create of people via RPC
+stages:
+  # Update address and create a new person
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_address",
+          "params": {
+            "street": "2 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": 22101,
+            "data": {
+              "info": "The best address in the world",
+              "people": {
+                "create": [{"firstName": "Alex", "lastName": "NewBoston", "age": 20}]
+              }
+            }
+          }
+        }
+    response: |
+      {
+        "result": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101}
+      }
+
+  # Verify all people at that address: old ones still exist and new one was created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_people",
+          "params": {
+            "where": {"address": {"street": {"eq": "2 Main St"}, "city": {"eq": "Boston"}}},
+            "orderBy": [{"lastName": "ASC"}, {"firstName": "ASC"}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"firstName": "John", "lastName": "DoeBoston", "age": 30, "address": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101}},
+          {"firstName": "Alex", "lastName": "NewBoston", "age": 20, "address": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101}},
+          {"firstName": "Jane", "lastName": "SmithBoston", "age": 35, "address": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101}}
+        ]
+      }

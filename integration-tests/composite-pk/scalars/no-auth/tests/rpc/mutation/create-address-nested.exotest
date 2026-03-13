@@ -1,0 +1,70 @@
+# Test creating an address with nested people via RPC
+stages:
+  # Create address with nested people
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_address",
+          "params": {
+            "data": {
+              "street": "123 Main St",
+              "city": "San Francisco",
+              "state": "CA",
+              "zip": 94101,
+              "people": [
+                {"firstName": "John", "lastName": "DoeSan Francisco", "age": 20},
+                {"firstName": "Jane", "lastName": "SmithSan Francisco", "age": 25}
+              ]
+            }
+          }
+        }
+    response: |
+      {
+        "result": {"street": "123 Main St", "city": "San Francisco", "state": "CA", "zip": 94101}
+      }
+
+  # Verify the address was created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_address",
+          "params": {
+            "street": "123 Main St",
+            "city": "San Francisco",
+            "state": "CA",
+            "zip": 94101
+          }
+        }
+    response: |
+      {
+        "result": {
+          "street": "123 Main St",
+          "city": "San Francisco",
+          "state": "CA",
+          "zip": 94101,
+          "info": null
+        }
+      }
+
+  # Verify people were created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_person",
+          "params": {
+            "firstName": "John",
+            "lastName": "DoeSan Francisco"
+          }
+        }
+    response: |
+      {
+        "result": {
+          "firstName": "John",
+          "lastName": "DoeSan Francisco",
+          "age": 20,
+          "address": {"street": "123 Main St", "city": "San Francisco", "state": "CA", "zip": 94101}
+        }
+      }
