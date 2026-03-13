@@ -520,6 +520,144 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "create_document",
+      "description": "Create a new `Document` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Document",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/DocumentCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/DocumentPK"
+        }
+      }
+    },
+    {
+      "name": "create_permission",
+      "description": "Create a new `Permission` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Permission",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/PermissionCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/PermissionPK"
+        }
+      }
+    },
+    {
+      "name": "create_user",
+      "description": "Create a new `User` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating User",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/UserPK"
+        }
+      }
+    },
+    {
+      "name": "create_documents",
+      "description": "Create multiple `Document`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Document",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/DocumentPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "create_permissions",
+      "description": "Create multiple `Permission`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Permission",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/PermissionPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "create_users",
+      "description": "Create multiple `User`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating User",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/UserPK"
+          }
+        }
+      }
     }
   ],
   "components": {
@@ -903,6 +1041,51 @@
             "type": "string"
           }
         }
+      },
+      "DocumentCreateInput": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "PermissionCreateInput": {
+        "type": "object",
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/DocumentRef"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "write": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "document",
+          "user",
+          "read",
+          "write"
+        ]
+      },
+      "UserCreateInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
       }
     }
   }

@@ -19,15 +19,17 @@ use postgres_core_model::doc_comments;
 use postgres_core_model::predicate::PredicateParameter;
 use postgres_core_model::types::{EntityRepresentation, EntityType};
 use postgres_rpc_model::operation::{
-    CollectionDelete, CollectionDeleteParameters, CollectionQuery, CollectionQueryParameters,
-    CollectionUpdate, CollectionUpdateParameters, PkDelete, PkQuery, PkUpdate, PostgresOperation,
-    ScalarParam, UniqueDelete, UniqueQuery, UniqueUpdate,
+    CollectionCreate, CollectionDelete, CollectionDeleteParameters, CollectionQuery,
+    CollectionQueryParameters, CollectionUpdate, CollectionUpdateParameters, Create,
+    CreateParameters, DataParam, PkDelete, PkQuery, PkUpdate, PkUpdateParameters,
+    PostgresOperation, ScalarParam, UniqueDelete, UniqueQuery, UniqueUpdate,
+    UniqueUpdateParameters,
 };
 use postgres_rpc_model::subsystem::PostgresRpcSubsystem;
 
 use crate::helper::{
     build_filter_predicate_param, build_pk_predicate_params, build_unique_predicate_params,
-    list_return_type, optional_return_type,
+    list_return_type, optional_return_type, plain_return_type,
 };
 use crate::naming;
 
@@ -44,6 +46,8 @@ pub fn build(
     let mut pk_updates = MappedArena::default();
     let mut unique_updates = MappedArena::default();
     let mut collection_updates = MappedArena::default();
+    let mut creates = MappedArena::default();
+    let mut collection_creates = MappedArena::default();
 
     for typ in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(composite) = typ.1 {
@@ -90,6 +94,14 @@ pub fn build(
                 &mut unique_updates,
                 &mut collection_updates,
             )?;
+
+            build_creates(
+                composite,
+                entity_type_id,
+                &core_subsystem_building,
+                &mut creates,
+                &mut collection_creates,
+            )?;
         }
     }
 
@@ -102,6 +114,8 @@ pub fn build(
         && pk_updates.is_empty()
         && unique_updates.is_empty()
         && collection_updates.is_empty()
+        && creates.is_empty()
+        && collection_creates.is_empty()
     {
         return Ok(None);
     }
@@ -116,6 +130,8 @@ pub fn build(
         pk_updates,
         unique_updates,
         collection_updates,
+        creates,
+        collection_creates,
         core_subsystem: Default::default(),
     }))
 }
@@ -280,33 +296,52 @@ fn build_updates(
     let update_collection_method = naming::update_collection(&composite.plural_name);
 
     // Build PK update (update_todo)
-    build_pk_operation(
-        composite,
-        entity_type,
-        entity_type_id,
-        core_subsystem_building,
-        &update_method,
-        &doc_comments::pk_update_description(&composite.name),
-        pk_updates,
-    );
+    let pk_fields = entity_type.pk_fields();
+    if let Some(pk_params) = build_pk_predicate_params(&pk_fields, core_subsystem_building) {
+        let pk_update = PkUpdate {
+            name: update_method.clone(),
+            parameters: PkUpdateParameters {
+                predicate_params: pk_params,
+                data_param: DataParam::default(),
+            },
+            return_type: optional_return_type(entity_type_id, &composite.name),
+            doc_comments: Some(doc_comments::pk_update_description(&composite.name)),
+        };
+        pk_updates.add(&update_method, pk_update);
+    }
 
     // Build unique updates (update_todo_by_username, etc.)
-    build_unique_operations(
-        composite,
-        entity_type,
-        entity_type_id,
-        core_subsystem_building,
-        |constraint_name| naming::update_single_by_unique(&composite.name, constraint_name),
-        |constraint_name| doc_comments::unique_update_description(&composite.name, constraint_name),
-        unique_updates,
-    )?;
+    for (constraint_name, constraint_fields) in composite.unique_constraints() {
+        let predicate_params = build_unique_predicate_params(
+            &constraint_fields,
+            entity_type,
+            core_subsystem_building,
+        )?;
+
+        let method_name = naming::update_single_by_unique(&composite.name, &constraint_name);
+        let description =
+            doc_comments::unique_update_description(&composite.name, &constraint_name);
+        let unique_update = UniqueUpdate {
+            name: method_name.clone(),
+            parameters: UniqueUpdateParameters {
+                predicate_params,
+                data_param: DataParam::default(),
+            },
+            return_type: optional_return_type(entity_type_id, &composite.name),
+            doc_comments: Some(description),
+        };
+        unique_updates.add(&method_name, unique_update);
+    }
 
     // Build collection update (update_todos) - returns List<PK>
     let predicate_param = build_filter_predicate_param(&composite.name, core_subsystem_building)?;
 
     let collection_update = CollectionUpdate {
         name: update_collection_method.clone(),
-        parameters: CollectionUpdateParameters { predicate_param },
+        parameters: CollectionUpdateParameters {
+            predicate_param,
+            data_param: DataParam::default(),
+        },
         return_type: list_return_type(entity_type_id, &composite.name),
         doc_comments: Some(doc_comments::collection_update_description(&composite.name)),
     };
@@ -372,6 +407,54 @@ where
 
         ops.add(&method_name, unique_op);
     }
+
+    Ok(())
+}
+
+fn build_creates(
+    composite: &postgres_core_builder::resolved_type::ResolvedCompositeType,
+    entity_type_id: core_model::mapped_arena::SerializableSlabIndex<EntityType>,
+    core_subsystem_building: &postgres_core_builder::SystemContextBuilding,
+    creates: &mut MappedArena<Create>,
+    collection_creates: &mut MappedArena<CollectionCreate>,
+) -> Result<(), ModelBuildingError> {
+    // Skip if creation access is explicitly false
+    let entity_type = &core_subsystem_building.entity_types[entity_type_id];
+    let skip_create = matches!(
+        core_subsystem_building
+            .precheck_access_expressions
+            .lock()
+            .unwrap()[entity_type.access.creation.precheck],
+        AccessPredicateExpression::BooleanLiteral(false)
+    );
+
+    if skip_create {
+        return Ok(());
+    }
+
+    // Build single create (create_concert)
+    let create_method = naming::create_single(&composite.name);
+    let create_op = Create {
+        name: create_method.clone(),
+        parameters: CreateParameters {
+            data_param: DataParam::default(),
+        },
+        return_type: plain_return_type(entity_type_id, &composite.name),
+        doc_comments: Some(doc_comments::single_create_description(&composite.name)),
+    };
+    creates.add(&create_method, create_op);
+
+    // Build collection create (create_concerts)
+    let create_collection_method = naming::create_collection(&composite.plural_name);
+    let collection_create_op = CollectionCreate {
+        name: create_collection_method.clone(),
+        parameters: CreateParameters {
+            data_param: DataParam::default(),
+        },
+        return_type: list_return_type(entity_type_id, &composite.name),
+        doc_comments: Some(doc_comments::collection_create_description(&composite.name)),
+    };
+    collection_creates.add(&create_collection_method, collection_create_op);
 
     Ok(())
 }

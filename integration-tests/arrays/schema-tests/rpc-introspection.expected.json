@@ -176,6 +176,52 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "create_chess_piece",
+      "description": "Create a new `ChessPiece` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating ChessPiece",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ChessPieceCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ChessPiecePK"
+        }
+      }
+    },
+    {
+      "name": "create_chess_pieces",
+      "description": "Create multiple `ChessPiece`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating ChessPiece",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChessPieceCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/ChessPiecePK"
+          }
+        }
+      }
     }
   ],
   "components": {
@@ -355,6 +401,34 @@
             }
           }
         }
+      },
+      "ChessPieceCreateInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "position_history": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "neighbor_info": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "name",
+          "position_history",
+          "neighbor_info"
+        ]
       }
     }
   }

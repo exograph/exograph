@@ -1,0 +1,24 @@
+# Test admin can create a todo via RPC
+stages:
+  # Admin creates a todo for user1
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_todo",
+          "params": {
+            "data": {
+              "title": "Admin-created todo",
+              "completed": false,
+              "user": {"id": $.u1Id}
+            }
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {"id": ($.u2TodoIds[2] + 1)}
+      }

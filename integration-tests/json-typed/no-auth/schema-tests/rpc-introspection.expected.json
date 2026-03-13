@@ -176,6 +176,52 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "create_todo",
+      "description": "Create a new `Todo` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Todo",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/TodoCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/TodoPK"
+        }
+      }
+    },
+    {
+      "name": "create_todos",
+      "description": "Create multiple `Todo`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Todo",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TodoCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/TodoPK"
+          }
+        }
+      }
     }
   ],
   "components": {
@@ -337,6 +383,25 @@
             "nullable": true
           }
         }
+      },
+      "TodoCreateInput": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/Metadata"
+          },
+          "info": {
+            "$ref": "#/components/schemas/Info",
+            "nullable": true
+          }
+        },
+        "required": [
+          "title",
+          "metadata"
+        ]
       }
     }
   }

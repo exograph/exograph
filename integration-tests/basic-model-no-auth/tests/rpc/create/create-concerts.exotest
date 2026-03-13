@@ -1,0 +1,71 @@
+# Test bulk create concerts via RPC - returns list of PKs
+stages:
+  # Create multiple concerts
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_concerts",
+          "params": {
+            "data": [
+              {
+                "title": "Bulk Concert 1",
+                "venue": {"id": 1},
+                "published": true,
+                "price": "10.00"
+              },
+              {
+                "title": "Bulk Concert 2",
+                "venue": {"id": 2},
+                "published": false,
+                "price": "25.00"
+              }
+            ]
+          }
+        }
+    response: |
+      {
+        "result": [{"id": 5}, {"id": 6}]
+      }
+
+  # Verify first concert was created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {
+            "id": 5
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 5,
+          "title": "Bulk Concert 1",
+          "published": true,
+          "price": "10.00",
+          "venue": {"id": 1}
+        }
+      }
+
+  # Verify second concert was created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {
+            "id": 6
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 6,
+          "title": "Bulk Concert 2",
+          "published": false,
+          "price": "25.00",
+          "venue": {"id": 2}
+        }
+      }

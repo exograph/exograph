@@ -1,0 +1,39 @@
+stages:
+  # Create a new venue
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_venue",
+          "params": {
+            "data": {
+              "name": "New Venue",
+              "published": true,
+              "latitude": 40.7128
+            }
+          }
+        }
+    response: |
+      {
+        "result": {"id": 3}
+      }
+
+  # Verify it was created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venue",
+          "params": {
+            "id": 3
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 3,
+          "name": "New Venue",
+          "published": true,
+          "latitude": 40.7128
+        }
+      }

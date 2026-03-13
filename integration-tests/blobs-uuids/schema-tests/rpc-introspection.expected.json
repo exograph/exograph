@@ -179,6 +179,52 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "create_image",
+      "description": "Create a new `Image` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Image",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ImageCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ImagePK"
+        }
+      }
+    },
+    {
+      "name": "create_images",
+      "description": "Create multiple `Image`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Image",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImageCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/ImagePK"
+          }
+        }
+      }
     }
   ],
   "components": {
@@ -332,6 +378,26 @@
             "format": "byte"
           }
         }
+      },
+      "ImageCreateInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string",
+            "format": "byte"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ]
       }
     }
   }

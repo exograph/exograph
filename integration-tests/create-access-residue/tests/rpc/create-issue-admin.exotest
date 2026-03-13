@@ -1,0 +1,19 @@
+# Test admin can create issue
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_issue",
+          "params": {
+            "data": {"title": "Admin-created", "assignee": {"id": $.u1id}}
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {"id": ($.issue2Id + 1)}
+      }

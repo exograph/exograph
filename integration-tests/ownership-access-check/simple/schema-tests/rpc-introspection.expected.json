@@ -348,6 +348,98 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "create_user",
+      "description": "Create a new `User` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating User",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/UserPK"
+        }
+      }
+    },
+    {
+      "name": "create_document",
+      "description": "Create a new `Document` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Document",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/DocumentCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/DocumentPK"
+        }
+      }
+    },
+    {
+      "name": "create_users",
+      "description": "Create multiple `User`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating User",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/UserPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "create_documents",
+      "description": "Create multiple `Document`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Document",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/DocumentPK"
+          }
+        }
+      }
     }
   ],
   "components": {
@@ -596,6 +688,32 @@
             "$ref": "#/components/schemas/UserRef"
           }
         }
+      },
+      "UserCreateInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "DocumentCreateInput": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserRef"
+          }
+        },
+        "required": [
+          "content",
+          "user"
+        ]
       }
     }
   }

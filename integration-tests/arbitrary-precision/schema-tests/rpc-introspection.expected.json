@@ -176,6 +176,52 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "create_foo",
+      "description": "Create a new `Foo` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Foo",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/FooCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/FooPK"
+        }
+      }
+    },
+    {
+      "name": "create_foos",
+      "description": "Create multiple `Foo`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Foo",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FooCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/FooPK"
+          }
+        }
+      }
     }
   ],
   "components": {
@@ -299,6 +345,14 @@
         "additionalProperties": false
       },
       "FooUpdateInput": {
+        "type": "object",
+        "properties": {
+          "verylong": {
+            "type": "string"
+          }
+        }
+      },
+      "FooCreateInput": {
         "type": "object",
         "properties": {
           "verylong": {

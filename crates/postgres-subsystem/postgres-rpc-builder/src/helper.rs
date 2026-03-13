@@ -148,6 +148,17 @@ pub fn list_return_type(
     })))
 }
 
+/// Build a `Plain<Entity>` return type.
+pub fn plain_return_type(
+    entity_type_id: SerializableSlabIndex<EntityType>,
+    type_name: &str,
+) -> OperationReturnType<EntityType> {
+    FieldType::Plain(BaseOperationReturnType {
+        associated_type_id: entity_type_id,
+        type_name: type_name.to_string(),
+    })
+}
+
 /// Build an `Optional<Entity>` return type.
 pub fn optional_return_type(
     entity_type_id: SerializableSlabIndex<EntityType>,

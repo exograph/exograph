@@ -1,0 +1,25 @@
+# Test non-developer cannot create issue assigned to self
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_issue",
+          "params": {
+            "data": {"title": "Sales-created", "assignee": {"id": $.u3id}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.u3id,
+        "role": "sales"
+      }
+    invariants:
+      - path: ../system-state.gql
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }

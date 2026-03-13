@@ -1,0 +1,20 @@
+# Test developer can create issue assigned to self
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_issue",
+          "params": {
+            "data": {"title": "Dev-created", "assignee": {"id": $.u1id}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.u1id,
+        "role": "developer"
+      }
+    response: |
+      {
+        "result": {"id": ($.issue2Id + 1)}
+      }

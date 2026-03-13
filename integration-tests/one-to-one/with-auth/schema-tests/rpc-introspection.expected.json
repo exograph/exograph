@@ -416,6 +416,98 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "create_user",
+      "description": "Create a new `User` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating User",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/UserPK"
+        }
+      }
+    },
+    {
+      "name": "create_membership",
+      "description": "Create a new `Membership` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Membership",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/MembershipCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/MembershipPK"
+        }
+      }
+    },
+    {
+      "name": "create_users",
+      "description": "Create multiple `User`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating User",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/UserPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "create_memberships",
+      "description": "Create multiple `Membership`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Membership",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MembershipCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/MembershipPK"
+          }
+        }
+      }
     }
   ],
   "components": {
@@ -675,6 +767,32 @@
             "$ref": "#/components/schemas/UserRef"
           }
         }
+      },
+      "UserCreateInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "MembershipCreateInput": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserRef"
+          }
+        },
+        "required": [
+          "kind",
+          "user"
+        ]
       }
     }
   }

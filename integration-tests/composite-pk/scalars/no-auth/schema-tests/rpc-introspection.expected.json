@@ -432,6 +432,98 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "create_person",
+      "description": "Create a new `Person` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Person",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/PersonCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/PersonPK"
+        }
+      }
+    },
+    {
+      "name": "create_address",
+      "description": "Create a new `Address` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Address",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/AddressCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/AddressPK"
+        }
+      }
+    },
+    {
+      "name": "create_people",
+      "description": "Create multiple `Person`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Person",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/PersonPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "create_addresses",
+      "description": "Create multiple `Address`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Address",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddressCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/AddressPK"
+          }
+        }
+      }
     }
   ],
   "components": {
@@ -763,6 +855,55 @@
             "nullable": true
           }
         }
+      },
+      "PersonCreateInput": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "age": {
+            "type": "integer"
+          },
+          "address": {
+            "$ref": "#/components/schemas/AddressRef"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName",
+          "age"
+        ]
+      },
+      "AddressCreateInput": {
+        "type": "object",
+        "properties": {
+          "street": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "zip": {
+            "type": "integer"
+          },
+          "info": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "street",
+          "city",
+          "state",
+          "zip"
+        ]
       }
     }
   }

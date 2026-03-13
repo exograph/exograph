@@ -176,6 +176,52 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "create_video",
+      "description": "Create a new `Video` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Video",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/VideoCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/VideoPK"
+        }
+      }
+    },
+    {
+      "name": "create_videos",
+      "description": "Create multiple `Video`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Video",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VideoCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/VideoPK"
+          }
+        }
+      }
     }
   ],
   "components": {
@@ -391,6 +437,36 @@
             "type": "integer"
           }
         }
+      },
+      "VideoCreateInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "nonce": {
+            "type": "integer"
+          },
+          "views": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9999999999
+          },
+          "filesize": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "slug",
+          "nonce",
+          "views",
+          "filesize"
+        ]
       }
     }
   }
