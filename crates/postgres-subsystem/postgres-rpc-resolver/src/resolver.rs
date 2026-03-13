@@ -618,15 +618,12 @@ async fn build_create_operation<'a>(
 
     let (rows, precheck_predicates) = match data_val {
         Val::List(items) => {
-            let mut rows = Vec::new();
-            let mut prechecks = Vec::new();
-            for item in items {
-                let (row, precheck) =
-                    build_single_insert(entity_type, item, request_context, subsystem).await?;
-                rows.push(row);
-                prechecks.push(precheck);
-            }
-            (rows, prechecks)
+            let results =
+                futures::future::try_join_all(items.into_iter().map(|item| {
+                    build_single_insert(entity_type, item, request_context, subsystem)
+                }))
+                .await?;
+            results.into_iter().unzip()
         }
         _ => {
             let (row, precheck) =

@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 async-trait.workspace = true
+futures.workspace = true
 http.workspace = true
 serde_json.workspace = true
 
