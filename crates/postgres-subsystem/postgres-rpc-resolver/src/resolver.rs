@@ -665,7 +665,7 @@ fn build_nested_insertions<'a>(
     subsystem: &'a PostgresRpcSubsystemWithRouter,
 ) -> futures::future::BoxFuture<'a, NestedInsertionsResult> {
     Box::pin(async move {
-        let items = val_as_items(nested_val);
+        let items = val_as_items(nested_val)?;
 
         let mut rows = Vec::new();
         let mut precheck_predicates = Vec::new();
@@ -1456,7 +1456,7 @@ async fn compute_nested_create_for_update<'a>(
     request_context: &'a RequestContext<'a>,
     subsystem: &'a PostgresRpcSubsystemWithRouter,
 ) -> Result<NestedAbstractInsertSet, SubsystemRpcError> {
-    let items = val_as_items(create_arg);
+    let items = val_as_items(create_arg)?;
 
     let relation_column_ids: Vec<_> = nesting_relation
         .column_pairs
@@ -1511,7 +1511,7 @@ async fn compute_nested_update_items<'a>(
     request_context: &'a RequestContext<'a>,
     subsystem: &'a PostgresRpcSubsystemWithRouter,
 ) -> Result<Vec<NestedAbstractUpdate>, SubsystemRpcError> {
-    let items = val_as_items(update_arg);
+    let items = val_as_items(update_arg)?;
 
     let mut updates = Vec::new();
 
@@ -1559,7 +1559,7 @@ async fn compute_nested_delete_items<'a>(
     request_context: &'a RequestContext<'a>,
     subsystem: &'a PostgresRpcSubsystemWithRouter,
 ) -> Result<Vec<NestedAbstractDelete>, SubsystemRpcError> {
-    let items = val_as_items(delete_arg);
+    let items = val_as_items(delete_arg)?;
 
     // Check delete access once (does not depend on individual items)
     let access_predicate = compute_entity_access_predicate(
@@ -1598,11 +1598,14 @@ async fn compute_nested_delete_items<'a>(
     Ok(deletes)
 }
 
-/// Normalize a Val into a list of items (handles both single objects and arrays).
-fn val_as_items(val: &Val) -> Vec<&Val> {
+/// Extract items from a Val::List.
+fn val_as_items(val: &Val) -> Result<Vec<&Val>, SubsystemRpcError> {
     match val {
-        Val::List(items) => items.iter().collect(),
-        other => vec![other],
+        Val::List(items) => Ok(items.iter().collect()),
+        other => Err(SubsystemRpcError::UserDisplayError(format!(
+            "Expected an array, got {:?}",
+            other
+        ))),
     }
 }
 
@@ -1619,7 +1622,10 @@ fn build_pk_predicate(
             continue;
         };
         let Some(value) = get_argument_field(data_val, &pk_field.name) else {
-            continue;
+            return Err(SubsystemRpcError::UserDisplayError(format!(
+                "Missing required primary key field '{}' for nested operation.",
+                pk_field.name
+            )));
         };
         let column = column_id.get_column(&subsystem.core_subsystem.database);
         let value_column = cast::literal_column(value, column)
