@@ -348,6 +348,98 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "create_numbers",
+      "description": "Create a new `Numbers` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Numbers",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/NumbersCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/NumbersPK"
+        }
+      }
+    },
+    {
+      "name": "create_other_numbers",
+      "description": "Create a new `OtherNumbers` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating OtherNumbers",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/OtherNumbersCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/OtherNumbersPK"
+        }
+      }
+    },
+    {
+      "name": "create_numberss",
+      "description": "Create multiple `Numbers`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Numbers",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NumbersCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/NumbersPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "create_other_numberss",
+      "description": "Create multiple `OtherNumbers`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating OtherNumbers",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OtherNumbersCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/OtherNumbersPK"
+          }
+        }
+      }
     }
   ],
   "components": {
@@ -652,6 +744,56 @@
         }
       },
       "OtherNumbersUpdateInput": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 10,
+            "maximum": 12345
+          },
+          "age": {
+            "type": "integer",
+            "nullable": true
+          },
+          "float_limit": {
+            "type": "number",
+            "nullable": true,
+            "minimum": -5.0,
+            "maximum": 12345.0
+          },
+          "price": {
+            "type": "number",
+            "nullable": true
+          }
+        }
+      },
+      "NumbersCreateInput": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 2
+          },
+          "age": {
+            "type": "integer",
+            "nullable": true
+          },
+          "float_limit": {
+            "type": "number",
+            "nullable": true,
+            "minimum": -1.0,
+            "maximum": 3.0
+          },
+          "price": {
+            "type": "number",
+            "nullable": true
+          }
+        }
+      },
+      "OtherNumbersCreateInput": {
         "type": "object",
         "properties": {
           "limit": {

@@ -1,0 +1,22 @@
+operation: |
+  query {
+    venues(orderBy: {id: ASC}) {
+      id
+      name
+      published
+      latitude
+    }
+    concerts(orderBy: {id: ASC}) {
+      id
+      title
+      published
+      price
+      venue {
+        id
+      }
+    }
+  }
+auth: |
+  {
+    "role": "ROLE_ADMIN"
+  }

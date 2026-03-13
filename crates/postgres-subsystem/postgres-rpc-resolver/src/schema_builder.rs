@@ -126,6 +126,7 @@ pub fn build_rpc_schema(subsystem: &PostgresRpcSubsystemWithRouter) -> RpcSchema
     for (_, pk_update) in subsystem.pk_updates.iter() {
         let method = build_update_predicate_params_method(
             pk_update,
+            &pk_update.parameters.data_param.name,
             subsystem,
             &mut schema,
             &mut added_types,
@@ -137,6 +138,33 @@ pub fn build_rpc_schema(subsystem: &PostgresRpcSubsystemWithRouter) -> RpcSchema
     for (_, unique_update) in subsystem.unique_updates.iter() {
         let method = build_update_predicate_params_method(
             unique_update,
+            &unique_update.parameters.data_param.name,
+            subsystem,
+            &mut schema,
+            &mut added_types,
+        );
+        schema.add_method(method);
+    }
+
+    // Build single create methods (create_<entity>)
+    for (_, create) in subsystem.creates.iter() {
+        let method = build_create_method(
+            create,
+            &create.parameters.data_param.name,
+            false,
+            subsystem,
+            &mut schema,
+            &mut added_types,
+        );
+        schema.add_method(method);
+    }
+
+    // Build collection create methods (create_<entities>)
+    for (_, collection_create) in subsystem.collection_creates.iter() {
+        let method = build_create_method(
+            collection_create,
+            &collection_create.parameters.data_param.name,
+            true,
             subsystem,
             &mut schema,
             &mut added_types,
@@ -276,6 +304,7 @@ impl BuildRpcMethod for CollectionUpdate {
         // Add `data` parameter
         method = append_update_data_param(
             method,
+            &self.parameters.data_param.name,
             entity_type,
             &format!("Data to update for matching {}", entity_type.plural_name),
             subsystem,
@@ -290,6 +319,7 @@ impl BuildRpcMethod for CollectionUpdate {
 /// Build an RPC method from an update operation with predicate params (PK or unique).
 fn build_update_predicate_params_method<T>(
     op: &T,
+    data_param_name: &str,
     subsystem: &PostgresRpcSubsystemWithRouter,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
@@ -304,6 +334,7 @@ where
     let entity_type = op.return_type().typ(&subsystem.core_subsystem.entity_types);
     method = append_update_data_param(
         method,
+        data_param_name,
         entity_type,
         &format!("Data to update for {}", entity_type.name),
         subsystem,
@@ -321,6 +352,7 @@ fn update_input_type_name(entity_name: &str) -> String {
 /// Append the `data` parameter to an RPC method for update operations.
 fn append_update_data_param(
     method: RpcMethod,
+    data_param_name: &str,
     entity_type: &EntityType,
     description: &str,
     subsystem: &PostgresRpcSubsystemWithRouter,
@@ -329,7 +361,7 @@ fn append_update_data_param(
 ) -> RpcMethod {
     ensure_update_input_type_added(entity_type, subsystem, schema, added_types);
     let data_param = RpcParameter::new(
-        crate::resolver::DATA_PARAM_NAME,
+        data_param_name,
         RpcTypeSchema::object(update_input_type_name(&entity_type.name)),
     )
     .with_description(description);
@@ -416,6 +448,121 @@ fn ensure_update_input_type_added(
     }
 
     schema.add_object_type(type_name, update_obj);
+}
+
+fn create_input_type_name(entity_name: &str) -> String {
+    format!("{entity_name}CreateInput")
+}
+
+/// Build an RPC method for create operations (single or collection).
+fn build_create_method<P>(
+    op: &postgres_rpc_model::operation::PostgresOperation<P>,
+    data_param_name: &str,
+    is_collection: bool,
+    subsystem: &PostgresRpcSubsystemWithRouter,
+    schema: &mut RpcSchema,
+    added_types: &mut HashSet<String>,
+) -> RpcMethod {
+    let entity_type = op.return_type.typ(&subsystem.core_subsystem.entity_types);
+    let result_schema = build_return_type_schema_with(
+        &op.return_type,
+        ReturnTypeKind::PkOnly,
+        subsystem,
+        schema,
+        added_types,
+    );
+
+    let mut method = RpcMethod::new(op.name.clone(), result_schema);
+    if let Some(doc) = &op.doc_comments {
+        method = method.with_description(doc);
+    }
+
+    ensure_create_input_type_added(entity_type, subsystem, schema, added_types);
+    let input_type_name = create_input_type_name(&entity_type.name);
+    let data_schema = if is_collection {
+        RpcTypeSchema::array(RpcTypeSchema::object(&input_type_name))
+    } else {
+        RpcTypeSchema::object(&input_type_name)
+    };
+    let data_param = RpcParameter::new(data_param_name, data_schema)
+        .with_description(format!("Data for creating {}", entity_type.name));
+    method = method.with_param(data_param);
+
+    method
+}
+
+/// Ensure the create input type for an entity is added to the schema.
+/// PK fields with autoIncrement are excluded. Other PK fields are included (optional if they have a default).
+/// Non-PK fields are required unless they have a default value (then optional).
+fn ensure_create_input_type_added(
+    entity_type: &EntityType,
+    subsystem: &PostgresRpcSubsystemWithRouter,
+    schema: &mut RpcSchema,
+    added_types: &mut HashSet<String>,
+) {
+    let type_name = create_input_type_name(&entity_type.name);
+
+    if added_types.contains(&type_name) {
+        return;
+    }
+    added_types.insert(type_name.clone());
+
+    let mut create_obj = RpcObjectType::new(&type_name);
+
+    for field in &entity_type.fields {
+        match &field.relation {
+            PostgresRelation::Scalar { column_id, .. } => {
+                let column = column_id.get_column(&subsystem.core_subsystem.database);
+
+                // Skip autoIncrement PK fields
+                if field.relation.is_pk()
+                    && column
+                        .default_value
+                        .as_ref()
+                        .is_some_and(|d| d.is_autoincrement())
+                {
+                    continue;
+                }
+
+                let field_schema = build_field_type_schema(
+                    &field.typ,
+                    field.type_validation.as_ref(),
+                    subsystem,
+                    schema,
+                    added_types,
+                );
+
+                // Make optional if the field has a default value or if the type is already Optional
+                let final_schema = if column.default_value.is_some()
+                    || matches!(&field.typ, FieldType::Optional(_))
+                {
+                    RpcTypeSchema::optional(field_schema)
+                } else {
+                    field_schema
+                };
+
+                create_obj = create_obj.with_field(RpcObjectField::new(&field.name, final_schema));
+            }
+            PostgresRelation::ManyToOne { relation, .. } => {
+                let foreign_entity =
+                    &subsystem.core_subsystem.entity_types[relation.foreign_entity_id];
+                let ref_type_name =
+                    ensure_ref_type_added(foreign_entity, subsystem, schema, added_types);
+
+                // ManyToOne references are required unless the field type is Optional
+                let ref_schema = match &field.typ {
+                    FieldType::Optional(_) => {
+                        RpcTypeSchema::optional(RpcTypeSchema::object(&ref_type_name))
+                    }
+                    _ => RpcTypeSchema::object(&ref_type_name),
+                };
+                create_obj = create_obj.with_field(RpcObjectField::new(&field.name, ref_schema));
+            }
+            _ => {}
+        }
+    }
+
+    schema.add_object_type(type_name, create_obj);
 }
 
 impl BuildRpcMethod for CollectionQuery {

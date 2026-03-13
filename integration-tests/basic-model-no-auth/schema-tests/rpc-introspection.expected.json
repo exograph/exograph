@@ -348,6 +348,98 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "create_concert",
+      "description": "Create a new `Concert` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Concert",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ConcertCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ConcertPK"
+        }
+      }
+    },
+    {
+      "name": "create_venue",
+      "description": "Create a new `Venue` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Venue",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/VenueCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/VenuePK"
+        }
+      }
+    },
+    {
+      "name": "create_concerts",
+      "description": "Create multiple `Concert`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Concert",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConcertCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/ConcertPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "create_venues",
+      "description": "Create multiple `Venue`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Venue",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VenueCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/VenuePK"
+          }
+        }
+      }
     }
   ],
   "components": {
@@ -721,6 +813,48 @@
             "type": "number"
           }
         }
+      },
+      "ConcertCreateInput": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "venue": {
+            "$ref": "#/components/schemas/VenueRef"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "price": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "venue",
+          "published",
+          "price"
+        ]
+      },
+      "VenueCreateInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "latitude": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "published",
+          "latitude"
+        ]
       }
     }
   }

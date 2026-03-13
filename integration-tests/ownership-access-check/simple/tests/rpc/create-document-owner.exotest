@@ -1,0 +1,48 @@
+# Test owner can create a document via RPC
+stages:
+  # User2 creates a document (user2 has sub=2)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_document",
+          "params": {
+            "data": {
+              "content": "new-document",
+              "user": {"id": 2}
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": {"id": 5}
+      }
+
+  # Verify via get
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_document",
+          "params": {
+            "id": 5
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": {
+          "id": 5,
+          "content": "new-document",
+          "user": {"id": 2}
+        }
+      }

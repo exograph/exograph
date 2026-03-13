@@ -53,3 +53,11 @@ pub fn collection_update_description(entity_name: &str) -> String {
         "Update multiple `{entity_name}`s matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged"
     )
 }
+
+pub fn single_create_description(entity_name: &str) -> String {
+    format!("Create a new `{entity_name}` with the provided data")
+}
+
+pub fn collection_create_description(entity_name: &str) -> String {
+    format!("Create multiple `{entity_name}`s with the provided data")
+}

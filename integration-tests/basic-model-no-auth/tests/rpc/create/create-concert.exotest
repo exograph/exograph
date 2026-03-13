@@ -1,0 +1,42 @@
+# Test single create concert via RPC - with venue ref, returns PK only
+stages:
+  # Create a new concert referencing venue 1
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_concert",
+          "params": {
+            "data": {
+              "title": "New Concert",
+              "venue": {"id": 1},
+              "published": true,
+              "price": "15.00"
+            }
+          }
+        }
+    response: |
+      {
+        "result": {"id": 5}
+      }
+
+  # Verify it was created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {
+            "id": 5
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 5,
+          "title": "New Concert",
+          "published": true,
+          "price": "15.00",
+          "venue": {"id": 1}
+        }
+      }

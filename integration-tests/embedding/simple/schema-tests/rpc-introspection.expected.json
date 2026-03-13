@@ -176,6 +176,52 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "create_document",
+      "description": "Create a new `Document` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Document",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/DocumentCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/DocumentPK"
+        }
+      }
+    },
+    {
+      "name": "create_documents",
+      "description": "Create multiple `Document`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Document",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/DocumentPK"
+          }
+        }
+      }
     }
   ],
   "components": {
@@ -410,6 +456,28 @@
             "nullable": true
           }
         }
+      },
+      "DocumentCreateInput": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "contentVector": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "nullable": true
+          }
+        },
+        "required": [
+          "title",
+          "content"
+        ]
       }
     }
   }

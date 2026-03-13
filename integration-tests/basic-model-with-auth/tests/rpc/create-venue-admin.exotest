@@ -1,0 +1,39 @@
+# Test admin can create venue via RPC
+stages:
+  # Admin creates venue
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_venue",
+          "params": {
+            "data": {"name": "New Venue", "published": true, "latitude": 40.7128}
+          }
+        }
+    auth: |
+      {
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": {"id": 3}
+      }
+
+  # Verify creation
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venue",
+          "params": {
+            "id": 3
+          }
+        }
+    auth: |
+      {
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": {"id": 3, "name": "New Venue", "published": true, "latitude": 40.7128}
+      }

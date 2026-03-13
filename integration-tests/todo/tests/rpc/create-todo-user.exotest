@@ -1,0 +1,25 @@
+# Test user can create their own todo via RPC
+stages:
+  # User1 creates a todo (user field defaults to AuthContext.id)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_todo",
+          "params": {
+            "data": {
+              "title": "User-created todo",
+              "completed": false,
+              "user": {"id": $.u1Id}
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": $.u1Id,
+        "role": "user"
+      }
+    response: |
+      {
+        "result": {"id": ($.u2TodoIds[2] + 1)}
+      }

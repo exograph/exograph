@@ -288,7 +288,7 @@ fn parse_scalar(
                 path: path.to_string(),
             }),
         },
-        "Float" | "Decimal" => match json {
+        "Float" => match json {
             serde_json::Value::Number(n) => {
                 if let Some(f) = n.as_f64() {
                     Ok(Val::Number(ValNumber::F64(f)))
@@ -302,6 +302,18 @@ fn parse_scalar(
             }
             _ => Err(RpcValidationError::TypeMismatch {
                 expected: type_name.to_string(),
+                got: json_type_name(json),
+                path: path.to_string(),
+            }),
+        },
+        "Decimal" => match json {
+            serde_json::Value::String(s) => Ok(Val::String(s.clone())),
+            serde_json::Value::Number(n) => {
+                // Accept numbers too for convenience, convert to string
+                Ok(Val::String(n.to_string()))
+            }
+            _ => Err(RpcValidationError::TypeMismatch {
+                expected: "Decimal".to_string(),
                 got: json_type_name(json),
                 path: path.to_string(),
             }),

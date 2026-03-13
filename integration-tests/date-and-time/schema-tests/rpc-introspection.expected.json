@@ -176,6 +176,52 @@
           "nullable": true
         }
       }
+    },
+    {
+      "name": "create_book",
+      "description": "Create a new `Book` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Book",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/BookCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/BookPK"
+        }
+      }
+    },
+    {
+      "name": "create_books",
+      "description": "Create multiple `Book`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Book",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/BookPK"
+          }
+        }
+      }
     }
   ],
   "components": {
@@ -509,6 +555,37 @@
             "format": "time"
           }
         }
+      },
+      "BookCreateInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "published_on": {
+            "type": "string",
+            "format": "date"
+          },
+          "modified_time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "modified_time_stripped": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reading_club_time": {
+            "type": "string",
+            "format": "time"
+          }
+        },
+        "required": [
+          "name",
+          "published_on",
+          "modified_time",
+          "modified_time_stripped",
+          "reading_club_time"
+        ]
       }
     }
   }

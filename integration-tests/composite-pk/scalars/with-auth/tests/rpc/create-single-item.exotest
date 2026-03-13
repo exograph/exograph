@@ -1,0 +1,53 @@
+# Test creating entity with composite PK + auth via RPC
+stages:
+  # Admin creates a person
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_person",
+          "params": {
+            "data": {
+              "firstName": "New",
+              "lastName": "Person",
+              "age": 25
+            }
+          }
+        }
+    auth: |
+      {
+        "firstName": "New",
+        "lastName": "Person",
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {"firstName": "New", "lastName": "Person"}
+      }
+
+  # Verify via get
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_person",
+          "params": {
+            "firstName": "New",
+            "lastName": "Person"
+          }
+        }
+    auth: |
+      {
+        "firstName": "New",
+        "lastName": "Person",
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {
+          "firstName": "New",
+          "lastName": "Person",
+          "age": 25,
+          "address": null
+        }
+      }

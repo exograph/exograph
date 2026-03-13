@@ -15,19 +15,25 @@ use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
 
+use core_model::access::AccessPredicateExpression;
+use core_model::mapped_arena::SerializableSlabIndex;
 use core_model::types::OperationReturnType;
 use core_resolver::access_solver::{AccessInput, AccessSolver};
 use core_resolver::plugin::SubsystemRpcResolver;
 use core_resolver::plugin::subsystem_rpc_resolver::{SubsystemRpcError, SubsystemRpcResponse};
 use core_resolver::{QueryResponse, QueryResponseBody};
 use exo_sql::{
-    AbstractDelete, AbstractOperation, AbstractOrderBy, AbstractPredicate, AbstractSelect,
-    AbstractUpdate, AliasedSelectionElement, Column, ColumnId, DatabaseExecutor, Limit, ManyToOne,
-    Offset, RelationId, Selection, SelectionCardinality, SelectionElement,
+    AbstractDelete, AbstractInsert, AbstractOperation, AbstractOrderBy, AbstractPredicate,
+    AbstractSelect, AbstractUpdate, AliasedSelectionElement, Column, ColumnId, ColumnValuePair,
+    DatabaseExecutor, InsertionElement, InsertionRow, Limit, ManyToOne, Offset, RelationId,
+    Selection, SelectionCardinality, SelectionElement,
+};
+use postgres_core_model::access::{
+    DatabaseAccessPrimitiveExpression, PrecheckAccessPrimitiveExpression,
 };
 use postgres_core_model::relation::ManyToOneRelation;
 use postgres_core_model::relation::PostgresRelation;
-use postgres_core_model::types::EntityType;
+use postgres_core_model::types::{EntityType, PostgresField};
 use postgres_core_resolver::cast;
 use postgres_core_resolver::database_helper::extractor;
 use postgres_core_resolver::order_by_mapper::compute_order_by;
@@ -35,8 +41,8 @@ use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_core_resolver::predicate_mapper::compute_predicate;
 use postgres_core_resolver::predicate_util::get_argument_field;
 use postgres_rpc_model::operation::{
-    CollectionDelete, CollectionQuery, CollectionUpdate, PkDelete, PkQuery, PkUpdate, UniqueDelete,
-    UniqueQuery, UniqueUpdate,
+    CollectionDelete, CollectionQuery, CollectionUpdate, Create, PkDelete, PkQuery, PkUpdate,
+    UniqueDelete, UniqueQuery, UniqueUpdate,
 };
 use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
 use rpc_introspection::RpcSchema;
@@ -144,6 +150,18 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
                     .unique_updates
                     .get_by_key(request_method)
                     .map(|u| u as &dyn OperationResolver)
+            })
+            .or_else(|| {
+                self.subsystem
+                    .creates
+                    .get_by_key(request_method)
+                    .map(|c| c as &dyn OperationResolver)
+            })
+            .or_else(|| {
+                self.subsystem
+                    .collection_creates
+                    .get_by_key(request_method)
+                    .map(|c| c as &dyn OperationResolver)
             });
 
         if let Some(resolver) = resolved {
@@ -352,10 +370,8 @@ async fn compute_select<'a>(
 }
 
 async fn solve_access_expression<'a>(
-    access_expr_index: core_model::mapped_arena::SerializableSlabIndex<
-        core_model::access::AccessPredicateExpression<
-            postgres_core_model::access::DatabaseAccessPrimitiveExpression,
-        >,
+    access_expr_index: SerializableSlabIndex<
+        AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
     >,
     request_context: &'a RequestContext<'a>,
     subsystem: &'a PostgresRpcSubsystemWithRouter,
@@ -395,6 +411,263 @@ async fn compute_entity_access_predicate<'a>(
 enum AccessKind {
     Read,
     Delete,
+}
+
+/// Compute create access predicates (entity-level and field-level precheck).
+/// Returns the precheck predicate for the insert operation.
+async fn compute_create_access<'a>(
+    entity_type: &EntityType,
+    data_val: &'a Val,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> Result<AbstractPredicate, SubsystemRpcError> {
+    let access_input = AccessInput {
+        value: data_val,
+        ignore_missing_value: true,
+        aliases: HashMap::new(),
+    };
+
+    // Entity-level precheck
+    let precheck_predicate = subsystem
+        .core_subsystem
+        .solve(
+            request_context,
+            Some(&access_input),
+            &subsystem.core_subsystem.precheck_expressions[entity_type.access.creation.precheck],
+        )
+        .await
+        .map_err(|_| SubsystemRpcError::Authorization)?
+        .map(|p| p.0)
+        .resolve();
+
+    if precheck_predicate == AbstractPredicate::False {
+        return Err(SubsystemRpcError::Authorization);
+    }
+
+    // Field-level precheck for creation
+    let field_precheck = compute_field_precheck(
+        entity_type,
+        data_val,
+        &access_input,
+        request_context,
+        subsystem,
+        |f| f.access.creation.precheck,
+    )
+    .await?;
+
+    if field_precheck == AbstractPredicate::False {
+        return Err(SubsystemRpcError::Authorization);
+    }
+
+    Ok(AbstractPredicate::and(precheck_predicate, field_precheck))
+}
+
+/// Compute field-level precheck predicates for the given data.
+/// `get_precheck_index` selects which precheck expression to use for each field
+/// (e.g., creation vs update).
+async fn compute_field_precheck<'a, F>(
+    entity_type: &EntityType,
+    data_val: &'a Val,
+    access_input: &AccessInput<'a>,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    get_precheck_index: F,
+) -> Result<AbstractPredicate, SubsystemRpcError>
+where
+    F: Fn(
+        &PostgresField<EntityType>,
+    )
+        -> SerializableSlabIndex<AccessPredicateExpression<PrecheckAccessPrimitiveExpression>>,
+{
+    let data_fields = match data_val {
+        Val::Object(fields) => fields,
+        _ => return Ok(AbstractPredicate::True),
+    };
+
+    let mut combined = AbstractPredicate::True;
+
+    for field_name in data_fields.keys().map(|k| k.as_str()) {
+        if let Some(field) = entity_type.field_by_name(field_name) {
+            let field_predicate = subsystem
+                .core_subsystem
+                .solve(
+                    request_context,
+                    Some(access_input),
+                    &subsystem.core_subsystem.precheck_expressions[get_precheck_index(field)],
+                )
+                .await
+                .map_err(|_| SubsystemRpcError::Authorization)?
+                .map(|p| p.0)
+                .resolve();
+
+            if field_predicate == AbstractPredicate::False {
+                return Err(SubsystemRpcError::Authorization);
+            }
+
+            combined = AbstractPredicate::and(combined, field_predicate);
+        }
+    }
+
+    Ok(combined)
+}
+
+/// Compute column values from the `data` parameter for a create operation.
+fn compute_create_columns(
+    entity_type: &EntityType,
+    data_val: &Val,
+    subsystem: &PostgresRpcSubsystemWithRouter,
+) -> Result<Vec<InsertionElement>, SubsystemRpcError> {
+    let mut elements = Vec::new();
+
+    for field in &entity_type.fields {
+        match &field.relation {
+            PostgresRelation::Scalar { column_id, .. } => {
+                if let Some(value) = get_argument_field(data_val, &field.name) {
+                    let column = column_id.get_column(&subsystem.core_subsystem.database);
+                    let value_column = cast::literal_column(value, column)
+                        .map_err(|e| SubsystemRpcError::UserDisplayError(e.user_error_message()))?;
+                    elements.push(InsertionElement::SelfInsert(ColumnValuePair {
+                        column: *column_id,
+                        value: value_column,
+                    }));
+                }
+            }
+            PostgresRelation::ManyToOne {
+                relation:
+                    ManyToOneRelation {
+                        foreign_pk_field_ids,
+                        relation_id,
+                        ..
+                    },
+                ..
+            } => {
+                let ManyToOne { column_pairs, .. } =
+                    relation_id.deref(&subsystem.core_subsystem.database);
+
+                match get_argument_field(data_val, &field.name) {
+                    Some(Val::Null) => {
+                        for column_pair in column_pairs.iter() {
+                            elements.push(InsertionElement::SelfInsert(ColumnValuePair {
+                                column: column_pair.self_column_id,
+                                value: Column::Null,
+                            }));
+                        }
+                    }
+                    Some(argument_value) => {
+                        for (column_pair, foreign_pk_field_id) in
+                            column_pairs.iter().zip(foreign_pk_field_ids.iter())
+                        {
+                            let self_column_id = column_pair.self_column_id;
+                            let self_column =
+                                self_column_id.get_column(&subsystem.core_subsystem.database);
+                            let foreign_type_pk_field_name = &foreign_pk_field_id
+                                .resolve(&subsystem.core_subsystem.entity_types)
+                                .name;
+
+                            if let Some(foreign_type_pk_arg) =
+                                get_argument_field(argument_value, foreign_type_pk_field_name)
+                            {
+                                let value_column =
+                                    cast::literal_column(foreign_type_pk_arg, self_column)
+                                        .map_err(|e| {
+                                            SubsystemRpcError::UserDisplayError(
+                                                e.user_error_message(),
+                                            )
+                                        })?;
+                                elements.push(InsertionElement::SelfInsert(ColumnValuePair {
+                                    column: self_column_id,
+                                    value: value_column,
+                                }));
+                            }
+                        }
+                    }
+                    None => {}
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Ok(elements)
+}
+
+/// Build an insert operation from a single data value.
+async fn build_single_insert<'a>(
+    entity_type: &EntityType,
+    data_val: Val,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> Result<(InsertionRow, AbstractPredicate), SubsystemRpcError> {
+    let precheck_predicate =
+        compute_create_access(entity_type, &data_val, request_context, subsystem).await?;
+
+    let elements = compute_create_columns(entity_type, &data_val, subsystem)?;
+
+    Ok((InsertionRow { elems: elements }, precheck_predicate))
+}
+
+/// Build a create AbstractInsert operation.
+async fn build_create_operation<'a>(
+    entity_type: &EntityType,
+    return_type: &OperationReturnType<EntityType>,
+    data_val: Val,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> Result<AbstractOperation, SubsystemRpcError> {
+    let selection = compute_pk_only_select(entity_type, return_type);
+
+    let (rows, precheck_predicates) = match data_val {
+        Val::List(items) => {
+            let results =
+                futures::future::try_join_all(items.into_iter().map(|item| {
+                    build_single_insert(entity_type, item, request_context, subsystem)
+                }))
+                .await?;
+            results.into_iter().unzip()
+        }
+        _ => {
+            let (row, precheck) =
+                build_single_insert(entity_type, data_val, request_context, subsystem).await?;
+            (vec![row], vec![precheck])
+        }
+    };
+
+    Ok(AbstractOperation::Insert(AbstractInsert {
+        table_id: entity_type.table_id,
+        rows,
+        selection,
+        precheck_predicates,
+    }))
+}
+
+#[async_trait]
+impl OperationResolver for Create {
+    async fn resolve<'a>(
+        &'a self,
+        validated_params: &mut HashMap<String, Val>,
+        request_context: &'a RequestContext<'a>,
+        subsystem: &'a PostgresRpcSubsystemWithRouter,
+    ) -> Result<AbstractOperation, SubsystemRpcError> {
+        let entity_type = self.return_type.typ(&subsystem.core_subsystem.entity_types);
+        let data_param_name = &self.parameters.data_param.name;
+
+        let data_val = validated_params
+            .remove(data_param_name.as_str())
+            .ok_or_else(|| {
+                SubsystemRpcError::InvalidParams(format!(
+                    "Missing required parameter: {data_param_name}"
+                ))
+            })?;
+
+        build_create_operation(
+            entity_type,
+            &self.return_type,
+            data_val,
+            request_context,
+            subsystem,
+        )
+        .await
+    }
 }
 
 /// Build a PK-only AbstractSelect for the RETURNING clause of delete operations.
@@ -566,12 +839,13 @@ async fn compute_update_access<'a>(
     }
 
     // Field-level precheck (validates each provided field against its access rules)
-    let field_precheck = compute_field_update_precheck(
+    let field_precheck = compute_field_precheck(
         entity_type,
         data_val,
         &access_input,
         request_context,
         subsystem,
+        |f| f.access.update.precheck,
     )
     .await?;
 
@@ -599,49 +873,6 @@ async fn compute_update_access<'a>(
 
     Ok((precheck_predicate, combined_database_predicate))
 }
-
-/// Compute field-level precheck predicates for update.
-/// For each field present in the data, solve its update precheck expression.
-async fn compute_field_update_precheck<'a>(
-    entity_type: &EntityType,
-    data_val: &'a Val,
-    access_input: &AccessInput<'a>,
-    request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
-) -> Result<AbstractPredicate, SubsystemRpcError> {
-    let data_fields = match data_val {
-        Val::Object(fields) => fields,
-        _ => return Ok(AbstractPredicate::True),
-    };
-
-    let mut combined = AbstractPredicate::True;
-
-    for field_name in data_fields.keys().map(|k| k.as_str()) {
-        if let Some(field) = entity_type.field_by_name(field_name) {
-            let field_predicate = subsystem
-                .core_subsystem
-                .solve(
-                    request_context,
-                    Some(access_input),
-                    &subsystem.core_subsystem.precheck_expressions[field.access.update.precheck],
-                )
-                .await
-                .map_err(|_| SubsystemRpcError::Authorization)?
-                .map(|p| p.0)
-                .resolve();
-
-            if field_predicate == AbstractPredicate::False {
-                return Err(SubsystemRpcError::Authorization);
-            }
-
-            combined = AbstractPredicate::and(combined, field_predicate);
-        }
-    }
-
-    Ok(combined)
-}
-
-pub(crate) const DATA_PARAM_NAME: &str = "data";
 
 /// Extract the `data` parameter, compute access, and build the AbstractUpdate.
 async fn build_update_operation<'a>(
@@ -675,6 +906,7 @@ async fn build_update_operation<'a>(
 /// Shared logic for resolving update predicate params (PK or unique update)
 async fn resolve_update_predicate_params<'a>(
     predicate_params: &[postgres_core_model::predicate::PredicateParameter],
+    data_param_name: &str,
     return_type: &OperationReturnType<EntityType>,
     validated_params: &mut HashMap<String, Val>,
     request_context: &'a RequestContext<'a>,
@@ -682,8 +914,8 @@ async fn resolve_update_predicate_params<'a>(
 ) -> Result<AbstractOperation, SubsystemRpcError> {
     let entity_type = return_type.typ(&subsystem.core_subsystem.entity_types);
 
-    let data_val = validated_params.remove(DATA_PARAM_NAME).ok_or_else(|| {
-        SubsystemRpcError::InvalidParams(format!("Missing required parameter: {DATA_PARAM_NAME}"))
+    let data_val = validated_params.remove(data_param_name).ok_or_else(|| {
+        SubsystemRpcError::InvalidParams(format!("Missing required parameter: {data_param_name}"))
     })?;
 
     let query_predicate = resolve_predicate_param_list(
@@ -794,6 +1026,7 @@ macro_rules! impl_update_resolver {
             ) -> Result<AbstractOperation, SubsystemRpcError> {
                 resolve_update_predicate_params(
                     &self.parameters.predicate_params,
+                    &self.parameters.data_param.name,
                     &self.return_type,
                     validated_params,
                     request_context,
@@ -816,12 +1049,15 @@ impl OperationResolver for CollectionUpdate {
         subsystem: &'a PostgresRpcSubsystemWithRouter,
     ) -> Result<AbstractOperation, SubsystemRpcError> {
         let entity_type = self.return_type.typ(&subsystem.core_subsystem.entity_types);
+        let data_param_name = &self.parameters.data_param.name;
 
-        let data_val = validated_params.remove(DATA_PARAM_NAME).ok_or_else(|| {
-            SubsystemRpcError::InvalidParams(format!(
-                "Missing required parameter: {DATA_PARAM_NAME}"
-            ))
-        })?;
+        let data_val = validated_params
+            .remove(data_param_name.as_str())
+            .ok_or_else(|| {
+                SubsystemRpcError::InvalidParams(format!(
+                    "Missing required parameter: {data_param_name}"
+                ))
+            })?;
 
         let query_predicate = resolve_optional_predicate_param(
             &self.parameters.predicate_param,

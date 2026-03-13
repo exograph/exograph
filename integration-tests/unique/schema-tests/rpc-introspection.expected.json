@@ -243,6 +243,33 @@
       }
     },
     {
+      "name": "get_user_by_secondary_email",
+      "description": "Get a single `User` by secondary email",
+      "params": [
+        {
+          "name": "secondaryEmailId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "emailDomain",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/User",
+          "nullable": true
+        }
+      }
+    },
+    {
       "name": "get_user_by_username",
       "description": "Get a single `User` by username",
       "params": [
@@ -268,33 +295,6 @@
       "params": [
         {
           "name": "primaryEmailId",
-          "required": true,
-          "schema": {
-            "type": "string"
-          }
-        },
-        {
-          "name": "emailDomain",
-          "required": true,
-          "schema": {
-            "type": "string"
-          }
-        }
-      ],
-      "result": {
-        "name": "result",
-        "schema": {
-          "$ref": "#/components/schemas/User",
-          "nullable": true
-        }
-      }
-    },
-    {
-      "name": "get_user_by_secondary_email",
-      "description": "Get a single `User` by secondary email",
-      "params": [
-        {
-          "name": "secondaryEmailId",
           "required": true,
           "schema": {
             "type": "string"
@@ -848,18 +848,11 @@
       }
     },
     {
-      "name": "update_user_by_secondary_email",
-      "description": "Update a single `User` by secondary email with the provided data. Any fields not provided will remain unchanged",
+      "name": "update_user_by_username",
+      "description": "Update a single `User` by username with the provided data. Any fields not provided will remain unchanged",
       "params": [
         {
-          "name": "secondaryEmailId",
-          "required": true,
-          "schema": {
-            "type": "string"
-          }
-        },
-        {
-          "name": "emailDomain",
+          "name": "username",
           "required": true,
           "schema": {
             "type": "string"
@@ -883,11 +876,18 @@
       }
     },
     {
-      "name": "update_user_by_username",
-      "description": "Update a single `User` by username with the provided data. Any fields not provided will remain unchanged",
+      "name": "update_user_by_secondary_email",
+      "description": "Update a single `User` by secondary email with the provided data. Any fields not provided will remain unchanged",
       "params": [
         {
-          "name": "username",
+          "name": "secondaryEmailId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "emailDomain",
           "required": true,
           "schema": {
             "type": "string"
@@ -942,6 +942,144 @@
         "schema": {
           "$ref": "#/components/schemas/InternalRsvpPK",
           "nullable": true
+        }
+      }
+    },
+    {
+      "name": "create_rsvp",
+      "description": "Create a new `Rsvp` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Rsvp",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/RsvpCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/RsvpPK"
+        }
+      }
+    },
+    {
+      "name": "create_user",
+      "description": "Create a new `User` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating User",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/UserPK"
+        }
+      }
+    },
+    {
+      "name": "create_internal_rsvp",
+      "description": "Create a new `InternalRsvp` with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating InternalRsvp",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/InternalRsvpCreateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/InternalRsvpPK"
+        }
+      }
+    },
+    {
+      "name": "create_rsvps",
+      "description": "Create multiple `Rsvp`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating Rsvp",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RsvpCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/RsvpPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "create_users",
+      "description": "Create multiple `User`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating User",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/UserPK"
+          }
+        }
+      }
+    },
+    {
+      "name": "create_internal_rsvps",
+      "description": "Create multiple `InternalRsvp`s with the provided data",
+      "params": [
+        {
+          "name": "data",
+          "description": "Data for creating InternalRsvp",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InternalRsvpCreateInput"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/InternalRsvpPK"
+          }
         }
       }
     }
@@ -1381,6 +1519,65 @@
             "type": "integer"
           }
         }
+      },
+      "RsvpCreateInput": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "event",
+          "user"
+        ]
+      },
+      "UserCreateInput": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "primaryEmailId": {
+            "type": "string"
+          },
+          "secondaryEmailId": {
+            "type": "string",
+            "nullable": true
+          },
+          "emailDomain": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "primaryEmailId",
+          "emailDomain"
+        ]
+      },
+      "InternalRsvpCreateInput": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "event",
+          "user"
+        ]
       }
     }
   }

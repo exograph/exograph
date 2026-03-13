@@ -1,0 +1,25 @@
+# Test non-admin gets auth error when trying to create
+stages:
+  # Non-admin tries to create - gets auth error
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_venue",
+          "params": {
+            "data": {"name": "Hacked Venue", "published": true, "latitude": 0.0}
+          }
+        }
+    auth: |
+      {
+        "role": "ROLE_USER"
+      }
+    invariants:
+      - path: system-state.gql
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }

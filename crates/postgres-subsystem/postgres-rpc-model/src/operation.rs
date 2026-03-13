@@ -100,6 +100,48 @@ define_predicate_params!(
     PkDeleteParameters => PkDelete,
     /// Parameters for single delete by unique constraint
     UniqueDeleteParameters => UniqueDelete,
+);
+
+/// A parameter representing the data payload for create/update operations.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DataParam {
+    pub name: String,
+}
+
+impl DataParam {
+    pub const DEFAULT_NAME: &str = "data";
+}
+
+impl Default for DataParam {
+    fn default() -> Self {
+        Self {
+            name: Self::DEFAULT_NAME.to_string(),
+        }
+    }
+}
+
+/// Define a predicate+data parameter struct with HasPredicateParams impl,
+/// plus a type alias for PostgresOperation<...>.
+macro_rules! define_predicate_data_params {
+    ($($(#[doc = $doc:expr])* $params_name:ident => $op_alias:ident),+ $(,)?) => { $(
+        $(#[doc = $doc])*
+        #[derive(Serialize, Deserialize, Debug)]
+        pub struct $params_name {
+            pub predicate_params: Vec<PredicateParameter>,
+            pub data_param: DataParam,
+        }
+
+        impl HasPredicateParams for $params_name {
+            fn predicate_params(&self) -> &[PredicateParameter] {
+                &self.predicate_params
+            }
+        }
+
+        pub type $op_alias = PostgresOperation<$params_name>;
+    )+ };
+}
+
+define_predicate_data_params!(
     /// Parameters for single update by PK (e.g., `update_todo`)
     PkUpdateParameters => PkUpdate,
     /// Parameters for single update by unique constraint
@@ -124,9 +166,25 @@ pub type CollectionQuery = PostgresOperation<CollectionQueryParameters>;
 define_collection_params!(
     /// Parameters for collection delete (e.g., `delete_todos`)
     CollectionDeleteParameters => CollectionDelete,
-    /// Parameters for collection update (e.g., `update_todos`)
-    CollectionUpdateParameters => CollectionUpdate,
 );
+
+/// Parameters for collection update (e.g., `update_todos`)
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CollectionUpdateParameters {
+    pub predicate_param: PredicateParameter,
+    pub data_param: DataParam,
+}
+
+pub type CollectionUpdate = PostgresOperation<CollectionUpdateParameters>;
+
+/// Parameters for create operations (single or collection)
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CreateParameters {
+    pub data_param: DataParam,
+}
+
+pub type Create = PostgresOperation<CreateParameters>;
+pub type CollectionCreate = PostgresOperation<CreateParameters>;
 
 /// Delegate to the inner parameters type.
 impl<P: HasPredicateParams> HasPredicateParams for PostgresOperation<P> {

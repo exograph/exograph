@@ -56,3 +56,11 @@ pub fn update_single_by_unique(entity_name: &str, constraint_name: &str) -> Stri
         constraint_name.to_snake_case()
     )
 }
+
+pub fn create_single(entity_name: &str) -> String {
+    format!("create_{}", entity_name.to_snake_case())
+}
+
+pub fn create_collection(plural_name: &str) -> String {
+    format!("create_{}", plural_name.to_snake_case())
+}
