@@ -847,12 +847,90 @@
           }
         }
       },
+      "PersonCreateInputFromAddress": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "age": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName",
+          "age"
+        ]
+      },
+      "PersonNestedUpdateInputFromAddress": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "age": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName"
+        ]
+      },
+      "PersonRef": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName"
+        ]
+      },
+      "PersonUpdateOpsFromAddress": {
+        "type": "object",
+        "properties": {
+          "create": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonCreateInputFromAddress"
+            }
+          },
+          "update": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonNestedUpdateInputFromAddress"
+            }
+          },
+          "delete": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonRef"
+            }
+          }
+        }
+      },
       "AddressUpdateInput": {
         "type": "object",
         "properties": {
           "info": {
             "type": "string",
             "nullable": true
+          },
+          "people": {
+            "$ref": "#/components/schemas/PersonUpdateOpsFromAddress"
           }
         }
       },
@@ -896,6 +974,12 @@
           "info": {
             "type": "string",
             "nullable": true
+          },
+          "people": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonCreateInputFromAddress"
+            }
           }
         },
         "required": [

@@ -1,0 +1,42 @@
+# Test creating a person with a nested address reference via RPC
+stages:
+  # Create a new person to live in an existing address
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_person",
+          "params": {
+            "data": {
+              "firstName": "John",
+              "lastName": "DoeAlbany-new",
+              "age": 20,
+              "address": {"street": "1 Main St", "city": "Albany", "state": "NY", "zip": 10001}
+            }
+          }
+        }
+    response: |
+      {
+        "result": {"firstName": "John", "lastName": "DoeAlbany-new"}
+      }
+
+  # Verify person was created with correct address
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_person",
+          "params": {
+            "firstName": "John",
+            "lastName": "DoeAlbany-new"
+          }
+        }
+    response: |
+      {
+        "result": {
+          "firstName": "John",
+          "lastName": "DoeAlbany-new",
+          "age": 20,
+          "address": {"street": "1 Main St", "city": "Albany", "state": "NY", "zip": 10001}
+        }
+      }

@@ -1,0 +1,41 @@
+# Test collection delete with nested address filter via RPC
+stages:
+  # Delete all people in MA addresses
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_people",
+          "params": {
+            "where": {"address": {"state": {"eq": "MA"}}}
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"firstName": "John", "lastName": "DoeBoston"},
+          {"firstName": "Jane", "lastName": "SmithBoston"},
+          {"firstName": "John", "lastName": "DoePlymouth"},
+          {"firstName": "Jane", "lastName": "SmithPlymouth"}
+        ]
+      }
+
+  # Verify only non-MA people remain
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_people",
+          "params": {
+            "orderBy": [{"address": {"state": "ASC"}}, {"lastName": "ASC"}, {"firstName": "ASC"}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"firstName": "John", "lastName": "DoeChicago", "age": 40, "address": {"street": "3 Main St", "city": "Chicago", "state": "IL", "zip": 60601}},
+          {"firstName": "Jane", "lastName": "SmithChicago", "age": 45, "address": {"street": "3 Main St", "city": "Chicago", "state": "IL", "zip": 60601}},
+          {"firstName": "John", "lastName": "DoeAlbany", "age": 20, "address": {"street": "1 Main St", "city": "Albany", "state": "NY", "zip": 10001}},
+          {"firstName": "Jane", "lastName": "SmithAlbany", "age": 25, "address": {"street": "1 Main St", "city": "Albany", "state": "NY", "zip": 10001}}
+        ]
+      }

@@ -1,0 +1,41 @@
+# Test update person with composite primary key via RPC
+stages:
+  # Update person's age
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_person",
+          "params": {
+            "firstName": "John",
+            "lastName": "DoeBoston",
+            "data": {
+              "age": 100
+            }
+          }
+        }
+    response: |
+      {
+        "result": {"firstName": "John", "lastName": "DoeBoston"}
+      }
+
+  # Verify update
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_person",
+          "params": {
+            "firstName": "John",
+            "lastName": "DoeBoston"
+          }
+        }
+    response: |
+      {
+        "result": {
+          "firstName": "John",
+          "lastName": "DoeBoston",
+          "age": 100,
+          "address": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101}
+        }
+      }
