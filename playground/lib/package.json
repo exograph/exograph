@@ -33,7 +33,7 @@
     "graphiql": "5.2.2",
     "jose": "6.2.1",
     "lucide-react": "^0.577.0",
-    "monaco-editor": "^0.52.2",
+    "monaco-editor": "^0.55.1",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1"
   },
