@@ -1,0 +1,53 @@
+# Test batch create: two concerts in one batch, both succeed and commit
+stages:
+  # Create two concerts in a batch
+  - operation:
+      type: rpc
+      payload: |
+        [
+          {"id": "batch-0", "method": "create_concert", "params": {"data": {"title": "Batch A", "venue": {"id": 1}, "published": true, "price": "10.00"}}},
+          {"id": "batch-1", "method": "create_concert", "params": {"data": {"title": "Batch B", "venue": {"id": 2}, "published": false, "price": "20.00"}}}
+        ]
+    response: |
+      [
+        {"result": {"id": 5}, "id": "batch-0"},
+        {"result": {"id": 6}, "id": "batch-1"}
+      ]
+
+  # Verify first concert was created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {"id": 5}
+        }
+    response: |
+      {
+        "result": {
+          "id": 5,
+          "title": "Batch A",
+          "published": true,
+          "price": "10.00",
+          "venue": {"id": 1}
+        }
+      }
+
+  # Verify second concert was created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {"id": 6}
+        }
+    response: |
+      {
+        "result": {
+          "id": 6,
+          "title": "Batch B",
+          "published": false,
+          "price": "20.00",
+          "venue": {"id": 2}
+        }
+      }

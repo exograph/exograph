@@ -1,0 +1,13 @@
+# Test batch with multiple read-only queries
+operation:
+  type: rpc
+  payload: |
+    [
+      {"id": "batch-0", "method": "get_concert", "params": {"id": 1}},
+      {"id": "batch-1", "method": "get_concert", "params": {"id": 2}}
+    ]
+response: |
+  [
+    {"result": {"id": 1, "title": "Concert1", "published": true, "price": "20.50", "venue": {"id": 1}}, "id": "batch-0"},
+    {"result": {"id": 2, "title": "Concert2", "published": false, "price": "12.50", "venue": {"id": 2}}, "id": "batch-1"}
+  ]

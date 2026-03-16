@@ -42,13 +42,50 @@ export async function dynamic_assert(actualPayload, testvariables, unorderedSele
     let expectedPayload = "%%JSON%%";
 
     // For RPC responses, auto-inject jsonrpc and id if they're missing from the expected payload
-    // This happens AFTER variable substitution, so the expectedPayload is now a proper object
-    if (rpcMetadata && typeof expectedPayload === "object" && expectedPayload !== null && !Array.isArray(expectedPayload)) {
-        if (!expectedPayload.hasOwnProperty("jsonrpc")) {
-            expectedPayload.jsonrpc = rpcMetadata.jsonrpc;
-        }
-        if (!expectedPayload.hasOwnProperty("id")) {
-            expectedPayload.id = rpcMetadata.id;
+    // rpcMetadata is always an array (single request: length 1, batch: length N)
+    if (rpcMetadata && Array.isArray(rpcMetadata)) {
+        const injectMetadata = (item, meta) => {
+            if (typeof item === "object" && item !== null) {
+                if (!item.hasOwnProperty("jsonrpc")) { item.jsonrpc = meta.jsonrpc; }
+                if (!item.hasOwnProperty("id")) { item.id = meta.id; }
+            }
+        };
+
+        if (Array.isArray(expectedPayload)) {
+            // Batch mode: inject metadata into each expected element by position
+            for (let i = 0; i < rpcMetadata.length && i < expectedPayload.length; i++) {
+                injectMetadata(expectedPayload[i], rpcMetadata[i]);
+            }
+
+            // Match by id (JSON-RPC 2.0 responses may be returned in any order)
+            if (!Array.isArray(actualPayload)) {
+                throw new AssertionError(
+                    `expected batch array response, got ${typeof actualPayload}`,
+                    []
+                );
+            }
+            if (actualPayload.length !== expectedPayload.length) {
+                throw new AssertionError(
+                    `batch response length mismatch: expected ${expectedPayload.length}, got ${actualPayload.length}`,
+                    []
+                );
+            }
+
+            // Reorder actualPayload to match expectedPayload by id, then fall through to normal assertion
+            const reordered = [];
+            for (const expected of expectedPayload) {
+                const actual = actualPayload.find(a => JSON.stringify(a.id) === JSON.stringify(expected.id));
+                if (!actual) {
+                    throw new AssertionError(
+                        `no batch response found for request id ${JSON.stringify(expected.id)}`,
+                        []
+                    );
+                }
+                reordered.push(actual);
+            }
+            actualPayload = reordered;
+        } else {
+            injectMetadata(expectedPayload, rpcMetadata[0]);
         }
     }
 
