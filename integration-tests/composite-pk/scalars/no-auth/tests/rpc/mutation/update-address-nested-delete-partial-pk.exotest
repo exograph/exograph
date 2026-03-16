@@ -20,29 +20,12 @@ stages:
             }
           }
         }
+    invariants:
+      - path: ../system-state.gql
     response: |
       {
         "error": {
           "code": -32001,
           "message": "Missing required primary key field 'lastName' for nested operation."
         }
-      }
-
-  # Verify no people were deleted
-  - operation:
-      type: rpc
-      payload: |
-        {
-          "method": "get_people",
-          "params": {
-            "where": {"address": {"street": {"eq": "2 Main St"}, "city": {"eq": "Boston"}}},
-            "orderBy": [{"lastName": "ASC"}]
-          }
-        }
-    response: |
-      {
-        "result": [
-          {"firstName": "John", "lastName": "DoeBoston", "age": 30, "address": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101}},
-          {"firstName": "Jane", "lastName": "SmithBoston", "age": 35, "address": {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101}}
-        ]
       }

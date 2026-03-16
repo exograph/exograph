@@ -24,32 +24,9 @@ stages:
         "firstName": "Jane",
         "lastName": "SmithBoston"
       }
+    invariants:
+      - path: ../system-state.gql
     response: |
       {
         "result": null
-      }
-
-  # Verify the person at Chicago was NOT deleted
-  - operation:
-      type: rpc
-      payload: |
-        {
-          "method": "get_person",
-          "params": {
-            "firstName": "John",
-            "lastName": "DoeChicago"
-          }
-        }
-    auth: |
-      {
-        "role": "admin"
-      }
-    response: |
-      {
-        "result": {
-          "firstName": "John",
-          "lastName": "DoeChicago",
-          "age": 40,
-          "address": {"street": "3 Main St", "city": "Chicago", "state": "IL", "zip": 60601}
-        }
       }

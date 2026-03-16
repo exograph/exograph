@@ -1,0 +1,21 @@
+# User 3 trying to delete user 2's membership - should fail
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "delete_membership",
+      "params": {
+        "id": 1
+      }
+    }
+auth: |
+  {
+    "sub": 3,
+    "role": "USER"
+  }
+invariants:
+  - path: ../system-state.gql
+response: |
+  {
+    "result": null
+  }

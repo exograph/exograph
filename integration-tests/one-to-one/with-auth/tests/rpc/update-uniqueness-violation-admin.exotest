@@ -1,0 +1,29 @@
+# Admin tries to update membership to point to a user that already has a membership
+# User 3 already has membership 2 - assigning membership 1 to user 3 should fail
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "update_membership",
+      "params": {
+        "id": 1,
+        "data": {
+          "kind": "free",
+          "user": {"id": 3}
+        }
+      }
+    }
+auth: |
+  {
+    "sub": 2,
+    "role": "ADMIN"
+  }
+invariants:
+  - path: ../system-state.gql
+response: |
+  {
+    "error": {
+      "code": -32001,
+      "message": "Operation failed"
+    }
+  }

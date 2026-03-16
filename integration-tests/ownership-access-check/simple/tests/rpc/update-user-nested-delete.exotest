@@ -1,0 +1,57 @@
+# Test nested delete through bulk update - access control allows only owned documents
+stages:
+  # User 2 updates all users and tries to nested-delete document 1
+  # Access control only allows deleting documents owned by user 2
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_users",
+          "params": {
+            "where": {"id": {"gt": 0}},
+            "data": {
+              "name": "updated-user2",
+              "documents": {
+                "delete": [{"id": 1}]
+              }
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 1},
+          {"id": 2},
+          {"id": 3},
+          {"id": 4},
+          {"id": 5}
+        ]
+      }
+
+  # Verify: document 1 (owned by user 2) was deleted, others remain
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_documents",
+          "params": {
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 2, "content": "content2", "user": {"id": 2}},
+          {"id": 3, "content": "content3", "user": {"id": 1}},
+          {"id": 4, "content": "content4", "user": {"id": 3}}
+        ]
+      }

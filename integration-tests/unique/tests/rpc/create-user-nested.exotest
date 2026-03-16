@@ -1,0 +1,60 @@
+# Test creating a user with nested RSVPs via RPC
+stages:
+  # Create a new user with nested RSVP
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_user",
+          "params": {
+            "data": {
+              "username": "Bob01",
+              "primaryEmailId": "bob",
+              "emailDomain": "example.com",
+              "rsvps": [{"event": "Concert2"}]
+            }
+          }
+        }
+    response: |
+      {
+        "result": {"id": 2}
+      }
+
+  # Verify user was created with the RSVP
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_user_by_username",
+          "params": {
+            "username": "Bob01"
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 2,
+          "username": "Bob01",
+          "primaryEmailId": "bob",
+          "secondaryEmailId": null,
+          "emailDomain": "example.com"
+        }
+      }
+
+  # Verify RSVP was created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_rsvps",
+          "params": {
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": 1, "event": "Concert1", "count": 1, "user": {"id": 1}},
+          {"id": 2, "event": "Concert2", "count": 1, "user": {"id": 2}}
+        ]
+      }

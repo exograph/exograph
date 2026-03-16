@@ -1,0 +1,48 @@
+# Test owner can update their own membership via RPC
+stages:
+  # User 2 updates their own membership (id=1)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_membership",
+          "params": {
+            "id": 1,
+            "data": {
+              "kind": "xfree"
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": {"id": 1}
+      }
+
+  # Verify the update worked
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_memberships",
+          "params": {
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 1, "kind": "xfree", "user": {"id": 2}},
+          {"id": 2, "kind": "family", "user": {"id": 3}},
+          {"id": 3, "kind": "individual", "user": {"id": 4}},
+          {"id": 4, "kind": "family", "user": {"id": 5}}
+        ]
+      }

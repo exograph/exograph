@@ -1,0 +1,29 @@
+# User 2 tries to update own membership to point to another user - should fail
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_membership",
+          "params": {
+            "id": 1,
+            "data": {
+              "kind": "free",
+              "user": {"id": 1}
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    invariants:
+      - path: ../system-state.gql
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }

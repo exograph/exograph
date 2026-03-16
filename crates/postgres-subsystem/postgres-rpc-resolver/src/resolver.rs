@@ -372,6 +372,19 @@ async fn compute_select<'a>(
     })
 }
 
+async fn solve_access<'a>(
+    access_expr: &AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> Result<AbstractPredicate, SubsystemRpcError> {
+    subsystem
+        .core_subsystem
+        .solve(request_context, None, access_expr)
+        .await
+        .map_err(|_| SubsystemRpcError::Authorization)
+        .map(|result| result.map(|p| p.0).resolve())
+}
+
 async fn solve_access_expression<'a>(
     access_expr_index: SerializableSlabIndex<
         AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
@@ -380,13 +393,7 @@ async fn solve_access_expression<'a>(
     subsystem: &'a PostgresRpcSubsystemWithRouter,
 ) -> Result<AbstractPredicate, SubsystemRpcError> {
     let access_expr = &subsystem.core_subsystem.database_access_expressions[access_expr_index];
-
-    subsystem
-        .core_subsystem
-        .solve(request_context, None, access_expr)
-        .await
-        .map_err(|_| SubsystemRpcError::Authorization)
-        .map(|result| result.map(|p| p.0).resolve())
+    solve_access(access_expr, request_context, subsystem).await
 }
 
 /// Compute an entity-level access predicate.
@@ -1496,11 +1503,19 @@ async fn compute_nested_create_for_update<'a>(
         });
     }
 
-    // Creation access is precheck-only (no database-level predicate for creates)
-    Ok(NestedAbstractInsertSet::new(
-        inserts,
-        AbstractPredicate::True,
-    ))
+    // Compute a filter_predicate from the child entity's access control to restrict
+    // which parent rows get the nested insert. This mirrors what GraphQL does at build time
+    // via parent_predicate() — we do it at runtime since RPC has no build step for mutations.
+    let child_update_access_expr = &subsystem.core_subsystem.database_access_expressions
+        [foreign_entity.access.update.database];
+    let parent_access_expr = postgres_core_model::access::parent_predicate(
+        child_update_access_expr.clone(),
+        parent_entity,
+    )
+    .map_err(SubsystemRpcError::UserDisplayError)?;
+    let filter_predicate = solve_access(&parent_access_expr, request_context, subsystem).await?;
+
+    Ok(NestedAbstractInsertSet::new(inserts, filter_predicate))
 }
 
 /// Compute nested update items (the "update" sub-field).

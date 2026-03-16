@@ -1,0 +1,185 @@
+# Admin can filter memberships and users with where clauses
+stages:
+  # Filter memberships by user 2
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_memberships",
+          "params": {
+            "where": {"user": {"id": {"eq": 2}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 1, "kind": "individual", "user": {"id": 2}}
+        ]
+      }
+
+  # Filter memberships by user 3
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_memberships",
+          "params": {
+            "where": {"user": {"id": {"eq": 3}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 2, "kind": "family", "user": {"id": 3}}
+        ]
+      }
+
+  # Filter memberships by kind=family
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_memberships",
+          "params": {
+            "where": {"kind": {"eq": "family"}},
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 2, "kind": "family", "user": {"id": 3}},
+          {"id": 4, "kind": "family", "user": {"id": 5}}
+        ]
+      }
+
+  # Filter memberships by kind=individual
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_memberships",
+          "params": {
+            "where": {"kind": {"eq": "individual"}},
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 1, "kind": "individual", "user": {"id": 2}},
+          {"id": 3, "kind": "individual", "user": {"id": 4}}
+        ]
+      }
+
+  # Filter users by membership id=1
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_users",
+          "params": {
+            "where": {"membership": {"id": {"eq": 1}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 2, "name": "u2"}
+        ]
+      }
+
+  # Filter users by membership id=2
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_users",
+          "params": {
+            "where": {"membership": {"id": {"eq": 2}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 3, "name": "u3"}
+        ]
+      }
+
+  # Filter users by membership kind=family
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_users",
+          "params": {
+            "where": {"membership": {"kind": {"eq": "family"}}},
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 3, "name": "u3"},
+          {"id": 5, "name": "u5"}
+        ]
+      }
+
+  # Filter users by membership kind=individual
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_users",
+          "params": {
+            "where": {"membership": {"kind": {"eq": "individual"}}},
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 2, "name": "u2"},
+          {"id": 4, "name": "u4"}
+        ]
+      }

@@ -1,0 +1,60 @@
+# Test nested create through update via RPC
+# Access control on Document (self.user.id = AuthContext.id) restricts which parent rows
+# get the nested insert — only user 2 (the authenticated user) gets a new document.
+stages:
+  # User 2 updates all users and nested-creates a document — only applied to owned parents
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_users",
+          "params": {
+            "where": {"id": {"gt": 0}},
+            "data": {
+              "name": "updated-user2",
+              "documents": {
+                "create": [{"content": "nested-create"}]
+              }
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 1},
+          {"id": 2},
+          {"id": 3},
+          {"id": 4},
+          {"id": 5}
+        ]
+      }
+
+  # Verify: document was only created for user 2 (the authenticated user)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_documents",
+          "params": {
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 1, "content": "content1", "user": {"id": 2}},
+          {"id": 2, "content": "content2", "user": {"id": 2}},
+          {"id": 3, "content": "content3", "user": {"id": 1}},
+          {"id": 4, "content": "content4", "user": {"id": 3}},
+          {"id": 5, "content": "nested-create", "user": {"id": 2}}
+        ]
+      }

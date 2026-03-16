@@ -1,0 +1,47 @@
+# Test owner can create a membership for themselves via RPC
+stages:
+  # User 1 (no membership yet) creates a membership for themselves
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_membership",
+          "params": {
+            "data": {
+              "kind": "premium",
+              "user": {"id": 1}
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": {"id": 5}
+      }
+
+  # Verify via admin query
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_membership",
+          "params": {
+            "id": 5
+          }
+        }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": {
+          "id": 5,
+          "kind": "premium",
+          "user": {"id": 1}
+        }
+      }

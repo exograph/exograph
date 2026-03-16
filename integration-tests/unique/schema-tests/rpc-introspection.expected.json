@@ -1488,6 +1488,136 @@
           }
         }
       },
+      "RsvpCreateInputFromUser": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "event"
+        ]
+      },
+      "RsvpNestedUpdateInputFromUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "event": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "RsvpRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "RsvpUpdateOpsFromUser": {
+        "type": "object",
+        "properties": {
+          "create": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RsvpCreateInputFromUser"
+            }
+          },
+          "update": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RsvpNestedUpdateInputFromUser"
+            }
+          },
+          "delete": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RsvpRef"
+            }
+          }
+        }
+      },
+      "InternalRsvpCreateInputFromUser": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "event"
+        ]
+      },
+      "InternalRsvpNestedUpdateInputFromUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "event": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "InternalRsvpRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "InternalRsvpUpdateOpsFromUser": {
+        "type": "object",
+        "properties": {
+          "create": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InternalRsvpCreateInputFromUser"
+            }
+          },
+          "update": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InternalRsvpNestedUpdateInputFromUser"
+            }
+          },
+          "delete": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InternalRsvpRef"
+            }
+          }
+        }
+      },
       "UserUpdateInput": {
         "type": "object",
         "properties": {
@@ -1503,6 +1633,12 @@
           },
           "emailDomain": {
             "type": "string"
+          },
+          "rsvps": {
+            "$ref": "#/components/schemas/RsvpUpdateOpsFromUser"
+          },
+          "internalRsvps": {
+            "$ref": "#/components/schemas/InternalRsvpUpdateOpsFromUser"
           }
         }
       },
@@ -1553,6 +1689,18 @@
           },
           "emailDomain": {
             "type": "string"
+          },
+          "rsvps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RsvpCreateInputFromUser"
+            }
+          },
+          "internalRsvps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InternalRsvpCreateInputFromUser"
+            }
           }
         },
         "required": [

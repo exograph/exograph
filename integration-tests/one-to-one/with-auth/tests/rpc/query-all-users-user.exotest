@@ -1,0 +1,18 @@
+# User 2 (has membership) can only see their own data
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_users"
+    }
+auth: |
+  {
+    "sub": 2,
+    "role": "USER"
+  }
+response: |
+  {
+    "result": [
+      {"id": 2, "name": "u2"}
+    ]
+  }

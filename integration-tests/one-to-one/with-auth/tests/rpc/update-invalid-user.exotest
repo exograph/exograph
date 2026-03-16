@@ -1,0 +1,26 @@
+# Test non-owner cannot update another user's membership via RPC
+stages:
+  # User 3 tries to update user 2's membership (id=1) - not authorized
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_membership",
+          "params": {
+            "id": 1,
+            "data": {
+              "kind": "xfree"
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 3,
+        "role": "USER"
+      }
+    invariants:
+      - path: ../system-state.gql
+    response: |
+      {
+        "result": null
+      }
