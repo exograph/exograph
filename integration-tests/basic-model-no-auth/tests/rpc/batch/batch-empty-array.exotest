@@ -1,0 +1,11 @@
+# Test batch with empty array: per JSON-RPC 2.0 spec, returns a single InvalidRequest error
+operation:
+  type: rpc
+  payload: |
+    []
+response: |
+  {
+    "error": {"code": -32600, "message": "Invalid JSON-RPC request"},
+    "jsonrpc": "2.0",
+    "id": null
+  }

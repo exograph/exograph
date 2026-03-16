@@ -55,9 +55,10 @@ struct TestfileContext {
     jwtsecret: String,
     cookies: HashMap<String, String>,
     testvariables: HashMap<String, serde_json::Value>,
-    /// For RPC operations: stores the jsonrpc and id sent in the request
-    /// so we can match them in the response
-    rpc_request_metadata: Option<RpcRequestMetadata>,
+    /// For RPC operations: stores the jsonrpc and id sent in each request
+    /// so we can match them in the response.
+    /// Single request: Vec with one element. Batch: Vec with one element per request.
+    rpc_request_metadata: Option<Vec<RpcRequestMetadata>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -366,6 +367,7 @@ async fn assert_api_operation(
         Some(expected_payload) => {
             // expected response specified - do an assertion
             // For RPC operations, metadata is passed to Deno for auto-injection into response
+            // Serializes as a JSON array (single request: array of 1, batch: array of N)
             let rpc_metadata_value = ctx
                 .rpc_request_metadata
                 .as_ref()
@@ -571,6 +573,7 @@ async fn execute_rpc_operation(
     ctx: &mut TestfileContext,
 ) -> Result<Value> {
     use std::sync::atomic::{AtomicU64, Ordering};
+    static REQUEST_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
 
     let deno_prelude = operation.deno_prelude.clone().unwrap_or_default();
 
@@ -578,36 +581,47 @@ async fn execute_rpc_operation(
     let evaluated_payload: Value =
         evaluate_using_deno(&rpc_op.payload, &deno_prelude, &ctx.testvariables).await?;
 
-    // Deserialize into proper JSON-RPC request type for type safety
-    let mut rpc_request: JsonRpcRequestBuilder = serde_json::from_value(evaluated_payload)
-        .context("RPC payload must be a valid JSON-RPC request object")?;
+    // Fill in jsonrpc/id defaults and extract metadata for a single request
+    let prepare_request = |value: Value| -> Result<(Value, RpcRequestMetadata)> {
+        let mut rpc_request: JsonRpcRequestBuilder = serde_json::from_value(value)
+            .context("RPC payload must be a valid JSON-RPC request object")?;
 
-    // Add defaults if missing
-    if rpc_request.jsonrpc.is_none() {
-        rpc_request.jsonrpc = Some("2.0".to_string());
-    }
+        if rpc_request.jsonrpc.is_none() {
+            rpc_request.jsonrpc = Some("2.0".to_string());
+        }
+        if rpc_request.id.is_none() {
+            rpc_request.id = Some(json!(REQUEST_ID_COUNTER.fetch_add(1, Ordering::SeqCst)));
+        }
 
-    if rpc_request.id.is_none() {
-        static REQUEST_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
-        let request_id = REQUEST_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
-        rpc_request.id = Some(json!(request_id));
-    }
+        let metadata = RpcRequestMetadata {
+            jsonrpc: rpc_request.jsonrpc.clone().unwrap(),
+            id: rpc_request.id.clone().unwrap(),
+        };
 
-    // Store request metadata for automatic response validation
-    // Both fields are guaranteed to be Some due to the checks above (lines 586-594)
-    ctx.rpc_request_metadata = Some(RpcRequestMetadata {
-        jsonrpc: rpc_request
-            .jsonrpc
-            .clone()
-            .expect("jsonrpc should be set by this point"),
-        id: rpc_request
-            .id
-            .clone()
-            .expect("id should be set by this point"),
-    });
+        Ok((serde_json::to_value(rpc_request)?, metadata))
+    };
 
-    // Convert back to Value for request payload
-    let rpc_request = serde_json::to_value(rpc_request)?;
+    // Detect batch vs single based on payload type
+    let (rpc_payload, metadata) = match evaluated_payload {
+        Value::Array(items) => {
+            let mut processed_items = Vec::with_capacity(items.len());
+            let mut metadata_vec = Vec::with_capacity(items.len());
+
+            for item in items {
+                let (value, meta) = prepare_request(item)?;
+                processed_items.push(value);
+                metadata_vec.push(meta);
+            }
+
+            (Value::Array(processed_items), metadata_vec)
+        }
+        payload => {
+            let (value, meta) = prepare_request(payload)?;
+            (value, vec![meta])
+        }
+    };
+
+    ctx.rpc_request_metadata = Some(metadata);
 
     // Build request head with JWT auth and headers
     let mut request_head = MemoryRequestHead::new(
@@ -621,7 +635,7 @@ async fn execute_rpc_operation(
 
     add_auth_and_headers(&mut request_head, operation, ctx, &deno_prelude).await?;
 
-    let request = MemoryRequestPayload::new(rpc_request.clone(), request_head);
+    let request = MemoryRequestPayload::new(rpc_payload, request_head);
 
     // Execute and return raw JSON-RPC response
     let rpc_response = run_query(request, &ctx.router, &mut ctx.cookies).await?;

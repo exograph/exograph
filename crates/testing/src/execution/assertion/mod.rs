@@ -459,10 +459,11 @@ mod tests {
             }
         });
 
-        let rpc_metadata = serde_json::json!({
+        // rpcMetadata is now always an array (single request: array of 1)
+        let rpc_metadata = serde_json::json!([{
             "jsonrpc": "2.0",
             "id": 42
-        });
+        }]);
 
         let test_cases = vec![
             (
@@ -508,10 +509,10 @@ mod tests {
             }
         });
 
-        let rpc_metadata = serde_json::json!({
+        let rpc_metadata = serde_json::json!([{
             "jsonrpc": "2.0",
             "id": 42
-        });
+        }]);
 
         let test_cases = vec![
             (
@@ -551,10 +552,10 @@ mod tests {
     #[tokio::test]
     async fn rpc_edge_cases() {
         // Test edge cases: variable substitution, nested objects, arrays, errors
-        let rpc_metadata = serde_json::json!({
+        let rpc_metadata = serde_json::json!([{
             "jsonrpc": "2.0",
             "id": 42
-        });
+        }]);
 
         #[allow(clippy::type_complexity)]
         let test_cases: Vec<(
@@ -595,7 +596,7 @@ mod tests {
                 r#"[{"id": 1, "name": "foo"}, {"id": 2, "name": "bar"}]"#,
                 serde_json::json!([{"id": 1, "name": "foo"}, {"id": 2, "name": "bar"}]),
                 HashMap::new(),
-                Some(&rpc_metadata),
+                None,
             ),
             (
                 "error response",

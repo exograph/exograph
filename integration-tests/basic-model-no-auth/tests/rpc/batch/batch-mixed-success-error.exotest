@@ -1,0 +1,29 @@
+# Test batch with one valid create and one invalid method.
+# The entire transaction should roll back, so the create should not persist.
+stages:
+  # Batch: one create + one nonexistent method
+  - operation:
+      type: rpc
+      payload: |
+        [
+          {"id": "batch-0", "method": "create_concert", "params": {"data": {"title": "Should Rollback", "venue": {"id": 1}, "published": true, "price": "10.00"}}},
+          {"id": "batch-1", "method": "nonexistent_method", "params": {}}
+        ]
+    response: |
+      [
+        {"error": {"code": -32001, "message": "Transaction rolled back due to other failed request(s) in the batch"}, "id": "batch-0"},
+        {"error": {"code": -32601, "message": "Method not found"}, "id": "batch-1"}
+      ]
+
+  # Verify the concert was NOT created (transaction rolled back)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_concert",
+          "params": {"id": 5}
+        }
+    response: |
+      {
+        "result": null
+      }
