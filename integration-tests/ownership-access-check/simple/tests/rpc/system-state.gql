@@ -1,0 +1,18 @@
+operation: |
+  query {
+    users(orderBy: {id: ASC}) {
+      id
+      name
+    }
+    documents(orderBy: {id: ASC}) {
+      id
+      content
+      user {
+        id
+      }
+    }
+  }
+auth: |
+  {
+    "role": "ADMIN"
+  }

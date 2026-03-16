@@ -1,0 +1,18 @@
+operation: |
+  query {
+    users(orderBy: {id: ASC}) {
+      id
+      name
+    }
+    memberships(orderBy: {id: ASC}) {
+      id
+      kind
+      user {
+        id
+      }
+    }
+  }
+auth: |
+  {
+    "role": "ADMIN"
+  }

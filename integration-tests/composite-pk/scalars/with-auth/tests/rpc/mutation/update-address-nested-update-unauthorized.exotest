@@ -1,0 +1,34 @@
+# Test update address with nested update - unauthorized
+stages:
+  # Non-admin user cannot update another person at the same address
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_address",
+          "params": {
+            "street": "2 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": 22101,
+            "data": {
+              "people": {
+                "update": [{"firstName": "John", "lastName": "DoeBoston", "age": 20}]
+              }
+            }
+          }
+        }
+    auth: |
+      {
+        "firstName": "Jane",
+        "lastName": "SmithBoston"
+      }
+    invariants:
+      - path: ../system-state.gql
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }

@@ -16,25 +16,9 @@ stages:
         "sub": 3,
         "role": "USER"
       }
+    invariants:
+      - path: system-state.gql
     response: |
       {
         "result": null
-      }
-
-  # Verify document is unchanged
-  - operation:
-      type: rpc
-      payload: |
-        {
-          "method": "get_document",
-          "params": {"id": 1}
-        }
-    auth: |
-      {
-        "sub": 2,
-        "role": "ADMIN"
-      }
-    response: |
-      {
-        "result": {"id": 1, "content": "content1", "user": {"id": 2}}
       }

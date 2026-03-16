@@ -1,0 +1,35 @@
+# Test update address with nested create - unauthorized
+stages:
+  # Non-admin user who lives at the address can update it but cannot create a person
+  # (the new person "Alex NewBoston" doesn't match the auth context)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_address",
+          "params": {
+            "street": "2 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": 22101,
+            "data": {
+              "people": {
+                "create": [{"firstName": "Alex", "lastName": "NewBoston", "age": 20}]
+              }
+            }
+          }
+        }
+    auth: |
+      {
+        "firstName": "Jane",
+        "lastName": "SmithBoston"
+      }
+    invariants:
+      - path: ../system-state.gql
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }

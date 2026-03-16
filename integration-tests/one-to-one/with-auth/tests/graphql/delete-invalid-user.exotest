@@ -1,0 +1,25 @@
+# User 3 trying to delete user 2's membership - should fail
+operation: |
+  mutation {
+    deleteMembership(id: 1) {
+      id
+      kind
+      user {
+        id
+        name
+      }
+    }
+  }
+auth: |
+  {
+    "sub": 3,
+    "role": "USER"
+  }
+invariants:
+  - path: ../system-state.gql
+response: |
+  {
+    "data": {
+      "deleteMembership": null
+    }
+  }

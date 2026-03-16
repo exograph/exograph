@@ -1,0 +1,20 @@
+operation: |
+  query {
+    people(orderBy: [{lastName: ASC}, {firstName: ASC}]) {
+      firstName
+      lastName
+      age
+      address {
+        street
+        city
+        state
+        zip
+      }
+    }
+    addresses(orderBy: [{state: ASC}, {city: ASC}]) {
+      street
+      city
+      state
+      zip
+    }
+  }

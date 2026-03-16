@@ -1,0 +1,31 @@
+# Test that nested update with partial composite PK returns an error
+# (not silently updating all matching rows)
+stages:
+  # Try to update a person with only firstName (missing lastName)
+  # This MUST return an error, not update all "John" people at that address
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_address",
+          "params": {
+            "street": "2 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": 22101,
+            "data": {
+              "people": {
+                "update": [{"firstName": "John", "age": 99}]
+              }
+            }
+          }
+        }
+    invariants:
+      - path: ../system-state.gql
+    response: |
+      {
+        "error": {
+          "code": -32001,
+          "message": "Missing required primary key field 'lastName' for nested operation."
+        }
+      }

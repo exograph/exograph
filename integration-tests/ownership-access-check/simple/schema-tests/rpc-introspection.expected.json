@@ -670,11 +670,73 @@
         ],
         "additionalProperties": false
       },
+      "DocumentCreateInputFromUser": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "DocumentNestedUpdateInputFromUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "DocumentRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "DocumentUpdateOpsFromUser": {
+        "type": "object",
+        "properties": {
+          "create": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentCreateInputFromUser"
+            }
+          },
+          "update": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentNestedUpdateInputFromUser"
+            }
+          },
+          "delete": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentRef"
+            }
+          }
+        }
+      },
       "UserUpdateInput": {
         "type": "object",
         "properties": {
           "name": {
             "type": "string"
+          },
+          "documents": {
+            "$ref": "#/components/schemas/DocumentUpdateOpsFromUser"
           }
         }
       },
@@ -694,6 +756,12 @@
         "properties": {
           "name": {
             "type": "string"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentCreateInputFromUser"
+            }
           }
         },
         "required": [

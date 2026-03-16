@@ -1009,11 +1009,87 @@
         ],
         "additionalProperties": false
       },
+      "PermissionCreateInputFromDocument": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "write": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "user",
+          "read",
+          "write"
+        ]
+      },
+      "PermissionNestedUpdateInputFromDocument": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "write": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "PermissionRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "PermissionUpdateOpsFromDocument": {
+        "type": "object",
+        "properties": {
+          "create": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionCreateInputFromDocument"
+            }
+          },
+          "update": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionNestedUpdateInputFromDocument"
+            }
+          },
+          "delete": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionRef"
+            }
+          }
+        }
+      },
       "DocumentUpdateInput": {
         "type": "object",
         "properties": {
           "content": {
             "type": "string"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/PermissionUpdateOpsFromDocument"
           }
         }
       },
@@ -1034,11 +1110,76 @@
           }
         }
       },
+      "PermissionCreateInputFromUser": {
+        "type": "object",
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/DocumentRef"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "write": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "document",
+          "read",
+          "write"
+        ]
+      },
+      "PermissionNestedUpdateInputFromUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "document": {
+            "$ref": "#/components/schemas/DocumentRef"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "write": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "PermissionUpdateOpsFromUser": {
+        "type": "object",
+        "properties": {
+          "create": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionCreateInputFromUser"
+            }
+          },
+          "update": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionNestedUpdateInputFromUser"
+            }
+          },
+          "delete": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionRef"
+            }
+          }
+        }
+      },
       "UserUpdateInput": {
         "type": "object",
         "properties": {
           "name": {
             "type": "string"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/PermissionUpdateOpsFromUser"
           }
         }
       },
@@ -1047,6 +1188,12 @@
         "properties": {
           "content": {
             "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionCreateInputFromDocument"
+            }
           }
         },
         "required": [
@@ -1081,6 +1228,12 @@
         "properties": {
           "name": {
             "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionCreateInputFromUser"
+            }
           }
         },
         "required": [

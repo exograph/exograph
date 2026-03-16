@@ -1,0 +1,31 @@
+# Test that nested delete with partial composite PK returns an error
+# (not silently deleting all matching rows)
+stages:
+  # Try to delete a person with only firstName (missing lastName)
+  # This MUST return an error, not delete all "John" people at that address
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_address",
+          "params": {
+            "street": "2 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": 22101,
+            "data": {
+              "people": {
+                "delete": [{"firstName": "John"}]
+              }
+            }
+          }
+        }
+    invariants:
+      - path: ../system-state.gql
+    response: |
+      {
+        "error": {
+          "code": -32001,
+          "message": "Missing required primary key field 'lastName' for nested operation."
+        }
+      }

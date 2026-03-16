@@ -8,15 +8,18 @@
 // by the Apache License, Version 2.0.
 
 use core_model::{
-    access::{AccessPredicateExpression, CommonAccessPrimitiveExpression, FunctionCall},
+    access::{
+        AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
+        CommonAccessPrimitiveExpression, FunctionCall,
+    },
     mapped_arena::SerializableSlabIndex,
 };
 use core_resolver::access_solver::AccessSolverError;
 
-use exo_sql::PhysicalColumnPath;
+use exo_sql::{ColumnPathLink, PhysicalColumnPath};
 use serde::{Deserialize, Serialize};
 
-use crate::types::PostgresFieldDefaultValue;
+use crate::types::{EntityType, PostgresFieldDefaultValue};
 
 /// Access specification for a model
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -112,5 +115,203 @@ impl AccessPrimitiveExpressionPath {
                 }
             },
         })
+    }
+}
+
+/// Extract the parent-scoped portion of a child entity's access predicate.
+///
+/// Given a child entity's database access predicate (e.g., `Document.self.user.id =
+/// AuthContext.id`) and a parent entity (e.g., `User`), this function computes a predicate
+/// that can be applied to the parent entity (e.g., `User.self.id = AuthContext.id`).
+///
+/// This is used to restrict which parent rows get nested inserts applied to them,
+/// ensuring that access control rules on the child entity are respected.
+pub fn parent_predicate(
+    expr: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+    parent_entity: &EntityType,
+) -> Result<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>, String> {
+    let reduced = reduce_nested_predicate(expr, parent_entity)?;
+
+    Ok(match reduced {
+        NestedPredicatePart::Parent(expr) => expr,
+        _ => AccessPredicateExpression::BooleanLiteral(true),
+    })
+}
+
+enum NestedPredicatePart<T> {
+    // Uses only the parent elements
+    Parent(T),
+    // Uses only the nested elements
+    Nested(T),
+    // Constants, context selection etc
+    Common(T),
+}
+
+fn reduce_nested_predicate(
+    expr: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+    parent_entity: &EntityType,
+) -> Result<NestedPredicatePart<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>, String>
+{
+    match expr {
+        AccessPredicateExpression::LogicalOp(op) => reduce_nested_logical_op(op, parent_entity),
+        AccessPredicateExpression::RelationalOp(op) => {
+            reduce_nested_relational_op(op, parent_entity)
+        }
+        AccessPredicateExpression::BooleanLiteral(_) => Ok(NestedPredicatePart::Common(expr)),
+    }
+}
+
+fn reduce_nested_logical_op(
+    op: AccessLogicalExpression<DatabaseAccessPrimitiveExpression>,
+    parent_entity: &EntityType,
+) -> Result<NestedPredicatePart<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>, String>
+{
+    fn combine(
+        lhs: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+        rhs: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+        parent_entity: &EntityType,
+        combiner: impl Fn(
+            Box<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
+            Box<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
+        ) -> AccessLogicalExpression<DatabaseAccessPrimitiveExpression>,
+    ) -> Result<
+        NestedPredicatePart<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
+        String,
+    > {
+        let lhs = reduce_nested_predicate(lhs, parent_entity)?;
+        let rhs = reduce_nested_predicate(rhs, parent_entity)?;
+
+        match (lhs, rhs) {
+            (NestedPredicatePart::Parent(lhs), NestedPredicatePart::Parent(rhs))
+            | (NestedPredicatePart::Common(lhs), NestedPredicatePart::Parent(rhs))
+            | (NestedPredicatePart::Parent(lhs), NestedPredicatePart::Common(rhs)) => {
+                Ok(NestedPredicatePart::Parent(
+                    AccessPredicateExpression::LogicalOp(combiner(Box::new(lhs), Box::new(rhs))),
+                ))
+            }
+            (NestedPredicatePart::Parent(p), NestedPredicatePart::Nested(_))
+            | (NestedPredicatePart::Nested(_), NestedPredicatePart::Parent(p)) => {
+                // If one side of and/or is a nested expression, then we can eliminate it by returns just the parent expression
+                Ok(NestedPredicatePart::Parent(p))
+            }
+            (NestedPredicatePart::Nested(_), NestedPredicatePart::Nested(_))
+            | (NestedPredicatePart::Common(_), NestedPredicatePart::Nested(_))
+            | (NestedPredicatePart::Nested(_), NestedPredicatePart::Common(_))
+            | (NestedPredicatePart::Common(_), NestedPredicatePart::Common(_)) => Ok(
+                NestedPredicatePart::Common(AccessPredicateExpression::BooleanLiteral(true)),
+            ),
+        }
+    }
+
+    match op {
+        AccessLogicalExpression::Not(e) => {
+            let e = reduce_nested_predicate(*e, parent_entity)?;
+
+            Ok(match e {
+                NestedPredicatePart::Parent(e) => NestedPredicatePart::Parent(
+                    AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Not(Box::new(e))),
+                ),
+                _ => {
+                    // If the underlying expression does not use the parent entity, then we eliminate it by replacing it with a constant true
+                    NestedPredicatePart::Common(AccessPredicateExpression::BooleanLiteral(true))
+                }
+            })
+        }
+        AccessLogicalExpression::And(lhs, rhs) => {
+            combine(*lhs, *rhs, parent_entity, AccessLogicalExpression::And)
+        }
+        AccessLogicalExpression::Or(lhs, rhs) => {
+            combine(*lhs, *rhs, parent_entity, AccessLogicalExpression::Or)
+        }
+    }
+}
+
+fn reduce_nested_relational_op(
+    op: AccessRelationalOp<DatabaseAccessPrimitiveExpression>,
+    parent_entity: &EntityType,
+) -> Result<NestedPredicatePart<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>, String>
+{
+    fn combine(
+        lhs: DatabaseAccessPrimitiveExpression,
+        rhs: DatabaseAccessPrimitiveExpression,
+        parent_entity: &EntityType,
+        combiner: impl Fn(
+            Box<DatabaseAccessPrimitiveExpression>,
+            Box<DatabaseAccessPrimitiveExpression>,
+        ) -> AccessRelationalOp<DatabaseAccessPrimitiveExpression>,
+    ) -> Result<
+        NestedPredicatePart<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
+        String,
+    > {
+        let reduced_lhs = reduce_nested_primitive_expr(lhs, parent_entity);
+        let reduced_rhs = reduce_nested_primitive_expr(rhs, parent_entity);
+
+        match (reduced_lhs, reduced_rhs) {
+            (NestedPredicatePart::Parent(l), NestedPredicatePart::Parent(r))
+            | (NestedPredicatePart::Common(l), NestedPredicatePart::Parent(r))
+            | (NestedPredicatePart::Parent(l), NestedPredicatePart::Common(r)) => {
+                Ok(NestedPredicatePart::Parent(
+                    AccessPredicateExpression::RelationalOp(combiner(Box::new(l), Box::new(r))),
+                ))
+            }
+            (NestedPredicatePart::Nested(l), NestedPredicatePart::Nested(r))
+            | (NestedPredicatePart::Common(l), NestedPredicatePart::Nested(r))
+            | (NestedPredicatePart::Nested(l), NestedPredicatePart::Common(r)) => {
+                Ok(NestedPredicatePart::Nested(
+                    AccessPredicateExpression::RelationalOp(combiner(Box::new(l), Box::new(r))),
+                ))
+            }
+            (NestedPredicatePart::Common(l), NestedPredicatePart::Common(r)) => {
+                Ok(NestedPredicatePart::Common(
+                    AccessPredicateExpression::RelationalOp(combiner(Box::new(l), Box::new(r))),
+                ))
+            }
+            (NestedPredicatePart::Parent(_), NestedPredicatePart::Nested(_))
+            | (NestedPredicatePart::Nested(_), NestedPredicatePart::Parent(_)) => Err(
+                "Access expression comparing a parent field with a nested field is not supported"
+                    .to_string(),
+            ),
+        }
+    }
+
+    let combiner = op.combiner();
+    let (l, r) = op.owned_sides();
+    combine(*l, *r, parent_entity, combiner)
+}
+
+fn reduce_nested_primitive_expr(
+    expr: DatabaseAccessPrimitiveExpression,
+    parent_entity: &EntityType,
+) -> NestedPredicatePart<DatabaseAccessPrimitiveExpression> {
+    match expr {
+        DatabaseAccessPrimitiveExpression::Column(ref pc, ref parameter_name) => {
+            let (head, tail) = pc.split_head();
+
+            match head {
+                ColumnPathLink::Relation(r) if r.linked_table_id == parent_entity.table_id => {
+                    // Eliminate the head link. For example if the expression is self.user.id, then
+                    // we can reduce it to just id (assuming that the parent entity is user)
+                    NestedPredicatePart::Parent(DatabaseAccessPrimitiveExpression::Column(
+                        tail.unwrap(),
+                        parameter_name.clone(),
+                    ))
+                }
+                _ => NestedPredicatePart::Nested(expr),
+            }
+        }
+        DatabaseAccessPrimitiveExpression::Function(ref pc, ref fc) => {
+            let (head, tail) = pc.split_head();
+
+            match head {
+                ColumnPathLink::Relation(r) if r.linked_table_id == parent_entity.table_id => {
+                    NestedPredicatePart::Parent(DatabaseAccessPrimitiveExpression::Column(
+                        tail.unwrap(),
+                        Some(fc.parameter_name.clone()),
+                    ))
+                }
+                _ => NestedPredicatePart::Nested(expr),
+            }
+        }
+        DatabaseAccessPrimitiveExpression::Common(_) => NestedPredicatePart::Common(expr),
     }
 }

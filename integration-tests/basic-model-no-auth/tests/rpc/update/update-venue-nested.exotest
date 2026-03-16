@@ -1,0 +1,98 @@
+# Test update with nested create/update/delete operations on concerts
+stages:
+  # Update venue and create a new concert, update an existing one, delete another
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_venue",
+          "params": {
+            "id": 1,
+            "data": {
+              "name": "V1-updated",
+              "concerts": {
+                "create": [{"title": "New Concert", "published": true, "price": "15.00"}],
+                "update": [{"id": 1, "title": "C1-updated"}],
+                "delete": [{"id": 3}]
+              }
+            }
+          }
+        }
+    response: |
+      {
+        "result": {"id": 1}
+      }
+
+  # Verify venue name was updated
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venue",
+          "params": {
+            "id": 1
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "name": "V1-updated",
+          "published": true,
+          "latitude": 37.7749
+        }
+      }
+
+  # Verify concert 1 was updated
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {
+            "id": 1
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "title": "C1-updated",
+          "published": true,
+          "price": "20.50",
+          "venue": {"id": 1}
+        }
+      }
+
+  # Verify concert 3 was deleted
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {
+            "id": 3
+          }
+        }
+    response: |
+      {
+        "result": null
+      }
+
+  # Verify new concert was created (id 5 since 4 concerts existed)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "where": {"venue": {"id": {"eq": 1}}}
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": 1, "title": "C1-updated", "venue": {"id": 1}, "published": true, "price": "20.50"},
+          {"id": 5, "title": "New Concert", "venue": {"id": 1}, "published": true, "price": "15.00"}
+        ]
+      }

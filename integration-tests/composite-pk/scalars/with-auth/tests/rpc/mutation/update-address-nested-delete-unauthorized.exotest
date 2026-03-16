@@ -1,0 +1,32 @@
+# Test update address with nested delete - unauthorized
+stages:
+  # Non-admin user who doesn't live at the address cannot update it
+  # The address is filtered by access control, so it returns null (as if not found)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_address",
+          "params": {
+            "street": "3 Main St",
+            "city": "Chicago",
+            "state": "IL",
+            "zip": 60601,
+            "data": {
+              "people": {
+                "delete": [{"firstName": "John", "lastName": "DoeChicago"}]
+              }
+            }
+          }
+        }
+    auth: |
+      {
+        "firstName": "Jane",
+        "lastName": "SmithBoston"
+      }
+    invariants:
+      - path: ../system-state.gql
+    response: |
+      {
+        "result": null
+      }

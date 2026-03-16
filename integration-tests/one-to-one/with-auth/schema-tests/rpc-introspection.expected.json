@@ -749,11 +749,73 @@
         ],
         "additionalProperties": false
       },
+      "MembershipCreateInputFromUser": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "MembershipNestedUpdateInputFromUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "MembershipRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "MembershipUpdateOpsFromUser": {
+        "type": "object",
+        "properties": {
+          "create": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MembershipCreateInputFromUser"
+            }
+          },
+          "update": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MembershipNestedUpdateInputFromUser"
+            }
+          },
+          "delete": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MembershipRef"
+            }
+          }
+        }
+      },
       "UserUpdateInput": {
         "type": "object",
         "properties": {
           "name": {
             "type": "string"
+          },
+          "membership": {
+            "$ref": "#/components/schemas/MembershipUpdateOpsFromUser"
           }
         }
       },
@@ -773,6 +835,12 @@
         "properties": {
           "name": {
             "type": "string"
+          },
+          "membership": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MembershipCreateInputFromUser"
+            }
           }
         },
         "required": [

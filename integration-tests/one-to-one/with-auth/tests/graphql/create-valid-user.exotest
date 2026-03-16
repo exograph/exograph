@@ -29,7 +29,7 @@ stages:
           }
         }
       }
-  # Ensure that the earlier mutation didn't work
+  # Ensure that the earlier mutation worked
   - operation: |
       query {
         memberships {

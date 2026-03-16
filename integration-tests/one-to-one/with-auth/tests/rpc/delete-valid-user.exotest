@@ -1,0 +1,43 @@
+# User 2 deletes their own membership
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_membership",
+          "params": {
+            "id": 1
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": {"id": 1}
+      }
+
+  # Verify deletion worked
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_memberships",
+          "params": {
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 2, "kind": "family", "user": {"id": 3}},
+          {"id": 3, "kind": "individual", "user": {"id": 4}},
+          {"id": 4, "kind": "family", "user": {"id": 5}}
+        ]
+      }

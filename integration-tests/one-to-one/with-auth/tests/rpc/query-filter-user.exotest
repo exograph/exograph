@@ -1,0 +1,169 @@
+# User cannot see other users' data even with where clauses
+stages:
+  # Filter memberships by own user id - should see own membership
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_memberships",
+          "params": {
+            "where": {"user": {"id": {"eq": 2}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 1, "kind": "individual", "user": {"id": 2}}
+        ]
+      }
+
+  # Filter memberships by other user id - should see nothing
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_memberships",
+          "params": {
+            "where": {"user": {"id": {"eq": 3}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": []
+      }
+
+  # Filter memberships by kind=family - user 2 has individual, should see nothing
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_memberships",
+          "params": {
+            "where": {"kind": {"eq": "family"}}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": []
+      }
+
+  # Filter memberships by kind=individual - should see own
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_memberships",
+          "params": {
+            "where": {"kind": {"eq": "individual"}}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 1, "kind": "individual", "user": {"id": 2}}
+        ]
+      }
+
+  # Filter users by own membership id - should see self
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_users",
+          "params": {
+            "where": {"membership": {"id": {"eq": 1}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 2, "name": "u2"}
+        ]
+      }
+
+  # Filter users by other membership id - should see nothing
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_users",
+          "params": {
+            "where": {"membership": {"id": {"eq": 2}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": []
+      }
+
+  # Filter users by membership kind=family - should see nothing (user 2 has individual)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_users",
+          "params": {
+            "where": {"membership": {"kind": {"eq": "family"}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": []
+      }
+
+  # Filter users by membership kind=individual - should see self
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_users",
+          "params": {
+            "where": {"membership": {"kind": {"eq": "individual"}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 2, "name": "u2"}
+        ]
+      }

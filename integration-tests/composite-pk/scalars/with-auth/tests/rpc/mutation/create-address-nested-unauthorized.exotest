@@ -1,0 +1,34 @@
+# Test create address with nested people - unauthorized
+stages:
+  # Non-admin user cannot create a person that doesn't match their identity
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_address",
+          "params": {
+            "data": {
+              "street": "123 Main St",
+              "city": "San Francisco",
+              "state": "CA",
+              "zip": 94101,
+              "people": [
+                {"firstName": "Alice", "lastName": "WonderSF", "age": 28}
+              ]
+            }
+          }
+        }
+    auth: |
+      {
+        "firstName": "Jane",
+        "lastName": "SmithBoston"
+      }
+    invariants:
+      - path: ../system-state.gql
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
