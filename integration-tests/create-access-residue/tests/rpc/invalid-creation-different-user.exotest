@@ -1,0 +1,23 @@
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_issue",
+          "params": {
+            "data": {"title": "I-new", "assignee": {"id": $.u1id}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.u2id
+      }
+    invariants:
+      - path: ../system-state.gql
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }

@@ -16,7 +16,7 @@ stages:
         "sub": $.u2_id
       }
     invariants:
-      - path: ../system-state.gql      
+      - path: ../../../system-state.gql      
     response: |
       {
         "data": {
@@ -41,7 +41,7 @@ stages:
         "sub": $.u4_id
       }
     invariants:
-      - path: ../system-state.gql      
+      - path: ../../../system-state.gql      
     response: |
       {
         "data": {

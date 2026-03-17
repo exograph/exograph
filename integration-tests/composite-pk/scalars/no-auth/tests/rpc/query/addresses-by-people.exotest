@@ -1,0 +1,63 @@
+stages:
+  # Addresses with a person named John
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_addresses",
+          "params": {
+            "where": {"people": {"firstName": {"eq": "John"}}}
+          }
+        }
+      unorderedPaths:
+        - result
+    response: |
+      {
+        "result": [
+          {"street": "1 Main St", "city": "Albany", "state": "NY", "zip": 10001, "info": null},
+          {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101, "info": null},
+          {"street": "3 Main St", "city": "Chicago", "state": "IL", "zip": 60601, "info": null},
+          {"street": "4 Main St", "city": "Plymouth", "state": "MA", "zip": 23600, "info": null}
+        ]
+      }
+
+  # Addresses with a person named Jane
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_addresses",
+          "params": {
+            "where": {"people": {"firstName": {"eq": "Jane"}}}
+          }
+        }
+      unorderedPaths:
+        - result
+    response: |
+      {
+        "result": [
+          {"street": "1 Main St", "city": "Albany", "state": "NY", "zip": 10001, "info": null},
+          {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101, "info": null},
+          {"street": "3 Main St", "city": "Chicago", "state": "IL", "zip": 60601, "info": null},
+          {"street": "4 Main St", "city": "Plymouth", "state": "MA", "zip": 23600, "info": null}
+        ]
+      }
+
+  # Addresses with a person older than 50
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_addresses",
+          "params": {
+            "where": {"people": {"age": {"gt": 50}}}
+          }
+        }
+      unorderedPaths:
+        - result
+    response: |
+      {
+        "result": [
+          {"street": "4 Main St", "city": "Plymouth", "state": "MA", "zip": 23600, "info": null}
+        ]
+      }

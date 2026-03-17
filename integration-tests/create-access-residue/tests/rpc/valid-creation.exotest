@@ -1,4 +1,3 @@
-# Test developer can create issue assigned to self
 stages:
   - operation:
       type: rpc
@@ -6,13 +5,12 @@ stages:
         {
           "method": "create_issue",
           "params": {
-            "data": {"title": "Dev-created", "assignee": {"id": $.u1id}}
+            "data": {"title": "I-new", "assignee": {"id": $.u1id}}
           }
         }
     auth: |
       {
-        "sub": $.u1id,
-        "role": "developer"
+        "sub": $.u1id
       }
     response: |
       {

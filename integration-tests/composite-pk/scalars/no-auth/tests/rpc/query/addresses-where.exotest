@@ -1,0 +1,40 @@
+stages:
+  # All addresses
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_addresses",
+          "params": {}
+        }
+      unorderedPaths:
+        - result
+    response: |
+      {
+        "result": [
+          {"street": "1 Main St", "city": "Albany", "state": "NY", "zip": 10001, "info": null},
+          {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101, "info": null},
+          {"street": "3 Main St", "city": "Chicago", "state": "IL", "zip": 60601, "info": null},
+          {"street": "4 Main St", "city": "Plymouth", "state": "MA", "zip": 23600, "info": null}
+        ]
+      }
+
+  # MA addresses only
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_addresses",
+          "params": {
+            "where": {"state": {"eq": "MA"}}
+          }
+        }
+      unorderedPaths:
+        - result
+    response: |
+      {
+        "result": [
+          {"street": "2 Main St", "city": "Boston", "state": "MA", "zip": 22101, "info": null},
+          {"street": "4 Main St", "city": "Plymouth", "state": "MA", "zip": 23600, "info": null}
+        ]
+      }
