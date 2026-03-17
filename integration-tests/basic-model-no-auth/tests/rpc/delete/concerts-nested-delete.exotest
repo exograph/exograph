@@ -1,6 +1,4 @@
-# Test multi delete with where filter via RPC - returns list of PKs
 stages:
-  # Delete concerts at venue 1 (Concert1 and Concert3)
   - operation:
       type: rpc
       payload: |

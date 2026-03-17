@@ -1,0 +1,57 @@
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_venues",
+          "params": {
+            "data": [
+              {"name": "V1", "published": true, "latitude": 1.0},
+              {"published": false, "name": "V2", "latitude": 2.0}
+            ]
+          }
+        }
+    response: |
+      {
+        "result": [{"id": 3}, {"id": 4}]
+      }
+
+  # Verify first venue was created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venue",
+          "params": {
+            "id": 3
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 3,
+          "name": "V1",
+          "published": true,
+          "latitude": 1.0
+        }
+      }
+
+  # Verify second venue was created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venue",
+          "params": {
+            "id": 4
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 4,
+          "name": "V2",
+          "published": false,
+          "latitude": 2.0
+        }
+      }

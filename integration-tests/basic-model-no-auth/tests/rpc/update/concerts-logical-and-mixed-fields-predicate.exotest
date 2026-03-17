@@ -1,0 +1,35 @@
+# Mixed level predicates connected by AND
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_concerts",
+          "params": {
+            "where": {"and": [{"title": {"eq": "Concert1"}}, {"venue": {"id": {"eq": 1}}}]},
+            "data": {"price": "100"}
+          }
+        }
+    response: |
+      {
+        "result": [{"id": 1}]
+      }
+
+  # Verify the update
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {"id": 1}
+        }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "title": "Concert1",
+          "published": true,
+          "price": "100.00",
+          "venue": {"id": 1}
+        }
+      }

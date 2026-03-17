@@ -1,0 +1,57 @@
+# Essentially, all venues, but with a nested where clause and ordering
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venues",
+          "params": {
+            "where": {"concerts": {"id": {"lt": 100}}},
+            "orderBy": [{"name": "ASC"}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {
+            "id": 1,
+            "name": "Venue1",
+            "published": true,
+            "latitude": 37.7749
+          },
+          {
+            "id": 2,
+            "name": "Venue2",
+            "published": false,
+            "latitude": 35.6762
+          }
+        ]
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venues",
+          "params": {
+            "where": {"concerts": {"id": {"lt": 100}}},
+            "orderBy": [{"name": "DESC"}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {
+            "id": 2,
+            "name": "Venue2",
+            "published": false,
+            "latitude": 35.6762
+          },
+          {
+            "id": 1,
+            "name": "Venue1",
+            "published": true,
+            "latitude": 37.7749
+          }
+        ]
+      }

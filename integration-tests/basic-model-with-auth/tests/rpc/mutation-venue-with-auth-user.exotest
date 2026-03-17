@@ -1,0 +1,21 @@
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "update_venues",
+      "params": {
+        "data": {"published": true}
+      }
+    }
+auth: |
+  {
+    "sub": 2,
+    "role": "ROLE_USER"
+  }
+response: |
+  {
+    "error": {
+      "code": -32004,
+      "message": "Not authorized"
+    }
+  }

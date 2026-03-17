@@ -1,0 +1,20 @@
+# User sees only published concerts
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_concerts",
+      "params": {}
+    }
+auth: |
+  {
+    "sub": 1,
+    "role": "ROLE_USER"
+  }
+response: |
+  {
+    "result": [
+      {"id": 1, "title": "Concert1", "published": true, "price": "20.50", "venue": {"id": 1}},
+      {"id": 4, "title": "Concert4", "published": true, "price": "22.50", "venue": null}
+    ]
+  }

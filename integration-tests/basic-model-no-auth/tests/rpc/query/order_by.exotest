@@ -1,0 +1,80 @@
+stages:
+  # Order by id ASC
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": 1, "title": "Concert1", "published": true, "price": "20.50", "venue": {"id": 1}},
+          {"id": 2, "title": "Concert2", "published": false, "price": "12.50", "venue": {"id": 2}},
+          {"id": 3, "title": "Concert3", "published": true, "price": "30.50", "venue": {"id": 1}},
+          {"id": 4, "title": "Concert4", "published": false, "price": "22.50", "venue": {"id": 2}}
+        ]
+      }
+
+  # Order by id DESC
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "orderBy": [{"id": "DESC"}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": 4, "title": "Concert4", "published": false, "price": "22.50", "venue": {"id": 2}},
+          {"id": 3, "title": "Concert3", "published": true, "price": "30.50", "venue": {"id": 1}},
+          {"id": 2, "title": "Concert2", "published": false, "price": "12.50", "venue": {"id": 2}},
+          {"id": 1, "title": "Concert1", "published": true, "price": "20.50", "venue": {"id": 1}}
+        ]
+      }
+
+  # Multi-level: order by title ASC, then id DESC
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "orderBy": [{"title": "ASC"}, {"id": "DESC"}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": 1, "title": "Concert1", "published": true, "price": "20.50", "venue": {"id": 1}},
+          {"id": 2, "title": "Concert2", "published": false, "price": "12.50", "venue": {"id": 2}},
+          {"id": 3, "title": "Concert3", "published": true, "price": "30.50", "venue": {"id": 1}},
+          {"id": 4, "title": "Concert4", "published": false, "price": "22.50", "venue": {"id": 2}}
+        ]
+      }
+
+  # Multi-level: order by title DESC, then id ASC
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "orderBy": [{"title": "DESC"}, {"id": "ASC"}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": 4, "title": "Concert4", "published": false, "price": "22.50", "venue": {"id": 2}},
+          {"id": 3, "title": "Concert3", "published": true, "price": "30.50", "venue": {"id": 1}},
+          {"id": 2, "title": "Concert2", "published": false, "price": "12.50", "venue": {"id": 2}},
+          {"id": 1, "title": "Concert1", "published": true, "price": "20.50", "venue": {"id": 1}}
+        ]
+      }

@@ -1,0 +1,34 @@
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_concerts",
+          "params": {
+            "where": {"title": {"eq": "Concert1"}},
+            "data": {"price": "40"}
+          }
+        }
+    response: |
+      {
+        "result": [{"id": 1}]
+      }
+
+  # Verify the update
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {"id": 1}
+        }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "title": "Concert1",
+          "published": true,
+          "price": "40.00",
+          "venue": {"id": 1}
+        }
+      }

@@ -1,0 +1,48 @@
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venue",
+          "params": {
+            "id": 1
+          }
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "name": "Venue1",
+          "published": true,
+          "latitude": 37.7749
+        }
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venue",
+          "params": {
+            "id": 2
+          }
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": {
+          "id": 2,
+          "name": "Venue2",
+          "published": false,
+          "latitude": 35.6762
+        }
+      }

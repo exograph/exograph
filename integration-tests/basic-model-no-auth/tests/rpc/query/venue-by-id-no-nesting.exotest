@@ -1,0 +1,38 @@
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venue",
+          "params": {
+            "id": 1
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "name": "Venue1",
+          "published": true,
+          "latitude": 37.7749
+        }
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venue",
+          "params": {
+            "id": 2
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 2,
+          "name": "Venue2",
+          "published": false,
+          "latitude": 35.6762
+        }
+      }

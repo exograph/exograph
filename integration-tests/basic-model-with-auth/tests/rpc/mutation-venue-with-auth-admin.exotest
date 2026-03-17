@@ -1,0 +1,19 @@
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_venues",
+          "params": {
+            "data": {"published": true}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": [{"id": 1}, {"id": 2}]
+      }

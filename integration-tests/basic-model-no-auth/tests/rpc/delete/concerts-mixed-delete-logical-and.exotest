@@ -1,0 +1,28 @@
+# Mixed level predicates connected by AND
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_concerts",
+          "params": {
+            "where": {"and": [{"title": {"eq": "Concert1"}}, {"venue": {"id": {"eq": 1}}}]}
+          }
+        }
+    response: |
+      {
+        "result": [{"id": 1}]
+      }
+
+  # Verify it was deleted
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {"id": 1}
+        }
+    response: |
+      {
+        "result": null
+      }

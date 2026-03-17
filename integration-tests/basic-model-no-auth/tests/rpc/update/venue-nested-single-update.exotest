@@ -1,0 +1,58 @@
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_venue",
+          "params": {
+            "id": 1,
+            "data": {
+              "name": "V1-updated",
+              "concerts": {
+                "update": [{"id": 1, "title": "C1-updated"}]
+              }
+            }
+          }
+        }
+    response: |
+      {
+        "result": {"id": 1}
+      }
+
+  # Verify venue name was updated
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venue",
+          "params": {"id": 1}
+        }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "name": "V1-updated",
+          "published": true,
+          "latitude": 37.7749
+        }
+      }
+
+  # Verify only concert 1 was updated, concert 3 unchanged
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "where": {"venue": {"id": {"eq": 1}}}
+          }
+        }
+      unorderedPaths:
+        - result
+    response: |
+      {
+        "result": [
+          {"id": 1, "title": "C1-updated", "published": true, "price": "20.50", "venue": {"id": 1}},
+          {"id": 3, "title": "Concert3", "published": true, "price": "30.50", "venue": {"id": 1}}
+        ]
+      }

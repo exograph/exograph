@@ -1,0 +1,16 @@
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "update_venues",
+      "params": {
+        "data": {"published": true}
+      }
+    }
+response: |
+  {
+    "error": {
+      "code": -32004,
+      "message": "Not authorized"
+    }
+  }
