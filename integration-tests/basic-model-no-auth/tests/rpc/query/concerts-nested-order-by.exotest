@@ -1,0 +1,140 @@
+stages:
+  # Default order (no orderBy)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {}
+        }
+    response: |
+      {
+        "result": [
+          {"id": 1, "title": "Concert1", "published": true, "price": "20.50", "venue": {"id": 1}},
+          {"id": 2, "title": "Concert2", "published": false, "price": "12.50", "venue": {"id": 2}},
+          {"id": 3, "title": "Concert3", "published": true, "price": "30.50", "venue": {"id": 1}},
+          {"id": 4, "title": "Concert4", "published": false, "price": "22.50", "venue": {"id": 2}}
+        ]
+      }
+
+  # Order by venue id ASC
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "orderBy": [{"venue": {"id": "ASC"}}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": 1, "title": "Concert1", "published": true, "price": "20.50", "venue": {"id": 1}},
+          {"id": 3, "title": "Concert3", "published": true, "price": "30.50", "venue": {"id": 1}},
+          {"id": 2, "title": "Concert2", "published": false, "price": "12.50", "venue": {"id": 2}},
+          {"id": 4, "title": "Concert4", "published": false, "price": "22.50", "venue": {"id": 2}}
+        ]
+      }
+
+  # Order by venue id DESC
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "orderBy": [{"venue": {"id": "DESC"}}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": 2, "title": "Concert2", "published": false, "price": "12.50", "venue": {"id": 2}},
+          {"id": 4, "title": "Concert4", "published": false, "price": "22.50", "venue": {"id": 2}},
+          {"id": 1, "title": "Concert1", "published": true, "price": "20.50", "venue": {"id": 1}},
+          {"id": 3, "title": "Concert3", "published": true, "price": "30.50", "venue": {"id": 1}}
+        ]
+      }
+
+  # Order by venue latitude ASC
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "orderBy": [{"venue": {"latitude": "ASC"}}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": 2, "title": "Concert2", "published": false, "price": "12.50", "venue": {"id": 2}},
+          {"id": 4, "title": "Concert4", "published": false, "price": "22.50", "venue": {"id": 2}},
+          {"id": 1, "title": "Concert1", "published": true, "price": "20.50", "venue": {"id": 1}},
+          {"id": 3, "title": "Concert3", "published": true, "price": "30.50", "venue": {"id": 1}}
+        ]
+      }
+
+  # Order by venue latitude DESC
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "orderBy": [{"venue": {"latitude": "DESC"}}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": 1, "title": "Concert1", "published": true, "price": "20.50", "venue": {"id": 1}},
+          {"id": 3, "title": "Concert3", "published": true, "price": "30.50", "venue": {"id": 1}},
+          {"id": 2, "title": "Concert2", "published": false, "price": "12.50", "venue": {"id": 2}},
+          {"id": 4, "title": "Concert4", "published": false, "price": "22.50", "venue": {"id": 2}}
+        ]
+      }
+
+  # Order by venue id ASC with predicate
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "where": {"id": {"lt": 5}},
+            "orderBy": [{"venue": {"id": "ASC"}}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": 1, "title": "Concert1", "published": true, "price": "20.50", "venue": {"id": 1}},
+          {"id": 3, "title": "Concert3", "published": true, "price": "30.50", "venue": {"id": 1}},
+          {"id": 2, "title": "Concert2", "published": false, "price": "12.50", "venue": {"id": 2}},
+          {"id": 4, "title": "Concert4", "published": false, "price": "22.50", "venue": {"id": 2}}
+        ]
+      }
+
+  # Order by venue id DESC with predicate
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "where": {"id": {"lt": 5}},
+            "orderBy": [{"venue": {"id": "DESC"}}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": 2, "title": "Concert2", "published": false, "price": "12.50", "venue": {"id": 2}},
+          {"id": 4, "title": "Concert4", "published": false, "price": "22.50", "venue": {"id": 2}},
+          {"id": 1, "title": "Concert1", "published": true, "price": "20.50", "venue": {"id": 1}},
+          {"id": 3, "title": "Concert3", "published": true, "price": "30.50", "venue": {"id": 1}}
+        ]
+      }

@@ -1,0 +1,41 @@
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_concerts",
+          "params": {
+            "where": {"and": [{"venue": {"name": {"eq": "Venue1"}}}, {"venue": {"id": {"eq": 1}}}]}
+          }
+        }
+      unorderedPaths:
+        - result
+    response: |
+      {
+        "result": [{"id": 1}, {"id": 3}]
+      }
+
+  # Verify they were deleted
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {"id": 1}
+        }
+    response: |
+      {
+        "result": null
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {"id": 3}
+        }
+    response: |
+      {
+        "result": null
+      }

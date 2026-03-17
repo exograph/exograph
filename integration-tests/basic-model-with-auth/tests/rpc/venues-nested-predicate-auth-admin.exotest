@@ -1,0 +1,85 @@
+# Admin sees all venues with nested concert predicates
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venues",
+          "params": {
+            "where": {"concerts": {"title": {"eq": "Concert1"}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 1, "name": "Venue1", "published": true, "latitude": 37.7749}
+        ]
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venues",
+          "params": {
+            "where": {"concerts": {"title": {"eq": "Concert2"}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 2, "name": "Venue2", "published": false, "latitude": 35.6762}
+        ]
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venues",
+          "params": {
+            "where": {"concerts": {"id": {"eq": 1}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 1, "name": "Venue1", "published": true, "latitude": 37.7749}
+        ]
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venues",
+          "params": {
+            "where": {"concerts": {"id": {"eq": 2}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 2, "name": "Venue2", "published": false, "latitude": 35.6762}
+        ]
+      }

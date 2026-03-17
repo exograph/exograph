@@ -1,0 +1,19 @@
+# User queries unpublished venue - gets null
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_venue",
+      "params": {
+        "id": 2
+      }
+    }
+auth: |
+  {
+    "sub": 2,
+    "role": "ROLE_USER"
+  }
+response: |
+  {
+    "result": null
+  }

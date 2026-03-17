@@ -7,9 +7,9 @@ stages:
           "method": "create_venue",
           "params": {
             "data": {
-              "name": "New Venue",
+              "name": "V1",
               "published": true,
-              "latitude": 40.7128
+              "latitude": 1.0
             }
           }
         }
@@ -32,8 +32,8 @@ stages:
       {
         "result": {
           "id": 3,
-          "name": "New Venue",
+          "name": "V1",
           "published": true,
-          "latitude": 40.7128
+          "latitude": 1.0
         }
       }

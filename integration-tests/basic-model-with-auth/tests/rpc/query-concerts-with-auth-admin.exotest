@@ -1,0 +1,22 @@
+# Admin sees all concerts
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_concerts",
+      "params": {}
+    }
+auth: |
+  {
+    "sub": 1,
+    "role": "ROLE_ADMIN"
+  }
+response: |
+  {
+    "result": [
+      {"id": 1, "title": "Concert1", "published": true, "price": "20.50", "venue": {"id": 1}},
+      {"id": 2, "title": "Concert2", "published": false, "price": "12.50", "venue": {"id": 2}},
+      {"id": 3, "title": "Concert3", "published": false, "price": "30.50", "venue": {"id": 1}},
+      {"id": 4, "title": "Concert4", "published": true, "price": "22.50", "venue": {"id": 2}}
+    ]
+  }

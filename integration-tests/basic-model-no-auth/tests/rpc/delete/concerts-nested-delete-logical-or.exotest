@@ -1,0 +1,27 @@
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_concerts",
+          "params": {
+            "where": {"or": [{"venue": {"name": {"eq": "Venue1"}}}, {"venue": {"name": {"eq": "Venue2"}}}]}
+          }
+        }
+    response: |
+      {
+        "result": [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}]
+      }
+
+  # Verify all concerts deleted
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {}
+        }
+    response: |
+      {
+        "result": []
+      }

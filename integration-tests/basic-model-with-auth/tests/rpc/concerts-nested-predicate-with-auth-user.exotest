@@ -1,0 +1,85 @@
+# User sees only published concerts with nested venue predicates
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "where": {"venue": {"name": {"eq": "Venue1"}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "ROLE_USER"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 1, "title": "Concert1", "published": true, "price": "20.50", "venue": {"id": 1}}
+        ]
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "where": {"venue": {"name": {"eq": "Venue2"}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "ROLE_USER"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 4, "title": "Concert4", "published": true, "price": "22.50", "venue": null}
+        ]
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "where": {"venue": {"id": {"eq": 1}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "ROLE_USER"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 1, "title": "Concert1", "published": true, "price": "20.50", "venue": {"id": 1}}
+        ]
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "where": {"venue": {"id": {"eq": 2}}}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "ROLE_USER"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 4, "title": "Concert4", "published": true, "price": "22.50", "venue": null}
+        ]
+      }

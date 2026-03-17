@@ -1,0 +1,54 @@
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_concerts",
+          "params": {
+            "where": {"and": [{"venue": {"name": {"eq": "Venue1"}}}, {"venue": {"id": {"eq": 1}}}]},
+            "data": {"price": "100"}
+          }
+        }
+      unorderedPaths:
+        - result
+    response: |
+      {
+        "result": [{"id": 1}, {"id": 3}]
+      }
+
+  # Verify the updates
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {"id": 1}
+        }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "title": "Concert1",
+          "published": true,
+          "price": "100.00",
+          "venue": {"id": 1}
+        }
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {"id": 3}
+        }
+    response: |
+      {
+        "result": {
+          "id": 3,
+          "title": "Concert3",
+          "published": true,
+          "price": "100.00",
+          "venue": {"id": 1}
+        }
+      }

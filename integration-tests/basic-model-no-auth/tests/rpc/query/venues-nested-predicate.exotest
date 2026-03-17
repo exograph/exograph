@@ -1,0 +1,86 @@
+stages:
+  # Filter venues by concert title
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venues",
+          "params": {
+            "where": {"concerts": {"title": {"eq": "Concert1"}}}
+          }
+        }
+    response: |
+      {
+        "result": [
+          {
+            "id": 1,
+            "name": "Venue1",
+            "published": true,
+            "latitude": 37.7749
+          }
+        ]
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venues",
+          "params": {
+            "where": {"concerts": {"title": {"eq": "Concert2"}}}
+          }
+        }
+    response: |
+      {
+        "result": [
+          {
+            "id": 2,
+            "name": "Venue2",
+            "published": false,
+            "latitude": 35.6762
+          }
+        ]
+      }
+
+  # Filter venues by concert id
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venues",
+          "params": {
+            "where": {"concerts": {"id": {"eq": 1}}}
+          }
+        }
+    response: |
+      {
+        "result": [
+          {
+            "id": 1,
+            "name": "Venue1",
+            "published": true,
+            "latitude": 37.7749
+          }
+        ]
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venues",
+          "params": {
+            "where": {"concerts": {"id": {"eq": 2}}}
+          }
+        }
+    response: |
+      {
+        "result": [
+          {
+            "id": 2,
+            "name": "Venue2",
+            "published": false,
+            "latitude": 35.6762
+          }
+        ]
+      }

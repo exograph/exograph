@@ -1,0 +1,35 @@
+stages:
+  # Published venue is visible without auth
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venue",
+          "params": {
+            "id": 1
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "name": "Venue1",
+          "published": true,
+          "latitude": 37.7749
+        }
+      }
+
+  # Unpublished venue is not visible without auth
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venue",
+          "params": {
+            "id": 2
+          }
+        }
+    response: |
+      {
+        "result": null
+      }
