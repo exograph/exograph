@@ -1,4 +1,4 @@
-# User cannot order by email field when they don't have access (ordering would reveal info about other users' emails)
+# Cannot order by email field (ordering would reveal info about other users' emails)
 operation:
   type: rpc
   payload: |
@@ -10,7 +10,7 @@ operation:
     }
 auth: |
   {
-    "sub": 1
+    "sub": $.p1id
   }
 response: |
   {

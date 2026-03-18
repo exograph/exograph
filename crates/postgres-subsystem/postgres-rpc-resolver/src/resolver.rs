@@ -496,13 +496,23 @@ where
 
     let mut combined = AbstractPredicate::True;
 
+    // For field-level access checks, use ignore_missing_value: false to match GraphQL behavior.
+    // The entity-level precheck uses true (update data may omit fields), but field-level checks
+    // must not ignore missing values — otherwise expressions like `self.authId == AuthContext.id`
+    // would resolve to True when `authId` is absent from the input, bypassing the check.
+    let field_access_input = AccessInput {
+        value: access_input.value,
+        ignore_missing_value: false,
+        aliases: access_input.aliases.clone(),
+    };
+
     for field_name in data_fields.keys().map(|k| k.as_str()) {
         if let Some(field) = entity_type.field_by_name(field_name) {
             let field_predicate = subsystem
                 .core_subsystem
                 .solve(
                     request_context,
-                    Some(access_input),
+                    Some(&field_access_input),
                     &subsystem.core_subsystem.precheck_expressions[get_precheck_index(field)],
                 )
                 .await

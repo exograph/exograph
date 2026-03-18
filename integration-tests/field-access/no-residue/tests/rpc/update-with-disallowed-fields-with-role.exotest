@@ -1,0 +1,38 @@
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_customer",
+          "params": {
+            "id": 1,
+            "data": {"name": "C5", "internalTier": 55}
+          }
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "tier-updater"
+      }
+    response: |
+      {
+        "result": {"id": 1}
+      }
+
+  # Verify the internalTier was set
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_customer",
+          "params": {"id": 1}
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "tier-querier"
+      }
+    response: |
+      {
+        "result": {"id": 1, "name": "C5", "userId": 1, "internalTier": 55}
+      }

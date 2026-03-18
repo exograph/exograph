@@ -1,0 +1,21 @@
+# A sneaky way to know the current customer's internalTier without adding it to the selection set
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_customers",
+      "params": {
+        "orderBy": [{"internalTier": "ASC"}]
+      }
+    }
+auth: |
+  {
+    "sub": 1
+  }
+response: |
+  {
+    "error": {
+      "code": -32004,
+      "message": "Not authorized"
+    }
+  }

@@ -1,0 +1,20 @@
+# self.authId != AuthContext.id, but email is not specified, so it is allowed to update
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_person",
+          "params": {
+            "id": $.p1id,
+            "data": {"name": "P1-updated", "age": 11}
+          }
+        }
+    auth: |
+      {
+        "sub": $.p2id
+      }
+    response: |
+      {
+        "result": {"id": $.p1id}
+      }

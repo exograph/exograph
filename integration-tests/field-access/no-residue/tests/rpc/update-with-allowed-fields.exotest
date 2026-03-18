@@ -1,0 +1,19 @@
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_customer",
+          "params": {
+            "id": 1,
+            "data": {"name": "C1-updated"}
+          }
+        }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "result": {"id": 1}
+      }

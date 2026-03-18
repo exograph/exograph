@@ -1,0 +1,20 @@
+# self.authId == AuthContext.id, so all fields are allowed
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_person",
+          "params": {
+            "id": $.p1id,
+            "data": {"name": "P1-updated", "age": 11, "email": "p1-updated@example.com"}
+          }
+        }
+    auth: |
+      {
+        "sub": $.p1id
+      }
+    response: |
+      {
+        "result": {"id": $.p1id}
+      }

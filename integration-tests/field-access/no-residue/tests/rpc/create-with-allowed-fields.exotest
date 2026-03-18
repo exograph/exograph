@@ -1,0 +1,18 @@
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_customer",
+          "params": {
+            "data": {"name": "C5", "userId": 5}
+          }
+        }
+    auth: |
+      {
+        "sub": 5
+      }
+    response: |
+      {
+        "result": {"id": 5}
+      }

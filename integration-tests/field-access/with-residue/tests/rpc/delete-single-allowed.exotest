@@ -1,0 +1,36 @@
+# self.authId == AuthContext.id, so delete is allowed
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_person",
+          "params": {
+            "id": $.p1id
+          }
+        }
+    auth: |
+      {
+        "sub": $.p1id
+      }
+    response: |
+      {
+        "result": {"id": $.p1id}
+      }
+
+  # Verify deletion
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_person",
+          "params": {"id": $.p1id}
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": null
+      }

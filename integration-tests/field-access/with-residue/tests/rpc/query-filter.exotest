@@ -1,4 +1,4 @@
-# User filtering by someone else's email gets empty results (residue predicate restricts access)
+# User can filter by their own email
 operation:
   type: rpc
   payload: |
@@ -10,9 +10,11 @@ operation:
     }
 auth: |
   {
-    "sub": 2
+    "sub": $.p1id
   }
 response: |
   {
-    "result": []
+    "result": [
+      {"id": $.p1id, "name": "P1", "age": 10, "authId": 1}
+    ]
   }

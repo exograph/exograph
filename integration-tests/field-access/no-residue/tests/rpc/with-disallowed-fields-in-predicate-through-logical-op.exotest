@@ -1,17 +1,15 @@
-# Test that user without tier-querier role cannot filter by field with field-level access control
 operation:
   type: rpc
   payload: |
     {
       "method": "get_customers",
       "params": {
-        "where": {"internalTier": {"eq": 1}}
+        "where": {"and": [{"internalTier": {"eq": 1}}, {"internalTier": {"lte": 1}}]}
       }
     }
 auth: |
   {
-    "sub": 1,
-    "role": "user"
+    "sub": 1
   }
 response: |
   {

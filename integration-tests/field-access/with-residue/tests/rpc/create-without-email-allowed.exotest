@@ -1,0 +1,19 @@
+# self.authId != AuthContext.id, but email is not specified, so it is allowed to create
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_person",
+          "params": {
+            "data": {"name": "P5", "age": 50, "authId": 5}
+          }
+        }
+    auth: |
+      {
+        "sub": 6
+      }
+    response: |
+      {
+        "result": {"id": 5}
+      }
