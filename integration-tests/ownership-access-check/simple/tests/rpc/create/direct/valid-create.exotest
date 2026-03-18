@@ -1,0 +1,20 @@
+# An authenticated user is allowed to create a document for themselves
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_document",
+          "params": {
+            "data": {"content": "new-content", "user": {"id": 1}}
+          }
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": {"id": 5}
+      }

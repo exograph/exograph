@@ -1,0 +1,27 @@
+# User 2 is trying to create documents for user 1 as well as self - entire batch should be denied
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "create_documents",
+      "params": {
+        "data": [
+          {"content": "new-self-content", "user": {"id": 2}},
+          {"content": "new-other-content", "user": {"id": 1}}
+        ]
+      }
+    }
+auth: |
+  {
+    "sub": 2,
+    "role": "USER"
+  }
+invariants:
+  - path: ../../system-state.gql
+response: |
+  {
+    "error": {
+      "code": -32004,
+      "message": "Not authorized"
+    }
+  }

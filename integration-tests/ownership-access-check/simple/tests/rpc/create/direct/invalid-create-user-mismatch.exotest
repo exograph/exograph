@@ -1,0 +1,24 @@
+# User 2 is trying to create a document for user 1 - should be denied
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "create_document",
+      "params": {
+        "data": {"content": "new-content", "user": {"id": 1}}
+      }
+    }
+auth: |
+  {
+    "sub": 2,
+    "role": "USER"
+  }
+invariants:
+  - path: ../../system-state.gql
+response: |
+  {
+    "error": {
+      "code": -32004,
+      "message": "Not authorized"
+    }
+  }

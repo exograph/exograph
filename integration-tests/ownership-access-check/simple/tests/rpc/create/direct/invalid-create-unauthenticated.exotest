@@ -1,0 +1,19 @@
+# An unauthenticated user is not allowed to create a document
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "create_document",
+      "params": {
+        "data": {"content": "new-content", "user": {"id": 1}}
+      }
+    }
+invariants:
+  - path: ../../system-state.gql
+response: |
+  {
+    "error": {
+      "code": -32004,
+      "message": "Not authorized"
+    }
+  }

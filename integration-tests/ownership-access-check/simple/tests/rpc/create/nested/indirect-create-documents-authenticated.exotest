@@ -1,0 +1,43 @@
+# Authenticated user creates a user with multiple nested documents.
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_user",
+          "params": {
+            "data": {"name": "user-new", "documents": [{"content": "user-new-document-1"}, {"content": "user-new-document-2"}]}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": {"id": 6}
+      }
+
+  # Verify both documents were created (owned by user 6)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_documents",
+          "params": {
+            "where": {"user": {"id": {"eq": 6}}},
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 5, "content": "user-new-document-1", "user": {"id": 6}},
+          {"id": 6, "content": "user-new-document-2", "user": {"id": 6}}
+        ]
+      }

@@ -1,0 +1,19 @@
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_users",
+      "params": {
+        "orderBy": [{"id": "ASC"}]
+      }
+    }
+response: |
+  {
+    "result": [
+      {"id": 1, "name": "u1"},
+      {"id": 2, "name": "u2"},
+      {"id": 3, "name": "u3"},
+      {"id": 4, "name": "u4"},
+      {"id": 5, "name": "u5"}
+    ]
+  }

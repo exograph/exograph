@@ -1,0 +1,38 @@
+# Admin can query all documents and all permissions
+operation:
+  type: rpc
+  payload: |
+    [
+      {"id": "documents", "method": "get_documents"},
+      {"id": "permissions", "method": "get_permissions"}
+    ]
+  unorderedPaths:
+    - "[0].result"
+    - "[1].result"
+auth: |
+  {
+    "role": "admin"
+  }
+response: |
+  [
+    {
+      "id": "documents",
+      "result": [
+        {"id": $.d1Id, "content": "d1"},
+        {"id": $.d2Id, "content": "d2"},
+        {"id": $.d3Id, "content": "d3"}
+      ]
+    },
+    {
+      "id": "permissions",
+      "result": [
+        {"id": $.d1PermissionIds[0], "read": true, "write": true, "document": {"id": $.d1Id}, "user": {"id": $.u1Id}},
+        {"id": $.d1PermissionIds[1], "read": false, "write": false, "document": {"id": $.d1Id}, "user": {"id": $.u2Id}},
+        {"id": $.d1PermissionIds[2], "read": true, "write": false, "document": {"id": $.d1Id}, "user": {"id": $.u3Id}},
+        {"id": $.d2PermissionIds[0], "read": false, "write": false, "document": {"id": $.d2Id}, "user": {"id": $.u1Id}},
+        {"id": $.d2PermissionIds[1], "read": true, "write": true, "document": {"id": $.d2Id}, "user": {"id": $.u2Id}},
+        {"id": $.d2PermissionIds[2], "read": true, "write": false, "document": {"id": $.d2Id}, "user": {"id": $.u3Id}},
+        {"id": $.d3PermissionIds[0], "read": true, "write": false, "document": {"id": $.d3Id}, "user": {"id": $.u4Id}}
+      ]
+    }
+  ]

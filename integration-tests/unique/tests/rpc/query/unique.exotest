@@ -1,0 +1,113 @@
+# Test get by unique constraint fields via RPC (matches GraphQL query/unique)
+stages:
+  # By username - existing
+  - operation:
+      type: rpc
+      payload: |
+        {"method": "get_user_by_username", "params": {"username": "Alice02"}}
+    response: |
+      {"result": {"id": $.alice_user_id, "username": "Alice02", "primaryEmailId": "alice", "secondaryEmailId": "alice2", "emailDomain": "example.com"}}
+
+  # By username - non-existing
+  - operation:
+      type: rpc
+      payload: |
+        {"method": "get_user_by_username", "params": {"username": "non-existing-user"}}
+    response: |
+      {"result": null}
+
+  # By primary email - existing
+  - operation:
+      type: rpc
+      payload: |
+        {"method": "get_user_by_primary_email", "params": {"primaryEmailId": "alice", "emailDomain": "example.com"}}
+    response: |
+      {"result": {"id": $.alice_user_id, "username": "Alice02", "primaryEmailId": "alice", "secondaryEmailId": "alice2", "emailDomain": "example.com"}}
+
+  # By primary email - non-existing
+  - operation:
+      type: rpc
+      payload: |
+        {"method": "get_user_by_primary_email", "params": {"primaryEmailId": "non-existing-user", "emailDomain": "example.com"}}
+    response: |
+      {"result": null}
+
+  # By primary email - non-existing domain
+  - operation:
+      type: rpc
+      payload: |
+        {"method": "get_user_by_primary_email", "params": {"primaryEmailId": "alice", "emailDomain": "non-existing-domain.com"}}
+    response: |
+      {"result": null}
+
+  # By secondary email - existing
+  - operation:
+      type: rpc
+      payload: |
+        {"method": "get_user_by_secondary_email", "params": {"secondaryEmailId": "alice2", "emailDomain": "example.com"}}
+    response: |
+      {"result": {"id": $.alice_user_id, "username": "Alice02", "primaryEmailId": "alice", "secondaryEmailId": "alice2", "emailDomain": "example.com"}}
+
+  # By secondary email - non-existing
+  - operation:
+      type: rpc
+      payload: |
+        {"method": "get_user_by_secondary_email", "params": {"secondaryEmailId": "non-existing-user", "emailDomain": "example.com"}}
+    response: |
+      {"result": null}
+
+  # By secondary email - non-existing domain
+  - operation:
+      type: rpc
+      payload: |
+        {"method": "get_user_by_secondary_email", "params": {"secondaryEmailId": "alice2", "emailDomain": "non-existing-domain.com"}}
+    response: |
+      {"result": null}
+
+  # RSVP by composite unique - existing
+  - operation:
+      type: rpc
+      payload: |
+        {"method": "get_rsvp_by_event_rsvp", "params": {"user": {"id": $.alice_user_id}, "event": "Concert1"}}
+    response: |
+      {"result": {"id": $.alice_rsvp_id[0], "event": "Concert1", "count": 1, "user": {"id": $.alice_user_id}}}
+
+  # RSVP by composite unique - non-existing user
+  - operation:
+      type: rpc
+      payload: |
+        {"method": "get_rsvp_by_event_rsvp", "params": {"user": {"id": 100}, "event": "Concert1"}}
+    response: |
+      {"result": null}
+
+  # RSVP by composite unique - non-existing event
+  - operation:
+      type: rpc
+      payload: |
+        {"method": "get_rsvp_by_event_rsvp", "params": {"user": {"id": $.alice_user_id}, "event": "non-existing-event"}}
+    response: |
+      {"result": null}
+
+  # Internal RSVP by composite unique - existing
+  - operation:
+      type: rpc
+      payload: |
+        {"method": "get_internal_rsvp_by_event_rsvp", "params": {"user": {"id": $.alice_user_id}, "event": "InternalConcert1"}}
+    response: |
+      {"result": {"id": $.alice_internal_rsvp_id[0], "event": "InternalConcert1", "count": 1, "user": {"id": $.alice_user_id}}}
+
+  # Internal RSVP by composite unique - non-existing user
+  - operation:
+      type: rpc
+      payload: |
+        {"method": "get_internal_rsvp_by_event_rsvp", "params": {"user": {"id": 100}, "event": "InternalConcert1"}}
+    response: |
+      {"result": null}
+
+  # Internal RSVP by composite unique - non-existing event
+  - operation:
+      type: rpc
+      payload: |
+        {"method": "get_internal_rsvp_by_event_rsvp", "params": {"user": {"id": $.alice_user_id}, "event": "non-existing-event"}}
+    response: |
+      {"result": null}

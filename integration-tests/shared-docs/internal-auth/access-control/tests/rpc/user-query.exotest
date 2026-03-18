@@ -1,0 +1,54 @@
+# Users can only query documents/permissions they have read access to
+stages:
+  # User1: has read=true on d1 only
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_documents"
+        }
+      unorderedPaths:
+        - result
+    auth: |
+      {
+        "sub": $.u1Id
+      }
+    response: |
+      {
+        "result": [
+          {"id": $.d1Id, "content": "d1"}
+        ]
+      }
+
+  # User3: has read=true on d1 and d2, sees only own readable permissions
+  - operation:
+      type: rpc
+      payload: |
+        [
+          {"id": "documents", "method": "get_documents"},
+          {"id": "permissions", "method": "get_permissions"}
+        ]
+      unorderedPaths:
+        - "[0].result"
+        - "[1].result"
+    auth: |
+      {
+        "sub": $.u3Id
+      }
+    response: |
+      [
+        {
+          "id": "documents",
+          "result": [
+            {"id": $.d1Id, "content": "d1"},
+            {"id": $.d2Id, "content": "d2"}
+          ]
+        },
+        {
+          "id": "permissions",
+          "result": [
+            {"id": $.d1PermissionIds[2], "read": true, "write": false, "document": {"id": $.d1Id}, "user": {"id": $.u3Id}},
+            {"id": $.d2PermissionIds[2], "read": true, "write": false, "document": {"id": $.d2Id}, "user": {"id": $.u3Id}}
+          ]
+        }
+      ]

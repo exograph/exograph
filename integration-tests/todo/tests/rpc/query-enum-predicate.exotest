@@ -1,0 +1,124 @@
+stages:
+  # Filter by LOW priority
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todos",
+          "params": {
+            "where": {"priority": {"eq": "LOW"}}
+          }
+        }
+    auth: |
+      {
+        "role": "admin",
+        "sub": null
+      }
+    response: |
+      {
+        "result": [
+          {"id": $.u2TodoIds[2], "title": "U2-T3", "completed": false, "priority": "LOW", "user": {"id": $.u2Id}}
+        ]
+      }
+
+  # Filter by MEDIUM priority
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todos",
+          "params": {
+            "where": {"priority": {"eq": "MEDIUM"}},
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "role": "admin",
+        "sub": null
+      }
+    response: |
+      {
+        "result": [
+          {"id": $.u1TodoIds[0], "title": "U1-T1", "completed": false, "priority": "MEDIUM", "user": {"id": $.u1Id}},
+          {"id": $.u1TodoIds[1], "title": "U1-T2", "completed": true, "priority": "MEDIUM", "user": {"id": $.u1Id}},
+          {"id": $.u2TodoIds[0], "title": "U2-T1", "completed": false, "priority": "MEDIUM", "user": {"id": $.u2Id}},
+          {"id": $.u2TodoIds[1], "title": "U2-T2", "completed": true, "priority": "MEDIUM", "user": {"id": $.u2Id}}
+        ]
+      }
+
+  # Filter by HIGH priority
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todos",
+          "params": {
+            "where": {"priority": {"eq": "HIGH"}}
+          }
+        }
+    auth: |
+      {
+        "role": "admin",
+        "sub": null
+      }
+    response: |
+      {
+        "result": [
+          {"id": $.u1TodoIds[2], "title": "U1-T3", "completed": false, "priority": "HIGH", "user": {"id": $.u1Id}}
+        ]
+      }
+
+  # OR: LOW or MEDIUM
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todos",
+          "params": {
+            "where": {"or": [{"priority": {"eq": "LOW"}}, {"priority": {"eq": "MEDIUM"}}]},
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "role": "admin",
+        "sub": null
+      }
+    response: |
+      {
+        "result": [
+          {"id": $.u1TodoIds[0], "title": "U1-T1", "completed": false, "priority": "MEDIUM", "user": {"id": $.u1Id}},
+          {"id": $.u1TodoIds[1], "title": "U1-T2", "completed": true, "priority": "MEDIUM", "user": {"id": $.u1Id}},
+          {"id": $.u2TodoIds[0], "title": "U2-T1", "completed": false, "priority": "MEDIUM", "user": {"id": $.u2Id}},
+          {"id": $.u2TodoIds[1], "title": "U2-T2", "completed": true, "priority": "MEDIUM", "user": {"id": $.u2Id}},
+          {"id": $.u2TodoIds[2], "title": "U2-T3", "completed": false, "priority": "LOW", "user": {"id": $.u2Id}}
+        ]
+      }
+
+  # NOT HIGH (same as LOW or MEDIUM)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todos",
+          "params": {
+            "where": {"not": {"priority": {"eq": "HIGH"}}},
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "role": "admin",
+        "sub": null
+      }
+    response: |
+      {
+        "result": [
+          {"id": $.u1TodoIds[0], "title": "U1-T1", "completed": false, "priority": "MEDIUM", "user": {"id": $.u1Id}},
+          {"id": $.u1TodoIds[1], "title": "U1-T2", "completed": true, "priority": "MEDIUM", "user": {"id": $.u1Id}},
+          {"id": $.u2TodoIds[0], "title": "U2-T1", "completed": false, "priority": "MEDIUM", "user": {"id": $.u2Id}},
+          {"id": $.u2TodoIds[1], "title": "U2-T2", "completed": true, "priority": "MEDIUM", "user": {"id": $.u2Id}},
+          {"id": $.u2TodoIds[2], "title": "U2-T3", "completed": false, "priority": "LOW", "user": {"id": $.u2Id}}
+        ]
+      }

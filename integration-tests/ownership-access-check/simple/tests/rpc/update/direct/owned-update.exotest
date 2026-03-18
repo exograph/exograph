@@ -1,0 +1,38 @@
+# Owner can update their own document
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_document",
+          "params": {
+            "id": 1,
+            "data": {"content": "updated-content"}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": {"id": 1}
+      }
+
+  # Verify the update took effect
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_document",
+          "params": {"id": 1}
+        }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": {"id": 1, "content": "updated-content", "user": {"id": 2}}
+      }

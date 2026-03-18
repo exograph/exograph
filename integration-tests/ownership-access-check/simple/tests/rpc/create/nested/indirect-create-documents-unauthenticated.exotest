@@ -1,0 +1,20 @@
+# Unauthenticated user is not allowed to create documents (collection) even if they can create user
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_user",
+          "params": {
+            "data": {"name": "user-anonymous", "documents": [{"content": "user-anonymous-document-1"}, {"content": "user-anonymous-document-2"}]}
+          }
+        }
+    invariants:
+      - path: ../../system-state.gql
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }

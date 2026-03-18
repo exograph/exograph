@@ -1,0 +1,72 @@
+stages:
+  # OR: log1 or log2
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_logs",
+          "params": {
+            "where": {"or": [{"id": {"eq": $.log1_id}}, {"id": {"eq": $.log2_id}}]},
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": $.log1_id, "timestamp": 3, "text": "[NORMAL] http request"},
+          {"id": $.log2_id, "timestamp": 6, "text": "[WARNING] disk usage 50%"}
+        ]
+      }
+
+  # AND: startsWith [NORMAL] AND timestamp >= 6
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_logs",
+          "params": {
+            "where": {"and": [{"text": {"startsWith": "[NORMAL]"}}, {"timestamp": {"gte": 6}}]}
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": $.log4_id, "timestamp": 12, "text": "[NORMAL] it's 12:00pm!"}
+        ]
+      }
+
+  # NOT: not startsWith [NORMAL]
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_logs",
+          "params": {
+            "where": {"not": {"text": {"startsWith": "[NORMAL]"}}},
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": $.log2_id, "timestamp": 6, "text": "[WARNING] disk usage 50%"},
+          {"id": $.log3_id, "timestamp": 9, "text": "[ERROR] service stopped"}
+        ]
+      }
+
+  # Nested: not [NORMAL] AND not [ERROR]
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_logs",
+          "params": {
+            "where": {"and": [{"not": {"text": {"startsWith": "[NORMAL]"}}}, {"not": {"text": {"startsWith": "[ERROR]"}}}]}
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": $.log2_id, "timestamp": 6, "text": "[WARNING] disk usage 50%"}
+        ]
+      }

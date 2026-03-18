@@ -1,0 +1,16 @@
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_logs",
+      "params": {
+        "where": {"and": []}
+      }
+    }
+response: |
+  {
+    "error": {
+      "code": -32001,
+      "message": "Invalid field 'where': Logical operation predicate does not have any arguments"
+    }
+  }

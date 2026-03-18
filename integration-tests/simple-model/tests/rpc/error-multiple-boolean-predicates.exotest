@@ -1,0 +1,19 @@
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_logs",
+      "params": {
+        "where": {
+          "and": [{"id": {"eq": 1}}, {"id": {"eq": 2}}],
+          "or": [{"id": {"eq": 1}}, {"id": {"eq": 2}}]
+        }
+      }
+    }
+response: |
+  {
+    "error": {
+      "code": -32001,
+      "message": "Invalid field 'where': Cannot specify more than one logical operation on the same level"
+    }
+  }

@@ -1,0 +1,18 @@
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_memberships",
+      "params": {
+        "orderBy": [{"id": "ASC"}]
+      }
+    }
+response: |
+  {
+    "result": [
+      {"id": 1, "kind": "individual", "user": {"id": 2}},
+      {"id": 2, "kind": "family", "user": {"id": 3}},
+      {"id": 3, "kind": "individual", "user": {"id": 4}},
+      {"id": 4, "kind": "family", "user": {"id": 5}}
+    ]
+  }

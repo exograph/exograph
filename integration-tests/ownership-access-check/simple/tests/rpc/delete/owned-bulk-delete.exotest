@@ -1,0 +1,40 @@
+# User deletes only their own documents (user 2 owns document 1 and 2)
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_documents",
+          "params": {}
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": [{"id": 1}, {"id": 2}]
+      }
+
+  # Verify only non-owned documents remain
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_documents",
+          "params": {
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 3, "content": "content3", "user": {"id": 1}},
+          {"id": 4, "content": "content4", "user": {"id": 3}}
+        ]
+      }
