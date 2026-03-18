@@ -1,0 +1,28 @@
+# Create a product with user-specified PK
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_product",
+          "params": {
+            "data": {"id": 5, "title": "New Product", "department": {"id": "d1"}}
+          }
+        }
+    response: |
+      {
+        "result": {"id": 5}
+      }
+
+  # Verify
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_product",
+          "params": {"id": 5}
+        }
+    response: |
+      {
+        "result": {"id": 5, "title": "New Product", "department": {"id": "d1"}}
+      }

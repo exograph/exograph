@@ -1,0 +1,42 @@
+# User deletes with where clause but only their own documents are affected
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_documents",
+          "params": {
+            "where": {"id": {"gt": 0}}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": [{"id": 1}, {"id": 2}]
+      }
+
+  # Verify only non-owned documents remain
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_documents",
+          "params": {
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 3, "content": "content3", "user": {"id": 1}},
+          {"id": 4, "content": "content4", "user": {"id": 3}}
+        ]
+      }

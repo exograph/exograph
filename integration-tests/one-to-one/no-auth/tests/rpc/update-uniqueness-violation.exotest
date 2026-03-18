@@ -1,0 +1,18 @@
+# Try to update membership 1 to point to user 3 who already has membership 2 - should fail
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "update_membership",
+      "params": {
+        "id": 1,
+        "data": {"kind": "free", "user": {"id": 3}}
+      }
+    }
+response: |
+  {
+    "error": {
+      "code": -32001,
+      "message": "Operation failed"
+    }
+  }

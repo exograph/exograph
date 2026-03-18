@@ -1,0 +1,29 @@
+# Update membership 1: change kind to "free" and reassign to user 1 (who has no membership)
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_membership",
+          "params": {
+            "id": 1,
+            "data": {"kind": "free", "user": {"id": 1}}
+          }
+        }
+    response: |
+      {
+        "result": {"id": 1}
+      }
+
+  # Verify the update
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_membership",
+          "params": {"id": 1}
+        }
+    response: |
+      {
+        "result": {"id": 1, "kind": "free", "user": {"id": 1}}
+      }

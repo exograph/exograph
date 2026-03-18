@@ -1,0 +1,17 @@
+# Duplicate username "Alice02" should fail
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "create_user",
+      "params": {
+        "data": {"username": "Alice02", "primaryEmailId": "another.alice", "emailDomain": "example.com"}
+      }
+    }
+response: |
+  {
+    "error": {
+      "code": -32001,
+      "message": "Operation failed"
+    }
+  }

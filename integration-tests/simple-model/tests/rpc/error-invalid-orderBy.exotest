@@ -1,0 +1,16 @@
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_logs",
+      "params": {
+        "orderBy": [{"text": "INVALID"}]
+      }
+    }
+response: |
+  {
+    "error": {
+      "code": -32602,
+      "message": "Invalid enum value 'INVALID' at 'orderBy[0].text': allowed values are [\"ASC\", \"DESC\"]"
+    }
+  }

@@ -1,0 +1,54 @@
+# Bulk update only affects documents owned by the user
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_documents",
+          "params": {
+            "data": {"content": "updated-content"}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": [{"id": 1}, {"id": 2}]
+      }
+
+  # Verify user 2's documents were updated
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_document",
+          "params": {"id": 1}
+        }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": {"id": 1, "content": "updated-content", "user": {"id": 2}}
+      }
+
+  # Verify user 1's document was NOT updated
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_document",
+          "params": {"id": 3}
+        }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": {"id": 3, "content": "content3", "user": {"id": 1}}
+      }

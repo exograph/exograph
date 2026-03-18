@@ -1,0 +1,17 @@
+# "d1" already exists, so this should fail
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "create_department",
+      "params": {
+        "data": {"id": "d1", "name": "Test Department"}
+      }
+    }
+response: |
+  {
+    "error": {
+      "code": -32001,
+      "message": "Operation failed"
+    }
+  }

@@ -1,0 +1,32 @@
+# Create multiple products with user-specified PKs
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_products",
+          "params": {
+            "data": [
+              {"id": 5, "title": "New Product 1", "department": {"id": "d1"}},
+              {"id": 6, "title": "New Product 2", "department": {"id": "d2"}}
+            ]
+          }
+        }
+    response: |
+      {
+        "result": [{"id": 5}, {"id": 6}]
+      }
+
+  # Verify
+  - operation:
+      type: rpc
+      payload: |
+        [
+          {"id": "p5", "method": "get_product", "params": {"id": 5}},
+          {"id": "p6", "method": "get_product", "params": {"id": 6}}
+        ]
+    response: |
+      [
+        {"id": "p5", "result": {"id": 5, "title": "New Product 1", "department": {"id": "d1"}}},
+        {"id": "p6", "result": {"id": 6, "title": "New Product 2", "department": {"id": "d2"}}}
+      ]

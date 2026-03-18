@@ -1,0 +1,54 @@
+stages:
+  # Order by priority ASC
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todos",
+          "params": {
+            "orderBy": [{"priority": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "role": "admin",
+        "sub": null
+      }
+    response: |
+      {
+        "result": [
+          {"id": $.u2TodoIds[2], "title": "U2-T3", "completed": false, "priority": "LOW", "user": {"id": $.u2Id}},
+          {"id": $.u1TodoIds[0], "title": "U1-T1", "completed": false, "priority": "MEDIUM", "user": {"id": $.u1Id}},
+          {"id": $.u1TodoIds[1], "title": "U1-T2", "completed": true, "priority": "MEDIUM", "user": {"id": $.u1Id}},
+          {"id": $.u2TodoIds[0], "title": "U2-T1", "completed": false, "priority": "MEDIUM", "user": {"id": $.u2Id}},
+          {"id": $.u2TodoIds[1], "title": "U2-T2", "completed": true, "priority": "MEDIUM", "user": {"id": $.u2Id}},
+          {"id": $.u1TodoIds[2], "title": "U1-T3", "completed": false, "priority": "HIGH", "user": {"id": $.u1Id}}
+        ]
+      }
+
+  # Order by priority DESC
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todos",
+          "params": {
+            "orderBy": [{"priority": "DESC"}]
+          }
+        }
+    auth: |
+      {
+        "role": "admin",
+        "sub": null
+      }
+    response: |
+      {
+        "result": [
+          {"id": $.u1TodoIds[2], "title": "U1-T3", "completed": false, "priority": "HIGH", "user": {"id": $.u1Id}},
+          {"id": $.u1TodoIds[0], "title": "U1-T1", "completed": false, "priority": "MEDIUM", "user": {"id": $.u1Id}},
+          {"id": $.u1TodoIds[1], "title": "U1-T2", "completed": true, "priority": "MEDIUM", "user": {"id": $.u1Id}},
+          {"id": $.u2TodoIds[0], "title": "U2-T1", "completed": false, "priority": "MEDIUM", "user": {"id": $.u2Id}},
+          {"id": $.u2TodoIds[1], "title": "U2-T2", "completed": true, "priority": "MEDIUM", "user": {"id": $.u2Id}},
+          {"id": $.u2TodoIds[2], "title": "U2-T3", "completed": false, "priority": "LOW", "user": {"id": $.u2Id}}
+        ]
+      }

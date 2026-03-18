@@ -1,0 +1,42 @@
+# Authenticated user creates a user with a nested document.
+# The user is created, and the document is created (owned by the new user).
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_user",
+          "params": {
+            "data": {"name": "user-new", "documents": [{"content": "user-new-document-1"}]}
+          }
+        }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "result": {"id": 6}
+      }
+
+  # Verify the document was created (owned by user 6)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_documents",
+          "params": {
+            "where": {"user": {"id": {"eq": 6}}}
+          }
+        }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {"id": 5, "content": "user-new-document-1", "user": {"id": 6}}
+        ]
+      }

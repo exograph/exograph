@@ -1,0 +1,22 @@
+# Duplicate RSVPs (same event twice) should fail
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "create_user",
+      "params": {
+        "data": {
+          "username": "Bob04",
+          "primaryEmailId": "bob",
+          "emailDomain": "example.com",
+          "rsvps": [{"event": "Concert2"}, {"event": "Concert2"}]
+        }
+      }
+    }
+response: |
+  {
+    "error": {
+      "code": -32001,
+      "message": "Operation failed"
+    }
+  }

@@ -1,0 +1,17 @@
+# Duplicate primary email (alice@example.com) should fail
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "create_user",
+      "params": {
+        "data": {"username": "Bob04", "primaryEmailId": "alice", "emailDomain": "example.com"}
+      }
+    }
+response: |
+  {
+    "error": {
+      "code": -32001,
+      "message": "Operation failed"
+    }
+  }

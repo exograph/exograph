@@ -1,0 +1,66 @@
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_logs",
+          "params": {
+            "where": {"text": {"startsWith": "[NORMAL]"}},
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": $.log1_id, "timestamp": 3, "text": "[NORMAL] http request"},
+          {"id": $.log4_id, "timestamp": 12, "text": "[NORMAL] it's 12:00pm!"}
+        ]
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_logs",
+          "params": {
+            "where": {"text": {"endsWith": "50%"}}
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": $.log2_id, "timestamp": 6, "text": "[WARNING] disk usage 50%"}
+        ]
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_logs",
+          "params": {
+            "where": {"text": {"like": "[ERROR] service stopped"}}
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": $.log3_id, "timestamp": 9, "text": "[ERROR] service stopped"}
+        ]
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_logs",
+          "params": {
+            "where": {"text": {"ilike": "[error] service stopped"}}
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": $.log3_id, "timestamp": 9, "text": "[ERROR] service stopped"}
+        ]
+      }
