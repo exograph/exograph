@@ -8,7 +8,7 @@ publish = false
 async-trait.workspace = true
 http.workspace = true
 
-exo-sql = { path = "../../../libs/exo-sql" }
+exo-sql = { path = "../../../libs/exo-sql/facade" }
 
 core-resolver = { path = "../../core-subsystem/core-resolver" }
 postgres-rest-model = { path = "../postgres-rest-model" }

@@ -31,7 +31,7 @@ postgres-resolver = { path = "../postgres-subsystem/postgres-resolver" }
 core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
 system-router = { path = "../system-router" }
 common = { path = "../common" }
-exo-sql = { path = "../../libs/exo-sql" }
+exo-sql = { path = "../../libs/exo-sql/facade" }
 exo-env = { path = "../../libs/exo-env" }
 
 console_error_panic_hook = { version = "0.1.7", optional = true }

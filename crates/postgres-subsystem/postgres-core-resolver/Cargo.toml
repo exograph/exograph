@@ -27,7 +27,7 @@ futures.workspace = true
 indexmap.workspace = true
 
 
-exo-sql = { path = "../../../libs/exo-sql" }
+exo-sql = { path = "../../../libs/exo-sql/facade" }
 exo-env = { path = "../../../libs/exo-env" }
 common = { path = "../../common" }
 core-model = { path = "../../core-subsystem/core-model" }

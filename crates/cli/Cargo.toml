@@ -36,7 +36,7 @@ wildmatch.workspace = true
 tracing.workspace = true
 strsim = "0.11.1"
 
-exo-sql = { path = "../../libs/exo-sql", features = [
+exo-sql = { path = "../../libs/exo-sql/facade", features = [
   "pool",
   "interactive-migration",
 ] }
@@ -55,7 +55,7 @@ deno-builder = { path = "../deno-subsystem/deno-builder" }
 wasm-builder = { path = "../wasm-subsystem/wasm-builder" }
 
 [dev-dependencies]
-exo-sql = { path = "../../libs/exo-sql", features = ["test-support"] }
+exo-sql = { path = "../../libs/exo-sql/facade", features = ["test-support"] }
 common = { path = "../common", features = ["test-support"] }
 
 [target.'cfg(unix)'.dev-dependencies]

@@ -10,7 +10,7 @@ http.workspace = true
 matchit = "0.9.0"
 
 common = { path = "../../common" }
-exo-sql = { path = "../../../libs/exo-sql" }
+exo-sql = { path = "../../../libs/exo-sql/facade" }
 core-model = { path = "../../core-subsystem/core-model" }
 postgres-core-model = { path = "../postgres-core-model" }
 core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
