@@ -1,4 +1,3 @@
-# Test non-developer cannot create issue assigned to self
 stages:
   - operation:
       type: rpc
@@ -6,13 +5,12 @@ stages:
         {
           "method": "create_issue",
           "params": {
-            "data": {"title": "Sales-created", "assignee": {"id": $.u3id}}
+            "data": {"title": "I-new", "assignee": {"id": $.u3id}}
           }
         }
     auth: |
       {
-        "sub": $.u3id,
-        "role": "sales"
+        "sub": $.u3id
       }
     invariants:
       - path: ../system-state.gql

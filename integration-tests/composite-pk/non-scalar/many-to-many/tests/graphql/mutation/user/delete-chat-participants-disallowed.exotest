@@ -11,7 +11,7 @@ stages:
         "sub": $.u3_id
       }
     invariants:
-      - path: ../system-state.gql       
+      - path: ../../../system-state.gql       
     response: |
       {
         "data": {

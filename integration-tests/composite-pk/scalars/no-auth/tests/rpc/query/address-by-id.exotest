@@ -1,0 +1,87 @@
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_address",
+          "params": {
+            "street": "1 Main St",
+            "city": "Albany",
+            "state": "NY",
+            "zip": 10001
+          }
+        }
+    response: |
+      {
+        "result": {
+          "street": "1 Main St",
+          "city": "Albany",
+          "state": "NY",
+          "zip": 10001,
+          "info": null
+        }
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_address",
+          "params": {
+            "street": "2 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": 22101
+          }
+        }
+    response: |
+      {
+        "result": {
+          "street": "2 Main St",
+          "city": "Boston",
+          "state": "MA",
+          "zip": 22101,
+          "info": null
+        }
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_address",
+          "params": {
+            "street": "3 Main St",
+            "city": "Chicago",
+            "state": "IL",
+            "zip": 60601
+          }
+        }
+    response: |
+      {
+        "result": {
+          "street": "3 Main St",
+          "city": "Chicago",
+          "state": "IL",
+          "zip": 60601,
+          "info": null
+        }
+      }
+
+  # Non-existing address (mixed PK values from different addresses)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_address",
+          "params": {
+            "street": "1 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": 60601
+          }
+        }
+    response: |
+      {
+        "result": null
+      }

@@ -7,7 +7,7 @@ stages:
         }
       }
     invariants:
-      - path: ../system-state.gql
+      - path: ../../../system-state.gql
     variable: |
       {
         "u4_id": $.u4_id,

@@ -22,7 +22,7 @@ stages:
         "sub": $.u1_id
       }
     invariants:
-      - path: ../system-state.gql      
+      - path: ../../../system-state.gql      
     response: |
       {
         "data": {
