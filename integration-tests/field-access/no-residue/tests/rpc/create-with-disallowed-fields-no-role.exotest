@@ -1,0 +1,20 @@
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "create_customer",
+      "params": {
+        "data": {"name": "C5", "internalTier": 55}
+      }
+    }
+auth: |
+  {
+    "sub": 5
+  }
+response: |
+  {
+    "error": {
+      "code": -32004,
+      "message": "Not authorized"
+    }
+  }

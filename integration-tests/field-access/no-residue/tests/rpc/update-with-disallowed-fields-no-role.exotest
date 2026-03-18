@@ -1,0 +1,21 @@
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "update_customer",
+      "params": {
+        "id": 1,
+        "data": {"name": "C5", "internalTier": 55}
+      }
+    }
+auth: |
+  {
+    "sub": 1
+  }
+response: |
+  {
+    "error": {
+      "code": -32004,
+      "message": "Not authorized"
+    }
+  }

@@ -1,0 +1,22 @@
+# self.authId != AuthContext.id, so the email field is disallowed
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_person",
+          "params": {
+            "id": $.p1id,
+            "data": {"name": "P1-updated", "age": 11, "email": "p1-updated@example.com"}
+          }
+        }
+    auth: |
+      {
+        "sub": $.p2id
+      }
+    invariants:
+      - path: ../system-state.gql
+    response: |
+      {
+        "result": null
+      }

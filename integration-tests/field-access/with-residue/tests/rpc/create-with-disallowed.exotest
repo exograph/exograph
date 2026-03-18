@@ -1,0 +1,23 @@
+# self.authId != AuthContext.id, so the email field is disallowed
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "create_person",
+      "params": {
+        "data": {"name": "P5", "age": 50, "email": "p5@example.com", "authId": 5}
+      }
+    }
+auth: |
+  {
+    "sub": 6
+  }
+invariants:
+  - path: ../system-state.gql
+response: |
+  {
+    "error": {
+      "code": -32004,
+      "message": "Not authorized"
+    }
+  }

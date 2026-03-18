@@ -1,17 +1,16 @@
-# Test that user without tier-querier role cannot order by field with field-level access control
+# A sneaky way to know the current customer's internalTier without adding it to the selection set
 operation:
   type: rpc
   payload: |
     {
       "method": "get_customers",
       "params": {
-        "orderBy": [{"internalTier": "ASC"}]
+        "where": {"internalTier": {"eq": 1}}
       }
     }
 auth: |
   {
-    "sub": 1,
-    "role": "user"
+    "sub": 1
   }
 response: |
   {

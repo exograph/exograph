@@ -1,0 +1,19 @@
+# self.authId == AuthContext.id, so delete with email filter is allowed
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_people",
+          "params": {
+            "where": {"email": {"eq": "p1@example.com"}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.p1id
+      }
+    response: |
+      {
+        "result": [{"id": $.p1id}]
+      }

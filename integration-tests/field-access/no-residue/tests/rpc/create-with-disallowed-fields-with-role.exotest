@@ -1,0 +1,37 @@
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_customer",
+          "params": {
+            "data": {"name": "C5", "userId": 5, "internalTier": 55}
+          }
+        }
+    auth: |
+      {
+        "sub": 5,
+        "role": "tier-creator"
+      }
+    response: |
+      {
+        "result": {"id": 5}
+      }
+
+  # Verify the internalTier was set
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_customer",
+          "params": {"id": 5}
+        }
+    auth: |
+      {
+        "sub": 5,
+        "role": "tier-querier"
+      }
+    response: |
+      {
+        "result": {"id": 5, "name": "C5", "userId": 5, "internalTier": 55}
+      }
