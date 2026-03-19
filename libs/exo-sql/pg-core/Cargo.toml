@@ -12,6 +12,7 @@ tokio-postgres = { workspace = true, features = [
   "with-uuid-1",
 ], default-features = false }
 maybe-owned.workspace = true
+postgres_array = "0.11.1"
 
 [target.'cfg(target_family = "wasm")'.dependencies.tokio-postgres]
 workspace = true

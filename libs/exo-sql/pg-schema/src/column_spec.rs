@@ -21,6 +21,8 @@ use exo_sql_core::{Database, PhysicalColumn, SchemaObjectName};
 use exo_sql_pg_connect::DatabaseClient;
 
 use crate::DebugPrintTo;
+use crate::column_default_schema::ColumnDefaultSchema;
+use crate::column_type_schema::ColumnTypeSchemaExt;
 use crate::enum_spec::EnumSpec;
 use crate::issue::{Issue, WithIssues};
 use crate::op::SchemaOp;
@@ -257,7 +259,7 @@ impl ColumnSpec {
             statement,
             post_statements,
             ..
-        } = self.typ.to_sql(self.default_value.as_ref());
+        } = self.typ.to_schema(self.default_value.as_ref());
         let pk_str = if self.is_pk && attach_pk_column_to_column_stmt {
             " PRIMARY KEY"
         } else {
@@ -272,7 +274,7 @@ impl ColumnSpec {
         let default_value_part = self
             .default_value
             .as_ref()
-            .and_then(|default_value| default_value.to_sql().map(|s| format!(" DEFAULT {s}")))
+            .and_then(|default_value| default_value.to_schema().map(|s| format!(" DEFAULT {s}")))
             .unwrap_or_default();
 
         SchemaStatement {
@@ -335,7 +337,7 @@ impl ColumnSpec {
             match new
                 .default_value
                 .as_ref()
-                .and_then(|default_value| default_value.to_sql())
+                .and_then(|default_value| default_value.to_schema())
             {
                 Some(default_value) => {
                     changes.push(SchemaOp::SetColumnDefaultValue {

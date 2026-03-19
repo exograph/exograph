@@ -8,11 +8,9 @@
 // by the Apache License, Version 2.0.
 
 use super::{PhysicalColumnType, PhysicalColumnTypeSerializer};
-use crate::{column_default::ColumnDefault, statement::SchemaStatement};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::hash::Hash;
-use tokio_postgres::types::Type;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct BlobColumnType;
@@ -20,18 +18,6 @@ pub struct BlobColumnType;
 impl PhysicalColumnType for BlobColumnType {
     fn type_string(&self) -> String {
         "Blob".to_string()
-    }
-
-    fn get_pg_type(&self) -> Type {
-        Type::BYTEA
-    }
-
-    fn to_sql(&self, _default_value: Option<&ColumnDefault>) -> SchemaStatement {
-        SchemaStatement {
-            statement: "BYTEA".to_owned(),
-            pre_statements: vec![],
-            post_statements: vec![],
-        }
     }
 
     fn type_name(&self) -> &'static str {

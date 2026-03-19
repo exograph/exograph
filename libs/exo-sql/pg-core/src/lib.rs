@@ -15,6 +15,7 @@
 #[macro_use]
 mod test_util;
 
+pub mod array_util;
 pub mod column;
 pub mod cte;
 pub mod delete;
@@ -37,8 +38,11 @@ pub mod vector;
 mod function_ext;
 mod limit_ext;
 mod offset_ext;
+mod pg_column_type;
 mod physical_column_ext;
 mod physical_table_ext;
+
+pub use pg_column_type::{PgColumnType, PgColumnTypeExt, as_pg_column_type, to_pg_array_type};
 
 pub use column::{ArrayParamWrapper, Column, ProxyColumn};
 pub use expression_builder::ExpressionBuilder;

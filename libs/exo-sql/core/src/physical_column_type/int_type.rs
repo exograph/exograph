@@ -8,12 +8,9 @@
 // by the Apache License, Version 2.0.
 
 use super::{PhysicalColumnType, PhysicalColumnTypeSerializer};
-use crate::column_default::{ColumnAutoincrement, ColumnDefault};
-use crate::statement::SchemaStatement;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::hash::Hash;
-use tokio_postgres::types::Type;
 
 /// Number of bits in an integer
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -41,40 +38,6 @@ pub struct IntColumnType {
 impl PhysicalColumnType for IntColumnType {
     fn type_string(&self) -> String {
         format!("{}-bit integer", self.bits.bits())
-    }
-
-    fn get_pg_type(&self) -> Type {
-        match self.bits {
-            IntBits::_16 => Type::INT2,
-            IntBits::_32 => Type::INT4,
-            IntBits::_64 => Type::INT8,
-        }
-    }
-
-    fn to_sql(&self, default_value: Option<&ColumnDefault>) -> SchemaStatement {
-        SchemaStatement {
-            statement: {
-                if matches!(
-                    default_value,
-                    Some(ColumnDefault::Autoincrement(ColumnAutoincrement::Serial))
-                ) {
-                    match self.bits {
-                        IntBits::_16 => "SMALLSERIAL",
-                        IntBits::_32 => "SERIAL",
-                        IntBits::_64 => "BIGSERIAL",
-                    }
-                } else {
-                    match self.bits {
-                        IntBits::_16 => "SMALLINT",
-                        IntBits::_32 => "INT",
-                        IntBits::_64 => "BIGINT",
-                    }
-                }
-            }
-            .to_owned(),
-            pre_statements: vec![],
-            post_statements: vec![],
-        }
     }
 
     fn type_name(&self) -> &'static str {

@@ -37,27 +37,18 @@ pub use timestamp_type::{TimestampColumnType, TimestampColumnTypeSerializer};
 pub use uuid_type::{UuidColumnType, UuidColumnTypeSerializer};
 pub use vector_type::{VectorColumnType, VectorColumnTypeSerializer};
 
-use crate::column_default::ColumnDefault;
 use crate::database_error::DatabaseError;
-use crate::statement::SchemaStatement;
 use indexmap::IndexMap;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::fmt::Debug;
 use std::sync::LazyLock;
-use tokio_postgres::types::Type;
 
 /// Trait that all physical column types must implement
 pub trait PhysicalColumnType: Send + Sync + Debug {
     /// Returns a string description of the type
     fn type_string(&self) -> String;
-
-    /// Returns the PostgreSQL type
-    fn get_pg_type(&self) -> Type;
-
-    /// Converts to SQL DDL statement
-    fn to_sql(&self, default_value: Option<&ColumnDefault>) -> SchemaStatement;
 
     /// Returns the type name for serialization
     fn type_name(&self) -> &'static str;
@@ -106,25 +97,69 @@ impl PhysicalColumnTypeExt for Box<dyn PhysicalColumnType> {
     }
 }
 
-// Helper function to convert postgres array types
-pub fn to_pg_array_type(pg_type: &Type) -> Type {
-    match *pg_type {
-        Type::INT2 => Type::INT2_ARRAY,
-        Type::INT4 => Type::INT4_ARRAY,
-        Type::INT8 => Type::INT8_ARRAY,
-        Type::TEXT => Type::TEXT_ARRAY,
-        Type::JSONB => Type::JSONB_ARRAY,
-        Type::FLOAT4 => Type::FLOAT4_ARRAY,
-        Type::FLOAT8 => Type::FLOAT8_ARRAY,
-        Type::BOOL => Type::BOOL_ARRAY,
-        Type::TIMESTAMPTZ => Type::TIMESTAMPTZ_ARRAY,
-        Type::TEXT_ARRAY => Type::TEXT_ARRAY,
-        Type::VARCHAR => Type::VARCHAR_ARRAY,
-        Type::BYTEA => Type::BYTEA_ARRAY,
-        Type::UUID => Type::UUID_ARRAY,
-        Type::NUMERIC => Type::NUMERIC_ARRAY,
-        _ => unimplemented!("Unsupported array type: {:?}", pg_type),
-    }
+/// Macro to generate a downcast dispatch function from `&dyn PhysicalColumnType` to a target trait.
+///
+/// This avoids duplicating the same 14-branch downcast chain across multiple crates.
+/// Usage: `downcast_physical_column_type!(function_name, TargetTrait)`
+#[macro_export]
+macro_rules! downcast_physical_column_type {
+    ($fn_name:ident, $target_trait:path) => {
+        pub fn $fn_name(
+            typ: &dyn $crate::physical_column_type::PhysicalColumnType,
+        ) -> &dyn $target_trait {
+            use $crate::physical_column_type::*;
+            let any = typ.as_any();
+
+            if let Some(t) = any.downcast_ref::<IntColumnType>() {
+                return t;
+            }
+            if let Some(t) = any.downcast_ref::<StringColumnType>() {
+                return t;
+            }
+            if let Some(t) = any.downcast_ref::<BooleanColumnType>() {
+                return t;
+            }
+            if let Some(t) = any.downcast_ref::<FloatColumnType>() {
+                return t;
+            }
+            if let Some(t) = any.downcast_ref::<NumericColumnType>() {
+                return t;
+            }
+            if let Some(t) = any.downcast_ref::<DateColumnType>() {
+                return t;
+            }
+            if let Some(t) = any.downcast_ref::<TimeColumnType>() {
+                return t;
+            }
+            if let Some(t) = any.downcast_ref::<TimestampColumnType>() {
+                return t;
+            }
+            if let Some(t) = any.downcast_ref::<UuidColumnType>() {
+                return t;
+            }
+            if let Some(t) = any.downcast_ref::<JsonColumnType>() {
+                return t;
+            }
+            if let Some(t) = any.downcast_ref::<BlobColumnType>() {
+                return t;
+            }
+            if let Some(t) = any.downcast_ref::<VectorColumnType>() {
+                return t;
+            }
+            if let Some(t) = any.downcast_ref::<EnumColumnType>() {
+                return t;
+            }
+            if let Some(t) = any.downcast_ref::<ArrayColumnType>() {
+                return t;
+            }
+
+            panic!(
+                "Unknown PhysicalColumnType: {:?}. All concrete types must implement {}.",
+                typ,
+                stringify!($target_trait)
+            );
+        }
+    };
 }
 
 // Factory function to create physical column types from strings

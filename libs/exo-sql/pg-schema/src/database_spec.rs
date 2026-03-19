@@ -9,6 +9,7 @@
 
 use std::collections::{HashMap, HashSet};
 
+use crate::column_default_schema::ColumnDefaultSchema;
 use exo_sql_core::relation::RelationColumnPair;
 use exo_sql_core::{ColumnAutoincrement, ColumnDefault};
 use exo_sql_core::{
@@ -425,7 +426,7 @@ impl DatabaseSpec {
                     format!(
                         "NEW.{} = {}",
                         column.name,
-                        column.default_value.clone().unwrap().to_sql().unwrap()
+                        column.default_value.clone().unwrap().to_schema().unwrap()
                     )
                 })
                 .collect::<Vec<_>>()

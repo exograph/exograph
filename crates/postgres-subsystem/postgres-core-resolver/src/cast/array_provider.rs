@@ -11,7 +11,7 @@ use super::CastProvider;
 use crate::cast::CastError;
 use common::value::Val;
 use exo_sql::{
-    ArrayColumnType, PhysicalColumnType, SQLParamContainer,
+    ArrayColumnType, PgColumnTypeExt, PhysicalColumnType, SQLParamContainer,
     array_util::{self, ArrayEntry},
     database_error::DatabaseError,
 };

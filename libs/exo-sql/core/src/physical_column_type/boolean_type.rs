@@ -8,11 +8,9 @@
 // by the Apache License, Version 2.0.
 
 use super::{PhysicalColumnType, PhysicalColumnTypeSerializer};
-use crate::{column_default::ColumnDefault, statement::SchemaStatement};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::hash::Hash;
-use tokio_postgres::types::Type;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct BooleanColumnType;
@@ -20,18 +18,6 @@ pub struct BooleanColumnType;
 impl PhysicalColumnType for BooleanColumnType {
     fn type_string(&self) -> String {
         "Boolean".to_string()
-    }
-
-    fn get_pg_type(&self) -> Type {
-        Type::BOOL
-    }
-
-    fn to_sql(&self, _default_value: Option<&ColumnDefault>) -> SchemaStatement {
-        SchemaStatement {
-            statement: "BOOLEAN".to_owned(),
-            pre_statements: vec![],
-            post_statements: vec![],
-        }
     }
 
     fn type_name(&self) -> &'static str {

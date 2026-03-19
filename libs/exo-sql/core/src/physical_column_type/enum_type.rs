@@ -8,13 +8,10 @@
 // by the Apache License, Version 2.0.
 
 use super::{PhysicalColumnType, PhysicalColumnTypeSerializer};
-use crate::{
-    column_default::ColumnDefault, schema_object::SchemaObjectName, statement::SchemaStatement,
-};
+use crate::schema_object::SchemaObjectName;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::hash::Hash;
-use tokio_postgres::types::Type;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct EnumColumnType {
@@ -24,18 +21,6 @@ pub struct EnumColumnType {
 impl PhysicalColumnType for EnumColumnType {
     fn type_string(&self) -> String {
         format!("Enum({})", self.enum_name.name)
-    }
-
-    fn get_pg_type(&self) -> Type {
-        Type::TEXT
-    }
-
-    fn to_sql(&self, _default_value: Option<&ColumnDefault>) -> SchemaStatement {
-        SchemaStatement {
-            statement: self.enum_name.sql_name(),
-            pre_statements: vec![],
-            post_statements: vec![],
-        }
     }
 
     fn type_name(&self) -> &'static str {

@@ -19,7 +19,6 @@ tokio-postgres = { workspace = true, features = [
   "with-serde_json-1",
   "with-uuid-1",
 ], default-features = false }
-postgres_array = "0.11.1"
 chrono.workspace = true
 regex.workspace = true
 serde.workspace = true
@@ -36,7 +35,6 @@ default-features = false
 [dev-dependencies]
 wasm-bindgen-test.workspace = true
 wasm-bindgen-test-macro.workspace = true
-multiplatform_test.workspace = true
 
 [lib]
 doctest = false

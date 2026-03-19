@@ -51,7 +51,7 @@ pub mod testing {
 }
 
 pub mod array_util {
-    pub use exo_sql_core::array_util::*;
+    pub use exo_sql_pg_core::array_util::*;
 }
 
 pub use exo_sql_model::{
@@ -75,6 +75,7 @@ pub use exo_sql_pg_connect::{
 };
 
 pub use exo_sql_pg_core::column::Column;
+pub use exo_sql_pg_core::{PgColumnType, PgColumnTypeExt, as_pg_column_type, to_pg_array_type};
 
 pub use exo_sql_core::{
     ColumnId, ColumnReference, Database, DatabaseError, Function, Limit, ManyToOne, ManyToOneId,
