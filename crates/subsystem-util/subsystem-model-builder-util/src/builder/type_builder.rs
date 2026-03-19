@@ -11,7 +11,9 @@ use core_model::{
     context_type::ContextType, function_defn::FunctionDefinition, mapped_arena::MappedArena,
     types::FieldType,
 };
-use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError, typechecker::Typed};
+use core_model_builder::{
+    ast::ast_types::AstAccessExpr, error::ModelBuildingError, typechecker::Typed,
+};
 use subsystem_model_util::{
     access::Access,
     types::{ModuleCompositeType, ModuleField, ModuleFieldType, ModuleType, ModuleTypeKind},
@@ -173,8 +175,9 @@ fn compute_access_composite_types(
     resolved: &ResolvedAccess,
     resolved_env: &ResolvedTypeEnv,
 ) -> Result<Access, ModelBuildingError> {
-    let access_expr =
-        |expr: &AstExpr<Typed>| access_utils::compute_predicate_expression(expr, resolved_env);
+    let access_expr = |expr: &AstAccessExpr<Typed>| {
+        access_utils::compute_predicate_expression(expr, resolved_env)
+    };
 
     Ok(Access {
         value: access_expr(&resolved.value)?,
@@ -244,8 +247,9 @@ fn compute_access_method(
     resolved: &ResolvedAccess,
     resolved_env: &ResolvedTypeEnv,
 ) -> Result<Access, ModelBuildingError> {
-    let access_expr =
-        |expr: &AstExpr<Typed>| access_utils::compute_predicate_expression(expr, resolved_env);
+    let access_expr = |expr: &AstAccessExpr<Typed>| {
+        access_utils::compute_predicate_expression(expr, resolved_env)
+    };
 
     Ok(Access {
         value: access_expr(&resolved.value)?,

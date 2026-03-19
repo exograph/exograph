@@ -15,7 +15,7 @@ use core_model::{
     primitive_type::{self, PrimitiveType},
 };
 use core_model_builder::{
-    ast::ast_types::{AstExpr, AstModel, FieldSelectionElement},
+    ast::ast_types::{AstAccessExpr, AstModel, FieldSelectionElement},
     typechecker::{Typed, annotation::AnnotationSpec},
 };
 
@@ -54,7 +54,7 @@ impl TypecheckFunctionCallFrom<FieldSelectionElement<Untyped>> for FieldSelectio
                 span: *span,
                 name: name.clone(),
                 param_name: elem_name.clone(),
-                expr: Box::new(AstExpr::shallow(expr)),
+                expr: Box::new(AstAccessExpr::shallow(expr)),
                 typ: Type::Defer,
             },
             FieldSelectionElement::NormalCall {
@@ -62,7 +62,7 @@ impl TypecheckFunctionCallFrom<FieldSelectionElement<Untyped>> for FieldSelectio
             } => FieldSelectionElement::NormalCall {
                 span: *span,
                 name: name.clone(),
-                params: params.iter().map(AstExpr::shallow).collect(),
+                params: params.iter().map(AstAccessExpr::shallow).collect(),
                 typ: Type::Defer,
             },
         }

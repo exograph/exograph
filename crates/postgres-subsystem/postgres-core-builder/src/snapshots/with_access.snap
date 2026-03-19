@@ -59,8 +59,9 @@ values:
             is_pk: true
             access:
               default:
-                BooleanLiteral:
-                  - true
+                Literal:
+                  Boolean:
+                    - true
               query: ~
               mutation: ~
               creation: ~
@@ -86,8 +87,9 @@ values:
             is_pk: false
             access:
               default:
-                BooleanLiteral:
-                  - true
+                Literal:
+                  Boolean:
+                    - true
               query: ~
               mutation: ~
               creation: ~
@@ -112,8 +114,9 @@ values:
             is_pk: false
             access:
               default:
-                BooleanLiteral:
-                  - true
+                Literal:
+                  Boolean:
+                    - true
               query: ~
               mutation: ~
               creation: ~
@@ -153,8 +156,9 @@ values:
                             - Reference:
                                 index: 4
                                 generation: ~
-                      - StringLiteral:
-                          - ROLE_ADMIN
+                      - Literal:
+                          String:
+                            - ROLE_ADMIN
                       - Primitive:
                           Plain: Boolean
                 - FieldSelection:
@@ -199,8 +203,9 @@ values:
             is_pk: true
             access:
               default:
-                BooleanLiteral:
-                  - true
+                Literal:
+                  Boolean:
+                    - true
               query: ~
               mutation: ~
               creation: ~
@@ -226,8 +231,9 @@ values:
             is_pk: false
             access:
               default:
-                BooleanLiteral:
-                  - true
+                Literal:
+                  Boolean:
+                    - true
               query: ~
               mutation: ~
               creation: ~
@@ -246,8 +252,9 @@ values:
           schema: ~
         access:
           default:
-            BooleanLiteral:
-              - true
+            Literal:
+              Boolean:
+                - true
           query: ~
           mutation: ~
           creation: ~
@@ -271,8 +278,9 @@ values:
             is_pk: true
             access:
               default:
-                BooleanLiteral:
-                  - true
+                Literal:
+                  Boolean:
+                    - true
               query: ~
               mutation: ~
               creation: ~
@@ -298,8 +306,9 @@ values:
             is_pk: false
             access:
               default:
-                BooleanLiteral:
-                  - true
+                Literal:
+                  Boolean:
+                    - true
               query: ~
               mutation: ~
               creation: ~
@@ -318,8 +327,9 @@ values:
           schema: ~
         access:
           default:
-            BooleanLiteral:
-              - false
+            Literal:
+              Boolean:
+                - false
           query: ~
           mutation: ~
           creation: ~

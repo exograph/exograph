@@ -32,42 +32,44 @@ modules:
           - name: access
             params:
               Single:
-                - FieldSelection:
-                    Select:
-                      - Select:
-                          - Single:
-                              - Identifier:
-                                  - self
-                                  - ~
-                              - ~
-                          - Identifier:
-                              - concerts
-                              - ~
-                          - ~
-                      - HofCall:
-                          name:
-                            - some
-                          param_name:
-                            - c
-                          expr:
-                            RelationalOp:
-                              Eq:
-                                - FieldSelection:
-                                    Select:
-                                      - Single:
-                                          - Identifier:
-                                              - c
-                                              - ~
-                                          - ~
-                                      - Identifier:
-                                          - id
-                                          - ~
-                                      - ~
-                                - NumberLiteral:
-                                    - "1"
+                - AccessExpr:
+                    FieldSelection:
+                      Select:
+                        - Select:
+                            - Single:
+                                - Identifier:
+                                    - self
+                                    - ~
                                 - ~
-                          typ: ~
-                      - ~
+                            - Identifier:
+                                - concerts
+                                - ~
+                            - ~
+                        - HofCall:
+                            name:
+                              - some
+                            param_name:
+                              - c
+                            expr:
+                              RelationalOp:
+                                Eq:
+                                  - FieldSelection:
+                                      Select:
+                                        - Single:
+                                            - Identifier:
+                                                - c
+                                                - ~
+                                            - ~
+                                        - Identifier:
+                                            - id
+                                            - ~
+                                        - ~
+                                  - Literal:
+                                      Number:
+                                        - "1"
+                                  - ~
+                            typ: ~
+                        - ~
         doc_comments: ~
       - name: Concert
         kind: Type

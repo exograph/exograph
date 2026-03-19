@@ -1,6 +1,6 @@
 ---
 source: crates/builder/src/parser/converter.rs
-expression: "convert_root(parsed.root_node(),\nr#\"\n            @postgres\n            module TestModule{            \n                type Foo {\n                    @column(\"custom_column\") @access(!self.role == \"role_admin\" || self.role == \"role_superuser\")\n                    bar: Baz\n                }\n            }\n        \"#.as_bytes(),\nfile_span, Path :: new(\"input.exo\")).unwrap()"
+expression: "convert_root(parsed.root_node(),\nr#\"\n            @postgres\n            module TestModule{\n                type Foo {\n                    @column(\"custom_column\") @access(!self.role == \"role_admin\" || self.role == \"role_superuser\")\n                    bar: Baz\n                }\n            }\n        \"#.as_bytes(),\nfile_span, Path :: new(\"input.exo\")).unwrap()"
 ---
 types: []
 modules:
@@ -23,49 +23,53 @@ modules:
               - name: column
                 params:
                   Single:
-                    - StringLiteral:
-                        - custom_column
+                    - Literal:
+                        String:
+                          - custom_column
               - name: access
                 params:
                   Single:
-                    - LogicalOp:
-                        Or:
-                          - RelationalOp:
-                              Eq:
-                                - LogicalOp:
-                                    Not:
-                                      - FieldSelection:
-                                          Select:
-                                            - Single:
-                                                - Identifier:
-                                                    - self
-                                                    - ~
-                                                - ~
+                    - AccessExpr:
+                        LogicalOp:
+                          Or:
+                            - RelationalOp:
+                                Eq:
+                                  - LogicalOp:
+                                      Not:
+                                        - FieldSelection:
+                                            Select:
+                                              - Single:
+                                                  - Identifier:
+                                                      - self
+                                                      - ~
+                                                  - ~
+                                              - Identifier:
+                                                  - role
+                                                  - ~
+                                              - ~
+                                        - ~
+                                  - Literal:
+                                      String:
+                                        - role_admin
+                                  - ~
+                            - RelationalOp:
+                                Eq:
+                                  - FieldSelection:
+                                      Select:
+                                        - Single:
                                             - Identifier:
-                                                - role
+                                                - self
                                                 - ~
                                             - ~
-                                      - ~
-                                - StringLiteral:
-                                    - role_admin
-                                - ~
-                          - RelationalOp:
-                              Eq:
-                                - FieldSelection:
-                                    Select:
-                                      - Single:
-                                          - Identifier:
-                                              - self
-                                              - ~
-                                          - ~
-                                      - Identifier:
-                                          - role
-                                          - ~
-                                      - ~
-                                - StringLiteral:
-                                    - role_superuser
-                                - ~
-                          - ~
+                                        - Identifier:
+                                            - role
+                                            - ~
+                                        - ~
+                                  - Literal:
+                                      String:
+                                        - role_superuser
+                                  - ~
+                            - ~
             default_value: ~
             doc_comments: ~
         fragment_references: []

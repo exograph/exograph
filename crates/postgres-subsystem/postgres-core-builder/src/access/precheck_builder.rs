@@ -21,7 +21,7 @@ use core_model::{
     types::FieldType,
 };
 use core_model_builder::{
-    ast::ast_types::{AstExpr, FieldSelection, FieldSelectionElement},
+    ast::ast_types::{AstAccessExpr, AstLiteral, FieldSelection, FieldSelectionElement},
     error::ModelBuildingError,
     typechecker::Typed,
 };
@@ -54,7 +54,7 @@ enum PrecheckPathSelection<'a> {
 }
 
 pub fn compute_precheck_predicate_expression(
-    expr: &AstExpr<Typed>,
+    expr: &AstAccessExpr<Typed>,
     self_type_info: &EntityType,
     function_context: HashMap<String, &EntityType>,
     resolved_env: &ResolvedTypeEnv,
@@ -63,7 +63,7 @@ pub fn compute_precheck_predicate_expression(
     database: &Database,
 ) -> Result<AccessPredicateExpression<PrecheckAccessPrimitiveExpression>, ModelBuildingError> {
     match expr {
-        AstExpr::FieldSelection(selection) => {
+        AstAccessExpr::FieldSelection(selection) => {
             let selection = compute_precheck_selection(
                 selection,
                 self_type_info,
@@ -156,8 +156,8 @@ pub fn compute_precheck_predicate_expression(
                 }
             }
         }
-        AstExpr::LogicalOp(op) => {
-            let predicate_expr = |expr: &AstExpr<Typed>| {
+        AstAccessExpr::LogicalOp(op) => {
+            let predicate_expr = |expr: &AstAccessExpr<Typed>| {
                 compute_precheck_predicate_expression(
                     expr,
                     self_type_info,
@@ -170,8 +170,8 @@ pub fn compute_precheck_predicate_expression(
             };
             compute_logical_op(op, predicate_expr)
         }
-        AstExpr::RelationalOp(op) => {
-            let primitive_expr = |expr: &AstExpr<Typed>| {
+        AstAccessExpr::RelationalOp(op) => {
+            let primitive_expr = |expr: &AstAccessExpr<Typed>| {
                 compute_primitive_precheck_expr(
                     expr,
                     self_type_info,
@@ -184,21 +184,17 @@ pub fn compute_precheck_predicate_expression(
             };
             compute_relational_op(op, primitive_expr)
         }
-        AstExpr::BooleanLiteral(value, _) => Ok(AccessPredicateExpression::BooleanLiteral(*value)),
-        AstExpr::StringLiteral(_, _) => Err(ModelBuildingError::Generic(
+        AstAccessExpr::Literal(AstLiteral::Boolean(value, _)) => {
+            Ok(AccessPredicateExpression::BooleanLiteral(*value))
+        }
+        AstAccessExpr::Literal(AstLiteral::String(_, _)) => Err(ModelBuildingError::Generic(
             "Top-level expression cannot be a string literal".to_string(),
         )),
-        AstExpr::NumberLiteral(_, _) => Err(ModelBuildingError::Generic(
+        AstAccessExpr::Literal(AstLiteral::Number(_, _)) => Err(ModelBuildingError::Generic(
             "Top-level expression cannot be a number literal".to_string(),
         )),
-        AstExpr::StringList(_, _) => Err(ModelBuildingError::Generic(
-            "Top-level expression cannot be a list literal".to_string(),
-        )),
-        AstExpr::NullLiteral(_) => Err(ModelBuildingError::Generic(
+        AstAccessExpr::Literal(AstLiteral::Null(_)) => Err(ModelBuildingError::Generic(
             "Top-level expression cannot be a null literal".to_string(),
-        )),
-        AstExpr::ObjectLiteral(_, _) => Err(ModelBuildingError::Generic(
-            "Top-level expression cannot be an object literal".to_string(),
         )),
     }
 }
@@ -263,7 +259,7 @@ fn compute_precheck_function_expr(
 }
 
 fn compute_primitive_precheck_expr(
-    expr: &AstExpr<Typed>,
+    expr: &AstAccessExpr<Typed>,
     self_type_info: &EntityType,
     function_context: HashMap<String, &EntityType>,
     resolved_env: &ResolvedTypeEnv,
@@ -272,7 +268,7 @@ fn compute_primitive_precheck_expr(
     database: &Database,
 ) -> Result<PrecheckAccessPrimitiveExpression, ModelBuildingError> {
     match expr {
-        AstExpr::FieldSelection(field_selection) => {
+        AstAccessExpr::FieldSelection(field_selection) => {
             let selection = compute_precheck_selection(
                 field_selection,
                 self_type_info,
@@ -295,26 +291,11 @@ fn compute_primitive_precheck_expr(
                 ),
             })
         }
-        AstExpr::StringLiteral(value, _) => Ok(PrecheckAccessPrimitiveExpression::Common(
-            CommonAccessPrimitiveExpression::StringLiteral(value.clone()),
+        AstAccessExpr::Literal(lit) => Ok(PrecheckAccessPrimitiveExpression::Common(
+            lit.to_common_access_primitive(),
         )),
-        AstExpr::BooleanLiteral(value, _) => Ok(PrecheckAccessPrimitiveExpression::Common(
-            CommonAccessPrimitiveExpression::BooleanLiteral(*value),
-        )),
-        AstExpr::NumberLiteral(value, _) => Ok(PrecheckAccessPrimitiveExpression::Common(
-            CommonAccessPrimitiveExpression::NumberLiteral(value.clone()),
-        )),
-        AstExpr::NullLiteral(_) => Ok(PrecheckAccessPrimitiveExpression::Common(
-            CommonAccessPrimitiveExpression::NullLiteral,
-        )),
-        AstExpr::StringList(_, _) => Err(ModelBuildingError::Generic(
-            "Access expressions do not support lists yet".to_string(),
-        )),
-        AstExpr::ObjectLiteral(_, _) => Err(ModelBuildingError::Generic(
-            "Access expressions do not support object literals".to_string(),
-        )),
-        AstExpr::LogicalOp(_) => unreachable!(), // Parser ensures that the two sides are primitive expressions
-        AstExpr::RelationalOp(_) => unreachable!(), // Parser ensures that the two sides are primitive expressions
+        AstAccessExpr::LogicalOp(_) => unreachable!(), // Parser ensures that the two sides are primitive expressions
+        AstAccessExpr::RelationalOp(_) => unreachable!(), // Parser ensures that the two sides are primitive expressions
     }
 }
 
@@ -613,9 +594,11 @@ mod tests {
             span: null_span(),
             name: Identifier("some".to_string(), null_span()),
             param_name: Identifier("i".to_string(), null_span()),
-            expr: Box::new(AstExpr::RelationalOp(RelationalOp::Eq(
-                Box::new(AstExpr::FieldSelection(create_field_selection("i.title"))),
-                Box::new(AstExpr::FieldSelection(create_field_selection(
+            expr: Box::new(AstAccessExpr::RelationalOp(RelationalOp::Eq(
+                Box::new(AstAccessExpr::FieldSelection(create_field_selection(
+                    "i.title",
+                ))),
+                Box::new(AstAccessExpr::FieldSelection(create_field_selection(
                     "AuthContext.title",
                 ))),
                 Type::Defer,
@@ -636,11 +619,14 @@ mod tests {
     #[test]
     fn many_to_one_predicate() -> Result<(), ModelBuildingError> {
         // self.assignee.position == "developer" (will lead to a database residue when resolving)
-        let expr = AstExpr::RelationalOp(RelationalOp::Eq(
-            Box::new(AstExpr::FieldSelection(create_field_selection(
+        let expr = AstAccessExpr::RelationalOp(RelationalOp::Eq(
+            Box::new(AstAccessExpr::FieldSelection(create_field_selection(
                 "self.assignee.position",
             ))),
-            Box::new(AstExpr::StringLiteral("developer".to_string(), null_span())),
+            Box::new(AstAccessExpr::Literal(AstLiteral::String(
+                "developer".to_string(),
+                null_span(),
+            ))),
             Type::Defer,
         ));
 
@@ -656,9 +642,11 @@ mod tests {
             span: null_span(),
             name: Identifier("some".to_string(), null_span()),
             param_name: Identifier("i".to_string(), null_span()),
-            expr: Box::new(AstExpr::RelationalOp(RelationalOp::Eq(
-                Box::new(AstExpr::FieldSelection(create_field_selection("i.title"))),
-                Box::new(AstExpr::FieldSelection(create_field_selection(
+            expr: Box::new(AstAccessExpr::RelationalOp(RelationalOp::Eq(
+                Box::new(AstAccessExpr::FieldSelection(create_field_selection(
+                    "i.title",
+                ))),
+                Box::new(AstAccessExpr::FieldSelection(create_field_selection(
                     "AuthContext.title",
                 ))),
                 Type::Defer,
@@ -673,7 +661,7 @@ mod tests {
             Type::Defer,
         );
 
-        let expr = AstExpr::FieldSelection(selection);
+        let expr = AstAccessExpr::FieldSelection(selection);
 
         assert_precheck_predicate(expr, "Employee", "hof_call_predicate")
     }
@@ -711,7 +699,7 @@ mod tests {
     }
 
     fn assert_precheck_predicate(
-        predicate: AstExpr<Typed>,
+        predicate: AstAccessExpr<Typed>,
         entity_name: &str,
         test_name: &str,
     ) -> Result<(), ModelBuildingError> {

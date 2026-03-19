@@ -13,7 +13,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     ast::ast_types::{
-        AstAnnotation, AstAnnotationParams, AstExpr, AstField, AstModel, AstModelKind,
+        AstAnnotation, AstAnnotationParam, AstAnnotationParams, AstField, AstLiteral, AstModel,
+        AstModelKind,
     },
     error::ModelBuildingError,
     typechecker::{AnnotationMap, Type, Typed, typ::TypecheckedSystem},
@@ -202,9 +203,10 @@ fn extract_context_source(
 
             // extract the value from the annotation
             let value = match &annotation.params {
-                AstAnnotationParams::Single(AstExpr::StringLiteral(string, _), _) => {
-                    Some(string.clone())
-                }
+                AstAnnotationParams::Single(
+                    AstAnnotationParam::Literal(AstLiteral::String(string, _)),
+                    _,
+                ) => Some(string.clone()),
 
                 AstAnnotationParams::None => None,
 

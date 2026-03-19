@@ -13,7 +13,7 @@ use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::{mapped_arena::MappedArena, primitive_type};
 use core_model_builder::typechecker::{Typed, annotation::AnnotationSpec};
 
-use crate::ast::ast_types::{AstExpr, RelationalOp, Untyped};
+use crate::ast::ast_types::{AstAccessExpr, RelationalOp, Untyped};
 
 use super::{PrimitiveType, Scope, Type, TypecheckFrom};
 
@@ -31,8 +31,8 @@ impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
             RelationalOp::In(..) => RelationalOp::In,
         };
 
-        let left = Box::new(AstExpr::shallow(left));
-        let right = Box::new(AstExpr::shallow(right));
+        let left = Box::new(AstAccessExpr::shallow(left));
+        let right = Box::new(AstAccessExpr::shallow(right));
 
         combiner(left, right, Type::Defer)
     }
@@ -44,8 +44,8 @@ impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
         scope: &Scope,
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
-        let mut typecheck_operands = |left: &mut Box<AstExpr<Typed>>,
-                                      right: &mut Box<AstExpr<Typed>>,
+        let mut typecheck_operands = |left: &mut Box<AstAccessExpr<Typed>>,
+                                      right: &mut Box<AstAccessExpr<Typed>>,
                                       o_typ: &mut Type,
                                       type_match: fn(&Type, &Type) -> bool|
          -> bool {

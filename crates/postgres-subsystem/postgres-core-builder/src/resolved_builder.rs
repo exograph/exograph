@@ -37,8 +37,9 @@ use core_model::{
 };
 use core_model_builder::{
     ast::ast_types::{
-        AstAnnotation, AstAnnotationParams, AstExpr, AstField, AstFieldDefault,
-        AstFieldDefaultKind, AstFieldType, AstModel, AstModelKind, default_span,
+        AstAccessExpr, AstAnnotation, AstAnnotationParam, AstAnnotationParams, AstField,
+        AstFieldDefault, AstFieldDefaultKind, AstFieldType, AstLiteral, AstModel, AstModelKind,
+        default_span,
     },
     builder::resolved_builder::{AnnotationMapHelper, compute_fragment_fields},
     error::ModelBuildingError,
@@ -234,7 +235,10 @@ fn resolve_composite_type(
         let access = if is_json {
             // As if the user has annotated with `access(true)`
             ResolvedAccess {
-                default: Some(AstExpr::BooleanLiteral(true, default_span())),
+                default: Some(AstAccessExpr::Literal(AstLiteral::Boolean(
+                    true,
+                    default_span(),
+                ))),
                 ..Default::default()
             }
         } else {
@@ -305,7 +309,8 @@ fn resolve_composite_type_fields(
             let access = match access_annotation {
                 Some(_) => build_access(access_annotation),
                 None => ResolvedAccess {
-                    default: AstExpr::BooleanLiteral(true, default_span()).into(),
+                    default: AstAccessExpr::Literal(AstLiteral::Boolean(true, default_span()))
+                        .into(),
                     ..Default::default()
                 },
             };
@@ -366,7 +371,9 @@ fn resolve_field_default_type(
     let field_underlying_type = field_type.name();
 
     match &default_value.kind {
-        AstFieldDefaultKind::Value(expr) => ResolvedFieldDefault::Value(Box::new(expr.to_owned())),
+        AstFieldDefaultKind::Value(value) => {
+            ResolvedFieldDefault::Value(Box::new(value.to_owned()))
+        }
         AstFieldDefaultKind::Function(fn_name, args) => match fn_name.as_str() {
             DEFAULT_FN_AUTO_INCREMENT => {
                 if field_underlying_type != primitive_type::IntType::NAME {
@@ -384,7 +391,7 @@ fn resolve_field_default_type(
 
                 match &args[..] {
                     [] => ResolvedFieldDefault::AutoIncrement(None),
-                    [AstExpr::StringLiteral(sequence_name, _)] => {
+                    [AstLiteral::String(sequence_name, _)] => {
                         // Split the sequence name by '.' and use the last part as the sequence name
                         match sequence_name.split('.').collect::<Vec<&str>>()[..] {
                             [schema, name] => ResolvedFieldDefault::AutoIncrement(Some(
@@ -549,8 +556,10 @@ fn compute_unique_constraints(field: &AstField<Typed>) -> Result<Vec<String>, Di
         None => Ok(vec![]),
         Some(p) => match p {
             AstAnnotationParams::Single(expr, _) => match expr {
-                AstExpr::StringLiteral(string, _) => Ok(vec![string.clone()]),
-                AstExpr::StringList(string_list, _) => Ok(string_list.clone()),
+                AstAnnotationParam::Literal(AstLiteral::String(string, _)) => {
+                    Ok(vec![string.clone()])
+                }
+                AstAnnotationParam::StringList(string_list, _) => Ok(string_list.clone()),
                 _ => Err(Diagnostic {
                     level: Level::Error,
                     message: "Not a string nor a string list when specifying unique".to_string(),
@@ -587,8 +596,10 @@ fn compute_indices(
         None => Ok(vec![]),
         Some(p) => match p {
             AstAnnotationParams::Single(expr, _) => match expr {
-                AstExpr::StringLiteral(string, _) => Ok(vec![string.clone()]),
-                AstExpr::StringList(string_list, _) => Ok(string_list.clone()),
+                AstAnnotationParam::Literal(AstLiteral::String(string, _)) => {
+                    Ok(vec![string.clone()])
+                }
+                AstAnnotationParam::StringList(string_list, _) => Ok(string_list.clone()),
                 _ => Err(Diagnostic {
                     level: Level::Error,
                     message: "Not a string nor a string list when specifying index".to_string(),
@@ -1007,11 +1018,11 @@ fn column_annotation_mapping(field: &AstField<Typed>) -> Option<ColumnMapping> {
         match annotation {
             // Handle the object literal syntax: @column(mapping={zip: "azip", city: "acity"})
             AstAnnotationParams::Map(map, _) => {
-                if let Some(AstExpr::ObjectLiteral(object_map, _)) = map.get("mapping") {
+                if let Some(AstAnnotationParam::ObjectLiteral(object_map, _)) = map.get("mapping") {
                     // Extract string values from the object literal
                     let mut result = HashMap::new();
                     for (key, value) in object_map {
-                        if let AstExpr::StringLiteral(string_value, _) = value {
+                        if let AstLiteral::String(string_value, _) = value {
                             result.insert(key.clone(), string_value.clone());
                         }
                     }
@@ -1024,9 +1035,10 @@ fn column_annotation_mapping(field: &AstField<Typed>) -> Option<ColumnMapping> {
                     None
                 }
             }
-            AstAnnotationParams::Single(AstExpr::StringLiteral(s, _), _) => {
-                Some(ColumnMapping::Single(s.clone()))
-            }
+            AstAnnotationParams::Single(
+                AstAnnotationParam::Literal(AstLiteral::String(s, _)),
+                _,
+            ) => Some(ColumnMapping::Single(s.clone())),
             _ => None,
         }
     })

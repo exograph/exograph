@@ -1,6 +1,6 @@
 ---
 source: crates/builder/src/parser/converter.rs
-expression: "convert_root(parsed.root_node(),\nr#\"\n            @postgres\n            module TestModule{\n                // a short comment\n                @table(\"concerts\")\n                type Concert {\n                    @pk id: Int = autoIncrement()\n                    title: String // a comment\n                    // another comment\n                    @column(\"venueid\") venue: Venue \n                    /*\n                    not_a_field: Int\n                    */\n                }\n\n                /*\n                a multiline comment\n                */\n                @table(\"venues\")\n                type Venue {\n                    @pk id: Int = autoIncrement()\n                    name: String\n                    /*here */ @column(\"venueid\") /* and here */ concerts: Set<Concert /* here too! */> \n                }\n            }\n        \"#.as_bytes(),\nfile_span, Path :: new(\"input.exo\")).unwrap()"
+expression: "convert_root(parsed.root_node(),\nr#\"\n            @postgres\n            module TestModule{\n                // a short comment\n                @table(\"concerts\")\n                type Concert {\n                    @pk id: Int = autoIncrement()\n                    title: String // a comment\n                    // another comment\n                    @column(\"venueid\") venue: Venue\n                    /*\n                    not_a_field: Int\n                    */\n                }\n\n                /*\n                a multiline comment\n                */\n                @table(\"venues\")\n                type Venue {\n                    @pk id: Int = autoIncrement()\n                    name: String\n                    /*here */ @column(\"venueid\") /* and here */ concerts: Set<Concert /* here too! */>\n                }\n            }\n        \"#.as_bytes(),\nfile_span, Path :: new(\"input.exo\")).unwrap()"
 ---
 types: []
 modules:
@@ -49,8 +49,9 @@ modules:
               - name: column
                 params:
                   Single:
-                    - StringLiteral:
-                        - venueid
+                    - Literal:
+                        String:
+                          - venueid
             default_value: ~
             doc_comments: ~
         fragment_references: []
@@ -58,8 +59,9 @@ modules:
           - name: table
             params:
               Single:
-                - StringLiteral:
-                    - concerts
+                - Literal:
+                    String:
+                      - concerts
         doc_comments: ~
       - name: Venue
         kind: Type
@@ -105,8 +107,9 @@ modules:
               - name: column
                 params:
                   Single:
-                    - StringLiteral:
-                        - venueid
+                    - Literal:
+                        String:
+                          - venueid
             default_value: ~
             doc_comments: ~
         fragment_references: []
@@ -114,8 +117,9 @@ modules:
           - name: table
             params:
               Single:
-                - StringLiteral:
-                    - venues
+                - Literal:
+                    String:
+                      - venues
         doc_comments: ~
     enums: []
     methods: []

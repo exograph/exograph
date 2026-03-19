@@ -16,7 +16,7 @@ use core_model::{
     },
 };
 use core_model_builder::{
-    ast::ast_types::{AstExpr, default_span},
+    ast::ast_types::{AstFieldDefaultValue, default_span},
     typechecker::Typed,
 };
 
@@ -262,7 +262,7 @@ impl ResolvedCompositeType {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResolvedFieldDefault {
-    Value(Box<AstExpr<Typed>>),
+    Value(Box<AstFieldDefaultValue<Typed>>),
     PostgresFunction(String),
     AutoIncrement(Option<SchemaObjectName>),
 }

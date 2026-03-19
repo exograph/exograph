@@ -95,30 +95,32 @@ types:
                     name: access
                     params:
                       Single:
-                        - RelationalOp:
-                            In:
-                              - StringLiteral:
-                                  - ROLE_ADMIN
-                              - FieldSelection:
-                                  Select:
-                                    - Single:
-                                        - Identifier:
-                                            - AuthContext
-                                            - Reference:
-                                                index: 16
-                                                generation: ~
-                                        - Reference:
-                                            index: 16
+                        - AccessExpr:
+                            RelationalOp:
+                              In:
+                                - Literal:
+                                    String:
+                                      - ROLE_ADMIN
+                                - FieldSelection:
+                                    Select:
+                                      - Single:
+                                          - Identifier:
+                                              - AuthContext
+                                              - Reference:
+                                                  index: 16
+                                                  generation: ~
+                                          - Reference:
+                                              index: 16
+                                              generation: ~
+                                      - Identifier:
+                                          - roles
+                                          - Defer
+                                      - Array:
+                                          Reference:
+                                            index: 4
                                             generation: ~
-                                    - Identifier:
-                                        - roles
-                                        - Defer
-                                    - Array:
-                                        Reference:
-                                          index: 4
-                                          generation: ~
-                              - Primitive:
-                                  Plain: Boolean
+                                - Primitive:
+                                    Plain: Boolean
               default_value: ~
               doc_comments: ~
           fragment_references: []
@@ -220,30 +222,32 @@ modules:
                       name: access
                       params:
                         Single:
-                          - RelationalOp:
-                              In:
-                                - StringLiteral:
-                                    - ROLE_ADMIN
-                                - FieldSelection:
-                                    Select:
-                                      - Single:
-                                          - Identifier:
-                                              - AuthContext
-                                              - Reference:
-                                                  index: 16
-                                                  generation: ~
-                                          - Reference:
-                                              index: 16
+                          - AccessExpr:
+                              RelationalOp:
+                                In:
+                                  - Literal:
+                                      String:
+                                        - ROLE_ADMIN
+                                  - FieldSelection:
+                                      Select:
+                                        - Single:
+                                            - Identifier:
+                                                - AuthContext
+                                                - Reference:
+                                                    index: 16
+                                                    generation: ~
+                                            - Reference:
+                                                index: 16
+                                                generation: ~
+                                        - Identifier:
+                                            - roles
+                                            - Defer
+                                        - Array:
+                                            Reference:
+                                              index: 4
                                               generation: ~
-                                      - Identifier:
-                                          - roles
-                                          - Defer
-                                      - Array:
-                                          Reference:
-                                            index: 4
-                                            generation: ~
-                                - Primitive:
-                                    Plain: Boolean
+                                  - Primitive:
+                                      Plain: Boolean
                 default_value: ~
                 doc_comments: ~
             fragment_references: []

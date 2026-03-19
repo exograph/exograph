@@ -22,7 +22,8 @@ use core_model_builder::typechecker::AnnotationMap;
 use core_model_builder::typechecker::typ::{Module, TypecheckedSystem};
 use core_model_builder::{
     ast::ast_types::{
-        AstAnnotationParams, AstArgument, AstExpr, AstMethodType, AstModelKind, AstModule,
+        AstAccessExpr, AstAnnotationParam, AstAnnotationParams, AstArgument, AstLiteral,
+        AstMethodType, AstModelKind, AstModule,
     },
     error::ModelBuildingError,
     typechecker::{Typed, typ::Type},
@@ -69,7 +70,7 @@ pub struct ResolvedCompositeType {
 pub struct ResolvedField {
     pub name: String,
     pub typ: FieldType<ResolvedFieldType>,
-    pub default_value: Option<Box<AstExpr<Typed>>>,
+    pub default_value: Option<Box<AstAccessExpr<Typed>>>,
     pub doc_comments: Option<String>,
 }
 
@@ -131,13 +132,13 @@ pub struct ResolvedInterceptor {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResolvedInterceptorKind {
-    Before(AstExpr<Typed>),
-    After(AstExpr<Typed>),
-    Around(AstExpr<Typed>),
+    Before(AstAccessExpr<Typed>),
+    After(AstAccessExpr<Typed>),
+    Around(AstAccessExpr<Typed>),
 }
 
 impl ResolvedInterceptorKind {
-    pub fn expr(&self) -> &AstExpr<Typed> {
+    pub fn expr(&self) -> &AstAccessExpr<Typed> {
         match self {
             ResolvedInterceptorKind::Before(expr) => expr,
             ResolvedInterceptorKind::After(expr) => expr,
@@ -260,7 +261,10 @@ async fn resolve_module(
     match annotation {
         // Extract the source path from the annotation
         // `@deno("util/auth.ts")` -> `util/auth.ts`
-        Some(AstAnnotationParams::Single(AstExpr::StringLiteral(module_relative_path, _), _)) => {
+        Some(AstAnnotationParams::Single(
+            AstAnnotationParam::Literal(AstLiteral::String(module_relative_path, _)),
+            _,
+        )) => {
             // The source path is relative to the module's base exofile
             let mut source_path = module.base_exofile.clone();
             source_path.pop();
@@ -273,7 +277,7 @@ async fn resolve_module(
             fn extract_intercept_annot<'a>(
                 annotations: &'a AnnotationMap,
                 key: &str,
-            ) -> Option<&'a AstExpr<Typed>> {
+            ) -> Option<&'a AstAnnotationParam<Typed>> {
                 annotations.get(key).map(|a| a.as_single())
             }
 
@@ -311,11 +315,11 @@ async fn resolve_module(
                         .iter()
                         .flat_map(|i| {
                             let before_annot = extract_intercept_annot(&i.annotations, "before")
-                                .map(|s| ResolvedInterceptorKind::Before(s.clone()));
+                                .map(|s| ResolvedInterceptorKind::Before(s.to_access_expr()));
                             let after_annot = extract_intercept_annot(&i.annotations, "after")
-                                .map(|s| ResolvedInterceptorKind::After(s.clone()));
+                                .map(|s| ResolvedInterceptorKind::After(s.to_access_expr()));
                             let around_annot = extract_intercept_annot(&i.annotations, "around")
-                                .map(|s| ResolvedInterceptorKind::Around(s.clone()));
+                                .map(|s| ResolvedInterceptorKind::Around(s.to_access_expr()));
 
                             let kind_annots = vec![before_annot, after_annot, around_annot];
                             let kind_annots: Vec<_> =

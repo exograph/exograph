@@ -12,7 +12,7 @@ use std::path::Path;
 use async_trait::async_trait;
 use core_model::mapped_arena::{MappedArena, SerializableSlab, SerializableSlabIndex};
 use core_model_builder::{
-    ast::ast_types::{AstExpr, AstModule},
+    ast::ast_types::{AstAccessExpr, AstModule},
     builder::system_builder::BaseModelSystem,
     error::ModelBuildingError,
     typechecker::{Typed, typ::TypecheckedSystem},
@@ -76,7 +76,7 @@ impl SystemContextBuilding {
 pub struct ModuleSubsystemWithInterceptors {
     pub underlying: ModuleSubsystem,
 
-    pub interceptors: Vec<(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)>,
+    pub interceptors: Vec<(AstAccessExpr<Typed>, SerializableSlabIndex<Interceptor>)>,
 }
 
 /// Builds a [ModuleSubsystemWithInterceptors], with a subset of [AstModule]s chosen by closure.
@@ -111,31 +111,32 @@ pub async fn build_with_selection(
     build_shallow_module(&resolved_env, &mut building);
     build_expanded_module(&resolved_env, &mut building)?;
 
-    let interceptors: Vec<(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)> = resolved_env
-        .resolved_modules
-        .iter()
-        .flat_map(|(_, resolved_module)| {
-            resolved_module
-                .interceptors
-                .iter()
-                .map(|resolved_interceptor| {
-                    let model_interceptor = building
-                        .interceptors
-                        .iter()
-                        .find_map(|(index, i)| {
-                            (i.module_name == resolved_interceptor.module_name
-                                && i.method_name == resolved_interceptor.method_name)
-                                .then_some(index)
-                        })
-                        .unwrap();
+    let interceptors: Vec<(AstAccessExpr<Typed>, SerializableSlabIndex<Interceptor>)> =
+        resolved_env
+            .resolved_modules
+            .iter()
+            .flat_map(|(_, resolved_module)| {
+                resolved_module
+                    .interceptors
+                    .iter()
+                    .map(|resolved_interceptor| {
+                        let model_interceptor = building
+                            .interceptors
+                            .iter()
+                            .find_map(|(index, i)| {
+                                (i.module_name == resolved_interceptor.module_name
+                                    && i.method_name == resolved_interceptor.method_name)
+                                    .then_some(index)
+                            })
+                            .unwrap();
 
-                    (
-                        resolved_interceptor.interceptor_kind.expr().clone(),
-                        model_interceptor,
-                    )
-                })
-        })
-        .collect();
+                        (
+                            resolved_interceptor.interceptor_kind.expr().clone(),
+                            model_interceptor,
+                        )
+                    })
+            })
+            .collect();
 
     Ok(ModuleSubsystemWithInterceptors {
         underlying: ModuleSubsystem {
