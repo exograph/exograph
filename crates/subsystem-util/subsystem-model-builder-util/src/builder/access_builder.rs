@@ -9,20 +9,20 @@
 
 use codemap::{CodeMap, Span};
 use core_model_builder::{
-    ast::ast_types::{AstAnnotationParams, AstExpr},
+    ast::ast_types::{AstAccessExpr, AstAnnotationParams, AstLiteral},
     typechecker::Typed,
 };
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedAccess {
-    pub value: AstExpr<Typed>,
+    pub value: AstAccessExpr<Typed>,
 }
 
 impl ResolvedAccess {
     fn restrictive() -> Self {
         ResolvedAccess {
-            value: AstExpr::BooleanLiteral(false, null_span()),
+            value: AstAccessExpr::Literal(AstLiteral::Boolean(false, null_span())),
         }
     }
 }
@@ -39,7 +39,7 @@ pub fn build_access(
     match access_annotation_params {
         Some(p) => {
             let value = match p {
-                AstAnnotationParams::Single(default, _) => default,
+                AstAnnotationParams::Single(default, _) => default.to_access_expr(),
                 // For Map format annotations (e.g., @access(query=true, mutation=false)),
                 // return restrictive access. These types are typically from @postgres modules
                 // included for type generation, and their actual access control is handled
@@ -48,9 +48,7 @@ pub fn build_access(
                 _ => panic!(), // module queries and annotations should only have a single parameter (the default value)
             };
 
-            ResolvedAccess {
-                value: value.clone(),
-            }
+            ResolvedAccess { value }
         }
         None => ResolvedAccess::restrictive(),
     }

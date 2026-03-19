@@ -10,7 +10,7 @@
 use async_trait::async_trait;
 use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use core_model_builder::{
-    ast::ast_types::{AstExpr, AstModule},
+    ast::ast_types::{AstAccessExpr, AstModule},
     builder::{resolved_builder::AnnotationMapHelper, system_builder::BaseModelSystem},
     error::ModelBuildingError,
     typechecker::{Typed, typ::TypecheckedSystem},
@@ -25,7 +25,7 @@ use wasm_graphql_model::{
 pub struct ModelWasmSystemWithInterceptors {
     pub underlying: WasmSubsystem,
 
-    pub interceptors: Vec<(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)>,
+    pub interceptors: Vec<(AstAccessExpr<Typed>, SerializableSlabIndex<Interceptor>)>,
 }
 
 pub async fn build(

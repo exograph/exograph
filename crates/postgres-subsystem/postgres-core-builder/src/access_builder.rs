@@ -10,20 +10,20 @@
 use serde::{Deserialize, Serialize};
 
 use core_model_builder::{
-    ast::ast_types::{AstAnnotationParams, AstExpr},
+    ast::ast_types::{AstAccessExpr, AstAnnotationParams, AstLiteral},
     typechecker::Typed,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct ResolvedAccess {
-    pub default: Option<AstExpr<Typed>>,
+    pub default: Option<AstAccessExpr<Typed>>,
 
-    pub query: Option<AstExpr<Typed>>,
+    pub query: Option<AstAccessExpr<Typed>>,
 
-    pub mutation: Option<AstExpr<Typed>>,
-    pub creation: Option<AstExpr<Typed>>,
-    pub update: Option<AstExpr<Typed>>,
-    pub delete: Option<AstExpr<Typed>>,
+    pub mutation: Option<AstAccessExpr<Typed>>,
+    pub creation: Option<AstAccessExpr<Typed>>,
+    pub update: Option<AstAccessExpr<Typed>>,
+    pub delete: Option<AstAccessExpr<Typed>>,
 }
 
 impl ResolvedAccess {
@@ -40,7 +40,7 @@ impl ResolvedAccess {
                 .as_ref()
                 .or(self.mutation.as_ref())
                 .or(self.default.as_ref()),
-            None | Some(AstExpr::BooleanLiteral(false, _))
+            None | Some(AstAccessExpr::Literal(AstLiteral::Boolean(false, _)))
         )
     }
 
@@ -50,7 +50,7 @@ impl ResolvedAccess {
                 .as_ref()
                 .or(self.mutation.as_ref())
                 .or(self.default.as_ref()),
-            None | Some(AstExpr::BooleanLiteral(false, _))
+            None | Some(AstAccessExpr::Literal(AstLiteral::Boolean(false, _)))
         )
     }
 }
@@ -61,15 +61,15 @@ pub fn build_access(
     match access_annotation_params {
         Some(p) => match p {
             AstAnnotationParams::Single(default, _) => ResolvedAccess {
-                default: Some(default.clone()),
+                default: Some(default.to_access_expr()),
                 ..Default::default()
             },
             AstAnnotationParams::Map(m, _) => {
-                let query = m.get("query").cloned();
-                let mutation = m.get("mutation").cloned();
-                let creation = m.get("create").cloned();
-                let update = m.get("update").cloned();
-                let delete = m.get("delete").cloned();
+                let query = m.get("query").map(|p| p.to_access_expr());
+                let mutation = m.get("mutation").map(|p| p.to_access_expr());
+                let creation = m.get("create").map(|p| p.to_access_expr());
+                let update = m.get("update").map(|p| p.to_access_expr());
+                let delete = m.get("delete").map(|p| p.to_access_expr());
 
                 ResolvedAccess {
                     default: None,

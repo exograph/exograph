@@ -23,9 +23,9 @@ use tree_sitter_c2rust::{Node, Tree, TreeCursor};
 
 use super::{sitter_ffi, span_from_node};
 use crate::ast::ast_types::{
-    AstAnnotation, AstAnnotationParams, AstArgument, AstExpr, AstField, AstFieldDefault,
-    AstFieldDefaultKind, AstFieldType, AstInterceptor, AstMethod, AstModel, AstModelKind,
-    AstModule, AstSystem, FieldSelection, LogicalOp, RelationalOp, Untyped,
+    AstAccessExpr, AstAnnotation, AstAnnotationParam, AstAnnotationParams, AstArgument, AstField,
+    AstFieldDefault, AstFieldDefaultKind, AstFieldType, AstInterceptor, AstLiteral, AstMethod,
+    AstModel, AstModelKind, AstModule, AstSystem, FieldSelection, LogicalOp, RelationalOp, Untyped,
 };
 use crate::error::ParserError;
 
@@ -444,16 +444,29 @@ fn convert_field_default_value(
     source: &[u8],
     source_span: Span,
 ) -> AstFieldDefault<Untyped> {
+    use crate::ast::ast_types::AstFieldDefaultValue;
+
     let kind = {
         if let Some(node) = node.child_by_field_name("default_value_concrete") {
-            AstFieldDefaultKind::Value(convert_expression(node, source, source_span))
+            let value = match node.kind() {
+                "literal" => {
+                    AstFieldDefaultValue::Literal(convert_literal(node, source, source_span))
+                }
+                "selection" => AstFieldDefaultValue::FieldSelection(convert_selection(
+                    node,
+                    source,
+                    source_span,
+                )),
+                o => panic!("unsupported default value kind: {o}"),
+            };
+            AstFieldDefaultKind::Value(value)
         } else if let Some(node_fn) = node.child_by_field_name("default_value_fn") {
             let mut cursor = node.walk();
 
             let fn_name = node_fn.utf8_text(source).unwrap().to_string();
             let args = node
                 .children_by_field_name("default_value_fn_args", &mut cursor)
-                .map(|node_arg| convert_expression(node_arg, source, source_span))
+                .map(|node_arg| convert_literal(node_arg, source, source_span))
                 .collect();
 
             AstFieldDefaultKind::Function(fn_name, args)
@@ -547,32 +560,33 @@ fn convert_annotation_params(
 
     match first_child.kind() {
         "annotation_multiple_params" => {
-            let (exprs, spans): (Vec<_>, Vec<_>) = first_child
+            let (params, spans): (Vec<_>, Vec<_>) = first_child
                 .children_by_field_name("exprs", &mut cursor)
                 .map(|node| {
-                    let expr = convert_expression(node, source, source_span);
+                    let param = convert_annotation_value(node, source, source_span);
                     let span = span_from_node(source_span, node);
-
-                    (expr, span)
+                    (param, span)
                 })
                 .unzip();
 
             let first_child_span = span_from_node(source_span, first_child);
 
-            if exprs.len() == 1 {
-                AstAnnotationParams::Single(exprs[0].clone(), first_child_span)
+            if params.len() == 1 {
+                AstAnnotationParams::Single(params.into_iter().next().unwrap(), first_child_span)
             } else {
-                // try as a string list
-                let string_list = exprs
+                // Multiple params: must be a string list
+                let string_list = params
                     .iter()
-                    .map(|expr| match expr {
-                        AstExpr::StringLiteral(string, _) => string.clone(),
+                    .map(|param| match param {
+                        AstAnnotationParam::Literal(AstLiteral::String(string, _)) => {
+                            string.clone()
+                        }
                         _ => panic!("Only string literals are allowed in a list currently"),
                     })
                     .collect();
 
                 AstAnnotationParams::Single(
-                    AstExpr::StringList(string_list, spans),
+                    AstAnnotationParam::StringList(string_list, spans),
                     first_child_span,
                 )
             }
@@ -586,14 +600,9 @@ fn convert_annotation_params(
             let exprs = params
                 .iter()
                 .map(|(name, p)| {
-                    (
-                        name.clone(),
-                        convert_expression(
-                            p.child_by_field_name("expr").unwrap(),
-                            source,
-                            source_span,
-                        ),
-                    )
+                    let expr_node = p.child_by_field_name("expr").unwrap();
+                    let param = convert_annotation_value(expr_node, source, source_span);
+                    (name.clone(), param)
                 })
                 .collect();
 
@@ -615,11 +624,36 @@ fn convert_annotation_params(
     }
 }
 
-fn convert_literal(node: Node, source: &[u8], source_span: Span) -> AstExpr<Untyped> {
+/// Convert an annotation value node into the appropriate `AstAnnotationParam` variant.
+/// The node is either an `access_expr` or an `object_literal` (from annotation_map_param grammar).
+/// - `access_expr` containing a `literal` → `AstAnnotationParam::Literal`
+/// - `object_literal` → `AstAnnotationParam::ObjectLiteral`
+/// - other `access_expr` → `AstAnnotationParam::AccessExpr`
+fn convert_annotation_value(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+) -> AstAnnotationParam<Untyped> {
+    match node.kind() {
+        "access_expr" => {
+            let first_child = node.child(0).unwrap();
+            match first_child.kind() {
+                "literal" => {
+                    AstAnnotationParam::Literal(convert_literal(first_child, source, source_span))
+                }
+                _ => AstAnnotationParam::AccessExpr(convert_access_expr(node, source, source_span)),
+            }
+        }
+        "object_literal" => convert_object_literal_param(node, source, source_span),
+        o => panic!("unsupported annotation value kind: {o}"),
+    }
+}
+
+fn convert_literal(node: Node, source: &[u8], source_span: Span) -> AstLiteral {
     let first_child = node.child(0).unwrap();
 
     match first_child.kind() {
-        "literal_number" => AstExpr::NumberLiteral(
+        "literal_number" => AstLiteral::Number(
             first_child
                 .child_by_field_name("value")
                 .unwrap()
@@ -631,7 +665,7 @@ fn convert_literal(node: Node, source: &[u8], source_span: Span) -> AstExpr<Unty
                 first_child.child_by_field_name("value").unwrap(),
             ),
         ),
-        "literal_str" => AstExpr::StringLiteral(
+        "literal_str" => AstLiteral::String(
             text_child(first_child, source, "value"),
             span_from_node(
                 source_span,
@@ -640,14 +674,18 @@ fn convert_literal(node: Node, source: &[u8], source_span: Span) -> AstExpr<Unty
         ),
         "literal_boolean" => {
             let value = first_child.child(0).unwrap().utf8_text(source).unwrap();
-            AstExpr::BooleanLiteral(value == "true", source_span)
+            AstLiteral::Boolean(value == "true", source_span)
         }
-        "literal_null" => AstExpr::NullLiteral(span_from_node(source_span, first_child)),
+        "literal_null" => AstLiteral::Null(span_from_node(source_span, first_child)),
         _ => panic!("Unsupported literal type {:?}", first_child.kind()),
     }
 }
 
-fn convert_object_literal(node: Node, source: &[u8], source_span: Span) -> AstExpr<Untyped> {
+fn convert_object_literal_param(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+) -> AstAnnotationParam<Untyped> {
     assert_eq!(node.kind(), "object_literal");
     let mut cursor = node.walk();
     let mut map = HashMap::new();
@@ -663,30 +701,33 @@ fn convert_object_literal(node: Node, source: &[u8], source_span: Span) -> AstEx
                 _ => panic!("Unsupported key type: {}", key_node.kind()),
             };
 
-            let value = convert_expression(value_node, source, source_span);
+            let value = convert_literal(value_node, source, source_span);
             map.insert(key, value);
         }
     }
 
-    AstExpr::ObjectLiteral(map, span_from_node(source_span, node))
+    AstAnnotationParam::ObjectLiteral(map, span_from_node(source_span, node))
 }
 
-fn convert_expression(node: Node, source: &[u8], source_span: Span) -> AstExpr<Untyped> {
-    assert_eq!(node.kind(), "expression");
+fn convert_access_expr(node: Node, source: &[u8], source_span: Span) -> AstAccessExpr<Untyped> {
+    assert_eq!(node.kind(), "access_expr");
     let first_child = node.child(0).unwrap();
 
     match first_child.kind() {
-        "literal" => convert_literal(first_child, source, source_span),
-        "logical_op" => AstExpr::LogicalOp(convert_logical_op(first_child, source, source_span)),
+        "literal" => AstAccessExpr::Literal(convert_literal(first_child, source, source_span)),
+        "logical_op" => {
+            AstAccessExpr::LogicalOp(convert_logical_op(first_child, source, source_span))
+        }
         "relational_op" => {
-            AstExpr::RelationalOp(convert_relational_op(first_child, source, source_span))
+            AstAccessExpr::RelationalOp(convert_relational_op(first_child, source, source_span))
         }
-        "selection" => AstExpr::FieldSelection(convert_selection(first_child, source, source_span)),
+        "selection" => {
+            AstAccessExpr::FieldSelection(convert_selection(first_child, source, source_span))
+        }
         "parenthetical" => {
-            let expression = first_child.child_by_field_name("expression").unwrap();
-            convert_expression(expression, source, source_span)
+            let access_expr = first_child.child_by_field_name("access_expr").unwrap();
+            convert_access_expr(access_expr, source, source_span)
         }
-        "object_literal" => convert_object_literal(first_child, source, source_span),
         o => panic!("unsupported expression kind: {o}"),
     }
 }
@@ -697,12 +738,12 @@ fn convert_logical_op(node: Node, source: &[u8], source_span: Span) -> LogicalOp
 
     match first_child.kind() {
         "logical_or" => LogicalOp::Or(
-            Box::new(convert_expression(
+            Box::new(convert_access_expr(
                 first_child.child_by_field_name("left").unwrap(),
                 source,
                 source_span,
             )),
-            Box::new(convert_expression(
+            Box::new(convert_access_expr(
                 first_child.child_by_field_name("right").unwrap(),
                 source,
                 source_span,
@@ -711,12 +752,12 @@ fn convert_logical_op(node: Node, source: &[u8], source_span: Span) -> LogicalOp
             (),
         ),
         "logical_and" => LogicalOp::And(
-            Box::new(convert_expression(
+            Box::new(convert_access_expr(
                 first_child.child_by_field_name("left").unwrap(),
                 source,
                 source_span,
             )),
-            Box::new(convert_expression(
+            Box::new(convert_access_expr(
                 first_child.child_by_field_name("right").unwrap(),
                 source,
                 source_span,
@@ -725,7 +766,7 @@ fn convert_logical_op(node: Node, source: &[u8], source_span: Span) -> LogicalOp
             (),
         ),
         "logical_not" => LogicalOp::Not(
-            Box::new(convert_expression(
+            Box::new(convert_access_expr(
                 first_child.child_by_field_name("value").unwrap(),
                 source,
                 source_span,
@@ -741,12 +782,12 @@ fn convert_relational_op(node: Node, source: &[u8], source_span: Span) -> Relati
     assert_eq!(node.kind(), "relational_op");
     let first_child = node.child(0).unwrap();
 
-    let left_expr = Box::new(convert_expression(
+    let left_expr = Box::new(convert_access_expr(
         first_child.child_by_field_name("left").unwrap(),
         source,
         source_span,
     ));
-    let right_expr = Box::new(convert_expression(
+    let right_expr = Box::new(convert_access_expr(
         first_child.child_by_field_name("right").unwrap(),
         source,
         source_span,
@@ -823,7 +864,7 @@ fn convert_selection_elem(
                     let param_name = param_name_field.utf8_text(source).unwrap().to_string();
 
                     let expr_field = hof_args.child_by_field_name("expr").unwrap();
-                    let expr = convert_expression(expr_field, source, source_span);
+                    let expr = convert_access_expr(expr_field, source, source_span);
                     FieldSelectionElement::HofCall {
                         span: span_from_node(source_span, hof_args),
                         name: Identifier(name, span_from_node(source_span, name_field)),
@@ -844,7 +885,11 @@ fn convert_selection_elem(
                     let params: Vec<_> = params_child
                         .flat_map(|c| {
                             if c.kind() == "literal" {
-                                Some(convert_literal(c, source, source_span))
+                                Some(AstAccessExpr::Literal(convert_literal(
+                                    c,
+                                    source,
+                                    source_span,
+                                )))
                             } else {
                                 None
                             }
@@ -928,7 +973,7 @@ mod tests {
         parsing_test!(
             r#"
             @postgres
-            module TestModule{            
+            module TestModule{
                 type Foo {
                     @column("custom_column") @access(!self.role == "role_admin" || self.role == "role_superuser")
                     bar: Baz
@@ -961,7 +1006,7 @@ mod tests {
         parsing_test!(
             r#"
             @postgres
-            module TestModule {       
+            module TestModule {
                 @access(!a || b)
                 type Foo {
                 }
@@ -977,7 +1022,7 @@ mod tests {
         parsing_test!(
             r#"
             @postgres
-            module TestModule{            
+            module TestModule{
                 @access(!a == b)
                 type Foo {
                 }
@@ -999,7 +1044,7 @@ mod tests {
                     @pk id: Int = autoIncrement()
                     title: String // a comment
                     // another comment
-                    @column("venueid") venue: Venue 
+                    @column("venueid") venue: Venue
                     /*
                     not_a_field: Int
                     */
@@ -1025,8 +1070,8 @@ mod tests {
         parsing_test!(
             r#"
             context AuthUser {
-                @jwt("sub") id: Int 
-                @jwt roles: Array<String> 
+                @jwt("sub") id: Int
+                @jwt roles: Array<String>
             }
         "#,
             "context_schema"

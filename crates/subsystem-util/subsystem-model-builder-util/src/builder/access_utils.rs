@@ -16,7 +16,7 @@ use core_model::{
     primitive_type::{self, PrimitiveType},
 };
 use core_model_builder::{
-    ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp},
+    ast::ast_types::{AstAccessExpr, AstLiteral, FieldSelection, LogicalOp, RelationalOp},
     error::ModelBuildingError,
     typechecker::Typed,
 };
@@ -29,37 +29,40 @@ enum PathSelection<'a> {
 }
 
 pub fn compute_predicate_expression(
-    expr: &AstExpr<Typed>,
+    expr: &AstAccessExpr<Typed>,
     resolved_env: &ResolvedTypeEnv,
 ) -> Result<AccessPredicateExpression<ModuleAccessPrimitiveExpression>, ModelBuildingError> {
     match expr {
-        AstExpr::FieldSelection(selection) => match compute_selection(selection, resolved_env)? {
-            PathSelection::Context(context_selection, field_type) => {
-                if field_type.innermost() == &PrimitiveType::Plain(primitive_type::BOOLEAN_TYPE) {
-                    // Treat boolean context expressions in the same way as an "eq" relational expression
-                    // For example, treat `AuthContext.superUser` the same way as `AuthContext.superUser == true`
-                    Ok(AccessPredicateExpression::RelationalOp(
-                        AccessRelationalOp::Eq(
-                            Box::new(ModuleAccessPrimitiveExpression::Common(
-                                CommonAccessPrimitiveExpression::ContextSelection(
-                                    context_selection,
-                                ),
-                            )),
-                            Box::new(ModuleAccessPrimitiveExpression::Common(
-                                CommonAccessPrimitiveExpression::BooleanLiteral(true),
-                            )),
-                        ),
-                    ))
-                } else {
-                    Err(ModelBuildingError::Generic(
-                        "Context selection must be a boolean".to_string(),
-                    ))
+        AstAccessExpr::FieldSelection(selection) => {
+            match compute_selection(selection, resolved_env)? {
+                PathSelection::Context(context_selection, field_type) => {
+                    if field_type.innermost() == &PrimitiveType::Plain(primitive_type::BOOLEAN_TYPE)
+                    {
+                        // Treat boolean context expressions in the same way as an "eq" relational expression
+                        // For example, treat `AuthContext.superUser` the same way as `AuthContext.superUser == true`
+                        Ok(AccessPredicateExpression::RelationalOp(
+                            AccessRelationalOp::Eq(
+                                Box::new(ModuleAccessPrimitiveExpression::Common(
+                                    CommonAccessPrimitiveExpression::ContextSelection(
+                                        context_selection,
+                                    ),
+                                )),
+                                Box::new(ModuleAccessPrimitiveExpression::Common(
+                                    CommonAccessPrimitiveExpression::BooleanLiteral(true),
+                                )),
+                            ),
+                        ))
+                    } else {
+                        Err(ModelBuildingError::Generic(
+                            "Context selection must be a boolean".to_string(),
+                        ))
+                    }
                 }
             }
-        },
-        AstExpr::LogicalOp(op) => {
+        }
+        AstAccessExpr::LogicalOp(op) => {
             let predicate_expr =
-                |expr: &AstExpr<Typed>| compute_predicate_expression(expr, resolved_env);
+                |expr: &AstAccessExpr<Typed>| compute_predicate_expression(expr, resolved_env);
             Ok(match op {
                 LogicalOp::And(left, right, _, _) => {
                     AccessPredicateExpression::LogicalOp(AccessLogicalExpression::And(
@@ -78,7 +81,7 @@ pub fn compute_predicate_expression(
                 ),
             })
         }
-        AstExpr::RelationalOp(op) => {
+        AstAccessExpr::RelationalOp(op) => {
             let combiner = match op {
                 RelationalOp::Eq(..) => AccessRelationalOp::Eq,
                 RelationalOp::Neq(..) => AccessRelationalOp::Neq,
@@ -96,7 +99,9 @@ pub fn compute_predicate_expression(
                 Box::new(compute_primitive_expr(right, resolved_env)?),
             )))
         }
-        AstExpr::BooleanLiteral(value, _) => Ok(AccessPredicateExpression::BooleanLiteral(*value)),
+        AstAccessExpr::Literal(AstLiteral::Boolean(value, _)) => {
+            Ok(AccessPredicateExpression::BooleanLiteral(*value))
+        }
 
         _ => Err(ModelBuildingError::Generic(
             "Unsupported expression type".to_string(),
@@ -105,36 +110,22 @@ pub fn compute_predicate_expression(
 }
 
 fn compute_primitive_expr(
-    expr: &AstExpr<Typed>,
+    expr: &AstAccessExpr<Typed>,
     resolved_env: &ResolvedTypeEnv,
 ) -> Result<ModuleAccessPrimitiveExpression, ModelBuildingError> {
     match expr {
-        AstExpr::FieldSelection(selection) => match compute_selection(selection, resolved_env)? {
-            PathSelection::Context(c, _) => Ok(ModuleAccessPrimitiveExpression::Common(
-                CommonAccessPrimitiveExpression::ContextSelection(c),
-            )),
-        },
-        AstExpr::StringLiteral(value, _) => Ok(ModuleAccessPrimitiveExpression::Common(
-            CommonAccessPrimitiveExpression::StringLiteral(value.clone()),
+        AstAccessExpr::FieldSelection(selection) => {
+            match compute_selection(selection, resolved_env)? {
+                PathSelection::Context(c, _) => Ok(ModuleAccessPrimitiveExpression::Common(
+                    CommonAccessPrimitiveExpression::ContextSelection(c),
+                )),
+            }
+        }
+        AstAccessExpr::Literal(lit) => Ok(ModuleAccessPrimitiveExpression::Common(
+            lit.to_common_access_primitive(),
         )),
-        AstExpr::BooleanLiteral(value, _) => Ok(ModuleAccessPrimitiveExpression::Common(
-            CommonAccessPrimitiveExpression::BooleanLiteral(*value),
-        )),
-        AstExpr::NumberLiteral(value, _) => Ok(ModuleAccessPrimitiveExpression::Common(
-            CommonAccessPrimitiveExpression::NumberLiteral(value.clone()),
-        )),
-        AstExpr::NullLiteral(_) => Ok(ModuleAccessPrimitiveExpression::Common(
-            CommonAccessPrimitiveExpression::NullLiteral,
-        )),
-
-        AstExpr::StringList(_, _) => Err(ModelBuildingError::Generic(
-            "Module access expressions do not support lists yet".to_string(),
-        )),
-        AstExpr::ObjectLiteral(_, _) => Err(ModelBuildingError::Generic(
-            "Module access expressions do not support object literals".to_string(),
-        )),
-        AstExpr::LogicalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
-        AstExpr::RelationalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
+        AstAccessExpr::LogicalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
+        AstAccessExpr::RelationalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
     }
 }
 

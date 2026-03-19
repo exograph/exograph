@@ -9,7 +9,7 @@
 
 use core_model::access::{AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp};
 use core_model_builder::{
-    ast::ast_types::{AstExpr, LogicalOp, RelationalOp},
+    ast::ast_types::{AstAccessExpr, LogicalOp, RelationalOp},
     error::ModelBuildingError,
     typechecker::Typed,
 };
@@ -17,7 +17,7 @@ use core_model_builder::{
 pub(super) fn compute_logical_op<PrimExpr: Send + Sync>(
     op: &LogicalOp<Typed>,
     predicate_expr: impl Fn(
-        &AstExpr<Typed>,
+        &AstAccessExpr<Typed>,
     ) -> Result<AccessPredicateExpression<PrimExpr>, ModelBuildingError>,
 ) -> Result<AccessPredicateExpression<PrimExpr>, ModelBuildingError> {
     Ok(match op {
@@ -49,7 +49,7 @@ pub(super) fn compute_logical_op<PrimExpr: Send + Sync>(
 
 pub(super) fn compute_relational_op<PrimExpr: Send + Sync>(
     op: &RelationalOp<Typed>,
-    primitive_expr: impl Fn(&AstExpr<Typed>) -> Result<PrimExpr, ModelBuildingError>,
+    primitive_expr: impl Fn(&AstAccessExpr<Typed>) -> Result<PrimExpr, ModelBuildingError>,
 ) -> Result<AccessPredicateExpression<PrimExpr>, ModelBuildingError> {
     let combiner = match op {
         RelationalOp::Eq(..) => AccessRelationalOp::Eq,

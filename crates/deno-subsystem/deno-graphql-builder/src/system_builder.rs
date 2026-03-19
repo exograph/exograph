@@ -17,7 +17,7 @@ use async_trait::async_trait;
 use common::download::{download_dir_if_needed, exo_cache_root};
 use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use core_model_builder::{
-    ast::ast_types::{AstExpr, AstModule},
+    ast::ast_types::{AstAccessExpr, AstModule},
     builder::{resolved_builder::AnnotationMapHelper, system_builder::BaseModelSystem},
     error::ModelBuildingError,
     plugin::BuildMode,
@@ -149,7 +149,7 @@ async fn download_deno_if_needed() -> Result<PathBuf, ModelBuildingError> {
 pub struct ModelDenoSystemWithInterceptors {
     pub underlying: DenoSubsystem,
 
-    pub interceptors: Vec<(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)>,
+    pub interceptors: Vec<(AstAccessExpr<Typed>, SerializableSlabIndex<Interceptor>)>,
 }
 
 pub struct DenoScriptProcessor {

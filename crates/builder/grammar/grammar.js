@@ -129,9 +129,9 @@ module.exports = grammar({
       $.annotation_multiple_params,
       $.annotation_map_params
     ),
-    annotation_multiple_params: $ => commaSep(field("exprs", $.expression)),
+    annotation_multiple_params: $ => commaSep(field("exprs", $.access_expr)),
     annotation_map_params: $ => commaSep(field("param", $.annotation_map_param)),
-    annotation_map_param: $ => seq(field("name", $.term), "=", field("expr", $.expression)),
+    annotation_map_param: $ => seq(field("name", $.term), "=", field("expr", choice($.access_expr, $.object_literal))),
     argument: $ => seq(
       repeat(field("annotation", $.annotation)),
       field("name", $.term),
@@ -151,11 +151,11 @@ module.exports = grammar({
       optional(";")
     ),
     field_default_value: $ => choice(
-      field("default_value_concrete", $.expression),
+      field("default_value_concrete", choice($.literal, $.selection)),
       seq(
         field("default_value_fn", $.term),
         "(",
-        optional(commaSep(field("default_value_fn_args", $.expression))),
+        optional(commaSep(field("default_value_fn_args", $.literal))),
         ")"
       )
     ),
@@ -171,15 +171,14 @@ module.exports = grammar({
       $.literal_boolean,
       $.literal_null
     ),
-    expression: $ => choice(
+    access_expr: $ => choice(
       $.parenthetical,
       prec(logical_level, $.logical_op),
       prec(relational_level, $.relational_op),
       $.selection,
       $.literal,
-      $.object_literal,
     ),
-    parenthetical: $ => seq("(", field("expression", $.expression), ")"),
+    parenthetical: $ => seq("(", field("access_expr", $.access_expr), ")"),
     selection: $ => choice(
       $.selection_select,
       $.term
@@ -196,7 +195,7 @@ module.exports = grammar({
     func_call: $ => seq(
       field("name", $.term), // "contains"
       "(",
-      optional(commaSep(field("args", $.expression))), // "ADMIN"
+      optional(commaSep(field("args", $.access_expr))), // "ADMIN"
       ")"
     ),
     // High-order function call of the `name(param_name, expr)` such as: 
@@ -218,7 +217,7 @@ module.exports = grammar({
         seq("(", field("param_name", $.term), ")") // "(du)"
       ),
       "=>",
-      field("expr", $.expression) // "du.userId == AuthContext.id && du.read"
+      field("expr", $.access_expr) // "du.userId == AuthContext.id && du.read"
     ),
     logical_op: $ => choice(
       $.logical_or,
@@ -226,13 +225,13 @@ module.exports = grammar({
       $.logical_not
     ),
     logical_or: $ => prec.left(logical_or_level, seq(
-      field("left", $.expression), "||", field("right", $.expression)
+      field("left", $.access_expr), "||", field("right", $.access_expr)
     )),
     logical_and: $ => prec.left(logical_and_level, seq(
-      field("left", $.expression), "&&", field("right", $.expression)
+      field("left", $.access_expr), "&&", field("right", $.access_expr)
     )),
     logical_not: $ => prec(not_level, seq(
-      "!", field("value", $.expression)
+      "!", field("value", $.access_expr)
     )),
     relational_op: $ => choice(
       $.relational_eq,
@@ -244,25 +243,25 @@ module.exports = grammar({
       $.relational_in,
     ),
     relational_eq: $ => prec.left(relational_level, seq(
-      field("left", $.expression), "==", field("right", $.expression)
+      field("left", $.access_expr), "==", field("right", $.access_expr)
     )),
     relational_neq: $ => prec.left(relational_level, seq(
-      field("left", $.expression), "!=", field("right", $.expression)
+      field("left", $.access_expr), "!=", field("right", $.access_expr)
     )),
     relational_lt: $ => prec.left(relational_level, seq(
-      field("left", $.expression), "<", field("right", $.expression)
+      field("left", $.access_expr), "<", field("right", $.access_expr)
     )),
     relational_lte: $ => prec.left(relational_level, seq(
-      field("left", $.expression), "<=", field("right", $.expression)
+      field("left", $.access_expr), "<=", field("right", $.access_expr)
     )),
     relational_gt: $ => prec.left(relational_level, seq(
-      field("left", $.expression), ">", field("right", $.expression)
+      field("left", $.access_expr), ">", field("right", $.access_expr)
     )),
     relational_gte: $ => prec.left(relational_level, seq(
-      field("left", $.expression), ">=", field("right", $.expression)
+      field("left", $.access_expr), ">=", field("right", $.access_expr)
     )),
     relational_in: $ => prec.left(relational_level, seq(
-      field("left", $.expression), "in", field("right", $.expression)
+      field("left", $.access_expr), "in", field("right", $.access_expr)
     )),
     term: $ => /[a-zA-Z_][a-zA-Z0-9_]*/,
     str: $ => /(?:[^"\\]|\\.)*/, // string with escaped quotes
@@ -285,7 +284,7 @@ module.exports = grammar({
     object_pair: $ => seq(
       field("key", choice($.term, $.literal_str)),
       ":",
-      field("value", $.expression)
+      field("value", $.literal)
     ),
     comment: $ => choice(
       seq('//', /.*/),

@@ -27,7 +27,10 @@ use core_model::{
     types::FieldType,
 };
 use core_model_builder::ast::ast_types::{FieldSelection, FieldSelectionElement};
-use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError};
+use core_model_builder::{
+    ast::ast_types::{AstFieldDefaultValue, AstLiteral},
+    error::ModelBuildingError,
+};
 
 use exo_sql::schema::column_spec::{ColumnAutoincrement, ColumnDefault, UuidGenerationMethod};
 use exo_sql::{
@@ -275,7 +278,7 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
         .as_ref()
         .and_then(|default_value| match default_value {
             ResolvedFieldDefault::Value(val) => match &**val {
-                AstExpr::StringLiteral(string, _) => {
+                AstFieldDefaultValue::Literal(AstLiteral::String(string, _)) => {
                     let type_name = field.typ.innermost().type_name.as_str();
 
                     if type_name == primitive_type::DecimalType::NAME {
@@ -300,8 +303,10 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
                         Some(value)
                     }
                 }
-                AstExpr::BooleanLiteral(boolean, _) => Some(ColumnDefault::Boolean(*boolean)),
-                AstExpr::NumberLiteral(val, _) => {
+                AstFieldDefaultValue::Literal(AstLiteral::Boolean(boolean, _)) => {
+                    Some(ColumnDefault::Boolean(*boolean))
+                }
+                AstFieldDefaultValue::Literal(AstLiteral::Number(val, _)) => {
                     let type_name = field.typ.innermost().type_name.as_str();
 
                     Some(match type_name {
@@ -314,7 +319,8 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
                         }
                     })
                 }
-                AstExpr::FieldSelection(selection) => match selection {
+                AstFieldDefaultValue::Literal(AstLiteral::Null(_)) => None,
+                AstFieldDefaultValue::FieldSelection(selection) => match selection {
                     FieldSelection::Single(element, _) => match element {
                         FieldSelectionElement::Identifier(value, _, _) => {
                             Some(ColumnDefault::Enum(value.clone()))
@@ -324,7 +330,6 @@ fn default_value(field: &ResolvedField) -> Option<ColumnDefault> {
                     },
                     FieldSelection::Select(_, _, _, _) => None,
                 },
-                _ => panic!("Invalid concrete value"),
             },
             ResolvedFieldDefault::PostgresFunction(string) => {
                 if string == "now()" {

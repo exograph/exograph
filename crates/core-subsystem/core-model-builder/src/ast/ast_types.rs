@@ -16,6 +16,7 @@ use std::{
 
 use codemap::{CodeMap, Span};
 use core_model::{
+    access::CommonAccessPrimitiveExpression,
     context_type::{ContextFieldType, ContextSelection, ContextSelectionElement, ContextType},
     function_defn::FunctionDefinition,
     mapped_arena::MappedArena,
@@ -220,10 +221,26 @@ pub struct AstFieldDefault<T: NodeTypedness> {
     pub span: Span,
 }
 
+/// The value part of a field default: either a literal or a context field reference.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum AstFieldDefaultValue<T: NodeTypedness> {
+    Literal(AstLiteral),
+    FieldSelection(FieldSelection<T>),
+}
+
+impl<T: NodeTypedness> AstFieldDefaultValue<T> {
+    pub fn span(&self) -> Span {
+        match self {
+            AstFieldDefaultValue::Literal(lit) => lit.span(),
+            AstFieldDefaultValue::FieldSelection(sel) => *sel.span(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum AstFieldDefaultKind<T: NodeTypedness> {
-    Value(AstExpr<T>),
-    Function(String, Vec<AstExpr<T>>),
+    Value(AstFieldDefaultValue<T>),
+    Function(String, Vec<AstLiteral>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -280,7 +297,7 @@ pub enum AstAnnotationParams<T: NodeTypedness> {
     None,
     /// Single parameter (e.g. `@table("concerts"))
     Single(
-        AstExpr<T>,
+        AstAnnotationParam<T>,
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
@@ -288,7 +305,7 @@ pub enum AstAnnotationParams<T: NodeTypedness> {
     ),
     /// Named parameters (e.g. `@range(min=-10, max=10)`)
     Map(
-        HashMap<String, AstExpr<T>>,
+        HashMap<String, AstAnnotationParam<T>>,
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         HashMap<String, Vec<Span>>, // store as Vec to check for duplicates later on
@@ -296,14 +313,14 @@ pub enum AstAnnotationParams<T: NodeTypedness> {
 }
 
 impl AstAnnotationParams<Typed> {
-    pub fn as_single(&self) -> &AstExpr<Typed> {
+    pub fn as_single(&self) -> &AstAnnotationParam<Typed> {
         match self {
-            Self::Single(expr, _) => expr,
+            Self::Single(param, _) => param,
             _ => panic!(),
         }
     }
 
-    pub fn as_map(&self) -> &HashMap<String, AstExpr<Typed>> {
+    pub fn as_map(&self) -> &HashMap<String, AstAnnotationParam<Typed>> {
         match self {
             Self::Map(map, _) => map,
             _ => panic!(),
@@ -311,46 +328,31 @@ impl AstAnnotationParams<Typed> {
     }
 }
 
+/// Shared literal type used by both access expressions and annotation parameters.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum AstExpr<T: NodeTypedness> {
-    FieldSelection(FieldSelection<T>),
-    LogicalOp(LogicalOp<T>),
-    RelationalOp(RelationalOp<T>),
-    StringLiteral(
+pub enum AstLiteral {
+    String(
         String,
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
         Span,
     ),
-    BooleanLiteral(
+    Boolean(
         bool,
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
         Span,
     ),
-    NumberLiteral(
+    Number(
         String, // the string representation of the number (later, based on the target type, we will parse it to the appropriate type)
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
         Span,
     ),
-    StringList(
-        Vec<String>,
-        #[serde(skip_serializing)]
-        #[serde(skip_deserializing)]
-        Vec<Span>,
-    ),
-    NullLiteral(
-        #[serde(skip_serializing)]
-        #[serde(skip_deserializing)]
-        #[serde(default = "default_span")]
-        Span,
-    ),
-    ObjectLiteral(
-        HashMap<String, AstExpr<T>>,
+    Null(
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
@@ -358,29 +360,160 @@ pub enum AstExpr<T: NodeTypedness> {
     ),
 }
 
-impl<T: NodeTypedness> AstExpr<T> {
+impl AstLiteral {
+    pub fn span(&self) -> Span {
+        match self {
+            AstLiteral::String(_, s) => *s,
+            AstLiteral::Boolean(_, s) => *s,
+            AstLiteral::Number(_, s) => *s,
+            AstLiteral::Null(s) => *s,
+        }
+    }
+
+    pub fn as_string(&self) -> String {
+        match self {
+            AstLiteral::String(s, _) => s.clone(),
+            _ => panic!("Expected string literal"),
+        }
+    }
+
+    pub fn as_int(&self) -> i64 {
+        match self {
+            AstLiteral::Number(n, _) => n.parse::<i64>().unwrap(),
+            _ => panic!("Expected number literal"),
+        }
+    }
+
+    pub fn as_float(&self) -> f64 {
+        match self {
+            AstLiteral::Number(n, _) => n.parse::<f64>().unwrap(),
+            _ => panic!("Expected number literal"),
+        }
+    }
+
+    pub fn as_boolean(&self) -> bool {
+        match self {
+            AstLiteral::Boolean(b, _) => *b,
+            _ => panic!("Expected boolean literal"),
+        }
+    }
+
+    pub fn to_common_access_primitive(&self) -> CommonAccessPrimitiveExpression {
+        match self {
+            AstLiteral::String(value, _) => {
+                CommonAccessPrimitiveExpression::StringLiteral(value.clone())
+            }
+            AstLiteral::Boolean(value, _) => {
+                CommonAccessPrimitiveExpression::BooleanLiteral(*value)
+            }
+            AstLiteral::Number(value, _) => {
+                CommonAccessPrimitiveExpression::NumberLiteral(value.clone())
+            }
+            AstLiteral::Null(_) => CommonAccessPrimitiveExpression::NullLiteral,
+        }
+    }
+}
+
+/// Access control expressions (used in @access annotations and interceptor expressions).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum AstAccessExpr<T: NodeTypedness> {
+    FieldSelection(FieldSelection<T>),
+    LogicalOp(LogicalOp<T>),
+    RelationalOp(RelationalOp<T>),
+    Literal(AstLiteral),
+}
+
+impl<T: NodeTypedness> AstAccessExpr<T> {
     pub fn span(&self) -> Span {
         match &self {
-            AstExpr::FieldSelection(s) => *s.span(),
-            AstExpr::StringLiteral(_, s) => *s,
-            AstExpr::LogicalOp(l) => match l {
+            AstAccessExpr::FieldSelection(s) => *s.span(),
+            AstAccessExpr::Literal(lit) => lit.span(),
+            AstAccessExpr::LogicalOp(l) => match l {
                 LogicalOp::Not(_, s, _) => *s,
                 LogicalOp::And(_, _, s, _) => *s,
                 LogicalOp::Or(_, _, s, _) => *s,
             },
-            AstExpr::RelationalOp(r) => r.span(),
-            AstExpr::BooleanLiteral(_, s) => *s,
-            AstExpr::NumberLiteral(_, s) => *s,
-            AstExpr::NullLiteral(s) => *s,
-            AstExpr::StringList(_, s) => {
-                let mut span = s[0].to_owned();
-                for s in s.iter().skip(1) {
+            AstAccessExpr::RelationalOp(r) => r.span(),
+        }
+    }
+}
+
+/// Single annotation parameter value (used inside AstAnnotationParams).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum AstAnnotationParam<T: NodeTypedness> {
+    /// A literal value (e.g. `@table("concerts")`, `@range(min=1)`, `@access(true)`)
+    Literal(AstLiteral),
+    /// A list of strings (e.g. `@unique("a", "b")`)
+    StringList(
+        Vec<String>,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        Vec<Span>,
+    ),
+    /// An object literal (e.g. `@column(mapping={"zip": "azip"})`)
+    ObjectLiteral(
+        HashMap<String, AstLiteral>,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+    ),
+    /// A full access expression (e.g. `@access(self.id == AuthContext.userId)`)
+    AccessExpr(AstAccessExpr<T>),
+}
+
+impl<T: NodeTypedness> AstAnnotationParam<T> {
+    pub fn span(&self) -> Span {
+        match self {
+            AstAnnotationParam::Literal(lit) => lit.span(),
+            AstAnnotationParam::StringList(_, spans) => {
+                let mut span = spans[0].to_owned();
+                for s in spans.iter().skip(1) {
                     span = span.merge(*s);
                 }
                 span
             }
-            AstExpr::ObjectLiteral(_, s) => *s,
+            AstAnnotationParam::ObjectLiteral(_, s) => *s,
+            AstAnnotationParam::AccessExpr(expr) => expr.span(),
         }
+    }
+
+    /// Convert this annotation parameter to an access expression (borrowing).
+    /// Literals are wrapped in `AstAccessExpr::Literal`.
+    /// AccessExpr variants are cloned.
+    /// StringList and ObjectLiteral cannot be converted and will panic.
+    pub fn to_access_expr(&self) -> AstAccessExpr<T> {
+        match self {
+            AstAnnotationParam::Literal(lit) => AstAccessExpr::Literal(lit.clone()),
+            AstAnnotationParam::AccessExpr(expr) => expr.clone(),
+            _ => panic!("Cannot convert StringList or ObjectLiteral to access expression"),
+        }
+    }
+}
+
+/// Convenience methods for typed annotation parameters.
+impl AstAnnotationParam<Typed> {
+    pub fn as_literal(&self) -> &AstLiteral {
+        match self {
+            AstAnnotationParam::Literal(lit) => lit,
+            _ => panic!("Expected literal annotation param"),
+        }
+    }
+
+    pub fn as_string(&self) -> String {
+        self.as_literal().as_string()
+    }
+
+    pub fn as_boolean(&self) -> bool {
+        self.as_literal().as_boolean()
+    }
+
+    pub fn as_int(&self) -> i64 {
+        self.as_literal().as_int()
+    }
+
+    pub fn as_float(&self) -> f64 {
+        self.as_literal().as_float()
     }
 }
 
@@ -453,17 +586,15 @@ impl FieldSelection<Typed> {
                         let args = params
                             .iter()
                             .map(|param| match param {
-                                AstExpr::StringLiteral(value, _) => {
+                                AstAccessExpr::Literal(AstLiteral::String(value, _)) => {
                                     PrimitiveValue::String(value.clone())
                                 }
-                                AstExpr::BooleanLiteral(value, _) => {
+                                AstAccessExpr::Literal(AstLiteral::Boolean(value, _)) => {
                                     PrimitiveValue::Boolean(*value)
                                 }
-                                AstExpr::NumberLiteral(value, _) => {
-                                    if value.parse::<i64>().is_ok() {
-                                        PrimitiveValue::Number(NumberLiteral::Int(
-                                            value.parse::<i64>().unwrap(),
-                                        ))
+                                AstAccessExpr::Literal(AstLiteral::Number(value, _)) => {
+                                    if let Ok(n) = value.parse::<i64>() {
+                                        PrimitiveValue::Number(NumberLiteral::Int(n))
                                     } else {
                                         PrimitiveValue::Number(NumberLiteral::Float(
                                             value.parse::<f64>().unwrap(),
@@ -547,7 +678,7 @@ pub enum FieldSelectionElement<T: NodeTypedness> {
         span: Span,
         name: Identifier,       // name of the function such as "some" and "every"
         param_name: Identifier, // name of the function parameter such as "du"
-        expr: Box<AstExpr<T>>, // expression passed to the function such as "du.userId == AuthContext.id && du.read"
+        expr: Box<AstAccessExpr<T>>, // expression passed to the function such as "du.userId == AuthContext.id && du.read"
         typ: T::FieldSelection,
     },
     NormalCall {
@@ -555,8 +686,8 @@ pub enum FieldSelectionElement<T: NodeTypedness> {
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
         span: Span,
-        name: Identifier,        // name of the function such as "contains"
-        params: Vec<AstExpr<T>>, // parameters passed to the function such as ("ADMIN")
+        name: Identifier,              // name of the function such as "contains"
+        params: Vec<AstAccessExpr<T>>, // parameters passed to the function such as ("ADMIN")
         typ: T::FieldSelection,
     },
 }
@@ -582,7 +713,7 @@ impl<T: NodeTypedness> FieldSelectionElement<T> {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum LogicalOp<T: NodeTypedness> {
     Not(
-        Box<AstExpr<T>>,
+        Box<AstAccessExpr<T>>,
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
@@ -590,8 +721,8 @@ pub enum LogicalOp<T: NodeTypedness> {
         T::LogicalOp,
     ),
     And(
-        Box<AstExpr<T>>,
-        Box<AstExpr<T>>,
+        Box<AstAccessExpr<T>>,
+        Box<AstAccessExpr<T>>,
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
@@ -599,8 +730,8 @@ pub enum LogicalOp<T: NodeTypedness> {
         T::LogicalOp,
     ),
     Or(
-        Box<AstExpr<T>>,
-        Box<AstExpr<T>>,
+        Box<AstAccessExpr<T>>,
+        Box<AstAccessExpr<T>>,
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
@@ -611,13 +742,41 @@ pub enum LogicalOp<T: NodeTypedness> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum RelationalOp<T: NodeTypedness> {
-    Eq(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
-    Neq(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
-    Lt(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
-    Lte(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
-    Gt(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
-    Gte(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
-    In(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
+    Eq(
+        Box<AstAccessExpr<T>>,
+        Box<AstAccessExpr<T>>,
+        T::RelationalOp,
+    ),
+    Neq(
+        Box<AstAccessExpr<T>>,
+        Box<AstAccessExpr<T>>,
+        T::RelationalOp,
+    ),
+    Lt(
+        Box<AstAccessExpr<T>>,
+        Box<AstAccessExpr<T>>,
+        T::RelationalOp,
+    ),
+    Lte(
+        Box<AstAccessExpr<T>>,
+        Box<AstAccessExpr<T>>,
+        T::RelationalOp,
+    ),
+    Gt(
+        Box<AstAccessExpr<T>>,
+        Box<AstAccessExpr<T>>,
+        T::RelationalOp,
+    ),
+    Gte(
+        Box<AstAccessExpr<T>>,
+        Box<AstAccessExpr<T>>,
+        T::RelationalOp,
+    ),
+    In(
+        Box<AstAccessExpr<T>>,
+        Box<AstAccessExpr<T>>,
+        T::RelationalOp,
+    ),
 }
 
 impl<T: NodeTypedness> RelationalOp<T> {
@@ -626,12 +785,12 @@ impl<T: NodeTypedness> RelationalOp<T> {
         typ
     }
 
-    pub fn sides(&self) -> (&AstExpr<T>, &AstExpr<T>) {
+    pub fn sides(&self) -> (&AstAccessExpr<T>, &AstAccessExpr<T>) {
         let (l, r, _) = self.to_tuple();
         (l, r)
     }
 
-    fn to_tuple(&self) -> (&AstExpr<T>, &AstExpr<T>, &T::RelationalOp) {
+    fn to_tuple(&self) -> (&AstAccessExpr<T>, &AstAccessExpr<T>, &T::RelationalOp) {
         match self {
             RelationalOp::Eq(l, r, typ) => (l, r, typ),
             RelationalOp::Neq(l, r, typ) => (l, r, typ),

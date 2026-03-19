@@ -68,8 +68,9 @@ types:
                     name: jwt
                     params:
                       Single:
-                        - StringLiteral:
-                            - sub
+                        - Literal:
+                            String:
+                              - sub
               default_value: ~
               doc_comments: ~
             - name: role
@@ -147,239 +148,243 @@ types:
                 params:
                   Map:
                     - mutation:
-                        FieldSelection:
-                          Select:
-                            - Select:
-                                - Single:
-                                    - Identifier:
-                                        - self
-                                        - Reference:
-                                            index: 17
-                                            generation: ~
-                                    - Reference:
-                                        index: 17
+                        AccessExpr:
+                          FieldSelection:
+                            Select:
+                              - Select:
+                                  - Single:
+                                      - Identifier:
+                                          - self
+                                          - Reference:
+                                              index: 17
+                                              generation: ~
+                                      - Reference:
+                                          index: 17
+                                          generation: ~
+                                  - Identifier:
+                                      - documentUsers
+                                      - Defer
+                                  - Set:
+                                      Reference:
+                                        index: 18
                                         generation: ~
-                                - Identifier:
-                                    - documentUsers
-                                    - Defer
-                                - Set:
-                                    Reference:
-                                      index: 18
-                                      generation: ~
-                            - HofCall:
-                                name:
-                                  - some
-                                param_name:
-                                  - du
-                                expr:
-                                  LogicalOp:
-                                    Or:
-                                      - RelationalOp:
-                                          Eq:
-                                            - FieldSelection:
-                                                Select:
-                                                  - Single:
-                                                      - Identifier:
-                                                          - AuthContext
-                                                          - Reference:
-                                                              index: 16
-                                                              generation: ~
-                                                      - Reference:
-                                                          index: 16
-                                                          generation: ~
-                                                  - Identifier:
-                                                      - role
-                                                      - Defer
-                                                  - Reference:
-                                                      index: 4
-                                                      generation: ~
-                                            - StringLiteral:
-                                                - admin
-                                            - Primitive:
-                                                Plain: Boolean
-                                      - LogicalOp:
-                                          And:
-                                            - RelationalOp:
-                                                Eq:
-                                                  - FieldSelection:
-                                                      Select:
-                                                        - Single:
-                                                            - Identifier:
-                                                                - du
-                                                                - Reference:
-                                                                    index: 18
-                                                                    generation: ~
-                                                            - Reference:
-                                                                index: 18
-                                                                generation: ~
+                              - HofCall:
+                                  name:
+                                    - some
+                                  param_name:
+                                    - du
+                                  expr:
+                                    LogicalOp:
+                                      Or:
+                                        - RelationalOp:
+                                            Eq:
+                                              - FieldSelection:
+                                                  Select:
+                                                    - Single:
                                                         - Identifier:
-                                                            - userId
-                                                            - Defer
-                                                        - Reference:
-                                                            index: 4
-                                                            generation: ~
-                                                  - FieldSelection:
-                                                      Select:
-                                                        - Single:
-                                                            - Identifier:
-                                                                - AuthContext
-                                                                - Reference:
-                                                                    index: 16
-                                                                    generation: ~
+                                                            - AuthContext
                                                             - Reference:
                                                                 index: 16
                                                                 generation: ~
-                                                        - Identifier:
-                                                            - id
-                                                            - Defer
                                                         - Reference:
-                                                            index: 4
+                                                            index: 16
                                                             generation: ~
-                                                  - Primitive:
-                                                      Plain: Boolean
-                                            - FieldSelection:
-                                                Select:
-                                                  - Single:
-                                                      - Identifier:
-                                                          - du
+                                                    - Identifier:
+                                                        - role
+                                                        - Defer
+                                                    - Reference:
+                                                        index: 4
+                                                        generation: ~
+                                              - Literal:
+                                                  String:
+                                                    - admin
+                                              - Primitive:
+                                                  Plain: Boolean
+                                        - LogicalOp:
+                                            And:
+                                              - RelationalOp:
+                                                  Eq:
+                                                    - FieldSelection:
+                                                        Select:
+                                                          - Single:
+                                                              - Identifier:
+                                                                  - du
+                                                                  - Reference:
+                                                                      index: 18
+                                                                      generation: ~
+                                                              - Reference:
+                                                                  index: 18
+                                                                  generation: ~
+                                                          - Identifier:
+                                                              - userId
+                                                              - Defer
                                                           - Reference:
-                                                              index: 18
+                                                              index: 4
                                                               generation: ~
-                                                      - Reference:
-                                                          index: 18
-                                                          generation: ~
-                                                  - Identifier:
-                                                      - write
-                                                      - Defer
-                                                  - Reference:
-                                                      index: 0
-                                                      generation: ~
-                                            - Primitive:
-                                                Plain: Boolean
-                                      - Primitive:
-                                          Plain: Boolean
-                                typ:
-                                  Primitive:
-                                    Plain: Boolean
-                            - Primitive:
-                                Plain: Boolean
+                                                    - FieldSelection:
+                                                        Select:
+                                                          - Single:
+                                                              - Identifier:
+                                                                  - AuthContext
+                                                                  - Reference:
+                                                                      index: 16
+                                                                      generation: ~
+                                                              - Reference:
+                                                                  index: 16
+                                                                  generation: ~
+                                                          - Identifier:
+                                                              - id
+                                                              - Defer
+                                                          - Reference:
+                                                              index: 4
+                                                              generation: ~
+                                                    - Primitive:
+                                                        Plain: Boolean
+                                              - FieldSelection:
+                                                  Select:
+                                                    - Single:
+                                                        - Identifier:
+                                                            - du
+                                                            - Reference:
+                                                                index: 18
+                                                                generation: ~
+                                                        - Reference:
+                                                            index: 18
+                                                            generation: ~
+                                                    - Identifier:
+                                                        - write
+                                                        - Defer
+                                                    - Reference:
+                                                        index: 0
+                                                        generation: ~
+                                              - Primitive:
+                                                  Plain: Boolean
+                                        - Primitive:
+                                            Plain: Boolean
+                                  typ:
+                                    Primitive:
+                                      Plain: Boolean
+                              - Primitive:
+                                  Plain: Boolean
                       query:
-                        FieldSelection:
-                          Select:
-                            - Select:
-                                - Single:
-                                    - Identifier:
-                                        - self
-                                        - Reference:
-                                            index: 17
-                                            generation: ~
-                                    - Reference:
-                                        index: 17
+                        AccessExpr:
+                          FieldSelection:
+                            Select:
+                              - Select:
+                                  - Single:
+                                      - Identifier:
+                                          - self
+                                          - Reference:
+                                              index: 17
+                                              generation: ~
+                                      - Reference:
+                                          index: 17
+                                          generation: ~
+                                  - Identifier:
+                                      - documentUsers
+                                      - Defer
+                                  - Set:
+                                      Reference:
+                                        index: 18
                                         generation: ~
-                                - Identifier:
-                                    - documentUsers
-                                    - Defer
-                                - Set:
-                                    Reference:
-                                      index: 18
-                                      generation: ~
-                            - HofCall:
-                                name:
-                                  - some
-                                param_name:
-                                  - du
-                                expr:
-                                  LogicalOp:
-                                    Or:
-                                      - RelationalOp:
-                                          Eq:
-                                            - FieldSelection:
-                                                Select:
-                                                  - Single:
-                                                      - Identifier:
-                                                          - AuthContext
-                                                          - Reference:
-                                                              index: 16
-                                                              generation: ~
-                                                      - Reference:
-                                                          index: 16
-                                                          generation: ~
-                                                  - Identifier:
-                                                      - role
-                                                      - Defer
-                                                  - Reference:
-                                                      index: 4
-                                                      generation: ~
-                                            - StringLiteral:
-                                                - admin
-                                            - Primitive:
-                                                Plain: Boolean
-                                      - LogicalOp:
-                                          And:
-                                            - RelationalOp:
-                                                Eq:
-                                                  - FieldSelection:
-                                                      Select:
-                                                        - Single:
-                                                            - Identifier:
-                                                                - du
-                                                                - Reference:
-                                                                    index: 18
-                                                                    generation: ~
-                                                            - Reference:
-                                                                index: 18
-                                                                generation: ~
+                              - HofCall:
+                                  name:
+                                    - some
+                                  param_name:
+                                    - du
+                                  expr:
+                                    LogicalOp:
+                                      Or:
+                                        - RelationalOp:
+                                            Eq:
+                                              - FieldSelection:
+                                                  Select:
+                                                    - Single:
                                                         - Identifier:
-                                                            - userId
-                                                            - Defer
-                                                        - Reference:
-                                                            index: 4
-                                                            generation: ~
-                                                  - FieldSelection:
-                                                      Select:
-                                                        - Single:
-                                                            - Identifier:
-                                                                - AuthContext
-                                                                - Reference:
-                                                                    index: 16
-                                                                    generation: ~
+                                                            - AuthContext
                                                             - Reference:
                                                                 index: 16
                                                                 generation: ~
-                                                        - Identifier:
-                                                            - id
-                                                            - Defer
                                                         - Reference:
-                                                            index: 4
+                                                            index: 16
                                                             generation: ~
-                                                  - Primitive:
-                                                      Plain: Boolean
-                                            - FieldSelection:
-                                                Select:
-                                                  - Single:
-                                                      - Identifier:
-                                                          - du
+                                                    - Identifier:
+                                                        - role
+                                                        - Defer
+                                                    - Reference:
+                                                        index: 4
+                                                        generation: ~
+                                              - Literal:
+                                                  String:
+                                                    - admin
+                                              - Primitive:
+                                                  Plain: Boolean
+                                        - LogicalOp:
+                                            And:
+                                              - RelationalOp:
+                                                  Eq:
+                                                    - FieldSelection:
+                                                        Select:
+                                                          - Single:
+                                                              - Identifier:
+                                                                  - du
+                                                                  - Reference:
+                                                                      index: 18
+                                                                      generation: ~
+                                                              - Reference:
+                                                                  index: 18
+                                                                  generation: ~
+                                                          - Identifier:
+                                                              - userId
+                                                              - Defer
                                                           - Reference:
-                                                              index: 18
+                                                              index: 4
                                                               generation: ~
-                                                      - Reference:
-                                                          index: 18
-                                                          generation: ~
-                                                  - Identifier:
-                                                      - read
-                                                      - Defer
-                                                  - Reference:
-                                                      index: 0
-                                                      generation: ~
-                                            - Primitive:
-                                                Plain: Boolean
-                                      - Primitive:
-                                          Plain: Boolean
-                                typ:
-                                  Primitive:
-                                    Plain: Boolean
-                            - Primitive:
-                                Plain: Boolean
+                                                    - FieldSelection:
+                                                        Select:
+                                                          - Single:
+                                                              - Identifier:
+                                                                  - AuthContext
+                                                                  - Reference:
+                                                                      index: 16
+                                                                      generation: ~
+                                                              - Reference:
+                                                                  index: 16
+                                                                  generation: ~
+                                                          - Identifier:
+                                                              - id
+                                                              - Defer
+                                                          - Reference:
+                                                              index: 4
+                                                              generation: ~
+                                                    - Primitive:
+                                                        Plain: Boolean
+                                              - FieldSelection:
+                                                  Select:
+                                                    - Single:
+                                                        - Identifier:
+                                                            - du
+                                                            - Reference:
+                                                                index: 18
+                                                                generation: ~
+                                                        - Reference:
+                                                            index: 18
+                                                            generation: ~
+                                                    - Identifier:
+                                                        - read
+                                                        - Defer
+                                                    - Reference:
+                                                        index: 0
+                                                        generation: ~
+                                              - Primitive:
+                                                  Plain: Boolean
+                                        - Primitive:
+                                            Plain: Boolean
+                                  typ:
+                                    Primitive:
+                                      Plain: Boolean
+                              - Primitive:
+                                  Plain: Boolean
           doc_comments: ~
     - - ~
       - Composite:
@@ -588,239 +593,243 @@ modules:
                   params:
                     Map:
                       - mutation:
-                          FieldSelection:
-                            Select:
-                              - Select:
-                                  - Single:
-                                      - Identifier:
-                                          - self
-                                          - Reference:
-                                              index: 17
-                                              generation: ~
-                                      - Reference:
-                                          index: 17
+                          AccessExpr:
+                            FieldSelection:
+                              Select:
+                                - Select:
+                                    - Single:
+                                        - Identifier:
+                                            - self
+                                            - Reference:
+                                                index: 17
+                                                generation: ~
+                                        - Reference:
+                                            index: 17
+                                            generation: ~
+                                    - Identifier:
+                                        - documentUsers
+                                        - Defer
+                                    - Set:
+                                        Reference:
+                                          index: 18
                                           generation: ~
-                                  - Identifier:
-                                      - documentUsers
-                                      - Defer
-                                  - Set:
-                                      Reference:
-                                        index: 18
-                                        generation: ~
-                              - HofCall:
-                                  name:
-                                    - some
-                                  param_name:
-                                    - du
-                                  expr:
-                                    LogicalOp:
-                                      Or:
-                                        - RelationalOp:
-                                            Eq:
-                                              - FieldSelection:
-                                                  Select:
-                                                    - Single:
-                                                        - Identifier:
-                                                            - AuthContext
-                                                            - Reference:
-                                                                index: 16
-                                                                generation: ~
-                                                        - Reference:
-                                                            index: 16
-                                                            generation: ~
-                                                    - Identifier:
-                                                        - role
-                                                        - Defer
-                                                    - Reference:
-                                                        index: 4
-                                                        generation: ~
-                                              - StringLiteral:
-                                                  - admin
-                                              - Primitive:
-                                                  Plain: Boolean
-                                        - LogicalOp:
-                                            And:
-                                              - RelationalOp:
-                                                  Eq:
-                                                    - FieldSelection:
-                                                        Select:
-                                                          - Single:
-                                                              - Identifier:
-                                                                  - du
-                                                                  - Reference:
-                                                                      index: 18
-                                                                      generation: ~
-                                                              - Reference:
-                                                                  index: 18
-                                                                  generation: ~
+                                - HofCall:
+                                    name:
+                                      - some
+                                    param_name:
+                                      - du
+                                    expr:
+                                      LogicalOp:
+                                        Or:
+                                          - RelationalOp:
+                                              Eq:
+                                                - FieldSelection:
+                                                    Select:
+                                                      - Single:
                                                           - Identifier:
-                                                              - userId
-                                                              - Defer
-                                                          - Reference:
-                                                              index: 4
-                                                              generation: ~
-                                                    - FieldSelection:
-                                                        Select:
-                                                          - Single:
-                                                              - Identifier:
-                                                                  - AuthContext
-                                                                  - Reference:
-                                                                      index: 16
-                                                                      generation: ~
+                                                              - AuthContext
                                                               - Reference:
                                                                   index: 16
                                                                   generation: ~
-                                                          - Identifier:
-                                                              - id
-                                                              - Defer
                                                           - Reference:
-                                                              index: 4
+                                                              index: 16
                                                               generation: ~
-                                                    - Primitive:
-                                                        Plain: Boolean
-                                              - FieldSelection:
-                                                  Select:
-                                                    - Single:
-                                                        - Identifier:
-                                                            - du
+                                                      - Identifier:
+                                                          - role
+                                                          - Defer
+                                                      - Reference:
+                                                          index: 4
+                                                          generation: ~
+                                                - Literal:
+                                                    String:
+                                                      - admin
+                                                - Primitive:
+                                                    Plain: Boolean
+                                          - LogicalOp:
+                                              And:
+                                                - RelationalOp:
+                                                    Eq:
+                                                      - FieldSelection:
+                                                          Select:
+                                                            - Single:
+                                                                - Identifier:
+                                                                    - du
+                                                                    - Reference:
+                                                                        index: 18
+                                                                        generation: ~
+                                                                - Reference:
+                                                                    index: 18
+                                                                    generation: ~
+                                                            - Identifier:
+                                                                - userId
+                                                                - Defer
                                                             - Reference:
-                                                                index: 18
+                                                                index: 4
                                                                 generation: ~
-                                                        - Reference:
-                                                            index: 18
-                                                            generation: ~
-                                                    - Identifier:
-                                                        - write
-                                                        - Defer
-                                                    - Reference:
-                                                        index: 0
-                                                        generation: ~
-                                              - Primitive:
-                                                  Plain: Boolean
-                                        - Primitive:
-                                            Plain: Boolean
-                                  typ:
-                                    Primitive:
-                                      Plain: Boolean
-                              - Primitive:
-                                  Plain: Boolean
+                                                      - FieldSelection:
+                                                          Select:
+                                                            - Single:
+                                                                - Identifier:
+                                                                    - AuthContext
+                                                                    - Reference:
+                                                                        index: 16
+                                                                        generation: ~
+                                                                - Reference:
+                                                                    index: 16
+                                                                    generation: ~
+                                                            - Identifier:
+                                                                - id
+                                                                - Defer
+                                                            - Reference:
+                                                                index: 4
+                                                                generation: ~
+                                                      - Primitive:
+                                                          Plain: Boolean
+                                                - FieldSelection:
+                                                    Select:
+                                                      - Single:
+                                                          - Identifier:
+                                                              - du
+                                                              - Reference:
+                                                                  index: 18
+                                                                  generation: ~
+                                                          - Reference:
+                                                              index: 18
+                                                              generation: ~
+                                                      - Identifier:
+                                                          - write
+                                                          - Defer
+                                                      - Reference:
+                                                          index: 0
+                                                          generation: ~
+                                                - Primitive:
+                                                    Plain: Boolean
+                                          - Primitive:
+                                              Plain: Boolean
+                                    typ:
+                                      Primitive:
+                                        Plain: Boolean
+                                - Primitive:
+                                    Plain: Boolean
                         query:
-                          FieldSelection:
-                            Select:
-                              - Select:
-                                  - Single:
-                                      - Identifier:
-                                          - self
-                                          - Reference:
-                                              index: 17
-                                              generation: ~
-                                      - Reference:
-                                          index: 17
+                          AccessExpr:
+                            FieldSelection:
+                              Select:
+                                - Select:
+                                    - Single:
+                                        - Identifier:
+                                            - self
+                                            - Reference:
+                                                index: 17
+                                                generation: ~
+                                        - Reference:
+                                            index: 17
+                                            generation: ~
+                                    - Identifier:
+                                        - documentUsers
+                                        - Defer
+                                    - Set:
+                                        Reference:
+                                          index: 18
                                           generation: ~
-                                  - Identifier:
-                                      - documentUsers
-                                      - Defer
-                                  - Set:
-                                      Reference:
-                                        index: 18
-                                        generation: ~
-                              - HofCall:
-                                  name:
-                                    - some
-                                  param_name:
-                                    - du
-                                  expr:
-                                    LogicalOp:
-                                      Or:
-                                        - RelationalOp:
-                                            Eq:
-                                              - FieldSelection:
-                                                  Select:
-                                                    - Single:
-                                                        - Identifier:
-                                                            - AuthContext
-                                                            - Reference:
-                                                                index: 16
-                                                                generation: ~
-                                                        - Reference:
-                                                            index: 16
-                                                            generation: ~
-                                                    - Identifier:
-                                                        - role
-                                                        - Defer
-                                                    - Reference:
-                                                        index: 4
-                                                        generation: ~
-                                              - StringLiteral:
-                                                  - admin
-                                              - Primitive:
-                                                  Plain: Boolean
-                                        - LogicalOp:
-                                            And:
-                                              - RelationalOp:
-                                                  Eq:
-                                                    - FieldSelection:
-                                                        Select:
-                                                          - Single:
-                                                              - Identifier:
-                                                                  - du
-                                                                  - Reference:
-                                                                      index: 18
-                                                                      generation: ~
-                                                              - Reference:
-                                                                  index: 18
-                                                                  generation: ~
+                                - HofCall:
+                                    name:
+                                      - some
+                                    param_name:
+                                      - du
+                                    expr:
+                                      LogicalOp:
+                                        Or:
+                                          - RelationalOp:
+                                              Eq:
+                                                - FieldSelection:
+                                                    Select:
+                                                      - Single:
                                                           - Identifier:
-                                                              - userId
-                                                              - Defer
-                                                          - Reference:
-                                                              index: 4
-                                                              generation: ~
-                                                    - FieldSelection:
-                                                        Select:
-                                                          - Single:
-                                                              - Identifier:
-                                                                  - AuthContext
-                                                                  - Reference:
-                                                                      index: 16
-                                                                      generation: ~
+                                                              - AuthContext
                                                               - Reference:
                                                                   index: 16
                                                                   generation: ~
-                                                          - Identifier:
-                                                              - id
-                                                              - Defer
                                                           - Reference:
-                                                              index: 4
+                                                              index: 16
                                                               generation: ~
-                                                    - Primitive:
-                                                        Plain: Boolean
-                                              - FieldSelection:
-                                                  Select:
-                                                    - Single:
-                                                        - Identifier:
-                                                            - du
+                                                      - Identifier:
+                                                          - role
+                                                          - Defer
+                                                      - Reference:
+                                                          index: 4
+                                                          generation: ~
+                                                - Literal:
+                                                    String:
+                                                      - admin
+                                                - Primitive:
+                                                    Plain: Boolean
+                                          - LogicalOp:
+                                              And:
+                                                - RelationalOp:
+                                                    Eq:
+                                                      - FieldSelection:
+                                                          Select:
+                                                            - Single:
+                                                                - Identifier:
+                                                                    - du
+                                                                    - Reference:
+                                                                        index: 18
+                                                                        generation: ~
+                                                                - Reference:
+                                                                    index: 18
+                                                                    generation: ~
+                                                            - Identifier:
+                                                                - userId
+                                                                - Defer
                                                             - Reference:
-                                                                index: 18
+                                                                index: 4
                                                                 generation: ~
-                                                        - Reference:
-                                                            index: 18
-                                                            generation: ~
-                                                    - Identifier:
-                                                        - read
-                                                        - Defer
-                                                    - Reference:
-                                                        index: 0
-                                                        generation: ~
-                                              - Primitive:
-                                                  Plain: Boolean
-                                        - Primitive:
-                                            Plain: Boolean
-                                  typ:
-                                    Primitive:
-                                      Plain: Boolean
-                              - Primitive:
-                                  Plain: Boolean
+                                                      - FieldSelection:
+                                                          Select:
+                                                            - Single:
+                                                                - Identifier:
+                                                                    - AuthContext
+                                                                    - Reference:
+                                                                        index: 16
+                                                                        generation: ~
+                                                                - Reference:
+                                                                    index: 16
+                                                                    generation: ~
+                                                            - Identifier:
+                                                                - id
+                                                                - Defer
+                                                            - Reference:
+                                                                index: 4
+                                                                generation: ~
+                                                      - Primitive:
+                                                          Plain: Boolean
+                                                - FieldSelection:
+                                                    Select:
+                                                      - Single:
+                                                          - Identifier:
+                                                              - du
+                                                              - Reference:
+                                                                  index: 18
+                                                                  generation: ~
+                                                          - Reference:
+                                                              index: 18
+                                                              generation: ~
+                                                      - Identifier:
+                                                          - read
+                                                          - Defer
+                                                      - Reference:
+                                                          index: 0
+                                                          generation: ~
+                                                - Primitive:
+                                                    Plain: Boolean
+                                          - Primitive:
+                                              Plain: Boolean
+                                    typ:
+                                      Primitive:
+                                        Plain: Boolean
+                                - Primitive:
+                                    Plain: Boolean
             doc_comments: ~
           - name: DocumentUser
             kind: Type

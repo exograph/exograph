@@ -68,90 +68,94 @@ types:
                     name: access
                     params:
                       Single:
-                        - LogicalOp:
-                            Or:
-                              - LogicalOp:
-                                  Or:
-                                    - RelationalOp:
-                                        Eq:
-                                          - FieldSelection:
-                                              Select:
-                                                - Single:
-                                                    - Identifier:
-                                                        - self
-                                                        - Reference:
-                                                            index: 16
-                                                            generation: ~
-                                                    - Reference:
-                                                        index: 16
-                                                        generation: ~
-                                                - Identifier:
-                                                    - role
-                                                    - Defer
-                                                - Reference:
-                                                    index: 4
-                                                    generation: ~
-                                          - StringLiteral:
-                                              - role_admin
-                                          - Primitive:
-                                              Plain: Boolean
-                                    - RelationalOp:
-                                        Eq:
-                                          - FieldSelection:
-                                              Select:
-                                                - Single:
-                                                    - Identifier:
-                                                        - self
-                                                        - Reference:
-                                                            index: 16
-                                                            generation: ~
-                                                    - Reference:
-                                                        index: 16
-                                                        generation: ~
-                                                - Identifier:
-                                                    - role
-                                                    - Defer
-                                                - Reference:
-                                                    index: 4
-                                                    generation: ~
-                                          - StringLiteral:
-                                              - role_superuser
-                                          - Primitive:
-                                              Plain: Boolean
-                                    - Primitive:
-                                        Plain: Boolean
-                              - FieldSelection:
-                                  Select:
-                                    - Select:
-                                        - Single:
-                                            - Identifier:
-                                                - self
-                                                - Reference:
-                                                    index: 16
-                                                    generation: ~
-                                            - Reference:
-                                                index: 16
-                                                generation: ~
-                                        - Identifier:
-                                            - doc
-                                            - Defer
-                                        - Reference:
-                                            index: 17
-                                            generation: ~
-                                    - Identifier:
-                                        - is_public
-                                        - Defer
-                                    - Reference:
-                                        index: 0
-                                        generation: ~
-                              - Primitive:
-                                  Plain: Boolean
+                        - AccessExpr:
+                            LogicalOp:
+                              Or:
+                                - LogicalOp:
+                                    Or:
+                                      - RelationalOp:
+                                          Eq:
+                                            - FieldSelection:
+                                                Select:
+                                                  - Single:
+                                                      - Identifier:
+                                                          - self
+                                                          - Reference:
+                                                              index: 16
+                                                              generation: ~
+                                                      - Reference:
+                                                          index: 16
+                                                          generation: ~
+                                                  - Identifier:
+                                                      - role
+                                                      - Defer
+                                                  - Reference:
+                                                      index: 4
+                                                      generation: ~
+                                            - Literal:
+                                                String:
+                                                  - role_admin
+                                            - Primitive:
+                                                Plain: Boolean
+                                      - RelationalOp:
+                                          Eq:
+                                            - FieldSelection:
+                                                Select:
+                                                  - Single:
+                                                      - Identifier:
+                                                          - self
+                                                          - Reference:
+                                                              index: 16
+                                                              generation: ~
+                                                      - Reference:
+                                                          index: 16
+                                                          generation: ~
+                                                  - Identifier:
+                                                      - role
+                                                      - Defer
+                                                  - Reference:
+                                                      index: 4
+                                                      generation: ~
+                                            - Literal:
+                                                String:
+                                                  - role_superuser
+                                            - Primitive:
+                                                Plain: Boolean
+                                      - Primitive:
+                                          Plain: Boolean
+                                - FieldSelection:
+                                    Select:
+                                      - Select:
+                                          - Single:
+                                              - Identifier:
+                                                  - self
+                                                  - Reference:
+                                                      index: 16
+                                                      generation: ~
+                                              - Reference:
+                                                  index: 16
+                                                  generation: ~
+                                          - Identifier:
+                                              - doc
+                                              - Defer
+                                          - Reference:
+                                              index: 17
+                                              generation: ~
+                                      - Identifier:
+                                          - is_public
+                                          - Defer
+                                      - Reference:
+                                          index: 0
+                                          generation: ~
+                                - Primitive:
+                                    Plain: Boolean
                   column:
                     name: column
                     params:
                       Single:
-                        - StringLiteral:
-                            - custom_column
+                        - Literal:
+                            String:
+                              - custom_column
               default_value: ~
               doc_comments: ~
             - name: role
@@ -284,90 +288,94 @@ modules:
                       name: access
                       params:
                         Single:
-                          - LogicalOp:
-                              Or:
-                                - LogicalOp:
-                                    Or:
-                                      - RelationalOp:
-                                          Eq:
-                                            - FieldSelection:
-                                                Select:
-                                                  - Single:
-                                                      - Identifier:
-                                                          - self
-                                                          - Reference:
-                                                              index: 16
-                                                              generation: ~
-                                                      - Reference:
-                                                          index: 16
-                                                          generation: ~
-                                                  - Identifier:
-                                                      - role
-                                                      - Defer
-                                                  - Reference:
-                                                      index: 4
-                                                      generation: ~
-                                            - StringLiteral:
-                                                - role_admin
-                                            - Primitive:
-                                                Plain: Boolean
-                                      - RelationalOp:
-                                          Eq:
-                                            - FieldSelection:
-                                                Select:
-                                                  - Single:
-                                                      - Identifier:
-                                                          - self
-                                                          - Reference:
-                                                              index: 16
-                                                              generation: ~
-                                                      - Reference:
-                                                          index: 16
-                                                          generation: ~
-                                                  - Identifier:
-                                                      - role
-                                                      - Defer
-                                                  - Reference:
-                                                      index: 4
-                                                      generation: ~
-                                            - StringLiteral:
-                                                - role_superuser
-                                            - Primitive:
-                                                Plain: Boolean
-                                      - Primitive:
-                                          Plain: Boolean
-                                - FieldSelection:
-                                    Select:
-                                      - Select:
-                                          - Single:
-                                              - Identifier:
-                                                  - self
-                                                  - Reference:
-                                                      index: 16
-                                                      generation: ~
-                                              - Reference:
-                                                  index: 16
-                                                  generation: ~
-                                          - Identifier:
-                                              - doc
-                                              - Defer
-                                          - Reference:
-                                              index: 17
-                                              generation: ~
-                                      - Identifier:
-                                          - is_public
-                                          - Defer
-                                      - Reference:
-                                          index: 0
-                                          generation: ~
-                                - Primitive:
-                                    Plain: Boolean
+                          - AccessExpr:
+                              LogicalOp:
+                                Or:
+                                  - LogicalOp:
+                                      Or:
+                                        - RelationalOp:
+                                            Eq:
+                                              - FieldSelection:
+                                                  Select:
+                                                    - Single:
+                                                        - Identifier:
+                                                            - self
+                                                            - Reference:
+                                                                index: 16
+                                                                generation: ~
+                                                        - Reference:
+                                                            index: 16
+                                                            generation: ~
+                                                    - Identifier:
+                                                        - role
+                                                        - Defer
+                                                    - Reference:
+                                                        index: 4
+                                                        generation: ~
+                                              - Literal:
+                                                  String:
+                                                    - role_admin
+                                              - Primitive:
+                                                  Plain: Boolean
+                                        - RelationalOp:
+                                            Eq:
+                                              - FieldSelection:
+                                                  Select:
+                                                    - Single:
+                                                        - Identifier:
+                                                            - self
+                                                            - Reference:
+                                                                index: 16
+                                                                generation: ~
+                                                        - Reference:
+                                                            index: 16
+                                                            generation: ~
+                                                    - Identifier:
+                                                        - role
+                                                        - Defer
+                                                    - Reference:
+                                                        index: 4
+                                                        generation: ~
+                                              - Literal:
+                                                  String:
+                                                    - role_superuser
+                                              - Primitive:
+                                                  Plain: Boolean
+                                        - Primitive:
+                                            Plain: Boolean
+                                  - FieldSelection:
+                                      Select:
+                                        - Select:
+                                            - Single:
+                                                - Identifier:
+                                                    - self
+                                                    - Reference:
+                                                        index: 16
+                                                        generation: ~
+                                                - Reference:
+                                                    index: 16
+                                                    generation: ~
+                                            - Identifier:
+                                                - doc
+                                                - Defer
+                                            - Reference:
+                                                index: 17
+                                                generation: ~
+                                        - Identifier:
+                                            - is_public
+                                            - Defer
+                                        - Reference:
+                                            index: 0
+                                            generation: ~
+                                  - Primitive:
+                                      Plain: Boolean
                     column:
                       name: column
                       params:
                         Single:
-                          - StringLiteral:
-                              - custom_column
+                          - Literal:
+                              String:
+                                - custom_column
                 default_value: ~
                 doc_comments: ~
               - name: role

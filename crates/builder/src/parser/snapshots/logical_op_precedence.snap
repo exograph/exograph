@@ -17,30 +17,31 @@ modules:
           - name: access
             params:
               Single:
-                - LogicalOp:
-                    Or:
-                      - FieldSelection:
-                          Single:
-                            - Identifier:
-                                - a
-                                - ~
-                            - ~
-                      - LogicalOp:
-                          And:
-                            - FieldSelection:
-                                Single:
-                                  - Identifier:
-                                      - b
-                                      - ~
+                - AccessExpr:
+                    LogicalOp:
+                      Or:
+                        - FieldSelection:
+                            Single:
+                              - Identifier:
+                                  - a
                                   - ~
-                            - FieldSelection:
-                                Single:
-                                  - Identifier:
-                                      - c
-                                      - ~
-                                  - ~
-                            - ~
-                      - ~
+                              - ~
+                        - LogicalOp:
+                            And:
+                              - FieldSelection:
+                                  Single:
+                                    - Identifier:
+                                        - b
+                                        - ~
+                                    - ~
+                              - FieldSelection:
+                                  Single:
+                                    - Identifier:
+                                        - c
+                                        - ~
+                                    - ~
+                              - ~
+                        - ~
         doc_comments: ~
     enums: []
     methods: []

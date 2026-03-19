@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{ast::ast_types::AstExpr, typechecker::Typed};
+use crate::{ast::ast_types::AstAccessExpr, typechecker::Typed};
 use core_plugin_shared::interception::{InterceptorIndex, InterceptorKind};
 use core_plugin_shared::serializable_system::{
     SerializableCoreBytes, SerializableGraphQLBytes, SerializableRestBytes, SerializableRpcBytes,
@@ -23,7 +23,7 @@ pub struct GraphQLSubsystemBuild {
 
 #[derive(Debug)]
 pub struct Interception {
-    pub expr: AstExpr<Typed>,
+    pub expr: AstAccessExpr<Typed>,
     pub kind: InterceptorKind,
     pub index: InterceptorIndex,
 }

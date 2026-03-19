@@ -12,7 +12,7 @@ use core_model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
     types::{BaseOperationReturnType, FieldType, Named},
 };
-use core_model_builder::ast::ast_types::AstExpr;
+use core_model_builder::ast::ast_types::{AstAccessExpr, AstLiteral};
 use core_plugin_shared::interception::InterceptorKind;
 use subsystem_model_util::{
     access::Access,
@@ -105,7 +105,7 @@ fn create_shallow_module(
 
     if matches!(
         resolved_method.access.value,
-        AstExpr::BooleanLiteral(false, _)
+        AstAccessExpr::Literal(AstLiteral::Boolean(false, _))
     ) {
         return;
     }

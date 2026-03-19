@@ -59,8 +59,9 @@ values:
             is_pk: true
             access:
               default:
-                BooleanLiteral:
-                  - true
+                Literal:
+                  Boolean:
+                    - true
               query: ~
               mutation: ~
               creation: ~
@@ -89,8 +90,9 @@ values:
             is_pk: false
             access:
               default:
-                BooleanLiteral:
-                  - true
+                Literal:
+                  Boolean:
+                    - true
               query: ~
               mutation: ~
               creation: ~
@@ -115,8 +117,9 @@ values:
             is_pk: false
             access:
               default:
-                BooleanLiteral:
-                  - true
+                Literal:
+                  Boolean:
+                    - true
               query: ~
               mutation: ~
               creation: ~
@@ -143,8 +146,9 @@ values:
             is_pk: false
             access:
               default:
-                BooleanLiteral:
-                  - true
+                Literal:
+                  Boolean:
+                    - true
               query: ~
               mutation: ~
               creation: ~
@@ -171,8 +175,9 @@ values:
             is_pk: false
             access:
               default:
-                BooleanLiteral:
-                  - true
+                Literal:
+                  Boolean:
+                    - true
               query: ~
               mutation: ~
               creation: ~
@@ -214,8 +219,9 @@ values:
             is_pk: true
             access:
               default:
-                BooleanLiteral:
-                  - true
+                Literal:
+                  Boolean:
+                    - true
               query: ~
               mutation: ~
               creation: ~
@@ -244,8 +250,9 @@ values:
             is_pk: false
             access:
               default:
-                BooleanLiteral:
-                  - true
+                Literal:
+                  Boolean:
+                    - true
               query: ~
               mutation: ~
               creation: ~
@@ -271,8 +278,9 @@ values:
             is_pk: false
             access:
               default:
-                BooleanLiteral:
-                  - true
+                Literal:
+                  Boolean:
+                    - true
               query: ~
               mutation: ~
               creation: ~

@@ -21,7 +21,7 @@ use core_model::{
     types::FieldType,
 };
 use core_model_builder::{
-    ast::ast_types::{AstExpr, FieldSelection, FieldSelectionElement},
+    ast::ast_types::{AstAccessExpr, AstLiteral, FieldSelection, FieldSelectionElement},
     error::ModelBuildingError,
     typechecker::Typed,
 };
@@ -50,7 +50,7 @@ enum DatabasePathSelection<'a> {
 }
 
 pub fn compute_predicate_expression(
-    expr: &AstExpr<Typed>,
+    expr: &AstAccessExpr<Typed>,
     self_type_info: &EntityType,
     function_context: HashMap<String, &EntityType>,
     resolved_env: &ResolvedTypeEnv,
@@ -59,7 +59,7 @@ pub fn compute_predicate_expression(
     database: &Database,
 ) -> Result<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>, ModelBuildingError> {
     match expr {
-        AstExpr::FieldSelection(selection) => {
+        AstAccessExpr::FieldSelection(selection) => {
             let column_selection = compute_column_selection(
                 selection,
                 self_type_info,
@@ -137,8 +137,8 @@ pub fn compute_predicate_expression(
                 }
             }
         }
-        AstExpr::LogicalOp(op) => {
-            let predicate_expr = |expr: &AstExpr<Typed>| {
+        AstAccessExpr::LogicalOp(op) => {
+            let predicate_expr = |expr: &AstAccessExpr<Typed>| {
                 compute_predicate_expression(
                     expr,
                     self_type_info,
@@ -151,8 +151,8 @@ pub fn compute_predicate_expression(
             };
             compute_logical_op(op, predicate_expr)
         }
-        AstExpr::RelationalOp(op) => {
-            let predicate_expr = |expr: &AstExpr<Typed>| {
+        AstAccessExpr::RelationalOp(op) => {
+            let predicate_expr = |expr: &AstAccessExpr<Typed>| {
                 compute_primitive_db_expr(
                     expr,
                     self_type_info,
@@ -166,7 +166,9 @@ pub fn compute_predicate_expression(
 
             compute_relational_op(op, predicate_expr)
         }
-        AstExpr::BooleanLiteral(value, _) => Ok(AccessPredicateExpression::BooleanLiteral(*value)),
+        AstAccessExpr::Literal(AstLiteral::Boolean(value, _)) => {
+            Ok(AccessPredicateExpression::BooleanLiteral(*value))
+        }
 
         _ => Err(ModelBuildingError::Generic(
             "Unsupported expression type".to_string(),
@@ -175,7 +177,7 @@ pub fn compute_predicate_expression(
 }
 
 fn compute_primitive_db_expr(
-    expr: &AstExpr<Typed>,
+    expr: &AstAccessExpr<Typed>,
     self_type_info: &EntityType,
     resolved_env: &ResolvedTypeEnv,
     function_context: HashMap<String, &EntityType>,
@@ -184,7 +186,7 @@ fn compute_primitive_db_expr(
     database: &Database,
 ) -> Result<DatabaseAccessPrimitiveExpression, ModelBuildingError> {
     match expr {
-        AstExpr::FieldSelection(selection) => {
+        AstAccessExpr::FieldSelection(selection) => {
             let column_selection = compute_column_selection(
                 selection,
                 self_type_info,
@@ -207,26 +209,11 @@ fn compute_primitive_db_expr(
                 ),
             })
         }
-        AstExpr::StringLiteral(value, _) => Ok(DatabaseAccessPrimitiveExpression::Common(
-            CommonAccessPrimitiveExpression::StringLiteral(value.clone()),
+        AstAccessExpr::Literal(lit) => Ok(DatabaseAccessPrimitiveExpression::Common(
+            lit.to_common_access_primitive(),
         )),
-        AstExpr::BooleanLiteral(value, _) => Ok(DatabaseAccessPrimitiveExpression::Common(
-            CommonAccessPrimitiveExpression::BooleanLiteral(*value),
-        )),
-        AstExpr::NumberLiteral(value, _) => Ok(DatabaseAccessPrimitiveExpression::Common(
-            CommonAccessPrimitiveExpression::NumberLiteral(value.clone()),
-        )),
-        AstExpr::NullLiteral(_) => Ok(DatabaseAccessPrimitiveExpression::Common(
-            CommonAccessPrimitiveExpression::NullLiteral,
-        )),
-        AstExpr::StringList(_, _) => Err(ModelBuildingError::Generic(
-            "Access expressions do not support lists yet".to_string(),
-        )),
-        AstExpr::ObjectLiteral(_, _) => Err(ModelBuildingError::Generic(
-            "Access expressions do not support object literals".to_string(),
-        )),
-        AstExpr::LogicalOp(_) => unreachable!(), // Parser ensures that the two sides are primitive expressions
-        AstExpr::RelationalOp(_) => unreachable!(), // Parser ensures that the two sides are primitive expressions
+        AstAccessExpr::LogicalOp(_) => unreachable!(), // Parser ensures that the two sides are primitive expressions
+        AstAccessExpr::RelationalOp(_) => unreachable!(), // Parser ensures that the two sides are primitive expressions
     }
 }
 

@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use core_model_builder::{
-    ast::ast_types::{AstExpr, LogicalOp},
+    ast::ast_types::{AstAccessExpr, AstLiteral, LogicalOp},
     plugin::Interception,
     typechecker::Typed,
 };
@@ -64,12 +64,16 @@ fn matching_interceptors(
     ordered(matching_interceptions)
 }
 
-fn matches(expr: &AstExpr<Typed>, operation_name: &str, operation_kind: OperationKind) -> bool {
+fn matches(
+    expr: &AstAccessExpr<Typed>,
+    operation_name: &str,
+    operation_kind: OperationKind,
+) -> bool {
     match expr {
-        AstExpr::FieldSelection(_) => {
+        AstAccessExpr::FieldSelection(_) => {
             panic!("FieldSelection not supported in interceptor expression")
         }
-        AstExpr::LogicalOp(logical_op) => match logical_op {
+        AstAccessExpr::LogicalOp(logical_op) => match logical_op {
             LogicalOp::Not(expr, _, _) => !matches(expr, operation_name, operation_kind),
             LogicalOp::And(first, second, _, _) => {
                 matches(first, operation_name, operation_kind)
@@ -80,18 +84,18 @@ fn matches(expr: &AstExpr<Typed>, operation_name: &str, operation_kind: Operatio
                     || matches(second, operation_name, operation_kind)
             }
         },
-        AstExpr::RelationalOp(_) => panic!("RelationalOp not supported in interceptor expression"),
-        AstExpr::StringLiteral(value, _) => matches_str(value, operation_name, operation_kind),
-        AstExpr::BooleanLiteral(value, _) => *value,
-        AstExpr::NumberLiteral(_, _) => {
+        AstAccessExpr::RelationalOp(_) => {
+            panic!("RelationalOp not supported in interceptor expression")
+        }
+        AstAccessExpr::Literal(AstLiteral::String(value, _)) => {
+            matches_str(value, operation_name, operation_kind)
+        }
+        AstAccessExpr::Literal(AstLiteral::Boolean(value, _)) => *value,
+        AstAccessExpr::Literal(AstLiteral::Number(_, _)) => {
             panic!("NumberLiteral not supported in interceptor expression")
         }
-        AstExpr::StringList(_, _) => {
-            panic!("List not supported in interceptor expression")
-        }
-        AstExpr::NullLiteral(_) => panic!("NullLiteral not supported in interceptor expression"),
-        AstExpr::ObjectLiteral(_, _) => {
-            panic!("ObjectLiteral not supported in interceptor expression")
+        AstAccessExpr::Literal(AstLiteral::Null(_)) => {
+            panic!("NullLiteral not supported in interceptor expression")
         }
     }
 }

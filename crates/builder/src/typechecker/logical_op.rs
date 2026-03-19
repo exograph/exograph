@@ -13,7 +13,7 @@ use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::{mapped_arena::MappedArena, primitive_type};
 use core_model_builder::typechecker::{Typed, annotation::AnnotationSpec};
 
-use crate::ast::ast_types::{AstExpr, LogicalOp, Untyped};
+use crate::ast::ast_types::{AstAccessExpr, LogicalOp, Untyped};
 
 use super::{PrimitiveType, Scope, Type, TypecheckFrom};
 
@@ -21,17 +21,17 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
     fn shallow(untyped: &LogicalOp<Untyped>) -> LogicalOp<Typed> {
         match untyped {
             LogicalOp::Not(v, s, _) => {
-                LogicalOp::Not(Box::new(AstExpr::shallow(v)), *s, Type::Defer)
+                LogicalOp::Not(Box::new(AstAccessExpr::shallow(v)), *s, Type::Defer)
             }
             LogicalOp::And(left, right, s, _) => LogicalOp::And(
-                Box::new(AstExpr::shallow(left)),
-                Box::new(AstExpr::shallow(right)),
+                Box::new(AstAccessExpr::shallow(left)),
+                Box::new(AstAccessExpr::shallow(right)),
                 *s,
                 Type::Defer,
             ),
             LogicalOp::Or(left, right, s, _) => LogicalOp::Or(
-                Box::new(AstExpr::shallow(left)),
-                Box::new(AstExpr::shallow(right)),
+                Box::new(AstAccessExpr::shallow(left)),
+                Box::new(AstAccessExpr::shallow(right)),
                 *s,
                 Type::Defer,
             ),

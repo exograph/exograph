@@ -16,7 +16,8 @@ use core_model_builder::typechecker::annotation::{AnnotationSpec, AnnotationTarg
 use core_model_builder::typechecker::annotation_map::AnnotationMap;
 
 use crate::ast::ast_types::{
-    AstExpr, AstField, AstFieldDefault, AstFieldDefaultKind, AstFieldType, Untyped,
+    AstField, AstFieldDefault, AstFieldDefaultKind, AstFieldDefaultValue, AstFieldType, AstLiteral,
+    Untyped,
 };
 
 use super::annotation_map::AnnotationMapImpl;
@@ -60,7 +61,7 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
             .unwrap_or(false);
 
         if let Some(AstFieldDefault {
-            kind: AstFieldDefaultKind::Value(expr),
+            kind: AstFieldDefaultKind::Value(value),
             ..
         }) = &self.default_value
         {
@@ -76,7 +77,7 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                                 .to_string(),
                         code: Some("C000".to_string()),
                         spans: vec![SpanLabel {
-                            span: expr.span(),
+                            span: value.span(),
                             style: SpanStyle::Primary,
                             label: Some(format!("should be of type {types_allowed}")),
                         }],
@@ -84,8 +85,8 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                 }
             };
 
-            match *expr {
-                AstExpr::StringLiteral(_, _) => assert_type(&[
+            match value {
+                AstFieldDefaultValue::Literal(AstLiteral::String(_, _)) => assert_type(&[
                     "String",
                     "Decimal",
                     "LocalDate",
@@ -95,25 +96,19 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                     "Uuid",
                     "Blob",
                 ]),
-                AstExpr::BooleanLiteral(_, _) => assert_type(&["Boolean"]),
-                AstExpr::NumberLiteral(_, _) => assert_type(&["Int", "Float"]),
-                AstExpr::FieldSelection(_) => {
+                AstFieldDefaultValue::Literal(AstLiteral::Boolean(_, _)) => {
+                    assert_type(&["Boolean"])
+                }
+                AstFieldDefaultValue::Literal(AstLiteral::Number(_, _)) => {
+                    assert_type(&["Int", "Float"])
+                }
+                AstFieldDefaultValue::FieldSelection(_) => {
                     // no type-checking here, since we don't have enough information.
                     // For example `user: User = AuthContext.id` should check that `AuthContext.id`
                     // is of the same type as `User`'s primary key type, but we don't know that here.
                 }
-
-                _ => {
-                    errors.push(Diagnostic {
-                        level: Level::Error,
-                        message: "Non-literal specified in default value field.".to_string(),
-                        code: Some("C000".to_string()),
-                        spans: vec![SpanLabel {
-                            span: expr.span(),
-                            style: SpanStyle::Primary,
-                            label: Some("should be string, boolean, or a number".to_string()),
-                        }],
-                    });
+                AstFieldDefaultValue::Literal(AstLiteral::Null(_)) => {
+                    // Null literals are valid defaults for optional fields; validated elsewhere.
                 }
             }
         };

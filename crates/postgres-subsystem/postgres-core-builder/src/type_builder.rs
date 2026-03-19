@@ -35,7 +35,11 @@ use super::access;
 use core_model::{
     mapped_arena::SerializableSlabIndex, primitive_type::PrimitiveType, types::FieldType,
 };
-use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError, typechecker::Typed};
+use core_model_builder::{
+    ast::ast_types::{AstAccessExpr, AstFieldDefaultValue, AstLiteral},
+    error::ModelBuildingError,
+    typechecker::Typed,
+};
 
 use exo_sql::{
     ColumnId, DEFAULT_VECTOR_SIZE, VectorDistanceFunction, get_mto_relation_for_columns,
@@ -267,8 +271,8 @@ fn expand_dynamic_default_values(
                     .unwrap();
 
                 let dynamic_default_value = match resolved_field.default_value.as_ref() {
-                    Some(ResolvedFieldDefault::Value(expr)) => match expr.as_ref() {
-                        AstExpr::FieldSelection(selection) => {
+                    Some(ResolvedFieldDefault::Value(value)) => match value.as_ref() {
+                        AstFieldDefaultValue::FieldSelection(selection) => {
                             let (context_selection, context_type) = selection.get_context(
                                 resolved_env.contexts,
                                 resolved_env.function_definitions,
@@ -380,8 +384,8 @@ fn expand_type_access(
 }
 
 fn first_non_optional_access_expr<'a>(
-    ast_exprs: &[&'a Option<AstExpr<Typed>>],
-) -> Option<&'a AstExpr<Typed>> {
+    ast_exprs: &[&'a Option<AstAccessExpr<Typed>>],
+) -> Option<&'a AstAccessExpr<Typed>> {
     ast_exprs.iter().copied().flatten().next()
 }
 
@@ -390,7 +394,7 @@ fn first_non_optional_access_expr<'a>(
 /// Goes over the chain of the expressions and maps the first non-optional expression to a database access expression.
 /// If no non-optional expression is found, returns a restricted access expression.
 fn compute_database_access_expr(
-    ast_exprs: &[&Option<AstExpr<Typed>>],
+    ast_exprs: &[&Option<AstAccessExpr<Typed>>],
     entity_id: SerializableSlabIndex<EntityType>,
     resolved_env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
@@ -436,7 +440,7 @@ fn compute_database_access_expr(
 }
 
 fn compute_precheck_access_expr(
-    ast_exprs: &[&Option<AstExpr<Typed>>],
+    ast_exprs: &[&Option<AstAccessExpr<Typed>>],
     entity_id: SerializableSlabIndex<EntityType>,
     resolved_env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
@@ -485,7 +489,7 @@ fn compute_access(
     resolved_env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
 ) -> Result<Access, ModelBuildingError> {
-    let compute_database_access_expr = |ast_exprs: &[&Option<AstExpr<Typed>>]| {
+    let compute_database_access_expr = |ast_exprs: &[&Option<AstAccessExpr<Typed>>]| {
         compute_database_access_expr(ast_exprs, entity_id, resolved_env, building)
     };
 
@@ -586,14 +590,16 @@ fn create_persistent_field(
         .default_value
         .as_ref()
         .map(|value| match value {
-            ResolvedFieldDefault::Value(expr) => match expr.as_ref() {
-                AstExpr::StringLiteral(string, _) => Ok(PostgresFieldDefaultValue::Static(
-                    Val::String(string.to_string()),
-                )),
-                AstExpr::BooleanLiteral(boolean, _) => {
+            ResolvedFieldDefault::Value(value) => match value.as_ref() {
+                AstFieldDefaultValue::Literal(AstLiteral::String(string, _)) => {
+                    Ok::<_, ModelBuildingError>(PostgresFieldDefaultValue::Static(Val::String(
+                        string.to_string(),
+                    )))
+                }
+                AstFieldDefaultValue::Literal(AstLiteral::Boolean(boolean, _)) => {
                     Ok(PostgresFieldDefaultValue::Static(Val::Bool(*boolean)))
                 }
-                AstExpr::NumberLiteral(number, _) => {
+                AstFieldDefaultValue::Literal(AstLiteral::Number(number, _)) => {
                     let parsed_number = if field.typ.name() == primitive_type::FloatType::NAME {
                         let float_number = number.parse::<f64>().map_err(|_| {
                             ModelBuildingError::Generic(format!(
@@ -621,13 +627,13 @@ fn create_persistent_field(
                         parsed_number,
                     )))
                 }
-                AstExpr::FieldSelection(_) => {
+                AstFieldDefaultValue::Literal(AstLiteral::Null(_)) => {
+                    Ok(PostgresFieldDefaultValue::Static(Val::Null))
+                }
+                AstFieldDefaultValue::FieldSelection(_) => {
                     // Set some value. Will be overridden by expand_dynamic_default_values later
                     Ok(PostgresFieldDefaultValue::Static(Val::Bool(false)))
                 }
-                _ => Err(ModelBuildingError::Generic(
-                    "Unsupported default value expression".to_string(),
-                )),
             },
             ResolvedFieldDefault::PostgresFunction(function) => {
                 Ok(PostgresFieldDefaultValue::Function(function.to_string()))
