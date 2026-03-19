@@ -8,8 +8,8 @@
 // by the Apache License, Version 2.0.
 
 use std::collections::HashSet;
+use std::sync::LazyLock;
 
-use lazy_static::lazy_static;
 use regex::Regex;
 
 use exo_sql_core::{DatabaseError, SchemaObjectName};
@@ -47,13 +47,13 @@ pub(crate) struct Constraints {
     pub(crate) uniques: Vec<UniqueConstraint>,
 }
 
-lazy_static! {
-    static ref PRIMARY_KEY_RE: Regex = Regex::new(r"PRIMARY KEY \(([^)]+)\)").unwrap();
-    static ref FOREIGN_KEY_RE: Regex =
-        Regex::new(r"FOREIGN KEY \(([^)]+)\) REFERENCES ([^\(]+)\(([^)]+)\)").unwrap();
-    static ref UNIQUE_RE: Regex = Regex::new(r"UNIQUE \(([^)]+)\)").unwrap();
-    static ref LIST_RE: Regex = Regex::new(r"(\w+)").unwrap();
-}
+static PRIMARY_KEY_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"PRIMARY KEY \(([^)]+)\)").unwrap());
+static FOREIGN_KEY_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"FOREIGN KEY \(([^)]+)\) REFERENCES ([^\(]+)\(([^)]+)\)").unwrap()
+});
+static UNIQUE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"UNIQUE \(([^)]+)\)").unwrap());
+static LIST_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\w+)").unwrap());
 
 const CONSTRAINT_QUERY: &str = "
 SELECT
