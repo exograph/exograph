@@ -1413,7 +1413,6 @@ dependencies = [
  "heck",
  "inquire",
  "introspection-util",
- "lazy_static",
  "notify-debouncer-full",
  "pluralizer",
  "postgres-builder",
@@ -4592,7 +4591,6 @@ version = "0.28.0"
 dependencies = [
  "exo-sql-core",
  "exo-sql-pg-connect",
- "lazy_static",
  "pg_bigdecimal",
  "regex",
  "serde",

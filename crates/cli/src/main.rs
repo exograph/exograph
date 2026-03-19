@@ -10,7 +10,7 @@
 use std::{
     env,
     sync::{
-        Arc,
+        Arc, LazyLock,
         atomic::{AtomicBool, Ordering},
     },
 };
@@ -40,12 +40,10 @@ mod commands;
 mod config;
 mod util;
 
-lazy_static::lazy_static! {
-    pub static ref SIGINT: (Sender<()>, Mutex<Receiver<()>>) = {
-        let (tx, rx) = tokio::sync::broadcast::channel(1);
-        (tx, Mutex::new(rx))
-    };
-}
+pub static SIGINT: LazyLock<(Sender<()>, Mutex<Receiver<()>>)> = LazyLock::new(|| {
+    let (tx, rx) = tokio::sync::broadcast::channel(1);
+    (tx, Mutex::new(rx))
+});
 
 pub static EXIT_ON_SIGINT: AtomicBool = AtomicBool::new(true);
 

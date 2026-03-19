@@ -16,7 +16,6 @@ async-trait.workspace = true
 async-recursion.workspace = true
 anyhow = { workspace = true, features = ["backtrace"] }
 heck.workspace = true
-lazy_static.workspace = true
 notify-debouncer-full = "0.7.0"
 clap.workspace = true
 futures.workspace = true
