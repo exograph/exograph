@@ -1,0 +1,13 @@
+[package]
+name = "exo-sql-model"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+exo-sql-core = { path = "../core" }
+exo-sql-pg-core = { path = "../pg-core" }
+tracing.workspace = true
+
+[lib]
+doctest = false

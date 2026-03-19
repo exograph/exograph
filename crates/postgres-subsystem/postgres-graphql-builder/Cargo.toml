@@ -12,7 +12,7 @@ core-model-builder = { path = "../../core-subsystem/core-model-builder" }
 core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 postgres-graphql-model = { path = "../postgres-graphql-model" }
 postgres-core-model = { path = "../postgres-core-model" }
-exo-sql = { path = "../../../libs/exo-sql" }
+exo-sql = { path = "../../../libs/exo-sql/facade" }
 postgres-core-builder = { path = "../postgres-core-builder" }
 
 [dev-dependencies]

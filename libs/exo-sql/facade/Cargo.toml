@@ -1,0 +1,34 @@
+[package]
+name = "exo-sql"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[features]
+default = []
+tls = ["exo-sql-pg-connect/tls"]
+postgres-url = ["exo-sql-pg-connect/postgres-url"]
+testing = ["exo-sql-pg-connect/testing"]
+pool = ["exo-sql-pg-connect/pool"]
+bigdecimal = ["exo-sql-core/bigdecimal", "exo-sql-pg-schema/bigdecimal"]
+test-support = ["exo-sql-pg-connect/test-support"]
+interactive-migration = ["exo-sql-pg-schema/interactive-migration"]
+
+[dependencies]
+exo-sql-core = { path = "../core" }
+exo-sql-model = { path = "../model" }
+exo-sql-pg-core = { path = "../pg-core" }
+exo-sql-pg-transform = { path = "../pg-transform" }
+exo-sql-pg-connect = { path = "../pg-connect" }
+exo-sql-pg-schema = { path = "../pg-schema" }
+
+# A workaround to enable certain features in tests https://github.com/rust-lang/cargo/issues/2911#issuecomment-749580481
+[target.'cfg(not(target_family = "wasm"))'.dev-dependencies.exo-sql]
+path = "."
+features = ["testing", "postgres-url", "tls", "bigdecimal", "pool"]
+
+[lib]
+doctest = false
+
+[package.metadata.cargo-shear]
+ignored = ["exo-sql"]

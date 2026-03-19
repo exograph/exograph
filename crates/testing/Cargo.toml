@@ -34,7 +34,7 @@ wildmatch.workspace = true
 common = { path = "../common" }
 introspection-util = { path = "../introspection-util" }
 
-exo-sql = { path = "../../libs/exo-sql", features = [
+exo-sql = { path = "../../libs/exo-sql/facade", features = [
   "tls",
   "postgres-url",
   "test-support",

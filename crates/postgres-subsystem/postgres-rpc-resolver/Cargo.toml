@@ -10,7 +10,7 @@ futures.workspace = true
 http.workspace = true
 serde_json.workspace = true
 
-exo-sql = { path = "../../../libs/exo-sql" }
+exo-sql = { path = "../../../libs/exo-sql/facade" }
 
 core-model = { path = "../../core-subsystem/core-model" }
 core-resolver = { path = "../../core-subsystem/core-resolver" }

@@ -21,7 +21,7 @@ wasm-bindgen-test.workspace = true
 wasm-bindgen-test-macro.workspace = true
 
 builder = { path = "../../builder" }
-exo-sql = { path = "../../../libs/exo-sql" }
+exo-sql = { path = "../../../libs/exo-sql/facade" }
 postgres-graphql-model = { path = "../postgres-graphql-model" }
 
 [lib]
