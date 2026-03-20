@@ -25,7 +25,8 @@ use super::{sitter_ffi, span_from_node};
 use crate::ast::ast_types::{
     AstAccessExpr, AstAnnotation, AstAnnotationParam, AstAnnotationParams, AstArgument, AstField,
     AstFieldDefault, AstFieldDefaultKind, AstFieldType, AstInterceptor, AstLiteral, AstMethod,
-    AstModel, AstModelKind, AstModule, AstSystem, FieldSelection, LogicalOp, RelationalOp, Untyped,
+    AstModel, AstModelKind, AstModule, AstProjectionExpr, AstSystem, FieldSelection, LogicalOp,
+    RelationalOp, Untyped,
 };
 use crate::error::ParserError;
 
@@ -625,9 +626,10 @@ fn convert_annotation_params(
 }
 
 /// Convert an annotation value node into the appropriate `AstAnnotationParam` variant.
-/// The node is either an `access_expr` or an `object_literal` (from annotation_map_param grammar).
+/// The node is an `access_expr`, `object_literal`, or `projection_expr` (from annotation_map_param grammar).
 /// - `access_expr` containing a `literal` → `AstAnnotationParam::Literal`
 /// - `object_literal` → `AstAnnotationParam::ObjectLiteral`
+/// - `projection_expr` → `AstAnnotationParam::Projection`
 /// - other `access_expr` → `AstAnnotationParam::AccessExpr`
 fn convert_annotation_value(
     node: Node,
@@ -645,7 +647,66 @@ fn convert_annotation_value(
             }
         }
         "object_literal" => convert_object_literal_param(node, source, source_span),
+        "projection_expr" => {
+            AstAnnotationParam::Projection(convert_projection_expr(node, source, source_span))
+        }
         o => panic!("unsupported annotation value kind: {o}"),
+    }
+}
+
+fn convert_projection_expr(node: Node, source: &[u8], source_span: Span) -> AstProjectionExpr {
+    let first_child = node.child(0).unwrap();
+
+    match first_child.kind() {
+        "projection_union" => {
+            let left = convert_projection_expr(
+                first_child.child_by_field_name("left").unwrap(),
+                source,
+                source_span,
+            );
+            let right = convert_projection_expr(
+                first_child.child_by_field_name("right").unwrap(),
+                source,
+                source_span,
+            );
+            AstProjectionExpr::Union(
+                Box::new(left),
+                Box::new(right),
+                span_from_node(source_span, first_child),
+            )
+        }
+        "projection_atom" => convert_projection_atom(first_child, source, source_span),
+        o => panic!("unsupported projection expr kind: {o}"),
+    }
+}
+
+fn convert_projection_atom(node: Node, source: &[u8], source_span: Span) -> AstProjectionExpr {
+    assert_eq!(node.kind(), "projection_atom");
+    let first_child = node.child(0).unwrap();
+
+    match first_child.kind() {
+        // /basic (self-projection): first child is "/", second is the name term
+        "/" => AstProjectionExpr::SelfProjection(
+            text_child(node, source, "name"),
+            span_from_node(source_span, node),
+        ),
+        // owner/basic (relation projection) or id (field name)
+        "term" => {
+            // Check if there's a "name" field (relation projection) or just a bare term (field)
+            if node.child_by_field_name("name").is_some() {
+                AstProjectionExpr::RelationProjection(
+                    text_child(node, source, "relation"),
+                    text_child(node, source, "name"),
+                    span_from_node(source_span, node),
+                )
+            } else {
+                AstProjectionExpr::Field(
+                    text_child(node, source, "field"),
+                    span_from_node(source_span, first_child),
+                )
+            }
+        }
+        o => panic!("unsupported projection atom kind: {o}"),
     }
 }
 
@@ -934,7 +995,7 @@ mod tests {
                 .span;
             let parsed = parse($src).unwrap();
 
-            insta::with_settings!({prepend_module_to_snapshot => false}, {
+            insta::with_settings!({prepend_module_to_snapshot => false, sort_maps => true}, {
                 #[cfg(target_family = "wasm")]
                 {
                     let to_check = convert_root(
@@ -1149,6 +1210,46 @@ mod tests {
             }
             "#,
             "doc_comments_triple_slash"
+        );
+    }
+
+    #[multiplatform_test]
+    fn projection_annotation() {
+        parsing_test!(
+            r#"
+            @postgres
+            module TestModule {
+                @projection(
+                    withOwner = /basic + owner/basic,
+                    summary = id + name,
+                    idOnly = id,
+                    selfOnly = /basic,
+                    relOnly = owner/basic,
+                    full = /basic + owner/basic + questions/basic
+                )
+                @access(true)
+                type Project {
+                    @pk id: Int = autoIncrement()
+                    name: String
+                    owner: User
+                    questions: Set<Question>?
+                }
+
+                @access(true)
+                type User {
+                    @pk id: Int = autoIncrement()
+                    name: String
+                }
+
+                @access(true)
+                type Question {
+                    @pk id: Int = autoIncrement()
+                    text: String
+                    project: Project
+                }
+            }
+        "#,
+            "projection_annotation"
         );
     }
 

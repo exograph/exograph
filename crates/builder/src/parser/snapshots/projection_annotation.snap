@@ -1,0 +1,211 @@
+---
+source: crates/builder/src/parser/converter.rs
+assertion_line: 1260
+expression: "convert_root(parsed.root_node(), src.as_bytes(), file_span,\nPath::new(\"input.exo\")).unwrap()"
+---
+types: []
+modules:
+  - name: TestModule
+    annotations:
+      - name: postgres
+        params: None
+    types:
+      - name: Project
+        kind: Type
+        fields:
+          - name: id
+            typ:
+              Plain:
+                - ~
+                - Int
+                - []
+                - ~
+            annotations:
+              - name: pk
+                params: None
+            default_value:
+              kind:
+                Function:
+                  - autoIncrement
+                  - []
+            doc_comments: ~
+          - name: name
+            typ:
+              Plain:
+                - ~
+                - String
+                - []
+                - ~
+            annotations: []
+            default_value: ~
+            doc_comments: ~
+          - name: owner
+            typ:
+              Plain:
+                - ~
+                - User
+                - []
+                - ~
+            annotations: []
+            default_value: ~
+            doc_comments: ~
+          - name: questions
+            typ:
+              Optional:
+                Plain:
+                  - ~
+                  - Set
+                  - - Plain:
+                        - ~
+                        - Question
+                        - []
+                        - ~
+                  - ~
+            annotations: []
+            default_value: ~
+            doc_comments: ~
+        fragment_references: []
+        annotations:
+          - name: projection
+            params:
+              Map:
+                - full:
+                    Projection:
+                      Union:
+                        - Union:
+                            - SelfProjection:
+                                - basic
+                            - RelationProjection:
+                                - owner
+                                - basic
+                        - RelationProjection:
+                            - questions
+                            - basic
+                  idOnly:
+                    Projection:
+                      Field:
+                        - id
+                  relOnly:
+                    Projection:
+                      RelationProjection:
+                        - owner
+                        - basic
+                  selfOnly:
+                    Projection:
+                      SelfProjection:
+                        - basic
+                  summary:
+                    Projection:
+                      Union:
+                        - Field:
+                            - id
+                        - Field:
+                            - name
+                  withOwner:
+                    Projection:
+                      Union:
+                        - SelfProjection:
+                            - basic
+                        - RelationProjection:
+                            - owner
+                            - basic
+          - name: access
+            params:
+              Single:
+                - Literal:
+                    Boolean:
+                      - true
+        doc_comments: ~
+      - name: User
+        kind: Type
+        fields:
+          - name: id
+            typ:
+              Plain:
+                - ~
+                - Int
+                - []
+                - ~
+            annotations:
+              - name: pk
+                params: None
+            default_value:
+              kind:
+                Function:
+                  - autoIncrement
+                  - []
+            doc_comments: ~
+          - name: name
+            typ:
+              Plain:
+                - ~
+                - String
+                - []
+                - ~
+            annotations: []
+            default_value: ~
+            doc_comments: ~
+        fragment_references: []
+        annotations:
+          - name: access
+            params:
+              Single:
+                - Literal:
+                    Boolean:
+                      - true
+        doc_comments: ~
+      - name: Question
+        kind: Type
+        fields:
+          - name: id
+            typ:
+              Plain:
+                - ~
+                - Int
+                - []
+                - ~
+            annotations:
+              - name: pk
+                params: None
+            default_value:
+              kind:
+                Function:
+                  - autoIncrement
+                  - []
+            doc_comments: ~
+          - name: text
+            typ:
+              Plain:
+                - ~
+                - String
+                - []
+                - ~
+            annotations: []
+            default_value: ~
+            doc_comments: ~
+          - name: project
+            typ:
+              Plain:
+                - ~
+                - Project
+                - []
+                - ~
+            annotations: []
+            default_value: ~
+            doc_comments: ~
+        fragment_references: []
+        annotations:
+          - name: access
+            params:
+              Single:
+                - Literal:
+                    Boolean:
+                      - true
+        doc_comments: ~
+    enums: []
+    methods: []
+    interceptors: []
+    base_exofile: input.exo
+    doc_comments: ~
+imports: []
+declaration_doc_comments: ~

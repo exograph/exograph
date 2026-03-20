@@ -15,8 +15,20 @@ pub struct AnnotationSpec {
     pub no_params: bool,
     /// Is this annotation allowed to have a single parameter?
     pub single_params: bool,
-    /// List of mapped parameters if mapped parameters are allowed (`None` if not).
-    pub mapped_params: Option<&'static [MappedAnnotationParamSpec]>,
+    /// Specifies how mapped parameters (key=value pairs) are handled.
+    pub mapped_params: MappedAnnotationParams,
+}
+
+/// How mapped parameters are validated for an annotation.
+#[derive(Clone, Copy)]
+pub enum MappedAnnotationParams {
+    /// No mapped parameters allowed.
+    None,
+    /// Only these specific parameters are allowed.
+    Specific(&'static [MappedAnnotationParamSpec]),
+    /// Any parameter names are accepted (e.g. `@projection` where param names
+    /// are user-defined projection names). Only duplicate names are rejected.
+    Dynamic,
 }
 
 /// Target for an annotation.

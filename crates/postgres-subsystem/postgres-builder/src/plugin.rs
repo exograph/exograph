@@ -7,7 +7,9 @@ use core_model_builder::{
     error::ModelBuildingError,
     plugin::{BuildMode, CoreSubsystemBuild},
     typechecker::{
-        annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
+        annotation::{
+            AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec, MappedAnnotationParams,
+        },
         typ::TypecheckedSystem,
     },
 };
@@ -51,7 +53,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     targets: &[AnnotationTarget::Module],
                     no_params: true,
                     single_params: false,
-                    mapped_params: Some(&[
+                    mapped_params: MappedAnnotationParams::Specific(&[
                         MappedAnnotationParamSpec {
                             name: "schema",
                             optional: true,
@@ -69,7 +71,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     targets: &[AnnotationTarget::Field],
                     no_params: false,
                     single_params: true,
-                    mapped_params: Some(&[MappedAnnotationParamSpec {
+                    mapped_params: MappedAnnotationParams::Specific(&[MappedAnnotationParamSpec {
                         name: "mapping",
                         optional: true,
                     }]),
@@ -81,7 +83,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     targets: &[AnnotationTarget::Field],
                     no_params: false,
                     single_params: true,
-                    mapped_params: None,
+                    mapped_params: MappedAnnotationParams::None,
                 },
             ),
             (
@@ -90,7 +92,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     targets: &[AnnotationTarget::Field],
                     no_params: false,
                     single_params: true,
-                    mapped_params: None,
+                    mapped_params: MappedAnnotationParams::None,
                 },
             ),
             (
@@ -99,7 +101,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     targets: &[AnnotationTarget::Field],
                     no_params: true,
                     single_params: false,
-                    mapped_params: None,
+                    mapped_params: MappedAnnotationParams::None,
                 },
             ),
             (
@@ -108,7 +110,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     targets: &[AnnotationTarget::Field],
                     no_params: true,
                     single_params: false,
-                    mapped_params: None,
+                    mapped_params: MappedAnnotationParams::None,
                 },
             ),
             (
@@ -117,7 +119,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     targets: &[AnnotationTarget::Field],
                     no_params: true,
                     single_params: false,
-                    mapped_params: None,
+                    mapped_params: MappedAnnotationParams::None,
                 },
             ),
             (
@@ -126,7 +128,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     targets: &[AnnotationTarget::Type],
                     no_params: false,
                     single_params: true,
-                    mapped_params: None,
+                    mapped_params: MappedAnnotationParams::None,
                 },
             ),
             (
@@ -135,7 +137,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     targets: &[AnnotationTarget::Type],
                     no_params: false,
                     single_params: true,
-                    mapped_params: Some(&[
+                    mapped_params: MappedAnnotationParams::Specific(&[
                         MappedAnnotationParamSpec {
                             name: "name",
                             optional: true,
@@ -157,7 +159,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     targets: &[AnnotationTarget::Field],
                     no_params: true,
                     single_params: true,
-                    mapped_params: None,
+                    mapped_params: MappedAnnotationParams::None,
                 },
             ),
             (
@@ -166,7 +168,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     targets: &[AnnotationTarget::Field],
                     no_params: true,
                     single_params: true,
-                    mapped_params: None,
+                    mapped_params: MappedAnnotationParams::None,
                 },
             ),
             (
@@ -175,7 +177,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     targets: &[AnnotationTarget::Field],
                     no_params: true,
                     single_params: true,
-                    mapped_params: None,
+                    mapped_params: MappedAnnotationParams::None,
                 },
             ),
             (
@@ -184,7 +186,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     targets: &[AnnotationTarget::Field],
                     no_params: true,
                     single_params: true,
-                    mapped_params: None,
+                    mapped_params: MappedAnnotationParams::None,
                 },
             ),
             (
@@ -193,7 +195,16 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     targets: &[AnnotationTarget::Type],
                     no_params: true,
                     single_params: false,
-                    mapped_params: None,
+                    mapped_params: MappedAnnotationParams::None,
+                },
+            ),
+            (
+                "projection",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Type],
+                    no_params: false,
+                    single_params: false,
+                    mapped_params: MappedAnnotationParams::Dynamic,
                 },
             ),
         ];

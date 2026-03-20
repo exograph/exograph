@@ -140,6 +140,7 @@ fn create_shallow_type(
                 vector_distance_fields: vec![],
                 table_id: SerializableSlabIndex::shallow(),
                 access: restrictive_access(),
+                projections: vec![],
                 doc_comments: composite.doc_comments.clone(),
             };
 

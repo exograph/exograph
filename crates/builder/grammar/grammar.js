@@ -33,6 +33,13 @@ module.exports = grammar({
     $.comment
   ],
 
+  conflicts: $ => [
+    // A bare term in annotation_map_param can be either an access_expr (via selection → term)
+    // or a projection_atom (via term). Tree-sitter keeps both alternatives alive until
+    // context disambiguates (e.g., + or / for projections, . or == for access).
+    [$.selection, $.projection_atom],
+  ],
+
   rules: {
     source_file: $ => repeat($.declaration),
     declaration: $ => choice(
@@ -131,7 +138,7 @@ module.exports = grammar({
     ),
     annotation_multiple_params: $ => commaSep(field("exprs", $.access_expr)),
     annotation_map_params: $ => commaSep(field("param", $.annotation_map_param)),
-    annotation_map_param: $ => seq(field("name", $.term), "=", field("expr", choice($.access_expr, $.object_literal))),
+    annotation_map_param: $ => seq(field("name", $.term), "=", field("expr", choice($.access_expr, $.object_literal, $.projection_expr))),
     argument: $ => seq(
       repeat(field("annotation", $.annotation)),
       field("name", $.term),
@@ -263,6 +270,18 @@ module.exports = grammar({
     relational_in: $ => prec.left(relational_level, seq(
       field("left", $.access_expr), "in", field("right", $.access_expr)
     )),
+    projection_expr: $ => choice(
+      $.projection_union,
+      $.projection_atom,
+    ),
+    projection_union: $ => prec.left(1, seq(
+      field("left", $.projection_expr), "+", field("right", $.projection_expr)
+    )),
+    projection_atom: $ => choice(
+      seq("/", field("name", $.term)),                                     // /basic (self-projection)
+      prec(1, seq(field("relation", $.term), "/", field("name", $.term))), // owner/basic (relation projection)
+      field("field", $.term),                                               // id (field name)
+    ),
     term: $ => /[a-zA-Z_][a-zA-Z0-9_]*/,
     str: $ => /(?:[^"\\]|\\.)*/, // string with escaped quotes
     number: $ => /-?\d+(\.\d+)?([eE][-+]?\d+)?/,

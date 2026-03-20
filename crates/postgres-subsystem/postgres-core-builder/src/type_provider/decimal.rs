@@ -5,7 +5,7 @@ use core_model_builder::{
     builder::resolved_builder::AnnotationMapHelper,
     typechecker::{
         Typed,
-        annotation::{AnnotationSpec, AnnotationTarget},
+        annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParams},
     },
 };
 use exo_sql::{NumericColumnType, PhysicalColumnType};
@@ -112,7 +112,7 @@ impl PrimitiveTypeProvider for primitive_type::DecimalType {
                     targets: &[AnnotationTarget::Field],
                     no_params: false,
                     single_params: true,
-                    mapped_params: None,
+                    mapped_params: MappedAnnotationParams::None,
                 },
             ),
             (
@@ -121,7 +121,7 @@ impl PrimitiveTypeProvider for primitive_type::DecimalType {
                     targets: &[AnnotationTarget::Field],
                     no_params: false,
                     single_params: true,
-                    mapped_params: None,
+                    mapped_params: MappedAnnotationParams::None,
                 },
             ),
         ]

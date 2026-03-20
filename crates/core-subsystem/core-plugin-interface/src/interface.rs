@@ -74,7 +74,7 @@ pub trait SubsystemBuilder {
     ///             targets: &[AnnotationTarget::Module],
     ///             no_params: false,
     ///             single_params: true,
-    ///             mapped_params: None,
+    ///             mapped_params: MappedAnnotationParams::None,
     ///         })
     ///     ]
     /// }

@@ -30,6 +30,7 @@ impl TypecheckFrom<AstAnnotationParam<Untyped>> for AstAnnotationParam<Typed> {
             AstAnnotationParam::AccessExpr(expr) => {
                 AstAnnotationParam::AccessExpr(AstAccessExpr::shallow(expr))
             }
+            AstAnnotationParam::Projection(proj) => AstAnnotationParam::Projection(proj.clone()),
         }
     }
 
@@ -43,7 +44,8 @@ impl TypecheckFrom<AstAnnotationParam<Untyped>> for AstAnnotationParam<Typed> {
         match self {
             AstAnnotationParam::Literal(_)
             | AstAnnotationParam::StringList(_, _)
-            | AstAnnotationParam::ObjectLiteral(_, _) => false,
+            | AstAnnotationParam::ObjectLiteral(_, _)
+            | AstAnnotationParam::Projection(_) => false,
             AstAnnotationParam::AccessExpr(expr) => {
                 expr.pass(type_env, annotation_env, scope, errors)
             }

@@ -14,7 +14,7 @@ use core_model_builder::{
     error::ModelBuildingError,
     plugin::{BuildMode, CoreSubsystemBuild, GraphQLSubsystemBuild, Interception},
     typechecker::{
-        annotation::{AnnotationSpec, AnnotationTarget},
+        annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParams},
         typ::TypecheckedSystem,
     },
 };
@@ -52,7 +52,7 @@ impl SubsystemBuilder for DenoSubsystemBuilder {
                 targets: &[AnnotationTarget::Module],
                 no_params: false,
                 single_params: true,
-                mapped_params: None,
+                mapped_params: MappedAnnotationParams::None,
             },
         )]
     }
