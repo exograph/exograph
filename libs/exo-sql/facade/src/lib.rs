@@ -41,6 +41,10 @@
 
 pub mod schema;
 
+pub mod column_default {
+    pub use exo_sql_core::column_default::*;
+}
+
 pub mod database_error {
     pub use exo_sql_core::database_error::*;
 }
