@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 publish = false
 
+[features]
+default = []
+test-support = []
+
 [dependencies]
 exo-sql-core = { path = "../core" }
 tokio-postgres = { workspace = true, features = [
@@ -11,8 +15,12 @@ tokio-postgres = { workspace = true, features = [
   "with-serde_json-1",
   "with-uuid-1",
 ], default-features = false }
+indexmap.workspace = true
 maybe-owned.workspace = true
+postcard.workspace = true
 postgres_array = "0.11.1"
+regex.workspace = true
+serde.workspace = true
 
 [target.'cfg(target_family = "wasm")'.dependencies.tokio-postgres]
 workspace = true
@@ -20,7 +28,7 @@ features = ["js", "with-chrono-0_4", "with-serde_json-1", "with-uuid-1"]
 default-features = false
 
 [dev-dependencies]
-exo-sql-core = { path = "../core", features = ["test-support"] }
+exo-sql-core = { path = "../core" }
 wasm-bindgen-test.workspace = true
 wasm-bindgen-test-macro.workspace = true
 multiplatform_test.workspace = true

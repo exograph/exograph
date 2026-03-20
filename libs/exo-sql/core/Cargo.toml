@@ -7,7 +7,6 @@ publish = false
 [features]
 default = []
 bigdecimal = ["pg_bigdecimal"]
-test-support = []
 
 [dependencies]
 pg_bigdecimal = { version = "0.1", optional = true }
@@ -20,9 +19,7 @@ tokio-postgres = { workspace = true, features = [
   "with-uuid-1",
 ], default-features = false }
 chrono.workspace = true
-regex.workspace = true
 serde.workspace = true
-postcard.workspace = true
 thiserror.workspace = true
 typed-generational-arena.workspace = true
 serde_json.workspace = true

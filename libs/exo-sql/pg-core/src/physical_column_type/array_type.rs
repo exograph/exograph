@@ -86,11 +86,12 @@ impl PhysicalColumnTypeSerializer for ArrayColumnTypeSerializer {
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-        use super::PHYSICAL_COLUMN_TYPE_REGISTRY;
+        use super::SerializedPhysicalColumnType;
+        use exo_sql_core::physical_column_type::get_physical_column_type_registry;
 
         #[derive(serde::Deserialize)]
         struct ArrayData {
-            typ: super::SerializedPhysicalColumnType,
+            typ: SerializedPhysicalColumnType,
         }
 
         let (array_data, remaining) = postcard::take_from_bytes::<ArrayData>(data)
@@ -102,7 +103,8 @@ impl PhysicalColumnTypeSerializer for ArrayColumnTypeSerializer {
         }
 
         // Look up the inner type in the registry
-        let entry = PHYSICAL_COLUMN_TYPE_REGISTRY
+        let registry = get_physical_column_type_registry();
+        let entry = registry
             .get(array_data.typ.type_name.as_str())
             .ok_or_else(|| format!("Unknown inner type for array: {}", array_data.typ.type_name))?;
 

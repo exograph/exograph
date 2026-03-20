@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use super::{PhysicalColumnType, PhysicalColumnTypeSerializer};
-use crate::schema_object::SchemaObjectName;
+use exo_sql_core::SchemaObjectName;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::hash::Hash;

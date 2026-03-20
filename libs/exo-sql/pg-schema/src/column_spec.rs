@@ -11,14 +11,14 @@ use std::collections::HashMap;
 
 use exo_sql_core::DatabaseError;
 use exo_sql_core::SchemaStatement;
-use exo_sql_core::physical_column_type::{
+use exo_sql_core::{ColumnAutoincrement, ColumnDefault, IdentityGeneration, UuidGenerationMethod};
+use exo_sql_core::{Database, PhysicalColumn, SchemaObjectName};
+use exo_sql_pg_connect::DatabaseClient;
+use exo_sql_pg_core::physical_column_type::{
     ArrayColumnType, BlobColumnType, BooleanColumnType, DateColumnType, EnumColumnType,
     FloatColumnType, IntBits, IntColumnType, JsonColumnType, NumericColumnType, PhysicalColumnType,
     StringColumnType, TimeColumnType, TimestampColumnType, UuidColumnType, VectorColumnType,
 };
-use exo_sql_core::{ColumnAutoincrement, ColumnDefault, IdentityGeneration, UuidGenerationMethod};
-use exo_sql_core::{Database, PhysicalColumn, SchemaObjectName};
-use exo_sql_pg_connect::DatabaseClient;
 
 use crate::DebugPrintTo;
 use crate::column_default_schema::ColumnDefaultSchema;
@@ -831,7 +831,7 @@ pub fn physical_column_type_from_string(
                 }))
             } else {
                 // Try to parse as a regular PhysicalColumnType
-                exo_sql_core::physical_column_type::physical_column_type_from_string_boxed(s)
+                exo_sql_pg_core::physical_column_type::physical_column_type_from_string(s)
             }
         }
     }

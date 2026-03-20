@@ -10,13 +10,13 @@
 //! Test helper to construct a `Database` directly using only core types.
 //! Mirrors what `DatabaseSpec::to_database()` does in pg-schema.
 
-use crate::{
+use crate::physical_column_type::{
+    IntBits, IntColumnType, JsonColumnType, PhysicalColumnType, StringColumnType,
+};
+use exo_sql_core::{
     ColumnReference, Database, ManyToOne, PhysicalColumn, PhysicalTable, RelationColumnPair,
     SchemaObjectName,
     column_default::{ColumnAutoincrement, ColumnDefault},
-    physical_column_type::{
-        IntBits, IntColumnType, JsonColumnType, PhysicalColumnType, StringColumnType,
-    },
 };
 
 pub struct TestColumn {

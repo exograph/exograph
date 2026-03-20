@@ -27,8 +27,6 @@ pub mod sql_param;
 pub mod sql_param_container;
 pub mod sql_value;
 pub mod statement;
-#[cfg(any(test, feature = "test-support"))]
-pub mod test_database_builder;
 pub mod vector;
 
 #[cfg(feature = "bigdecimal")]

@@ -50,11 +50,11 @@ impl ExpressionBuilder for LeftJoin {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_database_builder::*;
     use crate::{
         Column, ExpressionBuilder, SQLBuilder, predicate::ConcretePredicate, table::Table,
     };
     use exo_sql_core::SchemaObjectName;
-    use exo_sql_core::test_database_builder::*;
 
     use multiplatform_test::multiplatform_test;
 

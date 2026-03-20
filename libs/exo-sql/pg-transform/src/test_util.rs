@@ -7,8 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql_core::test_database_builder::*;
 use exo_sql_core::{ColumnId, Database, SchemaObjectName, TableId};
+use exo_sql_pg_core::test_database_builder::*;
 
 pub struct TestSetup {
     pub database: Database,

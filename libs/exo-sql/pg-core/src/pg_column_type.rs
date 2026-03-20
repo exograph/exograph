@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql_core::physical_column_type::{
+use crate::physical_column_type::{
     ArrayColumnType, BlobColumnType, BooleanColumnType, DateColumnType, EnumColumnType, FloatBits,
     FloatColumnType, IntBits, IntColumnType, JsonColumnType, NumericColumnType, PhysicalColumnType,
     StringColumnType, TimeColumnType, TimestampColumnType, UuidColumnType, VectorColumnType,
@@ -140,7 +140,7 @@ impl PgColumnType for ArrayColumnType {
     }
 }
 
-exo_sql_core::downcast_physical_column_type!(as_pg_column_type, PgColumnType);
+crate::downcast_physical_column_type!(as_pg_column_type, PgColumnType);
 
 /// Extension trait for convenient access to PgColumnType methods on `dyn PhysicalColumnType`.
 pub trait PgColumnTypeExt {

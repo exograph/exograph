@@ -10,12 +10,11 @@
 use exo_sql_core::{
     SchemaStatement,
     column_default::{ColumnAutoincrement, ColumnDefault},
-    physical_column_type::{
-        ArrayColumnType, BlobColumnType, BooleanColumnType, DateColumnType, EnumColumnType,
-        FloatBits, FloatColumnType, IntBits, IntColumnType, JsonColumnType, NumericColumnType,
-        PhysicalColumnType, StringColumnType, TimeColumnType, TimestampColumnType, UuidColumnType,
-        VectorColumnType,
-    },
+};
+use exo_sql_pg_core::physical_column_type::{
+    ArrayColumnType, BlobColumnType, BooleanColumnType, DateColumnType, EnumColumnType, FloatBits,
+    FloatColumnType, IntBits, IntColumnType, JsonColumnType, NumericColumnType, PhysicalColumnType,
+    StringColumnType, TimeColumnType, TimestampColumnType, UuidColumnType, VectorColumnType,
 };
 use std::fmt::Write;
 
@@ -230,7 +229,7 @@ impl ColumnTypeSchema for ArrayColumnType {
     }
 }
 
-exo_sql_core::downcast_physical_column_type!(as_column_type_schema, ColumnTypeSchema);
+exo_sql_pg_core::downcast_physical_column_type!(as_column_type_schema, ColumnTypeSchema);
 
 /// Extension trait for convenient access to ColumnTypeSchema on `dyn PhysicalColumnType`.
 pub trait ColumnTypeSchemaExt {

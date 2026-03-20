@@ -168,7 +168,7 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use exo_sql_core::test_database_builder::*;
+    use crate::test_database_builder::*;
     use exo_sql_core::{ColumnId, Database, SQLParamContainer, SchemaObjectName};
 
     use multiplatform_test::multiplatform_test;

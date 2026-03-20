@@ -101,8 +101,8 @@ mod test {
     use std::vec;
 
     use super::*;
+    use crate::test_database_builder::*;
     use exo_sql_core::SchemaObjectName;
-    use exo_sql_core::test_database_builder::*;
 
     use multiplatform_test::multiplatform_test;
 

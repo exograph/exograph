@@ -35,6 +35,10 @@ pub mod transaction;
 pub mod update;
 pub mod vector;
 
+pub mod physical_column_type;
+#[cfg(any(test, feature = "test-support"))]
+pub mod test_database_builder;
+
 mod function_ext;
 mod limit_ext;
 mod offset_ext;
@@ -43,6 +47,7 @@ mod physical_column_ext;
 mod physical_table_ext;
 
 pub use pg_column_type::{PgColumnType, PgColumnTypeExt, as_pg_column_type, to_pg_array_type};
+pub use physical_column_type::ensure_registry_initialized;
 
 pub use column::{ArrayParamWrapper, Column, ProxyColumn};
 pub use expression_builder::ExpressionBuilder;

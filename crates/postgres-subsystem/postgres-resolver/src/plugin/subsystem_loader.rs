@@ -46,6 +46,7 @@ impl SubsystemLoader for PostgresSubsystemLoader {
         subsystem: SerializableSubsystem,
         env: Arc<dyn Environment>,
     ) -> Result<Box<SubsystemResolver>, SubsystemLoadingError> {
+        exo_sql::ensure_registry_initialized();
         let executor = Arc::new(
             create_database_executor(self.existing_client.take(), env.as_ref())
                 .await
