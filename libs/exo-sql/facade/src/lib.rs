@@ -90,15 +90,20 @@ pub use exo_sql_pg_core::physical_column_type::{
     VectorColumnType, physical_column_type_from_string,
 };
 
+// Types from pg-core (moved from core)
+pub use exo_sql_pg_core::{
+    CaseSensitivity, Function, NumericComparator, ParamEquality, Predicate, sql_bytes::SQLBytes,
+    sql_param::SQLParam, sql_param_container::SQLParamContainer,
+};
+
+// Types that remain in core
 pub use exo_sql_core::{
-    ColumnId, ColumnReference, Database, DatabaseError, Function, Limit, ManyToOne, ManyToOneId,
-    Offset, OneToMany, OneToManyId, Ordering, ParamEquality, PhysicalColumn, PhysicalEnum,
-    PhysicalIndex, PhysicalTable, Predicate, RelationColumnPair, RelationId, SQLBytes, SQLParam,
-    SQLParamContainer, SchemaObjectName, TableId,
+    ColumnId, ColumnReference, Database, DatabaseError, HNWSParams, IndexKind, Limit, ManyToOne,
+    ManyToOneId, Offset, OneToMany, OneToManyId, Ordering, PhysicalColumn, PhysicalEnum,
+    PhysicalIndex, PhysicalTable, RelationColumnPair, RelationId, SchemaObjectName, TableId,
     physical_column::{get_mto_relation_for_columns, get_otm_relation_for_columns},
-    predicate::{CaseSensitivity, NumericComparator},
     vector::{DEFAULT_VECTOR_SIZE, VectorDistanceFunction},
 };
 
 #[cfg(feature = "bigdecimal")]
-pub use exo_sql_core::BigDecimal;
+pub use exo_sql_pg_core::BigDecimal;

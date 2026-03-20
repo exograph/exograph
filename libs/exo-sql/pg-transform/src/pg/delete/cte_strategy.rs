@@ -133,13 +133,13 @@ fn to_delete<'a>(
 
 #[cfg(test)]
 mod tests {
-    use exo_sql_core::{Predicate, SQLParamContainer};
     use exo_sql_model::{
         AbstractDelete, AbstractPredicate, AbstractSelect, ColumnPath, PhysicalColumnPath,
         selection::{AliasedSelectionElement, Selection, SelectionElement},
     };
     use exo_sql_pg_core::ExpressionBuilder;
     use exo_sql_pg_core::assert_binding;
+    use exo_sql_pg_core::{Predicate, sql_param_container::SQLParamContainer};
 
     use crate::pg::Postgres;
     use crate::test_util::TestSetup;

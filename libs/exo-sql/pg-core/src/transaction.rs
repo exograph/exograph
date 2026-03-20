@@ -12,11 +12,14 @@ use std::fmt::Debug;
 use tokio_postgres::Row;
 
 use crate::PgColumnTypeExt;
-use exo_sql_core::{Database, Predicate, SQLParamContainer, TableId};
+use crate::Predicate;
+use exo_sql_core::{Database, TableId};
+
+use crate::sql_param_container::SQLParamContainer;
 
 use crate::{
     column::{ArrayParamWrapper, Column},
-    predicate::ConcretePredicate,
+    predicate_ext::ConcretePredicate,
     select::Select,
     sql_operation::{SQLOperation, TemplateSQLOperation},
     table::Table,
@@ -66,8 +69,8 @@ impl TransactionContext {
         step_id: TransactionStepId,
         row: usize,
         col: usize,
-    ) -> exo_sql_core::sql_value::SQLValue {
-        self.results[step_id.0][row].get::<usize, exo_sql_core::sql_value::SQLValue>(col)
+    ) -> crate::sql_value::SQLValue {
+        self.results[step_id.0][row].get::<usize, crate::sql_value::SQLValue>(col)
     }
 
     /// Returns the number of rows in the result of the given step id

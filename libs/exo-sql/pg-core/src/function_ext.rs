@@ -7,8 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use crate::Function;
 use crate::physical_column_type::{PhysicalColumnTypeExt, VectorColumnType};
-use exo_sql_core::{Database, Function};
+use exo_sql_core::Database;
 
 use crate::{ExpressionBuilder, SQLBuilder};
 

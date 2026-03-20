@@ -16,9 +16,13 @@ use std::{
 };
 use tokio_postgres::types::{ToSql, Type, to_sql_checked};
 
-use crate::{schema_object::SchemaObjectName, sql_bytes::SQLBytes, sql_param::SQLParam};
+use exo_sql_core::SchemaObjectName;
 
-use crate::{sql_param::SQLParamWithType, sql_value::SQLValue};
+use crate::{
+    sql_bytes::SQLBytes,
+    sql_param::{SQLParam, SQLParamWithType},
+    sql_value::SQLValue,
+};
 
 #[derive(Clone)]
 pub struct SQLParamContainer(SQLParamWithType);

@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql_core::{Database, NumericComparator, VectorDistanceFunction};
+use exo_sql_core::{Database, VectorDistanceFunction};
 use exo_sql_model::{
     AbstractPredicate, AbstractSelect, AliasedSelectionElement, ColumnPath, Selection,
     SelectionElement,
@@ -15,6 +15,7 @@ use exo_sql_model::{
     selection_level::SelectionLevel,
     transformer::PredicateTransformer,
 };
+use exo_sql_pg_core::NumericComparator;
 use exo_sql_pg_core::{Column, ConcretePredicate};
 
 use super::Postgres;
@@ -441,10 +442,10 @@ fn attempt_subselect_predicate(
 
 #[cfg(test)]
 mod tests {
-    use exo_sql_core::{CaseSensitivity, SQLParamContainer};
     use exo_sql_model::{AbstractPredicate, ColumnPath, PhysicalColumnPath};
     use exo_sql_pg_core::ExpressionBuilder;
     use exo_sql_pg_core::assert_binding;
+    use exo_sql_pg_core::{CaseSensitivity, sql_param_container::SQLParamContainer};
 
     use crate::pg::Postgres;
     use crate::test_util::TestSetup;

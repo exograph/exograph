@@ -7,7 +7,25 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::fmt;
 use thiserror::Error;
+
+/// Wraps a database-driver-specific error (e.g., tokio_postgres::Error, mysql_async::Error).
+/// Defined in core so it's database-agnostic; each backend provides `From<DriverError>`.
+#[derive(Debug)]
+pub struct DatabaseDriverError(pub Box<dyn std::error::Error + Send + Sync>);
+
+impl fmt::Display for DatabaseDriverError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl std::error::Error for DatabaseDriverError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.0.source()
+    }
+}
 
 #[derive(Error, Debug)]
 pub enum DatabaseError {
@@ -20,8 +38,8 @@ pub enum DatabaseError {
     #[error("Validation: {0}")]
     Validation(String),
 
-    #[error("Delegate: {0}")]
-    Delegate(#[from] tokio_postgres::Error),
+    #[error("Driver: {0}")]
+    Driver(#[from] DatabaseDriverError),
 
     #[error("Unable to load native certificates: {0}")]
     NativeCerts(#[from] std::io::Error),
@@ -40,6 +58,11 @@ pub enum DatabaseError {
 }
 
 impl DatabaseError {
+    /// Create a Driver error from any error type (e.g., tokio_postgres::Error).
+    pub fn driver(e: impl std::error::Error + Send + Sync + 'static) -> DatabaseError {
+        DatabaseError::Driver(DatabaseDriverError(Box::new(e)))
+    }
+
     pub fn with_context(self, context: String) -> DatabaseError {
         DatabaseError::WithContext(context, Box::new(self))
     }

@@ -4521,16 +4521,10 @@ dependencies = [
 name = "exo-sql-core"
 version = "0.28.0"
 dependencies = [
- "bytes",
- "chrono",
  "indexmap 2.13.0",
- "pg_bigdecimal",
  "serde",
- "serde_json",
  "thiserror 2.0.18",
- "tokio-postgres",
  "typed-generational-arena",
- "uuid",
  "wasm-bindgen-test",
  "wasm-bindgen-test-macro",
 ]
@@ -4572,16 +4566,20 @@ dependencies = [
 name = "exo-sql-pg-core"
 version = "0.28.0"
 dependencies = [
+ "bytes",
+ "chrono",
  "exo-sql-core",
  "indexmap 2.13.0",
  "maybe-owned",
  "multiplatform_test",
+ "pg_bigdecimal",
  "postcard",
  "postgres_array",
  "regex",
  "serde",
  "serde_json",
  "tokio-postgres",
+ "uuid",
  "wasm-bindgen-test",
  "wasm-bindgen-test-macro",
 ]

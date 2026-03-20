@@ -318,7 +318,7 @@ impl DatabaseSpec {
         let schemas: Vec<String> = client
             .query(SCHEMAS_QUERY, &[])
             .await
-            .map_err(DatabaseError::Delegate)?
+            .map_err(DatabaseError::driver)?
             .iter()
             .filter_map(|schema_row| {
                 let schema: String = schema_row.get("schema_name");
@@ -330,7 +330,7 @@ impl DatabaseSpec {
             for enum_row in client
                 .query(ENUM_NAMES_QUERY, &[&schema_name])
                 .await
-                .map_err(DatabaseError::Delegate)?
+                .map_err(DatabaseError::driver)?
             {
                 let enum_name: String = enum_row.get("enum_name");
                 let enum_name = SchemaObjectName::new_with_schema_name(enum_name, schema_name);
@@ -354,7 +354,7 @@ impl DatabaseSpec {
             for table_row in client
                 .query(TABLE_NAMES_QUERY, &[&schema_name])
                 .await
-                .map_err(DatabaseError::Delegate)?
+                .map_err(DatabaseError::driver)?
             {
                 let table_name: String = table_row.get("table_name");
                 let table_name = SchemaObjectName::new_with_schema_name(table_name, &schema_name);
@@ -369,7 +369,7 @@ impl DatabaseSpec {
             for view_row in client
                 .query(MATERIALIZED_VIEWS_QUERY, &[&schema_name])
                 .await
-                .map_err(DatabaseError::Delegate)?
+                .map_err(DatabaseError::driver)?
             {
                 let view_name: String = view_row.get("view_name");
                 let table_name = SchemaObjectName::new_with_schema_name(view_name, &schema_name);
@@ -384,7 +384,7 @@ impl DatabaseSpec {
             for sequence_row in client
                 .query(SEQUENCE_NAMES_QUERY, &[&schema_name])
                 .await
-                .map_err(DatabaseError::Delegate)?
+                .map_err(DatabaseError::driver)?
             {
                 let sequence_name: String = sequence_row.get("sequence_name");
                 sequences.push(SchemaObjectName::new_with_schema_name(

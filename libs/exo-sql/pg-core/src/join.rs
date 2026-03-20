@@ -9,7 +9,7 @@
 
 use exo_sql_core::Database;
 
-use crate::{ExpressionBuilder, SQLBuilder, predicate::ConcretePredicate, table::Table};
+use crate::{ExpressionBuilder, SQLBuilder, predicate_ext::ConcretePredicate, table::Table};
 
 /// Represents a join between two tables. Currently, supports only left join.
 #[derive(Debug, PartialEq)]
@@ -52,7 +52,7 @@ mod tests {
     use super::*;
     use crate::test_database_builder::*;
     use crate::{
-        Column, ExpressionBuilder, SQLBuilder, predicate::ConcretePredicate, table::Table,
+        Column, ExpressionBuilder, SQLBuilder, predicate_ext::ConcretePredicate, table::Table,
     };
     use exo_sql_core::SchemaObjectName;
 

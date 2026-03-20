@@ -7,7 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql_core::{ParamEquality, SQLParamContainer};
+use exo_sql_pg_core::ParamEquality;
+use exo_sql_pg_core::sql_param_container::SQLParamContainer;
 
 use crate::predicate::AbstractPredicate;
 

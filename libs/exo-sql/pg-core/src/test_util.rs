@@ -50,19 +50,19 @@ macro_rules! assert_params {
     ($actual_params:expr, $expected_param:expr) => {
         match $actual_params.split_first() {
             Some((actual_head, actual_tail)) => {
-                let actual_boxed_head = actual_head.param.as_any().downcast_ref::<exo_sql_core::SQLParamContainer>();
+                let actual_boxed_head = actual_head.param.as_any().downcast_ref::<$crate::sql_param_container::SQLParamContainer>();
                 match actual_boxed_head {
                     Some(actual_boxed_head) => {
                         let actual_head = actual_boxed_head.param();
                         let actual_head = actual_head.param.as_ref();
                         assert_eq!(
                             &actual_head,
-                            &(&$expected_param as &dyn exo_sql_core::SQLParam),
+                            &(&$expected_param as &dyn $crate::sql_param::SQLParam),
                             "Parameter mismatch"
                         );
                     },
                     None => {
-                        assert_eq!(actual_head.param.as_ref(), (&$expected_param as &dyn exo_sql_core::SQLParam), "Parameter mismatch");
+                        assert_eq!(actual_head.param.as_ref(), (&$expected_param as &dyn $crate::sql_param::SQLParam), "Parameter mismatch");
                     }
                 }
                 assert_eq!(actual_tail.len(), 0, "Extra actual parameters")
@@ -73,21 +73,21 @@ macro_rules! assert_params {
     ($actual_params:expr, $expected_param:expr, $($rest:expr), *) => {
         match $actual_params.split_first() {
             Some((actual_head, actual_tail)) => {
-                let actual_boxed_head = actual_head.param.as_any().downcast_ref::<exo_sql_core::SQLParamContainer>();
+                let actual_boxed_head = actual_head.param.as_any().downcast_ref::<$crate::sql_param_container::SQLParamContainer>();
                 match actual_boxed_head {
                     Some(actual_boxed_head) => {
                         let actual_head = actual_boxed_head.param();
                         let actual_head = actual_head.param.as_ref();
                         assert_eq!(
                             &actual_head,
-                            &(&$expected_param as &dyn exo_sql_core::SQLParam),
+                            &(&$expected_param as &dyn $crate::sql_param::SQLParam),
                             "Parameter mismatch"
                         );
                     },
                     None => {
                         assert_eq!(
                             &actual_head.param.as_ref(),
-                            &(&$expected_param as &dyn exo_sql_core::SQLParam),
+                            &(&$expected_param as &dyn $crate::sql_param::SQLParam),
                             "Parameter mismatch"
                         );
                     }

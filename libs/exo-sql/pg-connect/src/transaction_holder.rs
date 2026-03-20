@@ -135,7 +135,7 @@ impl TransactionState {
             Some(ref mut tx) => Ok(tx),
             None => match self.client {
                 Some(ref mut client) => {
-                    let tx = client.transaction().await?;
+                    let tx = client.transaction().await.map_err(DatabaseError::driver)?;
 
                     // SAFETY: This lifetime extension is safe because:
                     // 1. The TransactionWrapper<'_> borrows from the DatabaseClient (see DatabaseClient::transaction)

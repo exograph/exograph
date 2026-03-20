@@ -436,7 +436,11 @@ impl ColumnSpec {
     ) -> Result<HashMap<SchemaObjectName, HashMap<String, ColumnAttribute>>, DatabaseError> {
         let mut map = HashMap::new();
 
-        for row in client.query(COLUMNS_TYPE_QUERY, &[&schema_name]).await? {
+        for row in client
+            .query(COLUMNS_TYPE_QUERY, &[&schema_name])
+            .await
+            .map_err(DatabaseError::driver)?
+        {
             let table_name: String = row.get("table_name");
             let column_name: String = row.get("column_name");
             let not_null: bool = row.get("attnotnull");
@@ -489,7 +493,11 @@ impl ColumnSpec {
             );
         }
 
-        for row in client.query(COLUMNS_DEFAULT_QUERY, &[&schema_name]).await? {
+        for row in client
+            .query(COLUMNS_DEFAULT_QUERY, &[&schema_name])
+            .await
+            .map_err(DatabaseError::driver)?
+        {
             let table_name: String = row.get("table_name");
             let column_name: String = row.get("column_name");
             let is_autoincrement = row.get("is_autoincrement");

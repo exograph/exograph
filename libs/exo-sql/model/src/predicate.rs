@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql_core::Predicate;
+use exo_sql_pg_core::Predicate;
 
 use crate::column_path::ColumnPath;
 

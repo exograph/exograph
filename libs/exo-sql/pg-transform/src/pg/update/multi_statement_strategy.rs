@@ -9,7 +9,7 @@
 
 use maybe_owned::MaybeOwned;
 
-use exo_sql_core::{ColumnId, Database, PhysicalColumn, Predicate, SQLParamContainer};
+use exo_sql_core::{ColumnId, Database, PhysicalColumn};
 use exo_sql_model::{
     AbstractUpdate, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractInsertSet,
     NestedAbstractUpdate,
@@ -29,6 +29,7 @@ use exo_sql_pg_core::{
     },
     update::{TemplateUpdate, Update},
 };
+use exo_sql_pg_core::{Predicate, sql_param_container::SQLParamContainer};
 
 use crate::pg::{Postgres, precheck::add_precheck_queries};
 
@@ -317,15 +318,14 @@ fn delete_op<'a>(
 
 #[cfg(test)]
 mod tests {
-    use exo_sql_core::{
-        Predicate, SQLParamContainer, physical_column::get_otm_relation_for_columns,
-    };
+    use exo_sql_core::physical_column::get_otm_relation_for_columns;
     use exo_sql_model::{
         AbstractPredicate, AbstractSelect, AbstractUpdate, ColumnPath, NestedAbstractUpdate,
         PhysicalColumnPath,
         selection::{AliasedSelectionElement, Selection, SelectionElement},
     };
     use exo_sql_pg_core::Column;
+    use exo_sql_pg_core::{Predicate, sql_param_container::SQLParamContainer};
 
     use crate::pg::Postgres;
     use crate::test_util::TestSetup;

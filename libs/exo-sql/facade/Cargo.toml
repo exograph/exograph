@@ -10,7 +10,7 @@ tls = ["exo-sql-pg-connect/tls"]
 postgres-url = ["exo-sql-pg-connect/postgres-url"]
 testing = ["exo-sql-pg-connect/testing"]
 pool = ["exo-sql-pg-connect/pool"]
-bigdecimal = ["exo-sql-core/bigdecimal", "exo-sql-pg-schema/bigdecimal"]
+bigdecimal = ["exo-sql-pg-core/bigdecimal", "exo-sql-pg-schema/bigdecimal"]
 test-support = ["exo-sql-pg-connect/test-support"]
 interactive-migration = ["exo-sql-pg-schema/interactive-migration"]
 

@@ -9,7 +9,7 @@
 
 use std::{any::Any, sync::Arc};
 
-use crate::schema_object::SchemaObjectName;
+use exo_sql_core::SchemaObjectName;
 use tokio_postgres::types::{ToSql, Type};
 
 #[derive(Debug, Clone)]

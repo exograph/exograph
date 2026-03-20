@@ -9,7 +9,9 @@
 
 use maybe_owned::MaybeOwned;
 
-use exo_sql_core::{Database, PhysicalColumn, PhysicalTable, SQLParamContainer};
+use exo_sql_core::{Database, PhysicalColumn, PhysicalTable};
+
+use crate::sql_param_container::SQLParamContainer;
 
 use crate::{
     ExpressionBuilder, SQLBuilder,

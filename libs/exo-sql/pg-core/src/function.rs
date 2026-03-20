@@ -1,7 +1,6 @@
-use crate::{
-    physical_column::ColumnId, sql_param_container::SQLParamContainer,
-    vector::VectorDistanceFunction,
-};
+use exo_sql_core::{VectorDistanceFunction, physical_column::ColumnId};
+
+use crate::sql_param_container::SQLParamContainer;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Function {
