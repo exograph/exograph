@@ -19,7 +19,9 @@ use core_model_builder::{
     ast::ast_types::{AstEnum, AstModel, AstModelKind, AstModule, AstSystem, Untyped},
     typechecker::{
         Scope,
-        annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
+        annotation::{
+            AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec, MappedAnnotationParams,
+        },
         typ::{Module, Type, TypecheckedSystem},
     },
 };
@@ -95,7 +97,7 @@ fn populate_annotation_env(
                 ],
                 no_params: false,
                 single_params: true,
-                mapped_params: Some(&[
+                mapped_params: MappedAnnotationParams::Specific(&[
                     MappedAnnotationParamSpec {
                         name: "query",
                         optional: true,
@@ -125,7 +127,7 @@ fn populate_annotation_env(
                 targets: &[AnnotationTarget::Field],
                 no_params: true,
                 single_params: true,
-                mapped_params: None,
+                mapped_params: MappedAnnotationParams::None,
             },
         ),
         (
@@ -134,7 +136,7 @@ fn populate_annotation_env(
                 targets: &[AnnotationTarget::Field],
                 no_params: true,
                 single_params: true,
-                mapped_params: None,
+                mapped_params: MappedAnnotationParams::None,
             },
         ),
         #[cfg(feature = "test-context")]
@@ -144,7 +146,7 @@ fn populate_annotation_env(
                 targets: &[AnnotationTarget::Field],
                 no_params: true,
                 single_params: true,
-                mapped_params: None,
+                mapped_params: MappedAnnotationParams::None,
             },
         ),
         (
@@ -153,7 +155,7 @@ fn populate_annotation_env(
                 targets: &[AnnotationTarget::Interceptor],
                 no_params: false,
                 single_params: true,
-                mapped_params: None,
+                mapped_params: MappedAnnotationParams::None,
             },
         ),
         (
@@ -162,7 +164,7 @@ fn populate_annotation_env(
                 targets: &[AnnotationTarget::Interceptor],
                 no_params: false,
                 single_params: true,
-                mapped_params: None,
+                mapped_params: MappedAnnotationParams::None,
             },
         ),
         (
@@ -171,7 +173,7 @@ fn populate_annotation_env(
                 targets: &[AnnotationTarget::Interceptor],
                 no_params: false,
                 single_params: true,
-                mapped_params: None,
+                mapped_params: MappedAnnotationParams::None,
             },
         ),
         (
@@ -180,7 +182,7 @@ fn populate_annotation_env(
                 targets: &[AnnotationTarget::Field],
                 no_params: true,
                 single_params: true,
-                mapped_params: None,
+                mapped_params: MappedAnnotationParams::None,
             },
         ),
         (
@@ -189,7 +191,7 @@ fn populate_annotation_env(
                 targets: &[AnnotationTarget::Argument],
                 no_params: true,
                 single_params: true,
-                mapped_params: None,
+                mapped_params: MappedAnnotationParams::None,
             },
         ),
         (
@@ -198,7 +200,7 @@ fn populate_annotation_env(
                 targets: &[AnnotationTarget::Field],
                 no_params: true,
                 single_params: false,
-                mapped_params: None,
+                mapped_params: MappedAnnotationParams::None,
             },
         ),
         (
@@ -207,7 +209,7 @@ fn populate_annotation_env(
                 targets: &[AnnotationTarget::Field],
                 no_params: true,
                 single_params: true,
-                mapped_params: None,
+                mapped_params: MappedAnnotationParams::None,
             },
         ),
         (
@@ -216,7 +218,7 @@ fn populate_annotation_env(
                 targets: &[AnnotationTarget::Field],
                 no_params: false,
                 single_params: true,
-                mapped_params: None,
+                mapped_params: MappedAnnotationParams::None,
             },
         ),
     ];

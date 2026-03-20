@@ -9,6 +9,7 @@
 
 use super::relation::PostgresRelation;
 use crate::aggregate::AggregateField;
+use crate::projection::ResolvedProjection;
 use crate::vector_distance::VectorDistanceField;
 
 use common::value::Val;
@@ -89,6 +90,7 @@ pub struct EntityType {
 
     pub table_id: SerializableSlabIndex<PhysicalTable>,
     pub access: Access,
+    pub projections: Vec<ResolvedProjection>,
     pub doc_comments: Option<String>,
 }
 

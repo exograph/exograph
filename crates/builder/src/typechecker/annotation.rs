@@ -9,10 +9,15 @@
 
 use std::collections::{HashMap, HashSet};
 
+use codemap::Span;
+
 use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams, Untyped};
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::mapped_arena::MappedArena;
-use core_model_builder::typechecker::{Typed, annotation::AnnotationSpec};
+use core_model_builder::typechecker::{
+    Typed,
+    annotation::{AnnotationSpec, MappedAnnotationParams},
+};
 
 use super::{Scope, Type, TypecheckFrom};
 use crate::util;
@@ -45,21 +50,27 @@ impl TypecheckFrom<AstAnnotation<Untyped>> for AstAnnotation<Typed> {
             if spec.single_params {
                 expected.push("a single parameter".to_string());
             }
-            if let Some(params) = spec.mapped_params {
-                expected.push(format!(
-                    "({})",
-                    util::join_strings(
-                        &params
-                            .iter()
-                            .map(|param_spec| format!(
-                                "{}{}",
-                                param_spec.name,
-                                if param_spec.optional { "?" } else { "" }
-                            ))
-                            .collect::<Vec<_>>(),
-                        None,
-                    )
-                ));
+            match &spec.mapped_params {
+                MappedAnnotationParams::Specific(params) => {
+                    expected.push(format!(
+                        "({})",
+                        util::join_strings(
+                            &params
+                                .iter()
+                                .map(|param_spec| format!(
+                                    "{}{}",
+                                    param_spec.name,
+                                    if param_spec.optional { "?" } else { "" }
+                                ))
+                                .collect::<Vec<_>>(),
+                            None,
+                        )
+                    ));
+                }
+                MappedAnnotationParams::Dynamic => {
+                    expected.push("named parameters".to_string());
+                }
+                MappedAnnotationParams::None => {}
             }
 
             format!("expected {}", util::join_strings(&expected, Some("or")))
@@ -96,39 +107,20 @@ impl TypecheckFrom<AstAnnotation<Untyped>> for AstAnnotation<Typed> {
                 }
             }
             AstAnnotationParams::Map(params, spans) => match spec.mapped_params {
-                // Given mapped parameters, but expected none or some
-                None => errors.push(base_diagnostic),
+                // Dynamic mapped params: accept any param names, only check duplicates
+                MappedAnnotationParams::Dynamic => {
+                    check_duplicate_params(spans, errors);
+                }
+
+                // Given mapped parameters, but not allowed
+                MappedAnnotationParams::None => errors.push(base_diagnostic),
 
                 // Check given parameters are correct
-                Some(param_specs) => {
+                MappedAnnotationParams::Specific(param_specs) => {
                     let mut span_labels = Vec::new();
                     let mut missing_param = false;
 
-                    // Check for any duplicate parameters
-                    for (name, spans) in spans.iter() {
-                        if spans.len() > 1 {
-                            let mut span_labels = vec![SpanLabel {
-                                span: spans[0],
-                                label: Some("previously defined here".to_owned()),
-                                style: SpanStyle::Secondary,
-                            }];
-
-                            for span in &spans[1..] {
-                                span_labels.push(SpanLabel {
-                                    span: *span,
-                                    label: Some("redefined here".to_owned()),
-                                    style: SpanStyle::Primary,
-                                });
-                            }
-
-                            errors.push(Diagnostic {
-                                level: Level::Error,
-                                message: format!("Duplicate definitions of parameter `{name}`"),
-                                code: Some("A000".to_string()),
-                                spans: span_labels,
-                            });
-                        }
-                    }
+                    check_duplicate_params(spans, errors);
 
                     // Keep track of extra unused parameters
                     let mut unexpected_params = params.keys().cloned().collect::<HashSet<_>>();
@@ -161,5 +153,32 @@ impl TypecheckFrom<AstAnnotation<Untyped>> for AstAnnotation<Typed> {
         }
 
         self.params.pass(type_env, annotation_env, scope, errors)
+    }
+}
+
+fn check_duplicate_params(spans: &HashMap<String, Vec<Span>>, errors: &mut Vec<Diagnostic>) {
+    for (name, spans) in spans.iter() {
+        if spans.len() > 1 {
+            let mut span_labels = vec![SpanLabel {
+                span: spans[0],
+                label: Some("previously defined here".to_owned()),
+                style: SpanStyle::Secondary,
+            }];
+
+            for span in &spans[1..] {
+                span_labels.push(SpanLabel {
+                    span: *span,
+                    label: Some("redefined here".to_owned()),
+                    style: SpanStyle::Primary,
+                });
+            }
+
+            errors.push(Diagnostic {
+                level: Level::Error,
+                message: format!("Duplicate definitions of parameter `{name}`"),
+                code: Some("A000".to_string()),
+                spans: span_labels,
+            });
+        }
     }
 }

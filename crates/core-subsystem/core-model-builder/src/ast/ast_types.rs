@@ -414,6 +414,57 @@ impl AstLiteral {
     }
 }
 
+/// A projection expression — used in @projection annotation values.
+/// Defines how response shapes are built for RPC operations.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum AstProjectionExpr {
+    /// A scalar field: `id`, `name`
+    Field(
+        String,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+    ),
+    /// Self-projection reference: `/basic`, `/pk`
+    SelfProjection(
+        String,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+    ),
+    /// Relation projection: `owner/basic`, `questions/pk`
+    RelationProjection(
+        String,
+        String,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+    ),
+    /// Union of two projections: `left + right`
+    Union(
+        Box<AstProjectionExpr>,
+        Box<AstProjectionExpr>,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+    ),
+}
+
+impl AstProjectionExpr {
+    pub fn span(&self) -> Span {
+        match self {
+            AstProjectionExpr::Field(_, s) => *s,
+            AstProjectionExpr::SelfProjection(_, s) => *s,
+            AstProjectionExpr::RelationProjection(_, _, s) => *s,
+            AstProjectionExpr::Union(_, _, s) => *s,
+        }
+    }
+}
+
 /// Access control expressions (used in @access annotations and interceptor expressions).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum AstAccessExpr<T: NodeTypedness> {
@@ -460,6 +511,8 @@ pub enum AstAnnotationParam<T: NodeTypedness> {
     ),
     /// A full access expression (e.g. `@access(self.id == AuthContext.userId)`)
     AccessExpr(AstAccessExpr<T>),
+    /// A projection expression (e.g. `@projection(withOwner = /basic + owner/basic)`)
+    Projection(AstProjectionExpr),
 }
 
 impl<T: NodeTypedness> AstAnnotationParam<T> {
@@ -475,18 +528,23 @@ impl<T: NodeTypedness> AstAnnotationParam<T> {
             }
             AstAnnotationParam::ObjectLiteral(_, s) => *s,
             AstAnnotationParam::AccessExpr(expr) => expr.span(),
+            AstAnnotationParam::Projection(proj) => proj.span(),
         }
     }
 
     /// Convert this annotation parameter to an access expression (borrowing).
     /// Literals are wrapped in `AstAccessExpr::Literal`.
     /// AccessExpr variants are cloned.
-    /// StringList and ObjectLiteral cannot be converted and will panic.
+    /// StringList, ObjectLiteral, and Projection cannot be converted and will panic.
     pub fn to_access_expr(&self) -> AstAccessExpr<T> {
         match self {
             AstAnnotationParam::Literal(lit) => AstAccessExpr::Literal(lit.clone()),
             AstAnnotationParam::AccessExpr(expr) => expr.clone(),
-            _ => panic!("Cannot convert StringList or ObjectLiteral to access expression"),
+            AstAnnotationParam::StringList(..)
+            | AstAnnotationParam::ObjectLiteral(..)
+            | AstAnnotationParam::Projection(..) => {
+                panic!("Cannot convert non-expression annotation param to access expression")
+            }
         }
     }
 }

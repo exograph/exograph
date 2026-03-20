@@ -8,7 +8,9 @@ use core_model_builder::{
     builder::resolved_builder::AnnotationMapHelper,
     typechecker::{
         Typed,
-        annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
+        annotation::{
+            AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec, MappedAnnotationParams,
+        },
     },
 };
 use exo_sql::{IntBits, IntColumnType, PhysicalColumnType};
@@ -161,7 +163,7 @@ impl PrimitiveTypeProvider for primitive_type::IntType {
                     targets: &[AnnotationTarget::Field],
                     no_params: false,
                     single_params: false,
-                    mapped_params: Some(&[
+                    mapped_params: MappedAnnotationParams::Specific(&[
                         MappedAnnotationParamSpec {
                             name: "min",
                             optional: false,
@@ -179,7 +181,7 @@ impl PrimitiveTypeProvider for primitive_type::IntType {
                     targets: &[AnnotationTarget::Field],
                     no_params: true,
                     single_params: false,
-                    mapped_params: None,
+                    mapped_params: MappedAnnotationParams::None,
                 },
             ),
             (
@@ -188,7 +190,7 @@ impl PrimitiveTypeProvider for primitive_type::IntType {
                     targets: &[AnnotationTarget::Field],
                     no_params: true,
                     single_params: false,
-                    mapped_params: None,
+                    mapped_params: MappedAnnotationParams::None,
                 },
             ),
             (
@@ -197,7 +199,7 @@ impl PrimitiveTypeProvider for primitive_type::IntType {
                     targets: &[AnnotationTarget::Field],
                     no_params: true,
                     single_params: false,
-                    mapped_params: None,
+                    mapped_params: MappedAnnotationParams::None,
                 },
             ),
         ]
