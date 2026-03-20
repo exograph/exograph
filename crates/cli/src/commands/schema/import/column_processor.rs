@@ -1,12 +1,49 @@
 use anyhow::Result;
 use std::io::Write;
 
+use exo_sql::column_default::{ColumnAutoincrement, ColumnDefault, UuidGenerationMethod};
 use exo_sql::schema::column_spec::ColumnSpec;
 use exo_sql::schema::table_spec::TableSpec;
 use exo_sql::{
     FloatBits, FloatColumnType, IntBits, IntColumnType, NumericColumnType, StringColumnType,
     TimeColumnType, TimestampColumnType, VectorColumnType,
 };
+
+/// Converts a ColumnDefault to Exograph model syntax (e.g., `generate_uuid()`, `autoIncrement()`)
+fn column_default_to_model(default: &ColumnDefault) -> Option<String> {
+    match default {
+        ColumnDefault::Uuid(method) => match method {
+            UuidGenerationMethod::Random => Some("generate_uuid()".to_string()),
+            UuidGenerationMethod::V4 => Some("uuidGenerateV4()".to_string()),
+            UuidGenerationMethod::V7 => Some("uuidGenerateV7()".to_string()),
+        },
+        ColumnDefault::CurrentTimestamp | ColumnDefault::CurrentDate => Some("now()".to_string()),
+        ColumnDefault::Text(value) | ColumnDefault::VarChar(value) => Some(format!("\"{value}\"")),
+        ColumnDefault::Boolean(value) => Some(format!("{value}")),
+        ColumnDefault::Number(value) => Some(format!("\"{value}\"")),
+        ColumnDefault::Int(value) => Some(value.to_string()),
+        ColumnDefault::Float(value) => Some(value.to_string()),
+        ColumnDefault::Decimal(value) => Some(format!("\"{value}\"")),
+        ColumnDefault::Function(value) => Some(value.clone()),
+        ColumnDefault::Enum(value) => Some(value.to_string()),
+        ColumnDefault::Autoincrement(autoincrement) => match autoincrement {
+            ColumnAutoincrement::Serial => Some("autoIncrement()".to_string()),
+            ColumnAutoincrement::Sequence { name } => Some(format!(
+                "autoIncrement(\"{}.{}\")",
+                name.schema.as_deref().unwrap_or("public"),
+                name.name
+            )),
+            ColumnAutoincrement::Identity { .. } => {
+                todo!()
+            }
+        },
+        ColumnDefault::Date(value) => Some(format!("\"{value}\"")),
+        ColumnDefault::Time(value) => Some(format!("\"{value}\"")),
+        ColumnDefault::DateTime(value) => Some(format!("\"{value}\"")),
+        ColumnDefault::Json(value) => Some(format!("\"{value}\"")),
+        ColumnDefault::UuidLiteral(value) => Some(format!("\"{value}\"")),
+    }
+}
 
 use super::{
     ImportContext,
@@ -67,7 +104,10 @@ impl ModelImporter<TableSpec, FieldImport> for ColumnSpec {
             all_annotations.push(col_annot);
         }
 
-        let default_value = self.default_value.as_ref().and_then(|v| v.to_model());
+        let default_value = self
+            .default_value
+            .as_ref()
+            .and_then(column_default_to_model);
 
         Ok(FieldImport {
             name: standard_field_name,
