@@ -9,12 +9,10 @@
 
 use std::collections::{HashMap, hash_map::Entry};
 
-use crate::{
-    database_error::DatabaseError,
-    physical_column_type::{ArrayColumnType, JsonColumnType, PhysicalColumnType},
-};
+use crate::physical_column_type::{ArrayColumnType, JsonColumnType, PhysicalColumnType};
+use exo_sql_core::{DatabaseError, sql_param_container::SQLParamContainer};
 
-use crate::sql_param_container::SQLParamContainer;
+use crate::pg_column_type::PgColumnTypeExt;
 use postgres_array::{Array, Dimension};
 use tokio_postgres::types::Type;
 
@@ -45,7 +43,7 @@ pub fn to_sql_param<T>(
         if let Some(array_type) = destination_type.as_any().downcast_ref::<ArrayColumnType>() {
             array_type.typ.get_pg_type()
         } else if destination_type.as_any().is::<JsonColumnType>() {
-            Type::JSONB
+            destination_type.get_pg_type()
         } else {
             return Err(DatabaseError::Validation(
                 "Destination type is not an array".to_string(),

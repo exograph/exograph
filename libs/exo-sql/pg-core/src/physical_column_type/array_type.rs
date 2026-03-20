@@ -7,12 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use super::{PhysicalColumnType, PhysicalColumnTypeSerializer, to_pg_array_type};
-use crate::{column_default::ColumnDefault, statement::SchemaStatement};
+use super::{PhysicalColumnType, PhysicalColumnTypeSerializer};
 use serde::Serialize;
 use std::any::Any;
-use std::fmt::Write;
-use tokio_postgres::types::Type;
 
 #[derive(Debug)]
 pub struct ArrayColumnType {
@@ -44,32 +41,6 @@ impl Eq for ArrayColumnType {}
 impl PhysicalColumnType for ArrayColumnType {
     fn type_string(&self) -> String {
         format!("Array of [{}]", self.typ.type_string())
-    }
-
-    fn get_pg_type(&self) -> Type {
-        to_pg_array_type(&self.typ.get_pg_type())
-    }
-
-    fn to_sql(&self, default_value: Option<&ColumnDefault>) -> SchemaStatement {
-        // 'unwrap' nested arrays all the way to the underlying primitive type
-        let mut underlying_typ = &self.typ;
-        let mut dimensions = 1;
-
-        while let Some(array_type) = underlying_typ.as_any().downcast_ref::<ArrayColumnType>() {
-            underlying_typ = &array_type.typ;
-            dimensions += 1;
-        }
-
-        // build dimensions
-        let mut dimensions_part = String::new();
-
-        for _ in 0..dimensions {
-            write!(&mut dimensions_part, "[]").unwrap();
-        }
-
-        let mut sql_statement = underlying_typ.to_sql(default_value);
-        sql_statement.statement += &dimensions_part;
-        sql_statement
     }
 
     fn type_name(&self) -> &'static str {
@@ -115,11 +86,12 @@ impl PhysicalColumnTypeSerializer for ArrayColumnTypeSerializer {
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-        use super::PHYSICAL_COLUMN_TYPE_REGISTRY;
+        use super::SerializedPhysicalColumnType;
+        use exo_sql_core::physical_column_type::get_physical_column_type_registry;
 
         #[derive(serde::Deserialize)]
         struct ArrayData {
-            typ: super::SerializedPhysicalColumnType,
+            typ: SerializedPhysicalColumnType,
         }
 
         let (array_data, remaining) = postcard::take_from_bytes::<ArrayData>(data)
@@ -131,7 +103,8 @@ impl PhysicalColumnTypeSerializer for ArrayColumnTypeSerializer {
         }
 
         // Look up the inner type in the registry
-        let entry = PHYSICAL_COLUMN_TYPE_REGISTRY
+        let registry = get_physical_column_type_registry();
+        let entry = registry
             .get(array_data.typ.type_name.as_str())
             .ok_or_else(|| format!("Unknown inner type for array: {}", array_data.typ.type_name))?;
 

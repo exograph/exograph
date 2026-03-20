@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql_core::physical_column_type::PhysicalColumnTypeExt;
+use crate::physical_column_type::{PhysicalColumnTypeExt, VectorColumnType};
 use exo_sql_core::{Database, Function};
 
 use crate::{ExpressionBuilder, SQLBuilder};
@@ -24,11 +24,7 @@ impl ExpressionBuilder for Function {
                 let column = column_id.get_column(database);
                 column.build(database, builder);
                 builder.push(')');
-                if column
-                    .typ
-                    .is::<exo_sql_core::physical_column_type::VectorColumnType>()
-                    && function_name != "count"
-                {
+                if column.typ.is::<VectorColumnType>() && function_name != "count" {
                     // For vectors, we need to cast the result to a real array (otherwise it will be a string)
                     builder.push_str("::real[]");
                 }

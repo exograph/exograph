@@ -71,6 +71,7 @@ pub enum ColumnMapping {
 pub fn build(
     typechecked_system: &TypecheckedSystem,
 ) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
+    exo_sql::ensure_registry_initialized();
     let mut errors = Vec::new();
 
     let resolved_system = resolve(typechecked_system, &mut errors)?;

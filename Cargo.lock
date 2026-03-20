@@ -4524,11 +4524,7 @@ dependencies = [
  "bytes",
  "chrono",
  "indexmap 2.13.0",
- "multiplatform_test",
  "pg_bigdecimal",
- "postcard",
- "postgres_array",
- "regex",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -4577,8 +4573,13 @@ name = "exo-sql-pg-core"
 version = "0.28.0"
 dependencies = [
  "exo-sql-core",
+ "indexmap 2.13.0",
  "maybe-owned",
  "multiplatform_test",
+ "postcard",
+ "postgres_array",
+ "regex",
+ "serde",
  "serde_json",
  "tokio-postgres",
  "wasm-bindgen-test",
@@ -4591,6 +4592,7 @@ version = "0.28.0"
 dependencies = [
  "exo-sql-core",
  "exo-sql-pg-connect",
+ "exo-sql-pg-core",
  "pg_bigdecimal",
  "regex",
  "serde",

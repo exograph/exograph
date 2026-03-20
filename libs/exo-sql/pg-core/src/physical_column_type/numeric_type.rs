@@ -8,11 +8,9 @@
 // by the Apache License, Version 2.0.
 
 use super::{PhysicalColumnType, PhysicalColumnTypeSerializer};
-use crate::{column_default::ColumnDefault, statement::SchemaStatement};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::hash::Hash;
-use tokio_postgres::types::Type;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NumericColumnType {
@@ -29,29 +27,6 @@ impl PhysicalColumnType for NumericColumnType {
             (Some(precision), None) => format!("Numeric(precision: {})", precision),
             (None, None) => "Numeric".to_string(),
             (None, Some(_)) => unreachable!("scale without precision is not allowed"),
-        }
-    }
-
-    fn get_pg_type(&self) -> Type {
-        Type::NUMERIC
-    }
-
-    fn to_sql(&self, _default_value: Option<&ColumnDefault>) -> SchemaStatement {
-        SchemaStatement {
-            statement: {
-                if let Some(p) = self.precision {
-                    if let Some(s) = self.scale {
-                        format!("NUMERIC({p}, {s})")
-                    } else {
-                        format!("NUMERIC({p})")
-                    }
-                } else {
-                    assert!(self.scale.is_none()); // can't have a scale and no precision
-                    "NUMERIC".to_owned()
-                }
-            },
-            pre_statements: vec![],
-            post_statements: vec![],
         }
     }
 

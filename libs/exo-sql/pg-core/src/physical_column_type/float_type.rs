@@ -8,11 +8,9 @@
 // by the Apache License, Version 2.0.
 
 use super::{PhysicalColumnType, PhysicalColumnTypeSerializer};
-use crate::{column_default::ColumnDefault, statement::SchemaStatement};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::hash::Hash;
-use tokio_postgres::types::Type;
 
 /// Number of bits in the float's mantissa
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -31,25 +29,6 @@ impl PhysicalColumnType for FloatColumnType {
         match self.bits {
             FloatBits::_24 => "Single precision floating point".to_string(),
             FloatBits::_53 => "Double precision floating point".to_string(),
-        }
-    }
-
-    fn get_pg_type(&self) -> Type {
-        match self.bits {
-            FloatBits::_24 => Type::FLOAT4,
-            FloatBits::_53 => Type::FLOAT8,
-        }
-    }
-
-    fn to_sql(&self, _default_value: Option<&ColumnDefault>) -> SchemaStatement {
-        SchemaStatement {
-            statement: match self.bits {
-                FloatBits::_24 => "REAL",
-                FloatBits::_53 => "DOUBLE PRECISION",
-            }
-            .to_owned(),
-            pre_statements: vec![],
-            post_statements: vec![],
         }
     }
 

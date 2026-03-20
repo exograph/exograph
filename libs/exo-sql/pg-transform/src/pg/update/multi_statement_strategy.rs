@@ -17,7 +17,7 @@ use exo_sql_model::{
     transformer::{InsertTransformer, PredicateTransformer, SelectTransformer},
 };
 use exo_sql_pg_core::{
-    Column, SQLOperation, TemplateSQLOperation,
+    Column, PgColumnTypeExt, SQLOperation, TemplateSQLOperation,
     column::ArrayParamWrapper,
     delete::TemplateDelete,
     select::Select,

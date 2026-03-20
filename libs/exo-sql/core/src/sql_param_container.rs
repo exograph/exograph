@@ -18,9 +18,7 @@ use tokio_postgres::types::{ToSql, Type, to_sql_checked};
 
 use crate::{schema_object::SchemaObjectName, sql_bytes::SQLBytes, sql_param::SQLParam};
 
-use crate::{
-    physical_column_type::to_pg_array_type, sql_param::SQLParamWithType, sql_value::SQLValue,
-};
+use crate::{sql_param::SQLParamWithType, sql_value::SQLValue};
 
 #[derive(Clone)]
 pub struct SQLParamContainer(SQLParamWithType);
@@ -148,7 +146,23 @@ impl SQLParamContainer {
     }
 
     pub fn from_sql_values(params: Vec<SQLValue>, elem_type: Type) -> Self {
-        let collection_type = to_pg_array_type(&elem_type);
+        let collection_type = match elem_type {
+            Type::INT2 => Type::INT2_ARRAY,
+            Type::INT4 => Type::INT4_ARRAY,
+            Type::INT8 => Type::INT8_ARRAY,
+            Type::TEXT => Type::TEXT_ARRAY,
+            Type::JSONB => Type::JSONB_ARRAY,
+            Type::FLOAT4 => Type::FLOAT4_ARRAY,
+            Type::FLOAT8 => Type::FLOAT8_ARRAY,
+            Type::BOOL => Type::BOOL_ARRAY,
+            Type::TIMESTAMPTZ => Type::TIMESTAMPTZ_ARRAY,
+            Type::TEXT_ARRAY => Type::TEXT_ARRAY,
+            Type::VARCHAR => Type::VARCHAR_ARRAY,
+            Type::BYTEA => Type::BYTEA_ARRAY,
+            Type::UUID => Type::UUID_ARRAY,
+            Type::NUMERIC => Type::NUMERIC_ARRAY,
+            _ => unimplemented!("Unsupported array type: {:?}", elem_type),
+        };
 
         Self::new(params, collection_type)
     }

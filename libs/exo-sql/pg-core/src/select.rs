@@ -98,8 +98,8 @@ impl ExpressionBuilder for Select {
 
 #[cfg(test)]
 mod tests {
+    use crate::test_database_builder::*;
     use exo_sql_core::SchemaObjectName;
-    use exo_sql_core::test_database_builder::*;
 
     use crate::json_object::{JsonObject, JsonObjectElement};
 

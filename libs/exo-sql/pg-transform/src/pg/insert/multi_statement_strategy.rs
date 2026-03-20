@@ -14,7 +14,7 @@ use exo_sql_model::{
     AbstractInsert, ColumnValuePair, InsertionRow, NestedInsertion, transformer::SelectTransformer,
 };
 use exo_sql_pg_core::{
-    Column, SQLOperation, TemplateSQLOperation,
+    Column, PgColumnTypeExt, SQLOperation, TemplateSQLOperation,
     column::{ArrayParamWrapper, ProxyColumn},
     insert::TemplateInsert,
     select::Select,

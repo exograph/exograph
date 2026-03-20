@@ -12,7 +12,7 @@ tracing.workspace = true
 maybe-owned.workspace = true
 
 [dev-dependencies]
-exo-sql-core = { path = "../core", features = ["test-support"] }
+exo-sql-pg-core = { path = "../pg-core", features = ["test-support"] }
 wasm-bindgen-test.workspace = true
 wasm-bindgen-test-macro.workspace = true
 multiplatform_test.workspace = true

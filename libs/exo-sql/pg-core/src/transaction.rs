@@ -11,6 +11,7 @@ use std::fmt::Debug;
 
 use tokio_postgres::Row;
 
+use crate::PgColumnTypeExt;
 use exo_sql_core::{Database, Predicate, SQLParamContainer, TableId};
 
 use crate::{

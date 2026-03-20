@@ -8,34 +8,23 @@
 // by the Apache License, Version 2.0.
 
 use super::{PhysicalColumnType, PhysicalColumnTypeSerializer};
-use crate::{column_default::ColumnDefault, statement::SchemaStatement};
+use exo_sql_core::SchemaObjectName;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::hash::Hash;
-use tokio_postgres::types::Type;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct BlobColumnType;
+pub struct EnumColumnType {
+    pub enum_name: SchemaObjectName,
+}
 
-impl PhysicalColumnType for BlobColumnType {
+impl PhysicalColumnType for EnumColumnType {
     fn type_string(&self) -> String {
-        "Blob".to_string()
-    }
-
-    fn get_pg_type(&self) -> Type {
-        Type::BYTEA
-    }
-
-    fn to_sql(&self, _default_value: Option<&ColumnDefault>) -> SchemaStatement {
-        SchemaStatement {
-            statement: "BYTEA".to_owned(),
-            pre_statements: vec![],
-            post_statements: vec![],
-        }
+        format!("Enum({})", self.enum_name.name)
     }
 
     fn type_name(&self) -> &'static str {
-        "Blob"
+        "Enum"
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -47,28 +36,28 @@ impl PhysicalColumnType for BlobColumnType {
     }
 
     fn equals(&self, other: &dyn PhysicalColumnType) -> bool {
-        other.as_any().downcast_ref::<Self>().is_some()
+        other.as_any().downcast_ref::<Self>() == Some(self)
     }
 }
 
-pub struct BlobColumnTypeSerializer;
+pub struct EnumColumnTypeSerializer;
 
-impl PhysicalColumnTypeSerializer for BlobColumnTypeSerializer {
+impl PhysicalColumnTypeSerializer for EnumColumnTypeSerializer {
     fn serialize(&self, column_type: &dyn PhysicalColumnType) -> Result<Vec<u8>, String> {
         column_type
             .as_any()
-            .downcast_ref::<BlobColumnType>()
-            .ok_or_else(|| "Expected BlobColumnType".to_string())
+            .downcast_ref::<EnumColumnType>()
+            .ok_or_else(|| "Expected EnumColumnType".to_string())
             .and_then(|t| {
-                postcard::to_allocvec(t).map_err(|e| format!("Failed to serialize Blob: {}", e))
+                postcard::to_allocvec(t).map_err(|e| format!("Failed to serialize Enum: {}", e))
             })
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-        let (t, remaining) = postcard::take_from_bytes::<BlobColumnType>(data)
-            .map_err(|e| format!("Failed to deserialize Blob: {}", e))?;
+        let (t, remaining) = postcard::take_from_bytes::<EnumColumnType>(data)
+            .map_err(|e| format!("Failed to deserialize Enum: {}", e))?;
         if !remaining.is_empty() {
-            return Err("Did not consume all bytes during deserialization of Blob".to_string());
+            return Err("Did not consume all bytes during deserialization of Enum".to_string());
         }
         Ok(Box::new(t) as Box<dyn PhysicalColumnType>)
     }

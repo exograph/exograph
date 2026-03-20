@@ -11,10 +11,10 @@ use std::collections::{HashMap, HashSet};
 
 use exo_sql_core::DatabaseError;
 use exo_sql_core::SchemaStatement;
-use exo_sql_core::physical_column_type::PhysicalColumnTypeExt;
 use exo_sql_core::{ColumnDefault, UuidGenerationMethod};
 use exo_sql_core::{PhysicalTable, SchemaObjectName};
 use exo_sql_pg_connect::DatabaseClient;
+use exo_sql_pg_core::physical_column_type::PhysicalColumnTypeExt;
 
 use crate::DebugPrintTo;
 use crate::column_spec::{
@@ -260,7 +260,7 @@ impl TableSpec {
 
         for col_spec in self.columns.iter() {
             let typ = &col_spec.typ;
-            if typ.is::<exo_sql_core::physical_column_type::UuidColumnType>() {
+            if typ.is::<exo_sql_pg_core::physical_column_type::UuidColumnType>() {
                 // Only uuid_generate_v4() requires an extension (uuid-ossp)
                 // gen_random_uuid() is built into PostgreSQL 13+
                 if let Some(ColumnDefault::Uuid(UuidGenerationMethod::V4)) = &col_spec.default_value
@@ -268,7 +268,7 @@ impl TableSpec {
                     required_extensions.insert("uuid-ossp".to_string());
                 }
             }
-            if typ.is::<exo_sql_core::physical_column_type::VectorColumnType>() {
+            if typ.is::<exo_sql_pg_core::physical_column_type::VectorColumnType>() {
                 required_extensions.insert("vector".to_string());
             }
         }

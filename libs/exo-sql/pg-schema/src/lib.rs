@@ -20,6 +20,8 @@ pub mod table_spec;
 pub mod test_helper;
 pub mod trigger_spec;
 
+pub mod column_default_schema;
+pub mod column_type_schema;
 mod constraint;
 
 /// Trait for types that can print debug information to a writer

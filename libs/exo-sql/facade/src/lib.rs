@@ -51,7 +51,7 @@ pub mod testing {
 }
 
 pub mod array_util {
-    pub use exo_sql_core::array_util::*;
+    pub use exo_sql_pg_core::array_util::*;
 }
 
 pub use exo_sql_model::{
@@ -75,6 +75,16 @@ pub use exo_sql_pg_connect::{
 };
 
 pub use exo_sql_pg_core::column::Column;
+pub use exo_sql_pg_core::{
+    PgColumnType, PgColumnTypeExt, as_pg_column_type, ensure_registry_initialized, to_pg_array_type,
+};
+
+pub use exo_sql_pg_core::physical_column_type::{
+    ArrayColumnType, BlobColumnType, BooleanColumnType, DateColumnType, EnumColumnType, FloatBits,
+    FloatColumnType, IntBits, IntColumnType, JsonColumnType, NumericColumnType, PhysicalColumnType,
+    PhysicalColumnTypeExt, StringColumnType, TimeColumnType, TimestampColumnType, UuidColumnType,
+    VectorColumnType, physical_column_type_from_string,
+};
 
 pub use exo_sql_core::{
     ColumnId, ColumnReference, Database, DatabaseError, Function, Limit, ManyToOne, ManyToOneId,
@@ -82,12 +92,6 @@ pub use exo_sql_core::{
     PhysicalIndex, PhysicalTable, Predicate, RelationColumnPair, RelationId, SQLBytes, SQLParam,
     SQLParamContainer, SchemaObjectName, TableId,
     physical_column::{get_mto_relation_for_columns, get_otm_relation_for_columns},
-    physical_column_type::{
-        ArrayColumnType, BlobColumnType, BooleanColumnType, DateColumnType, EnumColumnType,
-        FloatBits, FloatColumnType, IntBits, IntColumnType, JsonColumnType, NumericColumnType,
-        PhysicalColumnType, PhysicalColumnTypeExt, StringColumnType, TimeColumnType,
-        TimestampColumnType, UuidColumnType, VectorColumnType,
-    },
     predicate::{CaseSensitivity, NumericComparator},
     vector::{DEFAULT_VECTOR_SIZE, VectorDistanceFunction},
 };

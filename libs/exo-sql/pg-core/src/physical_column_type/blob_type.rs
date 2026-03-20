@@ -8,34 +8,20 @@
 // by the Apache License, Version 2.0.
 
 use super::{PhysicalColumnType, PhysicalColumnTypeSerializer};
-use crate::{column_default::ColumnDefault, statement::SchemaStatement};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::hash::Hash;
-use tokio_postgres::types::Type;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct BooleanColumnType;
+pub struct BlobColumnType;
 
-impl PhysicalColumnType for BooleanColumnType {
+impl PhysicalColumnType for BlobColumnType {
     fn type_string(&self) -> String {
-        "Boolean".to_string()
-    }
-
-    fn get_pg_type(&self) -> Type {
-        Type::BOOL
-    }
-
-    fn to_sql(&self, _default_value: Option<&ColumnDefault>) -> SchemaStatement {
-        SchemaStatement {
-            statement: "BOOLEAN".to_owned(),
-            pre_statements: vec![],
-            post_statements: vec![],
-        }
+        "Blob".to_string()
     }
 
     fn type_name(&self) -> &'static str {
-        "Boolean"
+        "Blob"
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -51,24 +37,24 @@ impl PhysicalColumnType for BooleanColumnType {
     }
 }
 
-pub struct BooleanColumnTypeSerializer;
+pub struct BlobColumnTypeSerializer;
 
-impl PhysicalColumnTypeSerializer for BooleanColumnTypeSerializer {
+impl PhysicalColumnTypeSerializer for BlobColumnTypeSerializer {
     fn serialize(&self, column_type: &dyn PhysicalColumnType) -> Result<Vec<u8>, String> {
         column_type
             .as_any()
-            .downcast_ref::<BooleanColumnType>()
-            .ok_or_else(|| "Expected BooleanColumnType".to_string())
+            .downcast_ref::<BlobColumnType>()
+            .ok_or_else(|| "Expected BlobColumnType".to_string())
             .and_then(|t| {
-                postcard::to_allocvec(t).map_err(|e| format!("Failed to serialize Boolean: {}", e))
+                postcard::to_allocvec(t).map_err(|e| format!("Failed to serialize Blob: {}", e))
             })
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Box<dyn PhysicalColumnType>, String> {
-        let (t, remaining) = postcard::take_from_bytes::<BooleanColumnType>(data)
-            .map_err(|e| format!("Failed to deserialize Boolean: {}", e))?;
+        let (t, remaining) = postcard::take_from_bytes::<BlobColumnType>(data)
+            .map_err(|e| format!("Failed to deserialize Blob: {}", e))?;
         if !remaining.is_empty() {
-            return Err("Did not consume all bytes during deserialization of Boolean".to_string());
+            return Err("Did not consume all bytes during deserialization of Blob".to_string());
         }
         Ok(Box::new(t) as Box<dyn PhysicalColumnType>)
     }

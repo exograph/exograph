@@ -9,6 +9,7 @@
 
 use std::collections::{HashMap, HashSet};
 
+use crate::column_default_schema::ColumnDefaultSchema;
 use exo_sql_core::relation::RelationColumnPair;
 use exo_sql_core::{ColumnAutoincrement, ColumnDefault};
 use exo_sql_core::{
@@ -425,7 +426,7 @@ impl DatabaseSpec {
                     format!(
                         "NEW.{} = {}",
                         column.name,
-                        column.default_value.clone().unwrap().to_sql().unwrap()
+                        column.default_value.clone().unwrap().to_schema().unwrap()
                     )
                 })
                 .collect::<Vec<_>>()
@@ -535,11 +536,11 @@ impl DebugPrintTo for DatabaseSpec {
 #[cfg(all(test, not(target_family = "wasm")))]
 mod tests {
     use exo_sql_core::SchemaObjectName;
-    use exo_sql_core::physical_column_type::{
-        BooleanColumnType, IntBits, IntColumnType, NumericColumnType, StringColumnType,
-    };
     use exo_sql_core::{ColumnAutoincrement, ColumnDefault};
     use exo_sql_pg_connect::testing::test_support::*;
+    use exo_sql_pg_core::physical_column_type::{
+        BooleanColumnType, IntBits, IntColumnType, NumericColumnType, StringColumnType,
+    };
 
     use crate::column_spec::ColumnSpec;
     use crate::function_spec::FunctionSpec;

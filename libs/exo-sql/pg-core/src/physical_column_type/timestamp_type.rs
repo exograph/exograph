@@ -8,11 +8,9 @@
 // by the Apache License, Version 2.0.
 
 use super::{PhysicalColumnType, PhysicalColumnTypeSerializer};
-use crate::{column_default::ColumnDefault, statement::SchemaStatement};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::hash::Hash;
-use tokio_postgres::types::Type;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TimestampColumnType {
@@ -29,36 +27,6 @@ impl PhysicalColumnType for TimestampColumnType {
             String::new()
         };
         format!("Timestamp{}{}", precision_str, timezone_str)
-    }
-
-    fn get_pg_type(&self) -> Type {
-        if self.timezone {
-            Type::TIMESTAMPTZ
-        } else {
-            Type::TIMESTAMP
-        }
-    }
-
-    fn to_sql(&self, _default_value: Option<&ColumnDefault>) -> SchemaStatement {
-        SchemaStatement {
-            statement: {
-                let timezone_option = if self.timezone {
-                    "WITH TIME ZONE"
-                } else {
-                    "WITHOUT TIME ZONE"
-                };
-                let precision_option = if let Some(p) = self.precision {
-                    format!("({p})")
-                } else {
-                    String::default()
-                };
-
-                // e.g. "TIMESTAMP(3) WITH TIME ZONE"
-                format!("TIMESTAMP{precision_option} {timezone_option}")
-            },
-            pre_statements: vec![],
-            post_statements: vec![],
-        }
     }
 
     fn type_name(&self) -> &'static str {

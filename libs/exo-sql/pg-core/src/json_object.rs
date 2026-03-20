@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql_core::physical_column_type::PhysicalColumnTypeExt;
+use crate::physical_column_type::PhysicalColumnTypeExt;
 use exo_sql_core::{Database, PhysicalColumn};
 
 use crate::{ExpressionBuilder, SQLBuilder, column::Column};
@@ -54,19 +54,19 @@ impl ExpressionBuilder for JsonObjectElement {
                 // encode blob fields in JSON objects as base64
                 // PostgreSQL inserts newlines into encoded base64 every 76 characters when in aligned mode
                 // need to filter out using translate(...) function
-                x if x.is::<exo_sql_core::physical_column_type::BlobColumnType>() => {
+                x if x.is::<crate::physical_column_type::BlobColumnType>() => {
                     builder.push_str("translate(encode(");
                     self.value.build(database, builder);
                     builder.push_str(", \'base64\'), E'\\n', '')");
                 }
 
                 // numerics must be outputted as text to avoid any loss in precision
-                x if x.is::<exo_sql_core::physical_column_type::NumericColumnType>() => {
+                x if x.is::<crate::physical_column_type::NumericColumnType>() => {
                     self.value.build(database, builder);
                     builder.push_str("::text");
                 }
 
-                x if x.is::<exo_sql_core::physical_column_type::VectorColumnType>() => {
+                x if x.is::<crate::physical_column_type::VectorColumnType>() => {
                     self.value.build(database, builder);
                     builder.push_str("::real[]");
                 }
