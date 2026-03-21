@@ -2,10 +2,10 @@ use maybe_owned::MaybeOwned;
 
 use exo_sql_core::{Database, PhysicalColumn};
 use exo_sql_model::{
-    AbstractUpdate,
     selection_level::SelectionLevel,
     transformer::{PredicateTransformer, SelectTransformer},
 };
+use exo_sql_pg_core::PgAbstractUpdate;
 use exo_sql_pg_core::{
     Column, SQLOperation,
     cte::{CteExpression, WithQuery},
@@ -36,7 +36,7 @@ impl UpdateStrategy for CteStrategy {
         "CteStrategy"
     }
 
-    fn suitable(&self, abstract_update: &AbstractUpdate, _database: &Database) -> bool {
+    fn suitable(&self, abstract_update: &PgAbstractUpdate, _database: &Database) -> bool {
         abstract_update.nested_updates.is_empty()
             && abstract_update.nested_inserts.is_empty()
             && abstract_update.nested_deletes.is_empty()
@@ -44,7 +44,7 @@ impl UpdateStrategy for CteStrategy {
 
     fn update_transaction_script<'a>(
         &self,
-        abstract_update: AbstractUpdate,
+        abstract_update: PgAbstractUpdate,
         database: &'a Database,
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,

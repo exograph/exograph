@@ -12,8 +12,9 @@ use exo_sql_model::{
     AliasedSelectionElement, Selection, SelectionCardinality, SelectionElement,
     selection_level::SelectionLevel,
 };
+
 use exo_sql_pg_core::{
-    Column,
+    Column, PgExtension, PgSelection, PgSelectionElement,
     json_agg::JsonAgg,
     json_object::{JsonObject, JsonObjectElement},
 };
@@ -50,7 +51,7 @@ pub(crate) trait SelectionElementExt {
     ) -> Column;
 }
 
-impl SelectionExt for Selection {
+impl SelectionExt for PgSelection {
     fn to_pg_sql(
         self,
         selection_level: &SelectionLevel,
@@ -81,13 +82,13 @@ impl SelectionExt for Selection {
                     })
                     .collect();
 
-                let json_obj = Column::JsonObject(JsonObject(object_elems));
+                let json_obj = Column::Extension(PgExtension::JsonObject(JsonObject(object_elems)));
 
                 match cardinality {
                     SelectionCardinality::One => SelectionSQL::Single(json_obj),
-                    SelectionCardinality::Many => {
-                        SelectionSQL::Single(Column::JsonAgg(JsonAgg(Box::new(json_obj))))
-                    }
+                    SelectionCardinality::Many => SelectionSQL::Single(Column::Extension(
+                        PgExtension::JsonAgg(JsonAgg(Box::new(json_obj))),
+                    )),
                 }
             }
         }
@@ -106,7 +107,7 @@ impl SelectionExt for Selection {
     }
 }
 
-impl SelectionElementExt for SelectionElement {
+impl SelectionElementExt for PgSelectionElement {
     fn to_pg_sql(
         self,
         selection_level: &SelectionLevel,
@@ -133,7 +134,7 @@ impl SelectionElementExt for SelectionElement {
                         )
                     })
                     .collect();
-                Column::JsonObject(JsonObject(elements))
+                Column::Extension(PgExtension::JsonObject(JsonObject(elements)))
             }
             SelectionElement::SubSelect(relation_id, select) => {
                 let new_selection_level = selection_level.with_relation_id(relation_id);

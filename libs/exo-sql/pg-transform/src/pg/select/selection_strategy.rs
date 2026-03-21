@@ -9,11 +9,14 @@
 
 use exo_sql_core::{Database, Limit, Offset, RelationId, SchemaObjectName, TableId};
 use exo_sql_model::{
-    AbstractOrderBy, AbstractPredicate, PhysicalColumnPath, Selection,
+    PhysicalColumnPath,
     selection_level::SelectionLevel,
     transformer::{OrderByTransformer, PredicateTransformer},
 };
-use exo_sql_pg_core::{Column, ConcretePredicate, select::Select, table::Table};
+use exo_sql_pg_core::{
+    Column, ConcretePredicate, PgAbstractOrderBy, PgAbstractPredicate, PgExtension, PgSelection,
+    select::Select, table::Table,
+};
 
 use crate::{join_util, pg::Postgres};
 
@@ -48,11 +51,11 @@ pub(super) fn compute_inner_select(
     table: Table,
     wildcard_table: TableId,
     predicate: ConcretePredicate,
-    order_by: &Option<AbstractOrderBy>,
+    order_by: &Option<PgAbstractOrderBy>,
     limit: &Option<Limit>,
     offset: &Option<Offset>,
     selection_level: &SelectionLevel,
-    transformer: &impl OrderByTransformer,
+    transformer: &impl OrderByTransformer<PgExtension>,
     database: &Database,
 ) -> Select {
     Select {
@@ -74,7 +77,7 @@ pub(super) fn compute_inner_select(
 /// Compute a nested version of the given inner select, with the given selection applied.
 pub(super) fn nest_subselect(
     inner_select: Select,
-    selection: Selection,
+    selection: PgSelection,
     selection_level: &SelectionLevel,
     alias: (String, SchemaObjectName),
     transformer: &Postgres,
@@ -100,7 +103,7 @@ pub(super) fn nest_subselect(
 /// Compute the join and a suitable predicate for the given base table and predicate.
 pub(super) fn join_info(
     base_table_id: TableId,
-    predicate: &AbstractPredicate,
+    predicate: &PgAbstractPredicate,
     predicate_column_paths: Vec<PhysicalColumnPath>,
     order_by_column_paths: Vec<PhysicalColumnPath>,
     selection_level: &SelectionLevel,

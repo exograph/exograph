@@ -8,17 +8,18 @@
 // by the Apache License, Version 2.0.
 
 use exo_sql_core::Database;
-use exo_sql_model::{AbstractDelete, transformer::DeleteTransformer};
+use exo_sql_pg_core::PgAbstractDelete;
 use exo_sql_pg_core::transaction::TransactionScript;
 
 use crate::pg::Postgres;
+use crate::pg::pg_transformer::PgDeleteTransformer;
 
 use super::delete_strategy_chain::DeleteStrategyChain;
 
-impl DeleteTransformer for Postgres {
+impl PgDeleteTransformer for Postgres {
     fn update_transaction_script<'a>(
         &self,
-        abstract_delete: AbstractDelete,
+        abstract_delete: PgAbstractDelete,
         database: &'a Database,
         transaction_script: &mut TransactionScript<'a>,
     ) {

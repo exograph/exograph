@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use exo_sql_core::Database;
-use exo_sql_model::AbstractUpdate;
+use exo_sql_pg_core::PgAbstractUpdate;
 use exo_sql_pg_core::transaction::TransactionScript;
 
 use crate::pg::Postgres;
@@ -19,11 +19,11 @@ pub(crate) trait UpdateStrategy {
     fn id(&self) -> &'static str;
 
     /// See `SelectionStrategy::suitable`
-    fn suitable(&self, abstract_update: &AbstractUpdate, database: &Database) -> bool;
+    fn suitable(&self, abstract_update: &PgAbstractUpdate, database: &Database) -> bool;
 
     fn update_transaction_script<'a>(
         &self,
-        abstract_update: AbstractUpdate,
+        abstract_update: PgAbstractUpdate,
         database: &'a Database,
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,

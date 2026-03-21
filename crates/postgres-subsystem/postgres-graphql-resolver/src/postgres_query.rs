@@ -19,8 +19,9 @@ use common::context::RequestContext;
 use core_model::types::OperationReturnType;
 use core_resolver::validation::field::ValidatedField;
 use exo_sql::{
-    AbstractOrderBy, AbstractPredicate, AbstractSelect, AliasedSelectionElement, Limit, Offset,
-    RelationId, SelectionCardinality, SelectionElement,
+    AbstractPredicate, Limit, Offset, PgAbstractOrderBy, PgAbstractPredicate, PgAbstractSelect,
+    PgAliasedSelectionElement, PgExtension, PgSelectionElement, RelationId, SelectionCardinality,
+    SelectionElement,
 };
 use exo_sql::{Function, SQLParamContainer};
 use futures::StreamExt;
@@ -46,7 +47,7 @@ impl OperationSelectionResolver for UniqueQuery {
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresGraphQLSubsystem,
-    ) -> Result<AbstractSelect, PostgresExecutionError> {
+    ) -> Result<PgAbstractSelect, PostgresExecutionError> {
         let predicate = compute_predicate(
             &self.parameters.predicate_params.iter().collect::<Vec<_>>(),
             &field.arguments,
@@ -76,7 +77,7 @@ impl OperationSelectionResolver for CollectionQuery {
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresGraphQLSubsystem,
-    ) -> Result<AbstractSelect, PostgresExecutionError> {
+    ) -> Result<PgAbstractSelect, PostgresExecutionError> {
         let CollectionQueryParameters {
             predicate_param,
             order_by_param,
@@ -102,15 +103,15 @@ impl OperationSelectionResolver for CollectionQuery {
 
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn compute_select<'content>(
-    predicate: AbstractPredicate,
-    order_by: Option<AbstractOrderBy>,
+    predicate: PgAbstractPredicate,
+    order_by: Option<PgAbstractOrderBy>,
     limit: Option<Limit>,
     offset: Option<Offset>,
     return_type: &'content OperationReturnType<EntityType>,
     selection: &'content [ValidatedField],
     subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<AbstractSelect, PostgresExecutionError> {
+) -> Result<PgAbstractSelect, PostgresExecutionError> {
     let return_entity_type = return_type.typ(&subsystem.core_subsystem.entity_types);
 
     let (_precheck_predicate, entity_predicate) = check_access(
@@ -132,7 +133,7 @@ pub(super) async fn compute_select<'content>(
         OperationReturnType::List(_) => SelectionCardinality::Many,
         _ => SelectionCardinality::One,
     };
-    Ok(AbstractSelect {
+    Ok(PgAbstractSelect {
         table_id: return_entity_type.table_id,
         selection: exo_sql::Selection::Json(content_object, selection_cardinality),
         predicate,
@@ -147,7 +148,7 @@ async fn compute_order_by<'content>(
     arguments: &'content Arguments,
     subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<Option<AbstractOrderBy>, PostgresExecutionError> {
+) -> Result<Option<PgAbstractOrderBy>, PostgresExecutionError> {
     extract_and_map(
         OrderByParameterInput { param },
         arguments,
@@ -163,7 +164,7 @@ async fn content_select<'content>(
     fields: &'content [ValidatedField],
     subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<Vec<AliasedSelectionElement>, PostgresExecutionError> {
+) -> Result<Vec<PgAliasedSelectionElement>, PostgresExecutionError> {
     futures::stream::iter(fields.iter())
         .then(|field| async { map_field(return_type, field, subsystem, request_context).await })
         .collect::<Vec<Result<_, _>>>()
@@ -177,7 +178,7 @@ async fn map_field<'content>(
     field: &'content ValidatedField,
     subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<AliasedSelectionElement, PostgresExecutionError> {
+) -> Result<PgAliasedSelectionElement, PostgresExecutionError> {
     let selection_elem = if field.name == "__typename" {
         SelectionElement::Constant(return_type.name.to_owned())
     } else {
@@ -205,7 +206,7 @@ async fn map_field<'content>(
         }
     };
 
-    Ok(AliasedSelectionElement::new(
+    Ok(PgAliasedSelectionElement::new(
         field.output_name(),
         selection_elem,
     ))
@@ -216,7 +217,7 @@ async fn map_persistent_field<'content>(
     field: &'content ValidatedField,
     subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<SelectionElement, PostgresExecutionError> {
+) -> Result<PgSelectionElement, PostgresExecutionError> {
     match &entity_field.relation {
         PostgresRelation::Scalar { column_id, .. } => Ok(SelectionElement::Physical(*column_id)),
         PostgresRelation::ManyToOne { relation, .. } => {
@@ -275,7 +276,7 @@ async fn map_aggregate_field<'content>(
     field: &'content ValidatedField,
     subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<SelectionElement, PostgresExecutionError> {
+) -> Result<PgSelectionElement, PostgresExecutionError> {
     if let Some(PostgresRelation::OneToMany(relation)) = &agg_field.relation {
         let OneToManyRelation {
             foreign_entity_id,
@@ -316,7 +317,7 @@ async fn map_aggregate_field<'content>(
 async fn map_vector_distance_field(
     vector_distance_field: &VectorDistanceField,
     field: &ValidatedField,
-) -> Result<SelectionElement, PostgresExecutionError> {
+) -> Result<PgSelectionElement, PostgresExecutionError> {
     let to_arg = field.arguments.get("to").ok_or_else(|| {
         PostgresExecutionError::Generic(
             "Missing 'to' argument for vector distance field".to_string(),
@@ -325,9 +326,11 @@ async fn map_vector_distance_field(
 
     let to_vector_value = to_pg_vector(to_arg, "to")?;
 
-    Ok(SelectionElement::Function(Function::VectorDistance {
-        column_id: vector_distance_field.column_id,
-        distance_function: vector_distance_field.distance_function,
-        target: SQLParamContainer::f32_array(to_vector_value),
-    }))
+    Ok(SelectionElement::Function(Function::Extension(
+        PgExtension::VectorDistanceFunction {
+            column_id: vector_distance_field.column_id,
+            distance_function: vector_distance_field.distance_function,
+            target: SQLParamContainer::f32_array(to_vector_value),
+        },
+    )))
 }

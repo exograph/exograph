@@ -16,8 +16,8 @@ use core_model::mapped_arena::SerializableSlab;
 use core_resolver::access_solver::AccessSolver;
 use exo_sql::{
     AbstractPredicate, ArrayColumnType, ColumnPath, ColumnPathLink, Database, NumericComparator,
-    PhysicalColumnPath, PhysicalColumnType, PhysicalColumnTypeExt, Predicate, SQLParamContainer,
-    StringColumnType,
+    PgAbstractPredicate, PgColumnPath, PgExtension, PhysicalColumnPath, PhysicalColumnType,
+    PhysicalColumnTypeExt, Predicate, SQLParamContainer, StringColumnType,
 };
 use futures::future::{BoxFuture, FutureExt, try_join_all};
 use futures::{StreamExt, TryStreamExt};
@@ -44,7 +44,7 @@ trait FieldAccessChecker: Send + Sync {
         &self,
         param: &PredicateParameter,
         request_context: &RequestContext<'_>,
-    ) -> Result<AbstractPredicate, PostgresExecutionError>;
+    ) -> Result<PgAbstractPredicate, PostgresExecutionError>;
 }
 
 /// Field access checker that uses the core subsystem's access expressions.
@@ -58,7 +58,7 @@ impl FieldAccessChecker for CoreFieldAccessChecker<'_> {
         &self,
         param: &PredicateParameter,
         request_context: &RequestContext<'_>,
-    ) -> Result<AbstractPredicate, PostgresExecutionError> {
+    ) -> Result<PgAbstractPredicate, PostgresExecutionError> {
         match param.access {
             Some(ref access) => {
                 let expr = &self.subsystem.database_access_expressions[access.read];
@@ -83,7 +83,7 @@ fn map_predicate<'a, F: FieldAccessChecker>(
     predicate_types: &'a SerializableSlab<PredicateParameterType>,
     request_context: &'a RequestContext<'a>,
     access_checker: &'a F,
-) -> BoxFuture<'a, Result<AbstractPredicate, PostgresExecutionError>> {
+) -> BoxFuture<'a, Result<PgAbstractPredicate, PostgresExecutionError>> {
     async move {
         let parameter_type = &predicate_types[param.typ.innermost().type_id];
 
@@ -226,10 +226,12 @@ fn map_predicate<'a, F: FieldAccessChecker>(
                                                     )
                                                     .unwrap(),
                                                 ),
-                                                ColumnPath::Param(target_vector),
+                                                ColumnPath::Param(PgExtension::Param(
+                                                    target_vector,
+                                                )),
                                                 param.vector_distance_function.unwrap_or_default(),
                                                 distance_comparator,
-                                                ColumnPath::Param(threshold),
+                                                ColumnPath::Param(PgExtension::Param(threshold)),
                                             ))
                                         }
                                         _ => Err(PostgresExecutionError::Validation(
@@ -426,7 +428,7 @@ fn operands<'a>(
     op_value_type: Option<&dyn PhysicalColumnType>,
     parent_column_path: &Option<PhysicalColumnPath>,
     database: &'a Database,
-) -> Result<(ColumnPath, ColumnPath), PostgresExecutionError> {
+) -> Result<(PgColumnPath, PgColumnPath), PostgresExecutionError> {
     let op_param_column_path = param.column_path_link.as_ref().ok_or_else(|| {
         PostgresExecutionError::Generic(
             "Could not find column path link while forming operands".into(),
@@ -462,7 +464,7 @@ pub async fn compute_predicate<'a>(
     argument: &'a Val,
     subsystem: &'a PostgresCoreSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<AbstractPredicate, PostgresExecutionError> {
+) -> Result<PgAbstractPredicate, PostgresExecutionError> {
     let access_checker = CoreFieldAccessChecker { subsystem };
 
     map_predicate(

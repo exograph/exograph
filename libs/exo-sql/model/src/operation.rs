@@ -7,15 +7,17 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use exo_sql_core::operation::DatabaseExtension;
+
 use crate::{
     delete::AbstractDelete, insert::AbstractInsert, select::AbstractSelect, update::AbstractUpdate,
 };
 
 /// Top-level abstract operation. A transformed version of this can be submitted to a database.
 #[derive(Debug)]
-pub enum AbstractOperation {
-    Select(AbstractSelect),
-    Delete(AbstractDelete),
-    Insert(AbstractInsert),
-    Update(AbstractUpdate),
+pub enum AbstractOperation<Ext: DatabaseExtension> {
+    Select(AbstractSelect<Ext>),
+    Delete(AbstractDelete<Ext>),
+    Insert(AbstractInsert<Ext>),
+    Update(AbstractUpdate<Ext>),
 }

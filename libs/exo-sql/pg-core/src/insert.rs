@@ -11,6 +11,7 @@ use maybe_owned::MaybeOwned;
 
 use exo_sql_core::{Database, PhysicalColumn, PhysicalTable};
 
+use crate::pg_extension::PgExtension;
 use crate::sql_param_container::SQLParamContainer;
 
 use crate::{
@@ -95,8 +96,11 @@ impl<'a> TemplateInsert<'a> {
                     .map(|col| match col {
                         ProxyColumn::Concrete(col) => col.as_ref().into(),
                         ProxyColumn::Template { col_index, step_id } => {
-                            MaybeOwned::Owned(Column::Param(SQLParamContainer::from_sql_value(
-                                transaction_context.resolve_value(*step_id, row_index, *col_index),
+                            MaybeOwned::Owned(Column::Extension(PgExtension::Param(
+                                SQLParamContainer::from_sql_value(
+                                    transaction_context
+                                        .resolve_value(*step_id, row_index, *col_index),
+                                ),
                             )))
                         }
                     })

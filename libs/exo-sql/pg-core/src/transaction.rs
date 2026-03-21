@@ -18,7 +18,8 @@ use exo_sql_core::{Database, TableId};
 use crate::sql_param_container::SQLParamContainer;
 
 use crate::{
-    column::{ArrayParamWrapper, Column},
+    column::Column,
+    pg_extension::{ArrayParamWrapper, PgExtension},
     predicate_ext::ConcretePredicate,
     select::Select,
     sql_operation::{SQLOperation, TemplateSQLOperation},
@@ -59,8 +60,7 @@ impl TransactionContext {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct TransactionStepId(pub usize);
+pub use exo_sql_core::operation::TransactionStepId;
 
 impl TransactionContext {
     /// Returns the value of a column in a row from the given step id
@@ -166,7 +166,7 @@ impl TemplateFilterOperation {
                     predicate,
                     Predicate::Eq(
                         Column::physical(*pk_column_id, None),
-                        Column::ArrayParam {
+                        Column::Extension(PgExtension::ArrayParam {
                             param: SQLParamContainer::from_sql_values(
                                 (0..rows)
                                     .map(|row| {
@@ -180,7 +180,7 @@ impl TemplateFilterOperation {
                                 pk_column_types[index].clone(),
                             ),
                             wrapper: ArrayParamWrapper::Any,
-                        },
+                        }),
                     ),
                 )
             },

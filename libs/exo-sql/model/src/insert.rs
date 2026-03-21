@@ -25,31 +25,33 @@
 
 use crate::predicate::AbstractPredicate;
 use crate::select::AbstractSelect;
+use exo_sql_core::operation::{Column, DatabaseExtension};
 use exo_sql_core::{ColumnId, OneToManyId, TableId};
-use exo_sql_pg_core::Column;
 
 #[derive(Debug)]
-pub struct AbstractInsert {
+pub struct AbstractInsert<Ext: DatabaseExtension> {
     /// Table to insert into
     pub table_id: TableId,
     /// Rows to insert
-    pub rows: Vec<InsertionRow>,
+    pub rows: Vec<InsertionRow<Ext>>,
     /// The selection to return
-    pub selection: AbstractSelect,
+    pub selection: AbstractSelect<Ext>,
     /// Check to run before inserting (if the resulting select returns 1 row, then the precheck passes)
-    pub precheck_predicates: Vec<AbstractPredicate>,
+    pub precheck_predicates: Vec<AbstractPredicate<Ext>>,
 }
 
 /// A logical row to be inserted (see `InsertionElement` for more details).
 #[derive(Debug)]
-pub struct InsertionRow {
-    pub elems: Vec<InsertionElement>,
+pub struct InsertionRow<Ext: DatabaseExtension> {
+    pub elems: Vec<InsertionElement<Ext>>,
 }
 
-impl InsertionRow {
+impl<Ext: DatabaseExtension> InsertionRow<Ext> {
     /// Partitions the elements into two groups: those that are inserted into
     /// the table itself, and those that are inserted into nested tables.
-    pub fn partition_self_and_nested(self) -> (Vec<ColumnValuePair>, Vec<NestedInsertion>) {
+    pub fn partition_self_and_nested(
+        self,
+    ) -> (Vec<ColumnValuePair<Ext>>, Vec<NestedInsertion<Ext>>) {
         let mut self_elems = Vec::new();
         let mut nested_elems = Vec::new();
         for elem in self.elems {
@@ -63,22 +65,22 @@ impl InsertionRow {
 }
 
 #[derive(Debug)]
-pub struct NestedInsertion {
+pub struct NestedInsertion<Ext: DatabaseExtension> {
     /// The relation with the parent element (the self_pk_column_id is the parent table's pk column and the self_column_id is the column in the table being inserted that refers to the the parent table)
     pub relation_id: OneToManyId,
-    pub insertions: Vec<InsertionRow>,
-    pub precheck_predicates: Vec<AbstractPredicate>,
+    pub insertions: Vec<InsertionRow<Ext>>,
+    pub precheck_predicates: Vec<AbstractPredicate<Ext>>,
 }
 
 /// A pair of column and value to be inserted into the table.
 #[derive(Debug)]
-pub struct ColumnValuePair {
+pub struct ColumnValuePair<Ext: DatabaseExtension> {
     pub column: ColumnId,
-    pub value: Column,
+    pub value: Column<Ext>,
 }
 
-impl ColumnValuePair {
-    pub fn new(column: ColumnId, value: Column) -> Self {
+impl<Ext: DatabaseExtension> ColumnValuePair<Ext> {
+    pub fn new(column: ColumnId, value: Column<Ext>) -> Self {
         Self { column, value }
     }
 }
@@ -90,9 +92,9 @@ impl ColumnValuePair {
 /// also includes the logically nested "concerts" element, which would be
 /// represented by the `NestedInsert` variant.
 #[derive(Debug)]
-pub enum InsertionElement {
+pub enum InsertionElement<Ext: DatabaseExtension> {
     /// Value to be inserted into the table itself
-    SelfInsert(ColumnValuePair),
+    SelfInsert(ColumnValuePair<Ext>),
     /// Value to be inserted into a nested tables
-    NestedInsert(NestedInsertion),
+    NestedInsert(NestedInsertion<Ext>),
 }

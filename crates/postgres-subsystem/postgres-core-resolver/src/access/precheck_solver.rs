@@ -23,8 +23,9 @@ use core_resolver::access_solver::{
     neq_values, reduce_common_primitive_expression,
 };
 use exo_sql::{
-    AbstractPredicate, BooleanColumnType, ColumnPath, ColumnPathLink, Database, PhysicalColumnPath,
-    PhysicalColumnType, PhysicalColumnTypeExt,
+    AbstractPredicate, BooleanColumnType, ColumnPath, ColumnPathLink, Database,
+    PgAbstractPredicate, PgColumnPath, PhysicalColumnPath, PhysicalColumnType,
+    PhysicalColumnTypeExt,
 };
 use maybe_owned::MaybeOwned;
 use postgres_core_model::subsystem::PostgresCoreSubsystem;
@@ -41,10 +42,10 @@ use super::database_solver::to_column_path;
 enum SolvedPrecheckPrimitiveExpression {
     Common(Option<Val>),
     Path(AccessPrimitiveExpressionPath, Option<String>),
-    Predicate(AbstractPredicate),
+    Predicate(Box<PgAbstractPredicate>),
 }
 
-type ColumnPredicateFn = fn(ColumnPath, ColumnPath) -> AbstractPredicate;
+type ColumnPredicateFn = fn(PgColumnPath, PgColumnPath) -> PgAbstractPredicate;
 type ValuePredicateFn = fn(&Val, &Val) -> bool;
 
 #[async_trait]
@@ -286,9 +287,8 @@ async fn reduce_primitive_expression<'a>(
                         .await?;
 
                     return Ok(solved_expr.map(|solved_expr| {
-                        SolvedPrecheckPrimitiveExpression::Predicate(AbstractPredicate::and(
-                            solved_expr.0,
-                            relational_predicate,
+                        SolvedPrecheckPrimitiveExpression::Predicate(Box::new(
+                            AbstractPredicate::and(solved_expr.0, relational_predicate),
                         ))
                     }));
                 }
@@ -450,11 +450,11 @@ async fn evaluate_relation(
         (
             SolvedPrecheckPrimitiveExpression::Predicate(left_predicate),
             SolvedPrecheckPrimitiveExpression::Common(Some(right_value)),
-        ) => process_predicate_common_expr(left_predicate, right_value, false),
+        ) => process_predicate_common_expr(*left_predicate, right_value, false),
         (
             SolvedPrecheckPrimitiveExpression::Common(Some(left_value)),
             SolvedPrecheckPrimitiveExpression::Predicate(right_predicate),
-        ) => process_predicate_common_expr(right_predicate, left_value, true),
+        ) => process_predicate_common_expr(*right_predicate, left_value, true),
         _ => Err(AccessSolverError::Generic("Unsupported expression".into())),
     }
 }
@@ -465,7 +465,7 @@ async fn resolve_path(
     input_value: Option<&AccessInput<'_>>,
     request_context: &RequestContext<'_>,
     database: &Database,
-) -> Result<(Option<ColumnPath>, AbstractPredicate), AccessSolverError> {
+) -> Result<(Option<PgColumnPath>, PgAbstractPredicate), AccessSolverError> {
     let column_path = &path.column_path;
     let field_path = &path.field_path;
 
@@ -520,7 +520,7 @@ async fn process_path_common_expr(
     input_value: Option<&AccessInput<'_>>,
     request_context: &RequestContext<'_>,
     database: &Database,
-    column_predicate: impl Fn(ColumnPath, ColumnPath) -> AbstractPredicate,
+    column_predicate: impl Fn(PgColumnPath, PgColumnPath) -> PgAbstractPredicate,
     value_predicate: impl Fn(&Val, &Val) -> bool,
 ) -> Result<AccessSolution<AbstractPredicateWrapper>, AccessSolverError> {
     let ignore_missing_value = input_value
@@ -604,7 +604,7 @@ async fn process_path_common_expr(
 }
 
 fn process_predicate_common_expr(
-    predicate: AbstractPredicate,
+    predicate: PgAbstractPredicate,
     value: Val,
     commute: bool,
 ) -> Result<AccessSolution<AbstractPredicateWrapper>, AccessSolverError> {
@@ -643,7 +643,7 @@ fn compute_relational_sides(
     tail_path: &PhysicalColumnPath,
     value: &Val,
     database: &Database,
-) -> Result<(ColumnPath, ColumnPath), AccessSolverError> {
+) -> Result<(PgColumnPath, PgColumnPath), AccessSolverError> {
     let path_column_path = to_column_path(tail_path);
 
     let value_column_path =
@@ -658,7 +658,7 @@ fn compute_literal_column_path(
     value: Option<&Val>,
     associated_column_path: &PhysicalColumnPath,
     database: &Database,
-) -> Result<Option<ColumnPath>, AccessSolverError> {
+) -> Result<Option<PgColumnPath>, AccessSolverError> {
     value
         .map(|v| cast::literal_column_path(v, column_type(associated_column_path, database), false))
         .transpose()
@@ -677,7 +677,7 @@ async fn compute_relational_predicate(
     default: &Option<PostgresFieldDefaultValue>,
     request_context: &RequestContext<'_>,
     database: &Database,
-) -> Result<AbstractPredicate, AccessSolverError> {
+) -> Result<PgAbstractPredicate, AccessSolverError> {
     let lead_value = resolve_value(solver, input_value, lead, default, request_context).await?;
 
     let lead_value = lead_value.as_ref().map(|v| v.as_ref());

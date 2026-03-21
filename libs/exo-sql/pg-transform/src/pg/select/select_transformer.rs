@@ -10,14 +10,14 @@
 use tracing::instrument;
 
 use exo_sql_core::Database;
-use exo_sql_model::{
-    select::AbstractSelect, selection_level::SelectionLevel, transformer::SelectTransformer,
-};
+use exo_sql_model::{selection_level::SelectionLevel, transformer::SelectTransformer};
 use exo_sql_pg_core::{
-    SQLOperation,
+    PgAbstractSelect, PgExtension, SQLOperation,
     select::Select,
     transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
 };
+
+use crate::pg::pg_transformer::PgSelectTransformer;
 
 use super::{
     selection_context::SelectionContext, selection_strategy_chain::SelectionStrategyChain,
@@ -104,19 +104,21 @@ use crate::pg::Postgres;
 ///
 /// We then use this information to determine the best way to select the raw data. See [`SelectionStrategyChain`]
 /// for more details.
-impl SelectTransformer for Postgres {
+impl SelectTransformer<PgExtension> for Postgres {
     /// Form a [`Select`] from a given [`AbstractSelect`].
     #[instrument(
         name = "SelectTransformer::to_select for Postgres"
         skip(self, database)
         )]
-    fn to_select(&self, abstract_select: AbstractSelect, database: &Database) -> Select {
+    fn to_select(&self, abstract_select: PgAbstractSelect, database: &Database) -> Select {
         self.compute_select(abstract_select, &SelectionLevel::TopLevel, false, database)
     }
+}
 
+impl PgSelectTransformer for Postgres {
     fn to_transaction_script<'a>(
         &self,
-        abstract_select: AbstractSelect,
+        abstract_select: PgAbstractSelect,
         database: &'a Database,
     ) -> TransactionScript<'a> {
         let select = self.to_select(abstract_select, database);
@@ -133,7 +135,7 @@ impl Postgres {
     /// control over whether duplicate rows are allowed.
     pub fn compute_select(
         &self,
-        abstract_select: AbstractSelect,
+        abstract_select: PgAbstractSelect,
         selection_level: &SelectionLevel,
         allow_duplicate_rows: bool,
         database: &Database,
@@ -163,7 +165,7 @@ mod tests {
     };
     use exo_sql_pg_core::ExpressionBuilder;
     use exo_sql_pg_core::assert_binding;
-    use exo_sql_pg_core::{Predicate, sql_param_container::SQLParamContainer};
+    use exo_sql_pg_core::{PgExtension, Predicate, sql_param_container::SQLParamContainer};
 
     use crate::pg::Postgres;
     use crate::test_util::TestSetup;
@@ -212,7 +214,7 @@ mod tests {
              }| {
                 let concert_id_path =
                     ColumnPath::Physical(PhysicalColumnPath::leaf(concerts_id_column));
-                let literal = ColumnPath::Param(SQLParamContainer::i32(5));
+                let literal = ColumnPath::Param(PgExtension::Param(SQLParamContainer::i32(5)));
                 let predicate = AbstractPredicate::Eq(concert_id_path, literal);
 
                 let aselect = AbstractSelect {
@@ -450,7 +452,9 @@ mod tests {
                                                 vec![concerts_venue_id_column, venues_id_column],
                                                 &database,
                                             )),
-                                            ColumnPath::Param(SQLParamContainer::i32(1)),
+                                            ColumnPath::Param(PgExtension::Param(
+                                                SQLParamContainer::i32(1),
+                                            )),
                                         ),
                                         order_by: None,
                                         offset: None,
@@ -498,7 +502,9 @@ mod tests {
                         vec![concerts_venue_id_column, venues_name_column],
                         &database,
                     )),
-                    ColumnPath::Param(SQLParamContainer::string("v1".to_string())),
+                    ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
+                        "v1".to_string(),
+                    ))),
                 );
                 let aselect = AbstractSelect {
                     table_id: concerts_table,
@@ -574,7 +580,9 @@ mod tests {
                 let concert_name_path =
                     ColumnPath::Physical(PhysicalColumnPath::leaf(concerts_name_column));
 
-                let literal = ColumnPath::Param(SQLParamContainer::string("c1".to_string()));
+                let literal = ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
+                    "c1".to_string(),
+                )));
                 let predicate = AbstractPredicate::Eq(concert_name_path, literal);
 
                 let aselect = AbstractSelect {

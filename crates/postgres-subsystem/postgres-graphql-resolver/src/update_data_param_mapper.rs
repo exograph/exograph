@@ -18,7 +18,10 @@ use core_resolver::access_solver::AccessSolver;
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate, Column,
     ColumnId, ColumnPath, ManyToOne, NestedAbstractDelete, NestedAbstractInsert,
-    NestedAbstractInsertSet, NestedAbstractUpdate, OneToMany, PhysicalColumnPath, Selection,
+    NestedAbstractInsertSet, NestedAbstractUpdate, OneToMany, PgAbstractPredicate,
+    PgAbstractSelect, PgAbstractUpdate, PgExtension, PgNestedAbstractDelete,
+    PgNestedAbstractInsert, PgNestedAbstractInsertSet, PgNestedAbstractUpdate, PhysicalColumnPath,
+    Selection,
 };
 use futures::StreamExt;
 use postgres_core_model::{
@@ -40,18 +43,18 @@ use postgres_core_resolver::{cast, postgres_execution_error::PostgresExecutionEr
 pub struct UpdateOperation<'a> {
     pub data_param: &'a DataParameter,
     pub return_type: &'a OperationReturnType<EntityType>,
-    pub predicate: AbstractPredicate,
-    pub select: AbstractSelect,
+    pub predicate: PgAbstractPredicate,
+    pub select: PgAbstractSelect,
 }
 
 #[async_trait]
-impl<'a> SQLMapper<'a, AbstractUpdate> for UpdateOperation<'a> {
+impl<'a> SQLMapper<'a, PgAbstractUpdate> for UpdateOperation<'a> {
     async fn to_sql(
         self,
         argument: &'a Val,
         subsystem: &'a PostgresGraphQLSubsystem,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<AbstractUpdate, PostgresExecutionError> {
+    ) -> Result<PgAbstractUpdate, PostgresExecutionError> {
         let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
 
         let self_update_columns = compute_update_columns(data_type, argument, subsystem);
@@ -162,9 +165,9 @@ async fn compute_nested_ops<'a>(
     request_context: &'a RequestContext<'a>,
 ) -> Result<
     (
-        Vec<NestedAbstractUpdate>,
-        Vec<NestedAbstractInsertSet>,
-        Vec<NestedAbstractDelete>,
+        Vec<PgNestedAbstractUpdate>,
+        Vec<PgNestedAbstractInsertSet>,
+        Vec<PgNestedAbstractDelete>,
     ),
     PostgresExecutionError,
 > {
@@ -232,7 +235,7 @@ async fn compute_nested_update<'a>(
     nesting_relation: &OneToMany,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<Vec<NestedAbstractUpdate>, PostgresExecutionError> {
+) -> Result<Vec<PgNestedAbstractUpdate>, PostgresExecutionError> {
     let (update_arg, field_entity_type) =
         extract_argument(argument, field_entity_type, "update", subsystem);
 
@@ -276,7 +279,7 @@ async fn compute_nested_update_object_arg<'a>(
     nesting_relation: &OneToMany,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<NestedAbstractUpdate, PostgresExecutionError> {
+) -> Result<PgNestedAbstractUpdate, PostgresExecutionError> {
     assert!(matches!(argument, Val::Object(..)));
 
     let input_value = Some(AccessInput {
@@ -311,7 +314,9 @@ async fn compute_nested_update_object_arg<'a>(
             .into_iter()
             .fold(AbstractPredicate::True, |acc, (pk_col, value)| {
                 let value = match value {
-                    Column::Param(value) => ColumnPath::Param(value),
+                    Column::Extension(PgExtension::Param(value)) => {
+                        ColumnPath::Param(PgExtension::Param(value))
+                    }
                     _ => panic!("Expected literal"),
                 };
                 AbstractPredicate::and(
@@ -354,14 +359,14 @@ async fn compute_nested_inserts<'a>(
     nesting_relation: &OneToMany,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<NestedAbstractInsertSet, PostgresExecutionError> {
+) -> Result<PgNestedAbstractInsertSet, PostgresExecutionError> {
     async fn create_nested<'a>(
         field_entity_type: &'a MutationType,
         argument: &'a Val,
         nesting_relation: &OneToMany,
         subsystem: &'a PostgresGraphQLSubsystem,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<NestedAbstractInsert, PostgresExecutionError> {
+    ) -> Result<PgNestedAbstractInsert, PostgresExecutionError> {
         let table_id = subsystem.core_subsystem.entity_types[field_entity_type.entity_id].table_id;
 
         let (rows, precheck_predicates) = super::create_data_param_mapper::map_argument(
@@ -452,7 +457,7 @@ async fn compute_nested_delete<'a>(
     nesting_relation: &OneToMany,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<Vec<NestedAbstractDelete>, PostgresExecutionError> {
+) -> Result<Vec<PgNestedAbstractDelete>, PostgresExecutionError> {
     // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).
     // TODO: Revisit this.
 
@@ -499,7 +504,7 @@ async fn compute_nested_delete_object_arg<'a>(
     nesting_relation: &OneToMany,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<NestedAbstractDelete, PostgresExecutionError> {
+) -> Result<PgNestedAbstractDelete, PostgresExecutionError> {
     assert!(matches!(argument, Val::Object(..)));
 
     let nested = compute_update_columns(field_mutation_type, argument, subsystem);
@@ -532,7 +537,9 @@ async fn compute_nested_delete_object_arg<'a>(
             .into_iter()
             .fold(AbstractPredicate::True, |acc, (pk_col, value)| {
                 let value = match value {
-                    Column::Param(value) => ColumnPath::Param(value),
+                    Column::Extension(PgExtension::Param(value)) => {
+                        ColumnPath::Param(PgExtension::Param(value))
+                    }
                     _ => panic!("Expected literal"),
                 };
                 AbstractPredicate::and(

@@ -9,78 +9,15 @@
 
 use maybe_owned::MaybeOwned;
 
-use crate::{Function, ParamEquality, Predicate};
-use exo_sql_core::{ColumnId, Database, SchemaObjectName};
+use crate::ParamEquality;
+use exo_sql_core::Database;
 
-use crate::sql_param_container::SQLParamContainer;
+use crate::pg_extension::PgExtension;
 
-use crate::{
-    ExpressionBuilder, SQLBuilder, json_agg::JsonAgg, json_object::JsonObject, select::Select,
-    transaction::TransactionStepId,
-};
+use crate::{ExpressionBuilder, SQLBuilder, transaction::TransactionStepId};
 
-/// A column-like concept covering any usage where a database table column could be used. For
-/// example, in a predicate you can say `first_name = 'Sam'` or `first_name = last_name`. Here,
-/// first_name, last_name, and `'Sam'` are serve as columns from our perspective. The variants
-/// encode the exact semantics of each kind.
-///
-/// Essentially represents `<column>` in a `select <column>, <column> from <table>` or `<column> <>
-/// <value>` in a predicate or `<column> = <value>` in an `update <table> set <column> = <value>`,
-/// etc.
-#[derive(Debug, PartialEq)]
-pub enum Column {
-    /// An actual physical column in a table
-    Physical {
-        column_id: ColumnId,
-        table_alias: Option<String>,
-    },
-    // A column that is an array of columns (used for IN clauses)
-    ColumnArray(Vec<Column>),
-
-    /// A literal value such as a string or number e.g. 'Sam'. This will be mapped to a placeholder
-    /// to avoid SQL injection.
-    Param(SQLParamContainer),
-    // An array parameter with a wrapping such as ANY() or ALL()
-    ArrayParam {
-        param: SQLParamContainer,
-        wrapper: ArrayParamWrapper,
-    },
-    /// A JSON object. This is used to represent the result of a JSON object aggregation.
-    JsonObject(JsonObject),
-    /// A JSON array. This is used to represent the result of a JSON array aggregation.
-    JsonAgg(JsonAgg),
-    /// A sub-select query.
-    SubSelect(Box<Select>),
-    // TODO: Generalize the following to return any type of value, not just strings
-    /// A constant string so that we can have a query return a particular value passed in as in
-    /// `select 'Concert', id from "concerts"`. Here 'Concert' is the constant string. Needed to
-    /// have a query return __typename set to a constant value
-    Constant(String),
-    /// All columns of a table. If the table is `None` should translate to `*`, else  `"table_name".*` or "schema"."table_name".*
-    Star(Option<SchemaObjectName>),
-    /// A null value
-    Null,
-    /// A function applied to a column. For example, `count(id)` or `lower(first_name)`.
-    Function(Function),
-
-    Predicate(Box<Predicate<Column>>),
-}
-
-#[derive(Debug, PartialEq)]
-pub enum ArrayParamWrapper {
-    Any,
-    All,
-    None,
-}
-
-impl Column {
-    pub fn physical(column_id: ColumnId, table_alias: Option<String>) -> Self {
-        Self::Physical {
-            column_id,
-            table_alias,
-        }
-    }
-}
+// Re-export the core Column type specialized to PgExtension
+pub type Column = exo_sql_core::operation::Column<PgExtension>;
 
 impl ExpressionBuilder for Column {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
@@ -109,35 +46,6 @@ impl ExpressionBuilder for Column {
             Column::Function(function) => {
                 function.build(database, builder);
             }
-            Column::Param(value) => {
-                if value.has_unnest() {
-                    builder.push_str("(SELECT unnest(");
-                    builder.push_param(value.param());
-                    builder.push_str("))");
-                } else {
-                    builder.push_param(value.param());
-                }
-            }
-            Column::ArrayParam { param, wrapper } => {
-                let wrapper_string = match wrapper {
-                    ArrayParamWrapper::Any => "ANY",
-                    ArrayParamWrapper::All => "ALL",
-                    ArrayParamWrapper::None => "",
-                };
-
-                if wrapper_string.is_empty() {
-                    builder.push_param(param.param());
-                } else {
-                    builder.push_str(wrapper_string);
-                    builder.push('(');
-                    builder.push_param(param.param());
-                    builder.push(')');
-                }
-            }
-            Column::JsonObject(obj) => {
-                obj.build(database, builder);
-            }
-            Column::JsonAgg(agg) => agg.build(database, builder),
             Column::SubSelect(selection_table) => {
                 builder.push('(');
                 selection_table.build(database, builder);
@@ -162,6 +70,9 @@ impl ExpressionBuilder for Column {
                 builder.push('(');
                 predicate.build(database, builder);
                 builder.push(')');
+            }
+            Column::Extension(ext) => {
+                ext.build(database, builder);
             }
         }
     }
@@ -207,11 +118,5 @@ impl PartialEq for ProxyColumn<'_> {
     }
 }
 
-impl ParamEquality for Column {
-    fn param_eq(&self, other: &Self) -> Option<bool> {
-        match (self, other) {
-            (Column::Param(v1), Column::Param(v2)) => Some(v1 == v2),
-            _ => None,
-        }
-    }
-}
+// ParamEquality for Column<PgExtension> is provided by core's blanket impl
+// which delegates to PgExtension::param_eq (defined in pg_extension.rs)

@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use common::value::Val;
-use exo_sql::ColumnPath;
+use exo_sql::{PgAbstractPredicate, PgColumnPath};
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
 use postgres_core_model::access::PrecheckAccessPrimitiveExpression;
@@ -688,7 +688,7 @@ async fn hof_with_residue() {
     // input: createPublication(data: author: {id: 100}, article: {id: 50})
     // context: {id: 100}
 
-    let expected_left = |op: fn(ColumnPath, ColumnPath) -> AbstractPredicate| {
+    let expected_left = |op: fn(PgColumnPath, PgColumnPath) -> PgAbstractPredicate| {
         AbstractPredicate::And(
             Box::new(op(
                 test_system.column_path("Article", "publications.author.id"),
@@ -848,7 +848,7 @@ async fn solve_access<'a>(
     context_value: serde_json::Value,
     input_value: Option<AccessInput<'a>>,
     subsystem: &'a PostgresGraphQLSubsystem,
-) -> AbstractPredicate {
+) -> PgAbstractPredicate {
     let router = router();
     let env = &MapEnvironment::from(HashMap::new());
     let request_context = test_request_context(context_value, &router, env);

@@ -10,7 +10,7 @@
 use tracing::debug;
 
 use exo_sql_core::{ColumnId, Database};
-use exo_sql_model::AbstractInsert;
+use exo_sql_pg_core::PgAbstractInsert;
 use exo_sql_pg_core::transaction::{TransactionScript, TransactionStepId};
 
 use crate::pg::Postgres;
@@ -35,7 +35,7 @@ impl<'s> InsertionStrategyChain<'s> {
     /// `TransactionScript` to execute.
     pub fn update_transaction_script<'a>(
         &self,
-        abstract_insert: AbstractInsert,
+        abstract_insert: PgAbstractInsert,
         parent_step: Option<(TransactionStepId, Vec<ColumnId>)>,
         database: &'a Database,
         transformer: &Postgres,

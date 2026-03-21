@@ -7,23 +7,23 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql_pg_core::Predicate;
+use exo_sql_core::operation::{DatabaseExtension, Predicate};
 
 use crate::column_path::ColumnPath;
 
 /// A version of predicate that uses `ColumnPath`s so that resolvers don't have to deal with
 /// low-level concepts such as joins and subselects. These are handled by the
 /// `transformer::*_transformer` modules.
-pub type AbstractPredicate = Predicate<ColumnPath>;
+pub type AbstractPredicate<Ext> = Predicate<ColumnPath<Ext>>;
 
 /// Extension methods for `AbstractPredicate`
-pub trait AbstractPredicateExt {
+pub trait AbstractPredicateExt<Ext: DatabaseExtension> {
     /// Compute the set of column paths that are referenced by this predicate.
-    fn column_paths(&self) -> Vec<&ColumnPath>;
+    fn column_paths(&self) -> Vec<&ColumnPath<Ext>>;
 }
 
-impl AbstractPredicateExt for AbstractPredicate {
-    fn column_paths(&self) -> Vec<&ColumnPath> {
+impl<Ext: DatabaseExtension> AbstractPredicateExt<Ext> for AbstractPredicate<Ext> {
+    fn column_paths(&self) -> Vec<&ColumnPath<Ext>> {
         match self {
             AbstractPredicate::True | AbstractPredicate::False => vec![],
             AbstractPredicate::Eq(l, r)

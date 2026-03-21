@@ -7,10 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-pub mod abstract_operation;
 pub mod column_path;
 pub mod delete;
 pub mod insert;
+pub mod operation;
 pub mod order_by;
 pub mod predicate;
 pub mod select;
@@ -20,12 +20,12 @@ pub mod transformer;
 pub mod update;
 
 // Re-export key types
-pub use abstract_operation::AbstractOperation;
 pub use column_path::{ColumnPath, ColumnPathLink, PhysicalColumnPath};
 pub use delete::AbstractDelete;
 pub use insert::{
     AbstractInsert, ColumnValuePair, InsertionElement, InsertionRow, NestedInsertion,
 };
+pub use operation::AbstractOperation;
 pub use order_by::{AbstractOrderBy, AbstractOrderByExpr};
 pub use predicate::{AbstractPredicate, AbstractPredicateExt};
 pub use select::AbstractSelect;

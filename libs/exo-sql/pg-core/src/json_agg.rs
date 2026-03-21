@@ -12,7 +12,7 @@ use exo_sql_core::Database;
 use crate::{ExpressionBuilder, SQLBuilder, column::Column};
 
 /// A JSON aggregation corresponding to the Postgres' `json_agg` function.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct JsonAgg(pub Box<Column>);
 
 impl ExpressionBuilder for JsonAgg {

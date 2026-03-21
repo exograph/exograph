@@ -29,21 +29,22 @@
 use tracing::instrument;
 
 use exo_sql_core::Database;
-use exo_sql_model::{AbstractUpdate, transformer::UpdateTransformer};
+use exo_sql_pg_core::PgAbstractUpdate;
 use exo_sql_pg_core::transaction::TransactionScript;
 
 use crate::pg::Postgres;
+use crate::pg::pg_transformer::PgUpdateTransformer;
 
 use super::update_strategy_chain::UpdateStrategyChain;
 
-impl UpdateTransformer for Postgres {
+impl PgUpdateTransformer for Postgres {
     #[instrument(
-        name = "UpdateTransformer::to_transaction_script for Postgres"
+        name = "PgUpdateTransformer::to_transaction_script for Postgres"
         skip(self, database, transaction_script)
         )]
     fn update_transaction_script<'a>(
         &self,
-        abstract_update: AbstractUpdate,
+        abstract_update: PgAbstractUpdate,
         database: &'a Database,
         transaction_script: &mut TransactionScript<'a>,
     ) {

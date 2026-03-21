@@ -14,7 +14,7 @@ use async_trait::async_trait;
 use crate::sql_mapper::SQLMapper;
 use common::context::RequestContext;
 use common::value::Val;
-use exo_sql::AbstractOrderBy;
+use exo_sql::PgAbstractOrderBy;
 use postgres_core_model::order::OrderByParameter;
 use postgres_core_resolver::order_by_mapper::compute_order_by;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
@@ -26,13 +26,13 @@ pub(crate) struct OrderByParameterInput<'a> {
 }
 
 #[async_trait]
-impl<'a> SQLMapper<'a, AbstractOrderBy> for OrderByParameterInput<'a> {
+impl<'a> SQLMapper<'a, PgAbstractOrderBy> for OrderByParameterInput<'a> {
     async fn to_sql(
         self,
         argument: &'a Val,
         subsystem: &'a PostgresGraphQLSubsystem,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<AbstractOrderBy, PostgresExecutionError> {
+    ) -> Result<PgAbstractOrderBy, PostgresExecutionError> {
         compute_order_by(
             self.param,
             argument,

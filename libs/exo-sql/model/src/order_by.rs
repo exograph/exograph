@@ -7,21 +7,22 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use exo_sql_core::operation::DatabaseExtension;
 use exo_sql_core::{Ordering, VectorDistanceFunction};
 
 use crate::column_path::{ColumnPath, PhysicalColumnPath};
 
 /// Represents an abstract order-by clause
 #[derive(Debug)]
-pub struct AbstractOrderBy(pub Vec<(AbstractOrderByExpr, Ordering)>);
+pub struct AbstractOrderBy<Ext: DatabaseExtension>(pub Vec<(AbstractOrderByExpr<Ext>, Ordering)>);
 
 #[derive(Debug)]
-pub enum AbstractOrderByExpr {
+pub enum AbstractOrderByExpr<Ext: DatabaseExtension> {
     Column(PhysicalColumnPath),
-    VectorDistance(ColumnPath, ColumnPath, VectorDistanceFunction),
+    VectorDistance(ColumnPath<Ext>, ColumnPath<Ext>, VectorDistanceFunction),
 }
 
-impl AbstractOrderBy {
+impl<Ext: DatabaseExtension> AbstractOrderBy<Ext> {
     pub fn column_paths(&self) -> Vec<&PhysicalColumnPath> {
         self.0
             .iter()

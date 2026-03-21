@@ -12,7 +12,7 @@ use exo_sql_model::AbstractOperation;
 use exo_sql_pg_connect::{
     TransactionHolder, connect::database_client_manager::DatabaseClientManager,
 };
-use exo_sql_pg_core::TransactionStepResult;
+use exo_sql_pg_core::{PgExtension, TransactionStepResult};
 use exo_sql_pg_transform::pg::Postgres;
 
 pub struct DatabaseExecutor {
@@ -26,7 +26,7 @@ impl DatabaseExecutor {
     /// then executes it.
     pub async fn execute(
         &self,
-        operation: AbstractOperation,
+        operation: AbstractOperation<PgExtension>,
         tx_holder: &mut TransactionHolder,
         database: &Database,
     ) -> Result<TransactionStepResult, DatabaseError> {

@@ -9,14 +9,15 @@
 
 use exo_sql_core::Database;
 use exo_sql_model::{
-    AbstractOrderBy, ColumnPath, order_by::AbstractOrderByExpr, selection_level::SelectionLevel,
+    ColumnPath, order_by::AbstractOrderByExpr, selection_level::SelectionLevel,
     transformer::OrderByTransformer,
 };
-use exo_sql_pg_core::order::{OrderBy, OrderByElement, OrderByElementExpr, VectorDistanceOperand};
+use exo_sql_pg_core::order::{OrderBy, OrderByElement, OrderByElementExpr};
+use exo_sql_pg_core::{PgAbstractOrderBy, PgColumnPath, PgExtension, VectorDistanceOperand};
 
 use super::Postgres;
 
-impl OrderByTransformer for Postgres {
+impl OrderByTransformer<PgExtension> for Postgres {
     /// Transforms an abstract order-by clause into a concrete one
     /// by replacing the abstract column paths with physical ones,
     /// which will be used to generate the SQL query like:
@@ -26,11 +27,11 @@ impl OrderByTransformer for Postgres {
     /// ```
     fn to_order_by(
         &self,
-        order_by: &AbstractOrderBy,
+        order_by: &PgAbstractOrderBy,
         selection_level: &SelectionLevel,
         database: &Database,
     ) -> OrderBy {
-        OrderBy(
+        OrderBy::new(
             order_by
                 .0
                 .iter()
@@ -46,12 +47,12 @@ impl OrderByTransformer for Postgres {
                         OrderByElement::new(column_id, *ordering, table_alias)
                     }
                     AbstractOrderByExpr::VectorDistance(lhs, rhs, op) => {
-                        fn to_column(column_path: &ColumnPath) -> VectorDistanceOperand {
+                        fn to_column(column_path: &PgColumnPath) -> VectorDistanceOperand {
                             match column_path {
                                 ColumnPath::Physical(path) => {
                                     VectorDistanceOperand::PhysicalColumn(path.leaf_column())
                                 }
-                                ColumnPath::Param(value) => {
+                                ColumnPath::Param(PgExtension::Param(value)) => {
                                     VectorDistanceOperand::Param(value.clone())
                                 }
                                 _ => panic!("Expected physical column path or a parameter"),
@@ -59,9 +60,11 @@ impl OrderByTransformer for Postgres {
                         }
                         let lhs_column = to_column(lhs);
                         let rhs_column = to_column(rhs);
-                        let expr = OrderByElementExpr::VectorDistance(lhs_column, rhs_column, *op);
+                        let expr = OrderByElementExpr::Extension(PgExtension::VectorDistance(
+                            lhs_column, rhs_column, *op,
+                        ));
 
-                        OrderByElement(expr, *ordering, None)
+                        OrderByElement::from_expr(expr, *ordering, None)
                     }
                 })
                 .collect(),

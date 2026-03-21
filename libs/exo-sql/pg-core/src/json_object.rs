@@ -13,11 +13,11 @@ use exo_sql_core::{Database, PhysicalColumn};
 use crate::{ExpressionBuilder, SQLBuilder, column::Column};
 
 /// A JSON object corresponding to the Postgres' `json_build_object` function.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct JsonObject(pub Vec<JsonObjectElement>);
 
 /// A key-value pair in a JSON object.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct JsonObjectElement {
     pub key: String,
     pub value: Column,

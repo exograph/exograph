@@ -99,6 +99,9 @@ impl IntegrationTest {
                 .unwrap_or_else(|_| false);
 
             if retries_left == 0 || test_succeeded {
+                let result = result.with_context(|| {
+                    format!("While running test: {}", self.testfile_path.display())
+                });
                 tx.send(result).map_err(|_| ()).unwrap();
                 break;
             }

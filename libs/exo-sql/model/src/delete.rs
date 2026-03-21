@@ -8,19 +8,20 @@
 // by the Apache License, Version 2.0.
 
 use exo_sql_core::TableId;
+use exo_sql_core::operation::DatabaseExtension;
 
 use crate::{predicate::AbstractPredicate, select::AbstractSelect};
 
 /// Abstract representation of a delete operation
 #[derive(Debug)]
-pub struct AbstractDelete {
+pub struct AbstractDelete<Ext: DatabaseExtension> {
     /// The table to delete from
     pub table_id: TableId,
     /// The predicate to filter rows.
-    pub predicate: AbstractPredicate,
+    pub predicate: AbstractPredicate<Ext>,
     /// The selection to return
-    pub selection: AbstractSelect,
+    pub selection: AbstractSelect<Ext>,
 
     /// The precheck predicates to run before deleting
-    pub precheck_predicates: Vec<AbstractPredicate>,
+    pub precheck_predicates: Vec<AbstractPredicate<Ext>>,
 }

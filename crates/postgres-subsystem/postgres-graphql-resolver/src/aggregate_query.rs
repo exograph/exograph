@@ -18,7 +18,7 @@ use common::context::RequestContext;
 use core_model::types::OperationReturnType;
 use core_resolver::validation::field::ValidatedField;
 use exo_sql::{
-    AbstractPredicate, AbstractSelect, AliasedSelectionElement, SelectionCardinality,
+    AbstractPredicate, PgAbstractSelect, PgAliasedSelectionElement, SelectionCardinality,
     SelectionElement,
 };
 use futures::StreamExt;
@@ -32,7 +32,7 @@ impl OperationSelectionResolver for AggregateQuery {
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresGraphQLSubsystem,
-    ) -> Result<AbstractSelect, PostgresExecutionError> {
+    ) -> Result<PgAbstractSelect, PostgresExecutionError> {
         let (_precheck_predicate, entity_predicate) = check_access(
             self.return_type.typ(&subsystem.core_subsystem.entity_types),
             &field.subfields,
@@ -63,7 +63,7 @@ impl OperationSelectionResolver for AggregateQuery {
         )
         .await?;
 
-        Ok(AbstractSelect {
+        Ok(PgAbstractSelect {
             table_id: root_physical_table_id,
             selection: exo_sql::Selection::Json(content_object, SelectionCardinality::One),
             predicate,
@@ -80,7 +80,7 @@ async fn content_select<'content>(
     fields: &'content [ValidatedField],
     subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<Vec<AliasedSelectionElement>, PostgresExecutionError> {
+) -> Result<Vec<PgAliasedSelectionElement>, PostgresExecutionError> {
     futures::stream::iter(fields.iter())
         .then(|field| async { map_field(return_type, field, subsystem, request_context).await })
         .collect::<Vec<Result<_, _>>>()
@@ -94,7 +94,7 @@ async fn map_field<'content>(
     field: &'content ValidatedField,
     subsystem: &'content PostgresGraphQLSubsystem,
     _request_context: &'content RequestContext<'content>,
-) -> Result<AliasedSelectionElement, PostgresExecutionError> {
+) -> Result<PgAliasedSelectionElement, PostgresExecutionError> {
     let selection_elem = if field.name == "__typename" {
         SelectionElement::Constant(return_type.type_name().to_string())
     } else {
@@ -134,7 +134,7 @@ async fn map_field<'content>(
         }
     };
 
-    Ok(AliasedSelectionElement::new(
+    Ok(PgAliasedSelectionElement::new(
         field.output_name(),
         selection_elem,
     ))

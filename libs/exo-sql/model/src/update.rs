@@ -44,8 +44,8 @@
 //! user-provided predicates (id = 100 for update and id =  110 for delete). TODO: Should we
 //! fail if the the combined predicate does not match any rows?
 
+use exo_sql_core::operation::{Column, DatabaseExtension};
 use exo_sql_core::{ColumnId, OneToMany, TableId};
-use exo_sql_pg_core::Column;
 
 use crate::{
     delete::AbstractDelete, insert::AbstractInsert, predicate::AbstractPredicate,
@@ -58,50 +58,53 @@ use crate::{
 /// starting at the root table. For example, while updating a concert, this allows adding a new concert-artist,
 /// updating (say, role or rank) of an existing concert-artist, or deleting an existing concert-artist.
 #[derive(Debug)]
-pub struct AbstractUpdate {
+pub struct AbstractUpdate<Ext: DatabaseExtension> {
     /// The table to update
     pub table_id: TableId,
     /// The predicate to filter rows.
-    pub predicate: AbstractPredicate,
+    pub predicate: AbstractPredicate<Ext>,
 
     /// The columns to update and their values for the `table`
-    pub column_values: Vec<(ColumnId, Column)>,
+    pub column_values: Vec<(ColumnId, Column<Ext>)>,
 
     /// Nested updates
-    pub nested_updates: Vec<NestedAbstractUpdate>,
+    pub nested_updates: Vec<NestedAbstractUpdate<Ext>>,
     /// Nested inserts
-    pub nested_inserts: Vec<NestedAbstractInsertSet>,
+    pub nested_inserts: Vec<NestedAbstractInsertSet<Ext>>,
     /// Nested deletes
-    pub nested_deletes: Vec<NestedAbstractDelete>,
+    pub nested_deletes: Vec<NestedAbstractDelete<Ext>>,
 
     /// The selection to return
-    pub selection: AbstractSelect,
+    pub selection: AbstractSelect<Ext>,
 
     /// Check to run before inserting (if the resulting select returns 1 row, then the precheck passes)
-    pub precheck_predicates: Vec<AbstractPredicate>,
+    pub precheck_predicates: Vec<AbstractPredicate<Ext>>,
 }
 
 /// In our example, the `update: [{id: 100, artist: {id: 10}, rank: 2}, {id: 101, artist: {id: 10}, role: "accompanying"}]` part
 #[derive(Debug)]
-pub struct NestedAbstractUpdate {
+pub struct NestedAbstractUpdate<Ext: DatabaseExtension> {
     /// The relation with the parent table. In our example, this would be `OneToMany { self_pk_column_id: concert.id, foreign_column_id: concert_artist.concert_id}`
     pub nesting_relation: OneToMany,
     /// The update to apply to the nested table
-    pub update: AbstractUpdate,
+    pub update: AbstractUpdate<Ext>,
 }
 
 /// Nested inserts for the same relation and filter predicate.
 /// In our example, the `create: [{artist: {id: 30}, rank: 2, role: "main"}]` part
 #[derive(Debug)]
-pub struct NestedAbstractInsertSet {
-    pub ops: Vec<NestedAbstractInsert>,
+pub struct NestedAbstractInsertSet<Ext: DatabaseExtension> {
+    pub ops: Vec<NestedAbstractInsert<Ext>>,
     /// The predicate to filter rows from the earlier operations with the parent table. Typically
     /// useful to specify conditions stemming from access control rules.
-    pub filter_predicate: AbstractPredicate,
+    pub filter_predicate: AbstractPredicate<Ext>,
 }
 
-impl NestedAbstractInsertSet {
-    pub fn new(ops: Vec<NestedAbstractInsert>, root_predicate: AbstractPredicate) -> Self {
+impl<Ext: DatabaseExtension> NestedAbstractInsertSet<Ext> {
+    pub fn new(
+        ops: Vec<NestedAbstractInsert<Ext>>,
+        root_predicate: AbstractPredicate<Ext>,
+    ) -> Self {
         fn all_same<T: PartialEq + core::fmt::Debug>(items: impl Iterator<Item = T>) -> bool {
             items.fold(None, |acc, item| match acc {
                 None => Some(item),
@@ -134,18 +137,18 @@ impl NestedAbstractInsertSet {
 }
 
 #[derive(Debug)]
-pub struct NestedAbstractInsert {
+pub struct NestedAbstractInsert<Ext: DatabaseExtension> {
     /// Same as `NestedAbstractUpdate::relation_column_id`
     pub relation_column_ids: Vec<ColumnId>,
     /// The insert to apply to the nested table
-    pub insert: AbstractInsert,
+    pub insert: AbstractInsert<Ext>,
 }
 
 /// In our example, the `delete: [{id: 110}]` part
 #[derive(Debug)]
-pub struct NestedAbstractDelete {
+pub struct NestedAbstractDelete<Ext: DatabaseExtension> {
     /// Same as `NestedAbstractUpdate::nesting_relation`
     pub nesting_relation: OneToMany,
     /// The delete to apply to the nested table
-    pub delete: AbstractDelete,
+    pub delete: AbstractDelete<Ext>,
 }

@@ -11,6 +11,7 @@ test-support = []
 
 [dependencies]
 exo-sql-core = { path = "../core" }
+exo-sql-model = { path = "../model" }
 tokio-postgres = { workspace = true, features = [
   "with-chrono-0_4",
   "with-serde_json-1",

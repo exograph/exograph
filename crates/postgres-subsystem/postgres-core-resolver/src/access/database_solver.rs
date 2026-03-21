@@ -22,51 +22,20 @@ use common::value::Val;
 
 use core_model::access::AccessRelationalOp;
 use core_resolver::access_solver::{
-    AccessInput, AccessPredicate, AccessSolution, AccessSolver, AccessSolverError, eq_values,
-    neq_values, reduce_common_primitive_expression,
+    AccessInput, AccessSolution, AccessSolver, AccessSolverError, eq_values, neq_values,
+    reduce_common_primitive_expression,
 };
-use exo_sql::{AbstractPredicate, ColumnPath, PhysicalColumnPath, SQLParamContainer};
+use exo_sql::{
+    AbstractPredicate, ColumnPath, PgAbstractPredicate, PgColumnPath, PgExtension,
+    PhysicalColumnPath, SQLParamContainer,
+};
 use postgres_core_model::{
     access::DatabaseAccessPrimitiveExpression, subsystem::PostgresCoreSubsystem,
 };
 
 use crate::cast;
 
-// Only to get around the orphan rule while implementing AccessSolver
-#[derive(Debug)]
-pub struct AbstractPredicateWrapper(pub AbstractPredicate);
-
-impl std::ops::Not for AbstractPredicateWrapper {
-    type Output = AbstractPredicateWrapper;
-
-    fn not(self) -> Self::Output {
-        Self(self.0.not())
-    }
-}
-
-impl From<bool> for AbstractPredicateWrapper {
-    fn from(value: bool) -> Self {
-        Self(AbstractPredicate::from(value))
-    }
-}
-
-impl AccessPredicate for AbstractPredicateWrapper {
-    fn and(self, other: Self) -> Self {
-        Self(AbstractPredicate::and(self.0, other.0))
-    }
-
-    fn or(self, other: Self) -> Self {
-        Self(AbstractPredicate::or(self.0, other.0))
-    }
-
-    fn is_true(&self) -> bool {
-        self.0.is_true()
-    }
-
-    fn is_false(&self) -> bool {
-        self.0.is_false()
-    }
-}
+use super::access_op::AbstractPredicateWrapper;
 
 #[derive(Debug)]
 pub enum SolvedPrimitiveExpression {
@@ -118,12 +87,12 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
             } // If either side is None, we can't produce a predicate
         };
 
-        type ColumnPredicateFn = fn(ColumnPath, ColumnPath) -> AbstractPredicate;
-        type ValuePredicateFn = fn(Val, Val) -> AbstractPredicate;
+        type ColumnPredicateFn = fn(PgColumnPath, PgColumnPath) -> PgAbstractPredicate;
+        type ValuePredicateFn = fn(Val, Val) -> PgAbstractPredicate;
 
         let helper = |column_predicate: ColumnPredicateFn,
                       value_predicate: ValuePredicateFn|
-         -> Result<AccessSolution<AbstractPredicate>, AccessSolverError> {
+         -> Result<AccessSolution<PgAbstractPredicate>, AccessSolverError> {
             match (left, right) {
                 (SolvedPrimitiveExpression::Common(None), _)
                 | (_, SolvedPrimitiveExpression::Common(None)) => {
@@ -235,17 +204,19 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
     }
 }
 
-pub fn to_column_path(physical_column_path: &PhysicalColumnPath) -> ColumnPath {
+pub fn to_column_path(physical_column_path: &PhysicalColumnPath) -> PgColumnPath {
     ColumnPath::Physical(physical_column_path.clone())
 }
 
 /// Converts a value to a literal column path
-pub fn literal_column(value: Val) -> ColumnPath {
+pub fn literal_column(value: Val) -> PgColumnPath {
     match value {
         Val::Null => ColumnPath::Null,
-        Val::Bool(v) => ColumnPath::Param(SQLParamContainer::bool(v)),
-        Val::Number(v) => ColumnPath::Param(SQLParamContainer::i32(v.as_i64().unwrap() as i32)), // TODO: Deal with the exact number type
-        Val::String(v) => ColumnPath::Param(SQLParamContainer::string(v)),
+        Val::Bool(v) => ColumnPath::Param(PgExtension::Param(SQLParamContainer::bool(v))),
+        Val::Number(v) => ColumnPath::Param(PgExtension::Param(SQLParamContainer::i32(
+            v.as_i64().unwrap() as i32,
+        ))), // TODO: Deal with the exact number type
+        Val::String(v) => ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(v))),
         Val::List(_) | Val::Object(_) | Val::Binary(_) | Val::Enum(_) => todo!(),
     }
 }

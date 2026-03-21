@@ -9,16 +9,17 @@
 
 use maybe_owned::MaybeOwned;
 
+use crate::pg::pg_transformer::PgInsertTransformer;
 use exo_sql_core::{ColumnId, Database, PhysicalColumn};
 use exo_sql_model::{
-    AbstractUpdate, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractInsertSet,
-    NestedAbstractUpdate,
+    NestedAbstractInsert, NestedAbstractInsertSet,
     selection_level::SelectionLevel,
-    transformer::{InsertTransformer, PredicateTransformer, SelectTransformer},
+    transformer::{PredicateTransformer, SelectTransformer},
 };
 use exo_sql_pg_core::{
-    Column, PgColumnTypeExt, SQLOperation, TemplateSQLOperation,
-    column::ArrayParamWrapper,
+    ArrayParamWrapper, Column, PgAbstractUpdate, PgColumnTypeExt, PgExtension,
+    PgNestedAbstractDelete, PgNestedAbstractInsert, PgNestedAbstractUpdate, SQLOperation,
+    TemplateSQLOperation,
     delete::TemplateDelete,
     select::Select,
     table::Table,
@@ -50,7 +51,7 @@ impl UpdateStrategy for MultiStatementStrategy {
         "MultiStatementStrategy"
     }
 
-    fn suitable(&self, _abstract_update: &AbstractUpdate, _database: &Database) -> bool {
+    fn suitable(&self, _abstract_update: &PgAbstractUpdate, _database: &Database) -> bool {
         true
     }
 
@@ -64,7 +65,7 @@ impl UpdateStrategy for MultiStatementStrategy {
     /// ```
     fn update_transaction_script<'a>(
         &self,
-        abstract_update: AbstractUpdate,
+        abstract_update: PgAbstractUpdate,
         database: &'a Database,
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,
@@ -229,10 +230,10 @@ impl UpdateStrategy for MultiStatementStrategy {
                             predicate,
                             Predicate::Eq(
                                 Column::physical(pk_column_id, None),
-                                Column::ArrayParam {
+                                Column::Extension(PgExtension::ArrayParam {
                                     param: in_values,
                                     wrapper: ArrayParamWrapper::Any,
-                                },
+                                }),
                             ),
                         )
                     },
@@ -251,8 +252,8 @@ impl UpdateStrategy for MultiStatementStrategy {
 }
 
 fn update_op<'a>(
-    nested_update: NestedAbstractUpdate,
-    predicate_transformer: &impl PredicateTransformer,
+    nested_update: PgNestedAbstractUpdate,
+    predicate_transformer: &impl PredicateTransformer<PgExtension>,
     database: &'a Database,
 ) -> TemplateSQLOperation<'a> {
     let column_values: Vec<(&PhysicalColumn, Column)> = nested_update
@@ -277,7 +278,7 @@ fn update_op<'a>(
 }
 
 fn add_insert_steps<'a>(
-    nested_insert: NestedAbstractInsert,
+    nested_insert: PgNestedAbstractInsert,
     parent_step_id: TransactionStepId,
     database: &'a Database,
     transformer: &Postgres,
@@ -297,8 +298,8 @@ fn add_insert_steps<'a>(
 }
 
 fn delete_op<'a>(
-    nested_delete: NestedAbstractDelete,
-    predicate_transformer: &impl PredicateTransformer,
+    nested_delete: PgNestedAbstractDelete,
+    predicate_transformer: &impl PredicateTransformer<PgExtension>,
     database: &'a Database,
 ) -> TemplateSQLOperation<'a> {
     let predicate = predicate_transformer.to_predicate(
@@ -325,11 +326,11 @@ mod tests {
         selection::{AliasedSelectionElement, Selection, SelectionElement},
     };
     use exo_sql_pg_core::Column;
-    use exo_sql_pg_core::{Predicate, sql_param_container::SQLParamContainer};
+    use exo_sql_pg_core::{PgExtension, Predicate, sql_param_container::SQLParamContainer};
 
     use crate::pg::Postgres;
+    use crate::pg::pg_transformer::PgUpdateTransformer;
     use crate::test_util::TestSetup;
-    use exo_sql_model::transformer::UpdateTransformer;
 
     use multiplatform_test::multiplatform_test;
 
@@ -345,7 +346,7 @@ mod tests {
              }| {
                 let venue_id_path =
                     ColumnPath::Physical(PhysicalColumnPath::leaf(venues_id_column));
-                let literal = ColumnPath::Param(SQLParamContainer::i32(5));
+                let literal = ColumnPath::Param(PgExtension::Param(SQLParamContainer::i32(5)));
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let abs_update = AbstractUpdate {
@@ -353,7 +354,9 @@ mod tests {
                     predicate,
                     column_values: vec![(
                         venues_name_column,
-                        Column::Param(SQLParamContainer::string("new_name".to_string())),
+                        Column::Extension(PgExtension::Param(SQLParamContainer::string(
+                            "new_name".to_string(),
+                        ))),
                     )],
                     nested_updates: vec![],
                     nested_inserts: vec![],
@@ -379,7 +382,7 @@ mod tests {
                 };
 
                 let update =
-                    UpdateTransformer::to_transaction_script(&Postgres {}, abs_update, &database);
+                    PgUpdateTransformer::to_transaction_script(&Postgres {}, abs_update, &database);
 
                 // TODO: Add a proper assertion here (ideally, we can get a digest of the transaction script and assert on it)
                 println!("{update:#?}");
@@ -403,7 +406,7 @@ mod tests {
                 let venue_id_path =
                     ColumnPath::Physical(PhysicalColumnPath::leaf(venues_id_column));
 
-                let literal = ColumnPath::Param(SQLParamContainer::i32(5));
+                let literal = ColumnPath::Param(PgExtension::Param(SQLParamContainer::i32(5)));
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let nested_abs_update = NestedAbstractUpdate {
@@ -418,9 +421,9 @@ mod tests {
                         predicate: Predicate::True,
                         column_values: vec![(
                             concerts_name_column,
-                            Column::Param(SQLParamContainer::string(
+                            Column::Extension(PgExtension::Param(SQLParamContainer::string(
                                 "new_concert_name".to_string(),
-                            )),
+                            ))),
                         )],
                         selection: AbstractSelect {
                             table_id: venues_table,
@@ -442,7 +445,9 @@ mod tests {
                     predicate,
                     column_values: vec![(
                         venues_name_column,
-                        Column::Param(SQLParamContainer::string("new_name".to_string())),
+                        Column::Extension(PgExtension::Param(SQLParamContainer::string(
+                            "new_name".to_string(),
+                        ))),
                     )],
                     nested_updates: vec![nested_abs_update],
                     nested_inserts: vec![],
@@ -468,7 +473,7 @@ mod tests {
                 };
 
                 let update =
-                    UpdateTransformer::to_transaction_script(&Postgres {}, abs_update, &database);
+                    PgUpdateTransformer::to_transaction_script(&Postgres {}, abs_update, &database);
 
                 // TODO: Add a proper assertion here (ideally, we can get a digest of the transaction script and assert on it)
                 println!("{update:#?}");

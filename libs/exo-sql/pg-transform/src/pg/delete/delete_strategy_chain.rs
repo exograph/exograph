@@ -10,7 +10,7 @@
 use tracing::debug;
 
 use exo_sql_core::Database;
-use exo_sql_model::AbstractDelete;
+use exo_sql_pg_core::PgAbstractDelete;
 use exo_sql_pg_core::transaction::TransactionScript;
 
 use crate::pg::Postgres;
@@ -32,7 +32,7 @@ impl<'s> DeleteStrategyChain<'s> {
     /// `TransactionScript` with steps to execute.
     pub fn update_transaction_script<'a>(
         &self,
-        abstract_delete: AbstractDelete,
+        abstract_delete: PgAbstractDelete,
         database: &'a Database,
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,

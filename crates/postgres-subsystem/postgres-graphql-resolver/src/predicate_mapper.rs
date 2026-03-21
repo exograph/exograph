@@ -12,6 +12,7 @@ use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
 use exo_sql::AbstractPredicate;
+use exo_sql::PgAbstractPredicate;
 
 use postgres_core_model::predicate::PredicateParameter;
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
@@ -29,13 +30,13 @@ struct PredicateParamInput<'a> {
 }
 
 #[async_trait]
-impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
+impl<'a> SQLMapper<'a, PgAbstractPredicate> for PredicateParamInput<'a> {
     async fn to_sql(
         self,
         argument: &'a Val,
         subsystem: &'a PostgresGraphQLSubsystem,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<AbstractPredicate, PostgresExecutionError> {
+    ) -> Result<PgAbstractPredicate, PostgresExecutionError> {
         postgres_core_resolver::predicate_mapper::compute_predicate(
             self.param,
             argument,
@@ -55,7 +56,7 @@ pub async fn compute_predicate<'a>(
     arguments: &'a Arguments,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<AbstractPredicate, PostgresExecutionError> {
+) -> Result<PgAbstractPredicate, PostgresExecutionError> {
     let predicates = futures::future::try_join_all(params.iter().map(|param| async {
         extract_and_map(
             PredicateParamInput { param },

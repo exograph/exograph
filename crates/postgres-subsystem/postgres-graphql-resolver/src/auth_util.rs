@@ -26,7 +26,7 @@ use common::context::RequestContext;
 use common::value::Val;
 use core_model::access::AccessPredicateExpression;
 use core_resolver::{access_solver::AccessSolver, validation::field::ValidatedField};
-use exo_sql::{AbstractPredicate, Predicate};
+use exo_sql::{AbstractPredicate, PgAbstractPredicate, Predicate};
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
 pub(crate) async fn check_access<'a>(
@@ -36,7 +36,7 @@ pub(crate) async fn check_access<'a>(
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
     input_value: Option<&AccessInput<'a>>,
-) -> Result<(AbstractPredicate, AbstractPredicate), PostgresExecutionError> {
+) -> Result<(PgAbstractPredicate, PgAbstractPredicate), PostgresExecutionError> {
     let (precheck_predicate, entity_predicate) = {
         match kind {
             SQLOperationKind::Create => {
@@ -152,7 +152,7 @@ async fn check_create_access<'a>(
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
     input_value: Option<&AccessInput<'a>>,
-) -> Result<AbstractPredicate, PostgresExecutionError> {
+) -> Result<PgAbstractPredicate, PostgresExecutionError> {
     let precheck_predicate = subsystem
         .core_subsystem
         .solve(
@@ -175,7 +175,7 @@ pub(super) async fn check_retrieve_access<'a>(
     expr: &AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<AbstractPredicate, PostgresExecutionError> {
+) -> Result<PgAbstractPredicate, PostgresExecutionError> {
     Ok(subsystem
         .core_subsystem
         .solve(request_context, None, expr)
@@ -189,7 +189,7 @@ async fn check_update_access<'a>(
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
     input_value: Option<&AccessInput<'a>>,
-) -> Result<(AbstractPredicate, AbstractPredicate), PostgresExecutionError> {
+) -> Result<(PgAbstractPredicate, PgAbstractPredicate), PostgresExecutionError> {
     // First check the input predicate (i.e. the "data" parameter matches the access predicate)
     let precheck_predicate = subsystem
         .core_subsystem
@@ -227,7 +227,7 @@ async fn check_delete_access<'a>(
     expr: &AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<(AbstractPredicate, AbstractPredicate), PostgresExecutionError> {
+) -> Result<(PgAbstractPredicate, PgAbstractPredicate), PostgresExecutionError> {
     Ok((
         AbstractPredicate::True,
         subsystem
@@ -244,7 +244,7 @@ async fn check_selection_access<'a>(
     return_type: &'a EntityType,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<AbstractPredicate, PostgresExecutionError> {
+) -> Result<PgAbstractPredicate, PostgresExecutionError> {
     futures::stream::iter(selection.iter().map(Ok))
         .try_fold(
             AbstractPredicate::True,
@@ -300,7 +300,7 @@ async fn check_input_access<'a>(
     ) -> SerializableSlabIndex<
         AccessPredicateExpression<PrecheckAccessPrimitiveExpression>,
     >,
-) -> Result<AbstractPredicate, PostgresExecutionError> {
+) -> Result<PgAbstractPredicate, PostgresExecutionError> {
     match input_value.as_ref().map(|ctx| ctx.value) {
         None => Ok(AbstractPredicate::True),
         Some(Val::Object(elems)) => {

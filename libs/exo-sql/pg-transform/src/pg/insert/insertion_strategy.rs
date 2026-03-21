@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use exo_sql_core::{ColumnId, Database};
-use exo_sql_model::AbstractInsert;
+use exo_sql_pg_core::PgAbstractInsert;
 use exo_sql_pg_core::transaction::{TransactionScript, TransactionStepId};
 
 use crate::pg::Postgres;
@@ -19,11 +19,11 @@ pub(crate) trait InsertionStrategy {
     fn id(&self) -> &'static str;
 
     /// See `SelectionStrategy::suitable`
-    fn suitable(&self, abstract_insert: &AbstractInsert, database: &Database) -> bool;
+    fn suitable(&self, abstract_insert: &PgAbstractInsert, database: &Database) -> bool;
 
     fn update_transaction_script<'a>(
         &self,
-        abstract_insert: AbstractInsert,
+        abstract_insert: PgAbstractInsert,
         parent_step: Option<(TransactionStepId, Vec<ColumnId>)>,
         database: &'a Database,
         transformer: &Postgres,
