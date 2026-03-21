@@ -13,7 +13,7 @@ use exo_sql_core::{Database, Limit, Offset};
 
 use crate::{
     ExpressionBuilder, SQLBuilder, column::Column, group_by::GroupBy, order::OrderBy,
-    predicate::ConcretePredicate, table::Table,
+    predicate_ext::ConcretePredicate, table::Table,
 };
 
 /// A select statement

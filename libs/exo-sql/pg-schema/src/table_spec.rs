@@ -149,7 +149,8 @@ impl TableSpec {
                 PHYSICAL_TABLE_COLUMNS_QUERY,
                 &[&table_name.name, &table_name.schema_name()],
             )
-            .await?
+            .await
+            .map_err(DatabaseError::driver)?
         {
             let column_name: String = row.get("column_name");
 
@@ -225,7 +226,8 @@ impl TableSpec {
                 MATERIALIZED_VIEW_COLUMNS_QUERY,
                 &[&table_name.name, &table_name.schema_name()],
             )
-            .await?;
+            .await
+            .map_err(DatabaseError::driver)?;
 
         let columns = rows
             .iter()

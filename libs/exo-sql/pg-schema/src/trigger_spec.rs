@@ -142,7 +142,8 @@ impl TriggerSpec {
     ) -> Result<WithIssues<Vec<TriggerSpec>>, DatabaseError> {
         let triggers = client
             .query(TRIGGERS_QUERY, &[&table_name.fully_qualified_name()])
-            .await?
+            .await
+            .map_err(DatabaseError::driver)?
             .iter()
             .map(|row| {
                 let name = row.get("trigger_name");

@@ -12,7 +12,8 @@ use std::collections::HashMap;
 use exo_sql_core::Database;
 
 use crate::ExpressionBuilder;
-use exo_sql_core::{SchemaObjectName, sql_param::SQLParamWithType};
+use crate::sql_param::SQLParamWithType;
+use exo_sql_core::SchemaObjectName;
 
 pub struct SQLBuilder {
     /// The SQL being built with placeholders for each parameter

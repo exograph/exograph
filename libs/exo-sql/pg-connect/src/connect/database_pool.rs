@@ -72,7 +72,7 @@ impl DatabasePool {
         let (url, ssl_config) = SslConfig::from_url(url)?;
 
         let mut config = Config::from_str(&url).map_err(|e| {
-            DatabaseError::Delegate(e)
+            DatabaseError::driver(e)
                 .with_context("Failed to parse PostgreSQL connection string".into())
         })?;
 

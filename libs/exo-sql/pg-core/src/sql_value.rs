@@ -11,7 +11,7 @@ use std::fmt::Display;
 
 use tokio_postgres::types::{FromSql, ToSql, Type, to_sql_checked};
 
-use crate::database_error::DatabaseError;
+use exo_sql_core::DatabaseError;
 
 /// An SQL value to transfer the result of one transaction step to another.
 #[derive(Debug, Clone, PartialEq, Eq)]

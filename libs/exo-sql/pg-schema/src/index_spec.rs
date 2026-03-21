@@ -83,7 +83,8 @@ impl IndexSpec {
     ) -> Result<WithIssues<Vec<IndexSpec>>, DatabaseError> {
         let indices = client
             .query(INDICES_QUERY, &[&table_name.fully_qualified_name()])
-            .await?
+            .await
+            .map_err(DatabaseError::driver)?
             .iter()
             .flat_map(|row| {
                 let column_names = row

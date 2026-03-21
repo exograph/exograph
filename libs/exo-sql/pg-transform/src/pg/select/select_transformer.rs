@@ -153,7 +153,7 @@ impl Postgres {
 #[cfg(test)]
 mod tests {
     use exo_sql_core::{
-        Limit, Offset, Ordering, Predicate, RelationId, SQLParamContainer,
+        Limit, Offset, Ordering, RelationId,
         physical_column::{get_mto_relation_for_columns, get_otm_relation_for_columns},
     };
     use exo_sql_model::{
@@ -163,6 +163,7 @@ mod tests {
     };
     use exo_sql_pg_core::ExpressionBuilder;
     use exo_sql_pg_core::assert_binding;
+    use exo_sql_pg_core::{Predicate, sql_param_container::SQLParamContainer};
 
     use crate::pg::Postgres;
     use crate::test_util::TestSetup;

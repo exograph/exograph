@@ -35,7 +35,17 @@ pub mod transaction;
 pub mod update;
 pub mod vector;
 
+pub mod function;
 pub mod physical_column_type;
+pub mod sql_bytes;
+pub mod sql_param;
+pub mod sql_param_container;
+pub mod sql_value;
+
+mod predicate_ext;
+
+pub use function::Function;
+pub use predicate::{CaseSensitivity, NumericComparator, ParamEquality, Predicate};
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_database_builder;
 
@@ -52,7 +62,7 @@ pub use physical_column_type::ensure_registry_initialized;
 pub use column::{ArrayParamWrapper, Column, ProxyColumn};
 pub use expression_builder::ExpressionBuilder;
 pub use order::{OrderBy, OrderByElement, OrderByElementExpr, VectorDistanceOperand};
-pub use predicate::ConcretePredicate;
+pub use predicate_ext::ConcretePredicate;
 pub use sql_builder::SQLBuilder;
 pub use sql_operation::{SQLOperation, TemplateSQLOperation};
 pub use transaction::{
@@ -61,3 +71,6 @@ pub use transaction::{
     TransactionStepId, TransactionStepResult,
 };
 pub use vector::VectorDistance;
+
+#[cfg(feature = "bigdecimal")]
+pub use pg_bigdecimal::BigDecimal;

@@ -42,7 +42,8 @@ impl EnumSpec {
 
         for row in client
             .query(ENUM_VARIANTS_QUERY, &[&name.schema_name(), &name.name])
-            .await?
+            .await
+            .map_err(DatabaseError::driver)?
         {
             variants.push(row.get("enum_value"));
         }

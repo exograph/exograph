@@ -10,7 +10,9 @@
 use std::collections::{HashMap, hash_map::Entry};
 
 use crate::physical_column_type::{ArrayColumnType, JsonColumnType, PhysicalColumnType};
-use exo_sql_core::{DatabaseError, sql_param_container::SQLParamContainer};
+use exo_sql_core::DatabaseError;
+
+use crate::sql_param_container::SQLParamContainer;
 
 use crate::pg_column_type::PgColumnTypeExt;
 use postgres_array::{Array, Dimension};

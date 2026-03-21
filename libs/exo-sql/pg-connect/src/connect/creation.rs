@@ -56,7 +56,10 @@ impl DatabaseCreation {
             DatabaseCreation::Connect {
                 config, connect, ..
             } => {
-                let (client, _connection) = connect.connect(config).await?;
+                let (client, _connection) = connect
+                    .connect(config)
+                    .await
+                    .map_err(DatabaseError::driver)?;
                 Ok(DatabaseClient::Direct(client))
             }
             #[cfg(feature = "postgres-url")]
@@ -79,7 +82,7 @@ impl DatabaseCreation {
         let (url, ssl_config) = SslConfig::from_url(url)?;
 
         let mut config = Config::from_str(&url).map_err(|e| {
-            DatabaseError::Delegate(e)
+            DatabaseError::driver(e)
                 .with_context("Failed to parse PostgreSQL connection string".into())
         })?;
         transaction_mode.update_config(&mut config);
@@ -94,7 +97,8 @@ impl DatabaseCreation {
             Some(ssl_config) if has_tcp_hosts => {
                 let (config, tls) = ssl_config.updated_config(config)?;
 
-                let (client, connection) = config.connect(tls).await?;
+                let (client, connection) =
+                    config.connect(tls).await.map_err(DatabaseError::driver)?;
 
                 tokio::spawn(async move {
                     if let Err(e) = connection.await {
@@ -106,7 +110,8 @@ impl DatabaseCreation {
             }
             _ => {
                 let tls = tokio_postgres::NoTls;
-                let (client, connection) = config.connect(tls).await?;
+                let (client, connection) =
+                    config.connect(tls).await.map_err(DatabaseError::driver)?;
 
                 tokio::spawn(async move {
                     if let Err(e) = connection.await {

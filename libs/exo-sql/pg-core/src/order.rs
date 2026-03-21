@@ -7,7 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql_core::{ColumnId, Database, Ordering, SQLParamContainer, VectorDistanceFunction};
+use exo_sql_core::{ColumnId, Database, Ordering, VectorDistanceFunction};
+
+use crate::sql_param_container::SQLParamContainer;
 
 use crate::{ExpressionBuilder, SQLBuilder, vector::VectorDistance};
 

@@ -30,7 +30,8 @@ impl FunctionSpec {
     ) -> Result<WithIssues<Vec<FunctionSpec>>, DatabaseError> {
         let functions: Vec<_> = client
             .query(FUNCTIONS_QUERY, &[])
-            .await?
+            .await
+            .map_err(DatabaseError::driver)?
             .iter()
             .map(|row| {
                 let name: String = row.get("routine_name");

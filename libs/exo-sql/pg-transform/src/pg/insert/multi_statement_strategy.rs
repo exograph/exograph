@@ -9,7 +9,7 @@
 
 use maybe_owned::MaybeOwned;
 
-use exo_sql_core::{ColumnId, Database, Predicate, SQLParamContainer, TableId};
+use exo_sql_core::{ColumnId, Database, TableId};
 use exo_sql_model::{
     AbstractInsert, ColumnValuePair, InsertionRow, NestedInsertion, transformer::SelectTransformer,
 };
@@ -23,6 +23,7 @@ use exo_sql_pg_core::{
         TransactionContext, TransactionScript, TransactionStep, TransactionStepId,
     },
 };
+use exo_sql_pg_core::{Predicate, sql_param_container::SQLParamContainer};
 
 use crate::pg::{Postgres, precheck::add_precheck_queries};
 

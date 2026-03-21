@@ -9,7 +9,8 @@
 
 //! Support for selecting columns in a table, including json aggregates
 
-use exo_sql_core::{ColumnId, Function, RelationId};
+use exo_sql_core::{ColumnId, RelationId};
+use exo_sql_pg_core::Function;
 
 use crate::select::AbstractSelect;
 

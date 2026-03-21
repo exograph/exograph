@@ -9,9 +9,10 @@
 
 use maybe_owned::MaybeOwned;
 
-use exo_sql_core::{
-    ColumnId, Database, Function, ParamEquality, Predicate, SQLParamContainer, SchemaObjectName,
-};
+use crate::{Function, ParamEquality, Predicate};
+use exo_sql_core::{ColumnId, Database, SchemaObjectName};
+
+use crate::sql_param_container::SQLParamContainer;
 
 use crate::{
     ExpressionBuilder, SQLBuilder, json_agg::JsonAgg, json_object::JsonObject, select::Select,

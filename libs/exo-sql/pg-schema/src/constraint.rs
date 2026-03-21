@@ -85,7 +85,8 @@ impl Constraints {
                 CONSTRAINT_QUERY,
                 &[&table_name.name, &table_name.schema_name()],
             )
-            .await?
+            .await
+            .map_err(DatabaseError::driver)?
             .iter()
             .map(|row| {
                 let contype: i8 = row.get("contype");

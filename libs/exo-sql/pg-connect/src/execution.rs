@@ -132,6 +132,6 @@ async fn run_query(
 
     client.query_typed(&stmt, &params[..]).await.map_err(|e| {
         error!("Failed to execute query: {e:?}");
-        DatabaseError::Delegate(e).with_context("Database operation failed".into())
+        DatabaseError::driver(e).with_context("Database operation failed".into())
     })
 }

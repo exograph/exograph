@@ -9,12 +9,14 @@
 
 use maybe_owned::MaybeOwned;
 
-use exo_sql_core::{Database, OneToMany, PhysicalTable, SQLParamContainer};
+use exo_sql_core::{Database, OneToMany, PhysicalTable};
+
+use crate::sql_param_container::SQLParamContainer;
 
 use crate::{
     ExpressionBuilder, SQLBuilder,
     column::Column,
-    predicate::ConcretePredicate,
+    predicate_ext::ConcretePredicate,
     transaction::{TransactionContext, TransactionStepId},
 };
 
