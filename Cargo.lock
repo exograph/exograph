@@ -9103,12 +9103,12 @@ dependencies = [
 
 [[package]]
 name = "rexpect"
-version = "0.6.3"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0fad980333eb2bc260e0ceb42b356f3e559f95106d14e5b22c631e6b0aef380"
+checksum = "e459b12e442eb95f78b7e69bb2c3a64fc96f24d90dbc47fb028d94ffb26ce1e8"
 dependencies = [
  "comma",
- "nix 0.30.1",
+ "nix 0.31.2",
  "regex",
  "tempfile",
  "thiserror 2.0.18",
