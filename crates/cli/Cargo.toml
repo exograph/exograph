@@ -58,4 +58,4 @@ exo-sql = { path = "../../libs/exo-sql/facade", features = ["test-support"] }
 common = { path = "../common", features = ["test-support"] }
 
 [target.'cfg(unix)'.dev-dependencies]
-rexpect = "0.6.2"
+rexpect = "0.7.0"
