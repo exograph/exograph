@@ -34,8 +34,7 @@
 //! This is a facade crate that re-exports from the underlying sub-crates:
 //! - `exo-sql-core`: generic data model types
 //! - `exo-sql-model`: abstract SQL operations + transform traits
-//! - `exo-sql-pg-core`: Postgres SQL types + generation
-//! - `exo-sql-pg-transform`: Postgres transform implementation
+//! - `exo-sql-pg`: Postgres SQL types, generation, and transformation
 //! - `exo-sql-pg-connect`: Postgres connection management + execution
 //! - `exo-sql-pg-schema`: Postgres schema introspection, diff, migration
 
@@ -55,7 +54,7 @@ pub mod testing {
 }
 
 pub mod array_util {
-    pub use exo_sql_pg_core::array_util::*;
+    pub use exo_sql_pg::array_util::*;
 }
 
 pub use exo_sql_model::{
@@ -78,12 +77,12 @@ pub use exo_sql_pg_connect::{
     connect::database_client_manager::DatabaseClientManager,
 };
 
-pub use exo_sql_pg_core::column::Column;
-pub use exo_sql_pg_core::{
+pub use exo_sql_pg::column::Column;
+pub use exo_sql_pg::{
     PgColumnType, PgColumnTypeExt, as_pg_column_type, ensure_registry_initialized, to_pg_array_type,
 };
 
-pub use exo_sql_pg_core::physical_column_type::{
+pub use exo_sql_pg::physical_column_type::{
     ArrayColumnType, BlobColumnType, BooleanColumnType, DateColumnType, EnumColumnType, FloatBits,
     FloatColumnType, IntBits, IntColumnType, JsonColumnType, NumericColumnType, PhysicalColumnType,
     PhysicalColumnTypeExt, StringColumnType, TimeColumnType, TimestampColumnType, UuidColumnType,
@@ -91,7 +90,7 @@ pub use exo_sql_pg_core::physical_column_type::{
 };
 
 // Types from pg-core (moved from core)
-pub use exo_sql_pg_core::{
+pub use exo_sql_pg::{
     CaseSensitivity, Function, NumericComparator, ParamEquality, PgAbstractDelete,
     PgAbstractInsert, PgAbstractOperation, PgAbstractOrderBy, PgAbstractPredicate,
     PgAbstractSelect, PgAbstractUpdate, PgAliasedSelectionElement, PgColumnPath, PgColumnValuePair,
@@ -111,4 +110,4 @@ pub use exo_sql_core::{
 };
 
 #[cfg(feature = "bigdecimal")]
-pub use exo_sql_pg_core::BigDecimal;
+pub use exo_sql_pg::BigDecimal;

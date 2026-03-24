@@ -4512,10 +4512,9 @@ dependencies = [
  "exo-sql",
  "exo-sql-core",
  "exo-sql-model",
+ "exo-sql-pg",
  "exo-sql-pg-connect",
- "exo-sql-pg-core",
  "exo-sql-pg-schema",
- "exo-sql-pg-transform",
 ]
 
 [[package]]
@@ -4539,13 +4538,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "exo-sql-pg"
+version = "0.28.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "exo-sql-core",
+ "exo-sql-model",
+ "indexmap 2.13.0",
+ "maybe-owned",
+ "multiplatform_test",
+ "pg_bigdecimal",
+ "postcard",
+ "postgres_array",
+ "regex",
+ "serde",
+ "serde_json",
+ "tokio-postgres",
+ "tracing",
+ "uuid",
+ "wasm-bindgen-test",
+ "wasm-bindgen-test-macro",
+]
+
+[[package]]
 name = "exo-sql-pg-connect"
 version = "0.28.0"
 dependencies = [
  "ctor",
  "deadpool-postgres",
  "exo-sql-core",
- "exo-sql-pg-core",
+ "exo-sql-pg",
  "futures",
  "rand 0.10.0",
  "rustls",
@@ -4563,35 +4586,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "exo-sql-pg-core"
-version = "0.28.0"
-dependencies = [
- "bytes",
- "chrono",
- "exo-sql-core",
- "exo-sql-model",
- "indexmap 2.13.0",
- "maybe-owned",
- "multiplatform_test",
- "pg_bigdecimal",
- "postcard",
- "postgres_array",
- "regex",
- "serde",
- "serde_json",
- "tokio-postgres",
- "uuid",
- "wasm-bindgen-test",
- "wasm-bindgen-test-macro",
-]
-
-[[package]]
 name = "exo-sql-pg-schema"
 version = "0.28.0"
 dependencies = [
  "exo-sql-core",
+ "exo-sql-pg",
  "exo-sql-pg-connect",
- "exo-sql-pg-core",
  "pg_bigdecimal",
  "regex",
  "serde",
@@ -4600,20 +4600,6 @@ dependencies = [
  "tokio-postgres",
  "toml 1.0.7+spec-1.1.0",
  "wildmatch",
-]
-
-[[package]]
-name = "exo-sql-pg-transform"
-version = "0.28.0"
-dependencies = [
- "exo-sql-core",
- "exo-sql-model",
- "exo-sql-pg-core",
- "maybe-owned",
- "multiplatform_test",
- "tracing",
- "wasm-bindgen-test",
- "wasm-bindgen-test-macro",
 ]
 
 [[package]]

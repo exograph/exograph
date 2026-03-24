@@ -2,9 +2,7 @@
 
 use exo_sql_core::SchemaObjectName;
 use exo_sql_core::{ColumnAutoincrement, ColumnDefault};
-use exo_sql_pg_core::physical_column_type::{
-    IntBits, IntColumnType, JsonColumnType, StringColumnType,
-};
+use exo_sql_pg::physical_column_type::{IntBits, IntColumnType, JsonColumnType, StringColumnType};
 
 use crate::column_spec::{ColumnReferenceSpec, ColumnSpec};
 

@@ -11,7 +11,7 @@ interactive-migration = ["toml"]
 
 [dependencies]
 exo-sql-core = { path = "../core" }
-exo-sql-pg-core = { path = "../pg-core" }
+exo-sql-pg = { path = "../pg" }
 pg_bigdecimal = { version = "0.1", optional = true }
 exo-sql-pg-connect = { path = "../pg-connect" }
 regex.workspace = true

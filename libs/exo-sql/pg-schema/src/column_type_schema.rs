@@ -11,7 +11,7 @@ use exo_sql_core::{
     SchemaStatement,
     column_default::{ColumnAutoincrement, ColumnDefault},
 };
-use exo_sql_pg_core::physical_column_type::{
+use exo_sql_pg::physical_column_type::{
     ArrayColumnType, BlobColumnType, BooleanColumnType, DateColumnType, EnumColumnType, FloatBits,
     FloatColumnType, IntBits, IntColumnType, JsonColumnType, NumericColumnType, PhysicalColumnType,
     StringColumnType, TimeColumnType, TimestampColumnType, UuidColumnType, VectorColumnType,
@@ -229,7 +229,7 @@ impl ColumnTypeSchema for ArrayColumnType {
     }
 }
 
-exo_sql_pg_core::downcast_physical_column_type!(as_column_type_schema, ColumnTypeSchema);
+exo_sql_pg::downcast_physical_column_type!(as_column_type_schema, ColumnTypeSchema);
 
 /// Extension trait for convenient access to ColumnTypeSchema on `dyn PhysicalColumnType`.
 pub trait ColumnTypeSchemaExt {

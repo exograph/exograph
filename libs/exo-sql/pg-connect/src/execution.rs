@@ -11,7 +11,7 @@ use tokio_postgres::GenericClient;
 use tracing::{error, info, instrument};
 
 use exo_sql_core::{Database, database_error::DatabaseError};
-use exo_sql_pg_core::{
+use exo_sql_pg::{
     ExpressionBuilder, SQLBuilder, SQLOperation,
     transaction::{
         ConcreteTransactionStep, TransactionContext, TransactionScript, TransactionStep,

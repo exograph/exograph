@@ -20,7 +20,7 @@ test-support = ["ctor", "postgres-url", "tls"]
 
 [dependencies]
 exo-sql-core = { path = "../core" }
-exo-sql-pg-core = { path = "../pg-core" }
+exo-sql-pg = { path = "../pg" }
 futures.workspace = true
 tokio-postgres = { workspace = true, features = [
   "with-chrono-0_4",
