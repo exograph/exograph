@@ -7,13 +7,12 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql_core::{ColumnId, Database};
+use exo_sql_core::Database;
 
 use crate::{ExpressionBuilder, SQLBuilder};
 
-/// A group by clause
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GroupBy(pub Vec<ColumnId>);
+// Re-export the core GroupBy type
+pub use exo_sql_core::operation::GroupBy;
 
 impl ExpressionBuilder for GroupBy {
     /// Build expression of the form `GROUP BY <comma-separated-columns>`

@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use exo_sql_core::Database;
-use exo_sql_model::AbstractDelete;
+use exo_sql_pg_core::PgAbstractDelete;
 use exo_sql_pg_core::transaction::TransactionScript;
 
 use crate::pg::Postgres;
@@ -19,11 +19,11 @@ pub(crate) trait DeleteStrategy {
     fn id(&self) -> &'static str;
 
     /// See `SelectionStrategy::suitable`
-    fn suitable(&self, abstract_insert: &AbstractDelete, database: &Database) -> bool;
+    fn suitable(&self, abstract_insert: &PgAbstractDelete, database: &Database) -> bool;
 
     fn update_transaction_script<'a>(
         &self,
-        abstract_delete: AbstractDelete,
+        abstract_delete: PgAbstractDelete,
         database: &'a Database,
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,

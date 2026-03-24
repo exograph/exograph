@@ -7,8 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql_pg_core::ParamEquality;
-use exo_sql_pg_core::sql_param_container::SQLParamContainer;
+use exo_sql_core::operation::{DatabaseExtension, ParamEquality};
 
 use crate::predicate::AbstractPredicate;
 
@@ -27,17 +26,17 @@ pub use exo_sql_core::column_path::{ColumnPathLink, PhysicalColumnPath, Relation
 /// ]
 /// ```
 #[derive(Debug, PartialEq, Clone)]
-pub enum ColumnPath {
+pub enum ColumnPath<Ext: DatabaseExtension> {
     Physical(PhysicalColumnPath),
-    Param(SQLParamContainer),
-    Predicate(Box<AbstractPredicate>),
+    Param(Ext),
+    Predicate(Box<AbstractPredicate<Ext>>),
     Null,
 }
 
-impl ParamEquality for ColumnPath {
+impl<Ext: DatabaseExtension> ParamEquality for ColumnPath<Ext> {
     fn param_eq(&self, other: &Self) -> Option<bool> {
         match (self, other) {
-            (Self::Param(v1), Self::Param(v2)) => Some(v1 == v2),
+            (Self::Param(v1), Self::Param(v2)) => v1.param_eq(v2),
             _ => None,
         }
     }

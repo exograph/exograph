@@ -9,20 +9,20 @@
 
 //! Support for selecting columns in a table, including json aggregates
 
+use exo_sql_core::operation::DatabaseExtension;
 use exo_sql_core::{ColumnId, RelationId};
-use exo_sql_pg_core::Function;
 
 use crate::select::AbstractSelect;
 
 /// A selection element along with its alias
 #[derive(Debug)]
-pub struct AliasedSelectionElement {
+pub struct AliasedSelectionElement<Ext: DatabaseExtension> {
     pub alias: String,
-    pub column: SelectionElement,
+    pub column: SelectionElement<Ext>,
 }
 
-impl AliasedSelectionElement {
-    pub fn new(alias: String, column: SelectionElement) -> Self {
+impl<Ext: DatabaseExtension> AliasedSelectionElement<Ext> {
+    pub fn new(alias: String, column: SelectionElement<Ext>) -> Self {
         Self { alias, column }
     }
 }
@@ -36,24 +36,24 @@ pub enum SelectionCardinality {
 
 /// A selection of columns in a table
 #[derive(Debug)]
-pub enum Selection {
+pub enum Selection<Ext: DatabaseExtension> {
     /// A sequence of columns
-    Seq(Vec<AliasedSelectionElement>),
+    Seq(Vec<AliasedSelectionElement<Ext>>),
     /// A json aggregate. The cardinality determines whether it is a single json object or an array of json objects
-    Json(Vec<AliasedSelectionElement>, SelectionCardinality),
+    Json(Vec<AliasedSelectionElement<Ext>>, SelectionCardinality),
 }
 
 /// An element that could be selected as a part of a `SELECT <selection-element> <selection-element>` clause.
 #[derive(Debug)]
-pub enum SelectionElement {
+pub enum SelectionElement<Ext: DatabaseExtension> {
     /// A column in the table
     Physical(ColumnId),
     /// A function such as `SUM(price)`
-    Function(Function),
+    Function(exo_sql_core::operation::Function<Ext>),
     /// A json object such as `{"name": "concerts"."name", "price": "concerts"."price"}`
-    Object(Vec<(String, SelectionElement)>),
+    Object(Vec<(String, SelectionElement<Ext>)>),
     /// A constant such as `"hello"` (useful to supply it to database and get back the same value). Useful for `__typename` field.
     Constant(String),
     /// A subselect such as `... (SELECT * FROM table)`
-    SubSelect(RelationId, Box<AbstractSelect>),
+    SubSelect(RelationId, Box<AbstractSelect<Ext>>),
 }

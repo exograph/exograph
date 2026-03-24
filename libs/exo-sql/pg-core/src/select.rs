@@ -9,41 +9,21 @@
 
 use std::collections::HashMap;
 
-use exo_sql_core::{Database, Limit, Offset};
+use exo_sql_core::Database;
 
 use crate::{
-    ExpressionBuilder, SQLBuilder, column::Column, group_by::GroupBy, order::OrderBy,
+    ExpressionBuilder, SQLBuilder, column::Column, pg_extension::PgExtension,
     predicate_ext::ConcretePredicate, table::Table,
 };
 
-/// A select statement
-#[derive(Debug, PartialEq)]
-pub struct Select {
-    /// The table to select from
-    pub table: Table,
-    /// The columns to select
-    pub columns: Vec<Column>,
-    /// The predicate to filter the rows
-    pub predicate: ConcretePredicate,
-    /// The order by clause
-    pub order_by: Option<OrderBy>,
-    /// The offset clause
-    pub offset: Option<Offset>,
-    /// The limit clause
-    pub limit: Option<Limit>,
-    /// The group by clause
-    pub group_by: Option<GroupBy>,
-    /// Whether this is a top-level selection. This is used to put the `::text` cast on a top-level select statement
-    /// This way, we can grab the JSON as a string and return it to the user as is. Specifically, we don't want to
-    /// decode into a JSON object and then re-encode it as a string.
-    pub top_level_selection: bool,
-}
+// Re-export the core Select type specialized to PgExtension
+pub type Select = exo_sql_core::operation::Select<PgExtension>;
 
 impl ExpressionBuilder for Select {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         let table_alias_map = match &self.table {
             // If the underlying table is a subselect, we need to add it to the table alias map so
-            // tha the other parts (select, where, etc.) can use the alias instead of the subselect's table name
+            // that the other parts (select, where, etc.) can use the alias instead of the subselect's table name
             Table::SubSelect {
                 alias: Some((alias_name, table_name)),
                 ..
@@ -59,7 +39,10 @@ impl ExpressionBuilder for Select {
                 col.build(database, builder);
 
                 if self.top_level_selection
-                    && matches!(col, Column::JsonObject(_) | Column::JsonAgg(_))
+                    && matches!(
+                        col,
+                        Column::Extension(PgExtension::JsonObject(_) | PgExtension::JsonAgg(_))
+                    )
                 {
                     // See the comment on `top_level_selection` for why we do this
                     builder.push_str("::text");
@@ -102,6 +85,7 @@ mod tests {
     use exo_sql_core::SchemaObjectName;
 
     use crate::json_object::{JsonObject, JsonObjectElement};
+    use crate::pg_extension::PgExtension;
 
     use multiplatform_test::multiplatform_test;
 
@@ -120,10 +104,10 @@ mod tests {
         let age_col2_id = database.get_column_id(table_id, "age").unwrap();
         let name_col_id = database.get_column_id(table_id, "name").unwrap();
 
-        let json_col = Column::JsonObject(JsonObject(vec![
+        let json_col = Column::Extension(PgExtension::JsonObject(JsonObject(vec![
             JsonObjectElement::new("namex".to_string(), Column::physical(name_col_id, None)),
             JsonObjectElement::new("agex".to_string(), Column::physical(age_col_id, None)),
-        ]));
+        ])));
         let table = Table::physical(table_id, None);
         let selected_table = Select {
             table,

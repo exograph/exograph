@@ -16,8 +16,9 @@ use common::value::Val;
 use core_resolver::access_solver::AccessInput;
 use core_resolver::context_extractor::ContextExtractor;
 use exo_sql::{
-    AbstractInsert, AbstractPredicate, AbstractSelect, ColumnId, ColumnValuePair, InsertionElement,
-    InsertionRow, ManyToOne, NestedInsertion,
+    AbstractInsert, ColumnId, ColumnValuePair, InsertionElement, InsertionRow, ManyToOne,
+    NestedInsertion, PgAbstractInsert, PgAbstractPredicate, PgAbstractSelect, PgInsertionElement,
+    PgInsertionRow,
 };
 use futures::future::{join_all, try_join_all};
 use postgres_core_model::relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation};
@@ -40,17 +41,17 @@ use postgres_core_resolver::{
 
 pub struct InsertOperation<'a> {
     pub data_param: &'a DataParameter,
-    pub select: AbstractSelect,
+    pub select: PgAbstractSelect,
 }
 
 #[async_trait]
-impl<'a> SQLMapper<'a, AbstractInsert> for InsertOperation<'a> {
+impl<'a> SQLMapper<'a, PgAbstractInsert> for InsertOperation<'a> {
     async fn to_sql(
         self,
         argument: &'a Val,
         subsystem: &'a PostgresGraphQLSubsystem,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<AbstractInsert, PostgresExecutionError> {
+    ) -> Result<PgAbstractInsert, PostgresExecutionError> {
         let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
         let table_id = subsystem.core_subsystem.entity_types[data_type.entity_id].table_id;
 
@@ -75,13 +76,14 @@ pub(crate) async fn map_argument<'a>(
     argument: &'a Val,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<(Vec<InsertionRow>, Vec<AbstractPredicate>), PostgresExecutionError> {
+) -> Result<(Vec<PgInsertionRow>, Vec<PgAbstractPredicate>), PostgresExecutionError> {
     match argument {
         Val::List(arguments) => {
             let mapped = arguments
                 .iter()
                 .map(|argument| map_single(data_type, argument, subsystem, request_context));
-            let mapped: Vec<(InsertionRow, Vec<AbstractPredicate>)> = try_join_all(mapped).await?;
+            let mapped: Vec<(PgInsertionRow, Vec<PgAbstractPredicate>)> =
+                try_join_all(mapped).await?;
 
             let mut precheck_queries = vec![];
             let mut operations = vec![];
@@ -108,7 +110,7 @@ async fn map_single<'a>(
     argument: &'a Val,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<(InsertionRow, Vec<AbstractPredicate>), PostgresExecutionError> {
+) -> Result<(PgInsertionRow, Vec<PgAbstractPredicate>), PostgresExecutionError> {
     let (precheck_predicate, _entity_predicate) = check_access(
         &subsystem.core_subsystem.entity_types[data_type.entity_id],
         &[],
@@ -191,7 +193,7 @@ async fn map_single<'a>(
 
     let row = join_all(mapped).await;
     let row = row.into_iter().flatten().collect::<Vec<_>>();
-    let row: Result<Vec<InsertionElement>, PostgresExecutionError> =
+    let row: Result<Vec<PgInsertionElement>, PostgresExecutionError> =
         join_all(row).await.into_iter().flatten().collect();
 
     Ok((InsertionRow { elems: row? }, vec![precheck_predicate]))
@@ -202,7 +204,7 @@ async fn map_self_column<'a>(
     field: &'a PostgresField<MutationType>,
     argument: &'a Val,
     subsystem: &'a PostgresGraphQLSubsystem,
-) -> Result<InsertionElement, PostgresExecutionError> {
+) -> Result<PgInsertionElement, PostgresExecutionError> {
     let key_column = key_column_id.get_column(&subsystem.core_subsystem.database);
 
     let argument_value = match &field.relation {
@@ -278,7 +280,7 @@ async fn map_foreign<'a>(
     one_to_many_relation: &OneToManyRelation,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<InsertionElement, PostgresExecutionError> {
+) -> Result<PgInsertionElement, PostgresExecutionError> {
     let field_type = base_type(
         &field.typ,
         &subsystem.core_subsystem.primitive_types,

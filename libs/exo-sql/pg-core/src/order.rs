@@ -7,39 +7,15 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql_core::{ColumnId, Database, Ordering, VectorDistanceFunction};
+use exo_sql_core::{Database, Ordering};
 
-use crate::sql_param_container::SQLParamContainer;
-
+use crate::pg_extension::{PgExtension, VectorDistanceOperand};
 use crate::{ExpressionBuilder, SQLBuilder, vector::VectorDistance};
 
-#[derive(Debug, PartialEq)]
-pub struct OrderByElement(pub OrderByElementExpr, pub Ordering, pub Option<String>);
-
-#[derive(Debug, PartialEq)]
-pub enum VectorDistanceOperand {
-    PhysicalColumn(ColumnId),
-    Param(SQLParamContainer),
-}
-
-#[derive(Debug, PartialEq)]
-pub enum OrderByElementExpr {
-    Column(ColumnId),
-    VectorDistance(
-        VectorDistanceOperand,
-        VectorDistanceOperand,
-        VectorDistanceFunction,
-    ),
-}
-
-#[derive(Debug, PartialEq)]
-pub struct OrderBy(pub Vec<OrderByElement>);
-
-impl OrderByElement {
-    pub fn new(column_id: ColumnId, ordering: Ordering, table_alias: Option<String>) -> Self {
-        Self(OrderByElementExpr::Column(column_id), ordering, table_alias)
-    }
-}
+// Re-export the core OrderBy types specialized to PgExtension
+pub type OrderBy = exo_sql_core::operation::OrderBy<PgExtension>;
+pub type OrderByElement = exo_sql_core::operation::OrderByElement<PgExtension>;
+pub type OrderByElementExpr = exo_sql_core::operation::OrderByElementExpr<PgExtension>;
 
 impl ExpressionBuilder for OrderByElement {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
@@ -55,9 +31,14 @@ impl ExpressionBuilder for OrderByElement {
                     }
                 }
             }
-            OrderByElementExpr::VectorDistance(lhs, rhs, function) => {
+            OrderByElementExpr::Extension(PgExtension::VectorDistance(lhs, rhs, function)) => {
                 VectorDistance::new((lhs, self.2.as_ref()), (rhs, self.2.as_ref()), *function)
                     .build(database, builder);
+            }
+            // PgExtension is a flat enum shared across Column, Function, and OrderBy.
+            // Only VectorDistance is valid here.
+            OrderByElementExpr::Extension(_) => {
+                unreachable!("Non-orderby PgExtension variant used in OrderByElementExpr")
             }
         }
         builder.push_space();
@@ -104,7 +85,7 @@ mod test {
 
     use super::*;
     use crate::test_database_builder::*;
-    use exo_sql_core::SchemaObjectName;
+    use exo_sql_core::{Ordering, SchemaObjectName};
 
     use multiplatform_test::multiplatform_test;
 
@@ -120,7 +101,7 @@ mod test {
 
         let age_col = database.get_column_id(people_table_id, "age").unwrap();
 
-        let order_by = OrderBy(vec![OrderByElement::new(age_col, Ordering::Desc, None)]);
+        let order_by = OrderBy::new(vec![OrderByElement::new(age_col, Ordering::Desc, None)]);
 
         assert_binding!(
             order_by.to_sql(&database),
@@ -142,7 +123,7 @@ mod test {
         let age_col = database.get_column_id(table_id, "age").unwrap();
 
         {
-            let order_by = OrderBy(vec![
+            let order_by = OrderBy::new(vec![
                 OrderByElement::new(name_col, Ordering::Asc, None),
                 OrderByElement::new(age_col, Ordering::Desc, None),
             ]);
@@ -155,7 +136,7 @@ mod test {
 
         // Reverse the order and it should be reflected in the statement
         {
-            let order_by = OrderBy(vec![
+            let order_by = OrderBy::new(vec![
                 OrderByElement::new(age_col, Ordering::Desc, None),
                 OrderByElement::new(name_col, Ordering::Asc, None),
             ]);

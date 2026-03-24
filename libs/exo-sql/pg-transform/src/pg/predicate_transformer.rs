@@ -9,21 +9,22 @@
 
 use exo_sql_core::{Database, VectorDistanceFunction};
 use exo_sql_model::{
-    AbstractPredicate, AbstractSelect, AliasedSelectionElement, ColumnPath, Selection,
-    SelectionElement,
+    AbstractPredicate, AliasedSelectionElement, ColumnPath, Selection, SelectionElement,
     column_path::{ColumnPathLink, RelationLink},
     selection_level::SelectionLevel,
     transformer::PredicateTransformer,
 };
 use exo_sql_pg_core::NumericComparator;
-use exo_sql_pg_core::{Column, ConcretePredicate};
+use exo_sql_pg_core::{
+    Column, ConcretePredicate, PgAbstractPredicate, PgAbstractSelect, PgColumnPath, PgExtension,
+};
 
 use super::Postgres;
 
-impl PredicateTransformer for Postgres {
+impl PredicateTransformer<PgExtension> for Postgres {
     fn to_predicate(
         &self,
-        predicate: &AbstractPredicate,
+        predicate: &PgAbstractPredicate,
         selection_level: &SelectionLevel,
         tables_supplied: bool,
         database: &Database,
@@ -41,12 +42,12 @@ impl PredicateTransformer for Postgres {
 /// The predicate generated will look like "concerts.price = $1 AND venues.name = $2". It assumes
 /// that the join would have brought in "concerts" and "venues" through a join.
 fn to_join_predicate(
-    predicate: &AbstractPredicate,
+    predicate: &PgAbstractPredicate,
     selection_level: &SelectionLevel,
     database: &Database,
 ) -> ConcretePredicate {
     let compute_leaf_column =
-        |column_path: &ColumnPath| leaf_column(column_path, selection_level, database);
+        |column_path: &PgColumnPath| leaf_column(column_path, selection_level, database);
 
     match predicate {
         AbstractPredicate::True => ConcretePredicate::True,
@@ -154,7 +155,7 @@ fn to_join_predicate(
 /// which will be correct, but unnecessarily complex.
 fn to_subselect_predicate(
     transformer: &Postgres,
-    predicate: &AbstractPredicate,
+    predicate: &PgAbstractPredicate,
     selection_level: &SelectionLevel,
     database: &Database,
 ) -> ConcretePredicate {
@@ -179,7 +180,7 @@ fn to_subselect_predicate(
 
 fn form_subselect(
     relation_link: RelationLink,
-    predicate: AbstractPredicate,
+    predicate: PgAbstractPredicate,
     database: &Database,
     select_transformer: &Postgres,
 ) -> ConcretePredicate {
@@ -198,7 +199,7 @@ fn form_subselect(
             .collect(),
     );
 
-    let abstract_select = AbstractSelect {
+    let abstract_select = PgAbstractSelect {
         table_id: relation_link.self_table_id,
         selection,
         predicate,
@@ -229,7 +230,7 @@ fn form_subselect(
 }
 
 fn leaf_column(
-    column_path: &ColumnPath,
+    column_path: &PgColumnPath,
     selection_level: &SelectionLevel,
     database: &Database,
 ) -> Column {
@@ -242,16 +243,16 @@ fn leaf_column(
             };
             Column::physical(links.leaf_column(), alias)
         }
-        ColumnPath::Param(l) => Column::Param(l.clone()),
+        ColumnPath::Param(l) => Column::Extension(l.clone()),
         ColumnPath::Null => Column::Null,
         ColumnPath::Predicate(_) => unreachable!(),
     }
 }
 
 fn attempt_subselect_predicate(
-    predicate: &AbstractPredicate,
-) -> Option<(RelationLink, AbstractPredicate)> {
-    fn split(cp: &ColumnPath) -> Option<(RelationLink, ColumnPath)> {
+    predicate: &PgAbstractPredicate,
+) -> Option<(RelationLink, PgAbstractPredicate)> {
+    fn split(cp: &PgColumnPath) -> Option<(RelationLink, PgColumnPath)> {
         match cp {
             ColumnPath::Physical(physical_path) => {
                 let (head, tail) = physical_path.split_head();
@@ -269,10 +270,10 @@ fn attempt_subselect_predicate(
     }
 
     fn binary_operator(
-        l: &ColumnPath,
-        r: &ColumnPath,
-        constructor: impl Fn(ColumnPath, ColumnPath) -> AbstractPredicate,
-    ) -> Option<(RelationLink, AbstractPredicate)> {
+        l: &PgColumnPath,
+        r: &PgColumnPath,
+        constructor: impl Fn(PgColumnPath, PgColumnPath) -> PgAbstractPredicate,
+    ) -> Option<(RelationLink, PgAbstractPredicate)> {
         match split(l) {
             Some((l_link, l_tail)) => match split(r) {
                 Some((r_link, r_tail)) => {
@@ -287,12 +288,12 @@ fn attempt_subselect_predicate(
     }
 
     fn vector_distance_subselect_predicate(
-        l: &ColumnPath,
-        r: &ColumnPath,
+        l: &PgColumnPath,
+        r: &PgColumnPath,
         distance_function: &VectorDistanceFunction,
         comparator: &NumericComparator,
-        comparator_path: &ColumnPath,
-    ) -> Option<(RelationLink, AbstractPredicate)> {
+        comparator_path: &PgColumnPath,
+    ) -> Option<(RelationLink, PgAbstractPredicate)> {
         match (split(l), split(r), split(comparator_path)) {
             (None, None, None) => None,
             (None, None, Some((c_link, c_tail))) => Some((
@@ -377,10 +378,10 @@ fn attempt_subselect_predicate(
     }
 
     fn logical_binary_op(
-        l: &AbstractPredicate,
-        r: &AbstractPredicate,
-        constructor: impl Fn(Box<AbstractPredicate>, Box<AbstractPredicate>) -> AbstractPredicate,
-    ) -> Option<(RelationLink, AbstractPredicate)> {
+        l: &PgAbstractPredicate,
+        r: &PgAbstractPredicate,
+        constructor: impl Fn(Box<PgAbstractPredicate>, Box<PgAbstractPredicate>) -> PgAbstractPredicate,
+    ) -> Option<(RelationLink, PgAbstractPredicate)> {
         attempt_subselect_predicate(l).and_then(|(l_link, l_path)| {
             attempt_subselect_predicate(r).and_then(|(r_link, r_path)| {
                 (l_link == r_link)
@@ -445,7 +446,10 @@ mod tests {
     use exo_sql_model::{AbstractPredicate, ColumnPath, PhysicalColumnPath};
     use exo_sql_pg_core::ExpressionBuilder;
     use exo_sql_pg_core::assert_binding;
-    use exo_sql_pg_core::{CaseSensitivity, sql_param_container::SQLParamContainer};
+    use exo_sql_pg_core::{
+        CaseSensitivity, PgAbstractPredicate, PgColumnPath, PgExtension,
+        sql_param_container::SQLParamContainer,
+    };
 
     use crate::pg::Postgres;
     use crate::test_util::TestSetup;
@@ -464,7 +468,9 @@ mod tests {
              }| {
                 let abstract_predicate = AbstractPredicate::Eq(
                     ColumnPath::Physical(PhysicalColumnPath::leaf(concerts_name_column)),
-                    ColumnPath::Param(SQLParamContainer::string("v1".to_string())),
+                    ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
+                        "v1".to_string(),
+                    ))),
                 );
 
                 {
@@ -550,14 +556,16 @@ mod tests {
                 let abstract_predicate = AbstractPredicate::and(
                     AbstractPredicate::Eq(
                         ColumnPath::Physical(PhysicalColumnPath::leaf(concerts_venue_id_column)),
-                        ColumnPath::Param(SQLParamContainer::i32(1)),
+                        ColumnPath::Param(PgExtension::Param(SQLParamContainer::i32(1))),
                     ),
                     AbstractPredicate::Eq(
                         ColumnPath::Physical(PhysicalColumnPath::from_columns(
                             vec![concerts_venue_id_column, venues_name_column],
                             &database,
                         )),
-                        ColumnPath::Param(SQLParamContainer::string("v1".to_string())),
+                        ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
+                            "v1".to_string(),
+                        ))),
                     ),
                 );
 
@@ -600,7 +608,7 @@ mod tests {
 
     fn test_nested_op_predicate<OP>(op: OP, op_combinator: fn(&str, &str) -> String)
     where
-        OP: Clone + Fn(ColumnPath, ColumnPath) -> AbstractPredicate,
+        OP: Clone + Fn(PgColumnPath, PgColumnPath) -> PgAbstractPredicate,
     {
         for literal_on_the_right in [true, false] {
             let op = op.clone();
@@ -615,8 +623,9 @@ mod tests {
                         vec![concerts_venue_id_column, venues_name_column],
                         &database,
                     ));
-                    let literal_column =
-                        ColumnPath::Param(SQLParamContainer::string("v1".to_string()));
+                    let literal_column = ColumnPath::Param(PgExtension::Param(
+                        SQLParamContainer::string("v1".to_string()),
+                    ));
 
                     let abstract_predicate = if literal_on_the_right {
                         op(physical_column, literal_column)

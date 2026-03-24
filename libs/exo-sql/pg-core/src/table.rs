@@ -7,33 +7,14 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql_core::{Database, SchemaObjectName, TableId};
+use exo_sql_core::Database;
 
-use crate::{ExpressionBuilder, SQLBuilder, join::LeftJoin, select::Select};
+use crate::{ExpressionBuilder, SQLBuilder};
 
-/// A table-like concept that can be used in in place of `SELECT FROM <table-query> ...`.
-#[derive(Debug, PartialEq)]
-pub enum Table {
-    /// A physical table such as `concerts`.
-    Physical {
-        table_id: TableId,
-        alias: Option<String>,
-    },
-    /// A join between two tables such as `concerts LEFT JOIN venues ON concerts.venue_id = venues.id`.
-    Join(Box<LeftJoin>),
-    /// A sub-select such as `(SELECT * FROM concerts) AS concerts`.
-    SubSelect {
-        select: Box<Select>,
-        /// The alias of the sub-select (optional, since we need to alias the sub-select when used in a FROM clause)
-        alias: Option<(String, SchemaObjectName)>,
-    },
-}
+use crate::pg_extension::PgExtension;
 
-impl Table {
-    pub fn physical(table_id: TableId, alias: Option<String>) -> Self {
-        Table::Physical { table_id, alias }
-    }
-}
+// Re-export the core Table type specialized to PgExtension
+pub type Table = exo_sql_core::operation::Table<PgExtension>;
 
 impl ExpressionBuilder for Table {
     /// Build the table into a SQL string.
@@ -44,8 +25,7 @@ impl ExpressionBuilder for Table {
                 physical_table.build(database, builder);
 
                 if let Some(alias) = alias {
-                    // If the the table name is the same as the alias (and the table is in the "public" schema), we don't need to alias it
-                    // This avoid unnecessary aliasing like `SELECT * FROM concerts AS concerts`
+                    // If the table name is the same as the alias (and the table is in the "public" schema), we don't need to alias it
                     if &physical_table.name.name != alias || physical_table.name.schema.is_some() {
                         builder.push_str(" AS ");
                         builder.push_identifier(alias);

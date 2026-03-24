@@ -4534,7 +4534,6 @@ name = "exo-sql-model"
 version = "0.28.0"
 dependencies = [
  "exo-sql-core",
- "exo-sql-pg-core",
  "tracing",
 ]
 
@@ -4569,6 +4568,7 @@ dependencies = [
  "bytes",
  "chrono",
  "exo-sql-core",
+ "exo-sql-model",
  "indexmap 2.13.0",
  "maybe-owned",
  "multiplatform_test",

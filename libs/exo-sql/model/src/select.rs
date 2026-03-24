@@ -7,22 +7,23 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use exo_sql_core::operation::DatabaseExtension;
 use exo_sql_core::{Limit, Offset, TableId};
 
 use crate::{order_by::AbstractOrderBy, predicate::AbstractPredicate, selection::Selection};
 
 /// Represents an abstract select operation, but without specific details about how to execute it.
 #[derive(Debug)]
-pub struct AbstractSelect {
+pub struct AbstractSelect<Ext: DatabaseExtension> {
     /// The table to select from
     pub table_id: TableId,
     /// The columns to select
-    pub selection: Selection,
+    pub selection: Selection<Ext>,
     /// The predicate to filter rows. This is not an `Option` to ensure that the caller makes a conscious
     /// decision about whether to use `True` or `False` (rather than assuming that `None` means `True` or `False`).
-    pub predicate: AbstractPredicate,
+    pub predicate: AbstractPredicate<Ext>,
     /// The order by clause
-    pub order_by: Option<AbstractOrderBy>,
+    pub order_by: Option<AbstractOrderBy<Ext>>,
     /// The offset
     pub offset: Option<Offset>,
     /// The limit

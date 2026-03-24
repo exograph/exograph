@@ -1,16 +1,18 @@
 use exo_sql_core::{Database, DatabaseError, TableId};
 use exo_sql_model::{
-    AbstractPredicate, AbstractPredicateExt, AbstractSelect, AliasedSelectionElement, ColumnPath,
-    Selection, SelectionElement,
+    AbstractPredicateExt, AliasedSelectionElement, ColumnPath, Selection, SelectionElement,
 };
-use exo_sql_pg_core::transaction::{TransactionScript, TransactionStep};
+use exo_sql_pg_core::{
+    PgAbstractPredicate, PgAbstractSelect, PgColumnPath, PgExtension,
+    transaction::{TransactionScript, TransactionStep},
+};
 
 use exo_sql_model::transformer::SelectTransformer;
 
 pub fn add_precheck_queries(
-    precheck_predicates: Vec<AbstractPredicate>,
+    precheck_predicates: Vec<PgAbstractPredicate>,
     database: &Database,
-    transformer: &impl SelectTransformer,
+    transformer: &impl SelectTransformer<PgExtension>,
     transaction_script: &mut TransactionScript,
 ) {
     let precheck_queries = compute_precheck_queries(precheck_predicates).unwrap();
@@ -22,8 +24,8 @@ pub fn add_precheck_queries(
 }
 
 fn compute_precheck_queries(
-    predicates: Vec<AbstractPredicate>,
-) -> Result<Vec<AbstractSelect>, DatabaseError> {
+    predicates: Vec<PgAbstractPredicate>,
+) -> Result<Vec<PgAbstractSelect>, DatabaseError> {
     let precheck_queries: Result<Vec<_>, _> =
         predicates.into_iter().map(compute_precheck_query).collect();
 
@@ -33,13 +35,13 @@ fn compute_precheck_queries(
 }
 
 fn compute_precheck_query(
-    predicate: AbstractPredicate,
-) -> Result<Option<AbstractSelect>, DatabaseError> {
-    if predicate == AbstractPredicate::True {
+    predicate: PgAbstractPredicate,
+) -> Result<Option<PgAbstractSelect>, DatabaseError> {
+    if predicate == PgAbstractPredicate::True {
         return Ok(None);
     }
 
-    fn get_lead_table_ids(column_path: &ColumnPath) -> Vec<TableId> {
+    fn get_lead_table_ids(column_path: &PgColumnPath) -> Vec<TableId> {
         match column_path {
             ColumnPath::Physical(physical_path) => vec![physical_path.lead_table_id()],
             ColumnPath::Predicate(predicate) => predicate
@@ -75,7 +77,7 @@ fn compute_precheck_query(
         }
     };
 
-    Ok(Some(AbstractSelect {
+    Ok(Some(PgAbstractSelect {
         table_id: *lead_table_id,
         selection: Selection::Seq(vec![AliasedSelectionElement::new(
             "access_predicate".to_string(),

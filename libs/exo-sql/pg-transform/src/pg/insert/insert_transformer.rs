@@ -24,15 +24,16 @@
 
 use super::insertion_strategy_chain::InsertionStrategyChain;
 use exo_sql_core::{ColumnId, Database};
-use exo_sql_model::{AbstractInsert, transformer::InsertTransformer};
+use exo_sql_pg_core::PgAbstractInsert;
 use exo_sql_pg_core::transaction::{TransactionScript, TransactionStepId};
 
 use crate::pg::Postgres;
+use crate::pg::pg_transformer::PgInsertTransformer;
 
-impl InsertTransformer for Postgres {
+impl PgInsertTransformer for Postgres {
     fn update_transaction_script<'a>(
         &self,
-        abstract_insert: AbstractInsert,
+        abstract_insert: PgAbstractInsert,
         parent_step: Option<(TransactionStepId, Vec<ColumnId>)>,
         database: &'a Database,
         transaction_script: &mut TransactionScript<'a>,

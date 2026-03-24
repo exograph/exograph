@@ -9,41 +9,20 @@
 
 use exo_sql_core::Database;
 
-use crate::{ExpressionBuilder, SQLBuilder, predicate_ext::ConcretePredicate, table::Table};
+use crate::pg_extension::PgExtension;
+use crate::{ExpressionBuilder, SQLBuilder};
 
-/// Represents a join between two tables. Currently, supports only left join.
-#[derive(Debug, PartialEq)]
-pub struct LeftJoin {
-    /// The left table in the join such as `concerts`.
-    left: Box<Table>,
-    /// The right table in the join such as `venues`.
-    right: Box<Table>,
-    /// The join predicate such as `concerts.venue_id = venues.id`.
-    predicate: ConcretePredicate,
-}
-
-impl LeftJoin {
-    pub fn new(left: Table, right: Table, predicate: ConcretePredicate) -> Self {
-        LeftJoin {
-            left: Box::new(left),
-            right: Box::new(right),
-            predicate,
-        }
-    }
-
-    pub fn left(&self) -> &Table {
-        &self.left
-    }
-}
+// Re-export the core LeftJoin type specialized to PgExtension
+pub type LeftJoin = exo_sql_core::operation::LeftJoin<PgExtension>;
 
 impl ExpressionBuilder for LeftJoin {
     /// Build expression of the form `<left> LEFT JOIN <right> ON <predicate>`.
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
-        self.left.build(database, builder);
+        self.left().build(database, builder);
         builder.push_str(" LEFT JOIN ");
-        self.right.build(database, builder);
+        self.right().build(database, builder);
         builder.push_str(" ON ");
-        self.predicate.build(database, builder);
+        self.predicate().build(database, builder);
     }
 }
 
@@ -51,9 +30,7 @@ impl ExpressionBuilder for LeftJoin {
 mod tests {
     use super::*;
     use crate::test_database_builder::*;
-    use crate::{
-        Column, ExpressionBuilder, SQLBuilder, predicate_ext::ConcretePredicate, table::Table,
-    };
+    use crate::{Column, SQLBuilder, predicate_ext::ConcretePredicate, table::Table};
     use exo_sql_core::SchemaObjectName;
 
     use multiplatform_test::multiplatform_test;

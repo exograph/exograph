@@ -24,8 +24,8 @@ use core_model::types::OperationReturnType;
 use core_resolver::access_solver::AccessInput;
 use core_resolver::validation::field::ValidatedField;
 use exo_sql::{
-    AbstractDelete, AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect,
-    AbstractUpdate, Predicate,
+    AbstractOperation, AbstractPredicate, PgAbstractDelete, PgAbstractInsert, PgAbstractOperation,
+    PgAbstractSelect, PgAbstractUpdate, Predicate,
 };
 use postgres_core_model::{predicate::PredicateParameter, types::EntityType};
 use postgres_graphql_model::{
@@ -40,7 +40,7 @@ impl OperationResolver for PostgresMutation {
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresGraphQLSubsystem,
-    ) -> Result<AbstractOperation, PostgresExecutionError> {
+    ) -> Result<PgAbstractOperation, PostgresExecutionError> {
         let return_type = &self.return_type;
 
         // Compute a select without any **user-specified** predicate, order-by etc. The surrounding
@@ -103,10 +103,10 @@ impl OperationResolver for PostgresMutation {
 async fn create_operation<'content>(
     data_param: &'content DataParameter,
     field: &'content ValidatedField,
-    select: AbstractSelect,
+    select: PgAbstractSelect,
     subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<AbstractInsert, PostgresExecutionError> {
+) -> Result<PgAbstractInsert, PostgresExecutionError> {
     let data_arg = find_arg(&field.arguments, &data_param.name);
 
     match data_arg {
@@ -125,10 +125,10 @@ async fn delete_operation<'content>(
     return_type: &'content OperationReturnType<EntityType>,
     predicate_params: &'content [PredicateParameter],
     field: &'content ValidatedField,
-    select: AbstractSelect,
+    select: PgAbstractSelect,
     subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<AbstractDelete, PostgresExecutionError> {
+) -> Result<PgAbstractDelete, PostgresExecutionError> {
     let table_id = subsystem.core_subsystem.entity_types[return_type.typ_id()].table_id;
 
     let (precheck_predicate, entity_predicate) = check_access(
@@ -150,7 +150,7 @@ async fn delete_operation<'content>(
     .await?;
     let predicate = Predicate::and(entity_predicate, arg_predicate);
 
-    Ok(AbstractDelete {
+    Ok(PgAbstractDelete {
         table_id,
         predicate,
         selection: select,
@@ -163,10 +163,10 @@ async fn update_operation<'content>(
     data_param: &'content DataParameter,
     predicate_param: &'content [PredicateParameter],
     field: &'content ValidatedField,
-    select: AbstractSelect,
+    select: PgAbstractSelect,
     subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<AbstractUpdate, PostgresExecutionError> {
+) -> Result<PgAbstractUpdate, PostgresExecutionError> {
     let data_arg = find_arg(&field.arguments, &data_param.name);
     let input_value = data_arg.map(|arg| AccessInput {
         value: arg,
@@ -203,7 +203,7 @@ async fn update_operation<'content>(
             .to_sql(argument, subsystem, request_context)
             .await?;
 
-            Ok(AbstractUpdate {
+            Ok(PgAbstractUpdate {
                 precheck_predicates: vec![precheck_predicate],
                 ..update
             })

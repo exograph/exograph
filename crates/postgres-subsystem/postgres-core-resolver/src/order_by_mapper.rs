@@ -16,7 +16,8 @@ use core_model::mapped_arena::SerializableSlab;
 use core_resolver::access_solver::AccessSolver;
 use exo_sql::{
     AbstractOrderBy, AbstractOrderByExpr, AbstractPredicate, ColumnPath, Ordering,
-    PhysicalColumnPath, SQLParamContainer, VectorDistanceFunction,
+    PgAbstractOrderBy, PgAbstractPredicate, PgExtension, PhysicalColumnPath, SQLParamContainer,
+    VectorDistanceFunction,
 };
 use futures::future::join_all;
 use postgres_core_model::order::{
@@ -41,7 +42,7 @@ trait OrderByFieldAccessChecker: Send + Sync {
         &self,
         param: &OrderByParameter,
         request_context: &RequestContext<'_>,
-    ) -> Result<AbstractPredicate, PostgresExecutionError>;
+    ) -> Result<PgAbstractPredicate, PostgresExecutionError>;
 }
 
 /// Field access checker that uses the core subsystem's access expressions.
@@ -55,7 +56,7 @@ impl OrderByFieldAccessChecker for CoreOrderByFieldAccessChecker<'_> {
         &self,
         param: &OrderByParameter,
         request_context: &RequestContext<'_>,
-    ) -> Result<AbstractPredicate, PostgresExecutionError> {
+    ) -> Result<PgAbstractPredicate, PostgresExecutionError> {
         match param.access {
             Some(ref access) => {
                 let expr = &self.subsystem.database_access_expressions[access.read];
@@ -79,10 +80,10 @@ async fn map_order_by<'a, F: OrderByFieldAccessChecker>(
     order_by_types: &'a SerializableSlab<OrderByParameterType>,
     request_context: &'a RequestContext<'a>,
     access_checker: &'a F,
-) -> Result<AbstractOrderBy, PostgresExecutionError> {
+) -> Result<PgAbstractOrderBy, PostgresExecutionError> {
     let parameter_type = &order_by_types[param.typ.innermost().type_id];
 
-    fn flatten<E>(order_bys: Result<Vec<AbstractOrderBy>, E>) -> Result<AbstractOrderBy, E> {
+    fn flatten<E>(order_bys: Result<Vec<PgAbstractOrderBy>, E>) -> Result<PgAbstractOrderBy, E> {
         let mapped = order_bys?.into_iter().flat_map(|elem| elem.0).collect();
         Ok(AbstractOrderBy(mapped))
     }
@@ -136,7 +137,7 @@ async fn order_by_pair<'a, F: OrderByFieldAccessChecker>(
     order_by_types: &'a SerializableSlab<OrderByParameterType>,
     request_context: &'a RequestContext<'a>,
     access_checker: &'a F,
-) -> Result<AbstractOrderBy, PostgresExecutionError> {
+) -> Result<PgAbstractOrderBy, PostgresExecutionError> {
     match &typ.kind {
         OrderByParameterTypeKind::Composite { parameters } => {
             match parameters.iter().find(|p| p.name == parameter_name) {
@@ -181,8 +182,8 @@ async fn order_by_pair<'a, F: OrderByFieldAccessChecker>(
                                     AbstractOrderBy(vec![(
                                         AbstractOrderByExpr::VectorDistance(
                                             ColumnPath::Physical(new_column_path),
-                                            ColumnPath::Param(SQLParamContainer::f32_array(
-                                                vector_value,
+                                            ColumnPath::Param(PgExtension::Param(
+                                                SQLParamContainer::f32_array(vector_value),
                                             )),
                                             parameter
                                                 .vector_distance_function
@@ -254,7 +255,7 @@ pub async fn compute_order_by<'a>(
     argument: &'a Val,
     subsystem: &'a PostgresCoreSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<AbstractOrderBy, PostgresExecutionError> {
+) -> Result<PgAbstractOrderBy, PostgresExecutionError> {
     let access_checker = CoreOrderByFieldAccessChecker { subsystem };
 
     map_order_by(

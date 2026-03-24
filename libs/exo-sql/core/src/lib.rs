@@ -7,21 +7,27 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-pub mod column_default;
-pub mod column_path;
-pub mod database;
-pub mod database_error;
-pub mod index_kind;
+pub mod operation;
+pub mod physical;
+
+// Shared types used by both physical and operation modules
 pub mod limit;
 pub mod offset;
 pub mod order;
-pub mod physical_column;
-pub mod physical_column_type;
-pub mod physical_table;
-pub mod relation;
-pub mod schema_object;
 pub mod statement;
-pub mod vector;
+
+// Re-export physical modules at crate root for backward compatibility
+pub use physical::column_default;
+pub use physical::column_path;
+pub use physical::database;
+pub use physical::database_error;
+pub use physical::index_kind;
+pub use physical::physical_column;
+pub use physical::physical_column_type;
+pub use physical::physical_table;
+pub use physical::relation;
+pub use physical::schema_object;
+pub use physical::vector;
 
 // Re-export commonly used types at the crate root
 pub use column_default::{

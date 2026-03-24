@@ -1,6 +1,6 @@
 use common::router::{PlainRequestPayload, Router};
 use core_model::access::CommonAccessPrimitiveExpression;
-use exo_sql::{ColumnPath, ColumnPathLink, PhysicalColumnPath};
+use exo_sql::{ColumnPath, ColumnPathLink, PgColumnPath, PhysicalColumnPath};
 use postgres_core_model::{
     access::{AccessPrimitiveExpressionPath, FieldPath, PrecheckAccessPrimitiveExpression},
     relation::PostgresRelation,
@@ -93,7 +93,7 @@ impl TestSystem {
         path.expect("Failed to create physical column path")
     }
 
-    pub fn column_path(&self, entity_name: &str, path: &str) -> ColumnPath {
+    pub fn column_path(&self, entity_name: &str, path: &str) -> PgColumnPath {
         ColumnPath::Physical(self.physical_column_path(entity_name, path))
     }
 

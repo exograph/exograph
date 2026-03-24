@@ -7,7 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql_core::VectorDistanceFunction;
+use crate::VectorDistanceFunction;
+
+use super::ParamEquality;
 
 /// Case sensitivity for string predicates.
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
@@ -146,14 +148,4 @@ where
             predicate => Predicate::Not(Box::new(predicate)),
         }
     }
-}
-
-/// Compare two parameters so that we can reduce a predicate to a boolean before passing it to
-/// the database. With a simpler form, we may be able to skip passing it to the database completely. For
-/// example, `Predicate::Eq(Column::Param(1), Column::Param(1))` can be reduced to
-/// true.
-pub trait ParamEquality {
-    /// Returns `None` if one of the columns is not a parameter, otherwise returns `Some(true)` if
-    /// the parameters are equal, and `Some(false)` if they are not.
-    fn param_eq(&self, other: &Self) -> Option<bool>;
 }

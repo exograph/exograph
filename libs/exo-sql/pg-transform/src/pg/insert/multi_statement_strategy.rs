@@ -10,12 +10,11 @@
 use maybe_owned::MaybeOwned;
 
 use exo_sql_core::{ColumnId, Database, TableId};
-use exo_sql_model::{
-    AbstractInsert, ColumnValuePair, InsertionRow, NestedInsertion, transformer::SelectTransformer,
-};
+use exo_sql_model::{ColumnValuePair, NestedInsertion, transformer::SelectTransformer};
 use exo_sql_pg_core::{
-    Column, PgColumnTypeExt, SQLOperation, TemplateSQLOperation,
-    column::{ArrayParamWrapper, ProxyColumn},
+    ArrayParamWrapper, Column, PgAbstractInsert, PgColumnTypeExt, PgColumnValuePair, PgExtension,
+    PgInsertionRow, PgNestedInsertion, SQLOperation, TemplateSQLOperation,
+    column::ProxyColumn,
     insert::TemplateInsert,
     select::Select,
     transaction::{
@@ -39,19 +38,19 @@ impl InsertionStrategy for MultiStatementStrategy {
         "MultiStatementStrategy"
     }
 
-    fn suitable(&self, _abstract_insert: &AbstractInsert, _database: &Database) -> bool {
+    fn suitable(&self, _abstract_insert: &PgAbstractInsert, _database: &Database) -> bool {
         true
     }
 
     fn update_transaction_script<'a>(
         &self,
-        abstract_insert: AbstractInsert,
+        abstract_insert: PgAbstractInsert,
         parent_step: Option<(TransactionStepId, Vec<ColumnId>)>,
         database: &'a Database,
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,
     ) {
-        let AbstractInsert {
+        let PgAbstractInsert {
             table_id,
             rows,
             selection,
@@ -117,10 +116,10 @@ impl InsertionStrategy for MultiStatementStrategy {
                             predicate,
                             Predicate::Eq(
                                 Column::physical(pk_column_id, None),
-                                Column::ArrayParam {
+                                Column::Extension(PgExtension::ArrayParam {
                                     param: in_values,
                                     wrapper: ArrayParamWrapper::Any,
-                                },
+                                }),
                             ),
                         )
                     },
@@ -140,7 +139,7 @@ impl InsertionStrategy for MultiStatementStrategy {
 
 fn insert_row<'a>(
     table_id: TableId,
-    row: InsertionRow,
+    row: PgInsertionRow,
     parent_step: Option<(TransactionStepId, Vec<ColumnId>)>,
     transaction_script: &mut TransactionScript<'a>,
     database: &'a Database,
@@ -164,7 +163,7 @@ fn insert_row<'a>(
 
 fn insert_self_row<'a>(
     table_id: TableId,
-    row: Vec<ColumnValuePair>,
+    row: Vec<PgColumnValuePair>,
     parent_step: Option<(TransactionStepId, Vec<ColumnId>)>,
     transaction_script: &mut TransactionScript<'a>,
     database: &'a Database,
@@ -236,7 +235,7 @@ fn insert_self_row<'a>(
 }
 
 fn insert_nested_row<'a>(
-    nested_row: NestedInsertion,
+    nested_row: PgNestedInsertion,
     parent_step_id: TransactionStepId,
     transaction_script: &mut TransactionScript<'a>,
     database: &'a Database,

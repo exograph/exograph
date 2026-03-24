@@ -128,7 +128,7 @@ pub fn run(
             }
 
             Err(e) => {
-                println!("{}", "A testfile errored while running.".red());
+                println!("{}", format!("A testfile errored: {e:#}").red());
                 println!("{e:?}\n");
             }
         }

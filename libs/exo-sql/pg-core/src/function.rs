@@ -1,16 +1,13 @@
-use exo_sql_core::{VectorDistanceFunction, physical_column::ColumnId};
+// Copyright Exograph, Inc. All rights reserved.
+//
+// Use of this software is governed by the Business Source License
+// included in the LICENSE file at the root of this repository.
+//
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0.
 
-use crate::sql_param_container::SQLParamContainer;
+use crate::pg_extension::PgExtension;
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum Function {
-    Named {
-        function_name: String,
-        column_id: ColumnId,
-    },
-    VectorDistance {
-        column_id: ColumnId,
-        distance_function: VectorDistanceFunction,
-        target: SQLParamContainer,
-    },
-}
+/// A function in a Postgres context (uses PgExtension for VectorDistance etc.)
+pub type Function = exo_sql_core::operation::Function<PgExtension>;

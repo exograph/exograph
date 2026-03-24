@@ -92,8 +92,13 @@ pub use exo_sql_pg_core::physical_column_type::{
 
 // Types from pg-core (moved from core)
 pub use exo_sql_pg_core::{
-    CaseSensitivity, Function, NumericComparator, ParamEquality, Predicate, sql_bytes::SQLBytes,
-    sql_param::SQLParam, sql_param_container::SQLParamContainer,
+    CaseSensitivity, Function, NumericComparator, ParamEquality, PgAbstractDelete,
+    PgAbstractInsert, PgAbstractOperation, PgAbstractOrderBy, PgAbstractPredicate,
+    PgAbstractSelect, PgAbstractUpdate, PgAliasedSelectionElement, PgColumnPath, PgColumnValuePair,
+    PgExtension, PgInsertionElement, PgInsertionRow, PgNestedAbstractDelete,
+    PgNestedAbstractInsert, PgNestedAbstractInsertSet, PgNestedAbstractUpdate, PgNestedInsertion,
+    PgSelection, PgSelectionElement, Predicate, sql_bytes::SQLBytes, sql_param::SQLParam,
+    sql_param_container::SQLParamContainer,
 };
 
 // Types that remain in core

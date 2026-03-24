@@ -1,9 +1,9 @@
 use core_resolver::access_solver::AccessPredicate;
-use exo_sql::AbstractPredicate;
+use exo_sql::{AbstractPredicate, PgAbstractPredicate};
 
 // Only to get around the orphan rule while implementing AccessSolver
 #[derive(Debug)]
-pub struct AbstractPredicateWrapper(pub AbstractPredicate);
+pub struct AbstractPredicateWrapper(pub PgAbstractPredicate);
 
 impl std::ops::Not for AbstractPredicateWrapper {
     type Output = AbstractPredicateWrapper;

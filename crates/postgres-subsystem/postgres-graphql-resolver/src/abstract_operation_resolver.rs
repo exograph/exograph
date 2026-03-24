@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql::AbstractOperation;
+use exo_sql::PgAbstractOperation;
 use exo_sql::database_error::DatabaseError;
 
 use common::context::RequestContext;
@@ -19,7 +19,7 @@ use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use super::PostgresSubsystemResolver;
 
 pub async fn resolve_operation<'e>(
-    op: AbstractOperation,
+    op: PgAbstractOperation,
     subsystem_resolver: &'e PostgresSubsystemResolver,
     request_context: &'e RequestContext<'e>,
 ) -> Result<QueryResponse, PostgresExecutionError> {

@@ -26,7 +26,6 @@ pub mod join;
 pub mod json_agg;
 pub mod json_object;
 pub mod order;
-pub mod predicate;
 pub mod select;
 pub mod sql_builder;
 pub mod sql_operation;
@@ -36,6 +35,7 @@ pub mod update;
 pub mod vector;
 
 pub mod function;
+pub mod pg_extension;
 pub mod physical_column_type;
 pub mod sql_bytes;
 pub mod sql_param;
@@ -44,8 +44,9 @@ pub mod sql_value;
 
 mod predicate_ext;
 
+pub use exo_sql_core::operation::{CaseSensitivity, NumericComparator, ParamEquality, Predicate};
 pub use function::Function;
-pub use predicate::{CaseSensitivity, NumericComparator, ParamEquality, Predicate};
+pub use pg_extension::{PgExtension, VectorDistanceOperand};
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_database_builder;
 
@@ -53,15 +54,38 @@ mod function_ext;
 mod limit_ext;
 mod offset_ext;
 mod pg_column_type;
+mod pg_extension_ext;
 mod physical_column_ext;
 mod physical_table_ext;
 
 pub use pg_column_type::{PgColumnType, PgColumnTypeExt, as_pg_column_type, to_pg_array_type};
+
+// Pg-specialized model type aliases
+pub type PgAbstractOperation = exo_sql_model::AbstractOperation<PgExtension>;
+pub type PgAbstractSelect = exo_sql_model::AbstractSelect<PgExtension>;
+pub type PgAbstractInsert = exo_sql_model::AbstractInsert<PgExtension>;
+pub type PgAbstractUpdate = exo_sql_model::AbstractUpdate<PgExtension>;
+pub type PgAbstractDelete = exo_sql_model::AbstractDelete<PgExtension>;
+pub type PgAbstractPredicate = exo_sql_model::AbstractPredicate<PgExtension>;
+pub type PgAbstractOrderBy = exo_sql_model::AbstractOrderBy<PgExtension>;
+pub type PgColumnPath = exo_sql_model::ColumnPath<PgExtension>;
+pub type PgSelection = exo_sql_model::Selection<PgExtension>;
+pub type PgSelectionElement = exo_sql_model::SelectionElement<PgExtension>;
+pub type PgAliasedSelectionElement = exo_sql_model::AliasedSelectionElement<PgExtension>;
+pub type PgInsertionRow = exo_sql_model::InsertionRow<PgExtension>;
+pub type PgInsertionElement = exo_sql_model::InsertionElement<PgExtension>;
+pub type PgNestedInsertion = exo_sql_model::NestedInsertion<PgExtension>;
+pub type PgNestedAbstractUpdate = exo_sql_model::NestedAbstractUpdate<PgExtension>;
+pub type PgNestedAbstractInsert = exo_sql_model::NestedAbstractInsert<PgExtension>;
+pub type PgNestedAbstractInsertSet = exo_sql_model::NestedAbstractInsertSet<PgExtension>;
+pub type PgNestedAbstractDelete = exo_sql_model::NestedAbstractDelete<PgExtension>;
+pub type PgColumnValuePair = exo_sql_model::ColumnValuePair<PgExtension>;
 pub use physical_column_type::ensure_registry_initialized;
 
-pub use column::{ArrayParamWrapper, Column, ProxyColumn};
+pub use column::{Column, ProxyColumn};
 pub use expression_builder::ExpressionBuilder;
-pub use order::{OrderBy, OrderByElement, OrderByElementExpr, VectorDistanceOperand};
+pub use order::{OrderBy, OrderByElement, OrderByElementExpr};
+pub use pg_extension::ArrayParamWrapper;
 pub use predicate_ext::ConcretePredicate;
 pub use sql_builder::SQLBuilder;
 pub use sql_operation::{SQLOperation, TemplateSQLOperation};

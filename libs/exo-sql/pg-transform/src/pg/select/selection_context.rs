@@ -9,16 +9,16 @@
 
 use exo_sql_core::Database;
 use exo_sql_model::{
-    AbstractPredicateExt, AbstractSelect, ColumnPath, PhysicalColumnPath,
-    selection_level::SelectionLevel,
+    AbstractPredicateExt, ColumnPath, PhysicalColumnPath, selection_level::SelectionLevel,
 };
+use exo_sql_pg_core::PgAbstractSelect;
 
 use crate::pg::Postgres;
 
 /// A context for the selection transformation to avoid repeating the same work
 /// by each strategy.
 pub(crate) struct SelectionContext<'c> {
-    pub abstract_select: AbstractSelect,
+    pub abstract_select: PgAbstractSelect,
     pub has_a_one_to_many_predicate: bool,
     pub predicate_column_paths: Vec<PhysicalColumnPath>,
     pub order_by_column_paths: Vec<PhysicalColumnPath>,
@@ -30,7 +30,7 @@ pub(crate) struct SelectionContext<'c> {
 impl<'c> SelectionContext<'c> {
     pub fn new(
         database: &Database,
-        abstract_select: AbstractSelect,
+        abstract_select: PgAbstractSelect,
         selection_level: &'c SelectionLevel,
         allow_duplicate_rows: bool,
         transformer: &'c Postgres,

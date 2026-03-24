@@ -7,7 +7,8 @@ use common::http::{Headers, RequestPayload, ResponseBody, ResponsePayload};
 
 use core_resolver::plugin::{SubsystemResolutionError, SubsystemRestResolver};
 use exo_sql::{
-    AbstractOperation, AbstractPredicate, AbstractSelect, DatabaseExecutor, SelectionCardinality,
+    AbstractOperation, AbstractPredicate, DatabaseExecutor, PgAbstractOperation, PgAbstractSelect,
+    SelectionCardinality,
 };
 use postgres_core_resolver::database_helper::extractor;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
@@ -82,7 +83,7 @@ trait OperationResolver {
     async fn resolve<'a>(
         &self,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<AbstractOperation, SubsystemResolutionError>;
+    ) -> Result<PgAbstractOperation, SubsystemResolutionError>;
 }
 
 #[async_trait]
@@ -90,8 +91,8 @@ impl OperationResolver for PostgresOperation {
     async fn resolve<'a>(
         &self,
         _request_context: &'a RequestContext<'a>,
-    ) -> Result<AbstractOperation, SubsystemResolutionError> {
-        let select = AbstractSelect {
+    ) -> Result<PgAbstractOperation, SubsystemResolutionError> {
+        let select = PgAbstractSelect {
             table_id: self.table_id,
             selection: exo_sql::Selection::Json(vec![], SelectionCardinality::Many),
             predicate: AbstractPredicate::True,

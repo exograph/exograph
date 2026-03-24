@@ -15,35 +15,36 @@ mod update;
 pub(crate) mod precheck;
 
 mod order_by_transformer;
+pub(crate) mod pg_transformer;
 mod predicate_transformer;
 
 pub struct Postgres {}
 
 use exo_sql_core::Database;
-use exo_sql_model::abstract_operation::AbstractOperation;
-use exo_sql_model::transformer::{
-    DeleteTransformer, InsertTransformer, SelectTransformer, UpdateTransformer,
+use exo_sql_model::AbstractOperation;
+use exo_sql_pg_core::{PgAbstractOperation, TransactionScript};
+use pg_transformer::{
+    PgDeleteTransformer, PgInsertTransformer, PgSelectTransformer, PgUpdateTransformer,
 };
-use exo_sql_pg_core::TransactionScript;
 
 impl Postgres {
     pub fn to_transaction_script<'a>(
         &self,
         database: &'a Database,
-        abstract_operation: AbstractOperation,
+        abstract_operation: PgAbstractOperation,
     ) -> TransactionScript<'a> {
         match abstract_operation {
             AbstractOperation::Select(select) => {
-                SelectTransformer::to_transaction_script(self, select, database)
+                PgSelectTransformer::to_transaction_script(self, select, database)
             }
             AbstractOperation::Delete(delete) => {
-                DeleteTransformer::to_transaction_script(self, delete, database)
+                PgDeleteTransformer::to_transaction_script(self, delete, database)
             }
             AbstractOperation::Insert(insert) => {
-                InsertTransformer::to_transaction_script(self, insert, None, database)
+                PgInsertTransformer::to_transaction_script(self, insert, None, database)
             }
             AbstractOperation::Update(update) => {
-                UpdateTransformer::to_transaction_script(self, update, database)
+                PgUpdateTransformer::to_transaction_script(self, update, database)
             }
         }
     }

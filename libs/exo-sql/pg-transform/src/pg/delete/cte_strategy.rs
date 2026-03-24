@@ -9,10 +9,10 @@
 
 use exo_sql_core::Database;
 use exo_sql_model::{
-    AbstractDelete,
     selection_level::SelectionLevel,
     transformer::{PredicateTransformer, SelectTransformer},
 };
+use exo_sql_pg_core::PgAbstractDelete;
 use exo_sql_pg_core::{
     Column, SQLOperation,
     cte::{CteExpression, WithQuery},
@@ -31,18 +31,18 @@ impl DeleteStrategy for CteStrategy {
         "CteStrategy"
     }
 
-    fn suitable(&self, _abstract_delete: &AbstractDelete, _database: &Database) -> bool {
+    fn suitable(&self, _abstract_delete: &PgAbstractDelete, _database: &Database) -> bool {
         true
     }
 
     fn update_transaction_script<'a>(
         &self,
-        abstract_delete: AbstractDelete,
+        abstract_delete: PgAbstractDelete,
         database: &'a Database,
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,
     ) {
-        let AbstractDelete {
+        let PgAbstractDelete {
             table_id,
             predicate,
             selection,
@@ -57,7 +57,7 @@ impl DeleteStrategy for CteStrategy {
         );
 
         let delete_query = to_delete(
-            AbstractDelete {
+            PgAbstractDelete {
                 table_id,
                 predicate,
                 selection,
@@ -74,7 +74,7 @@ impl DeleteStrategy for CteStrategy {
 }
 
 fn to_delete<'a>(
-    abstract_delete: AbstractDelete,
+    abstract_delete: PgAbstractDelete,
     database: &'a Database,
     transformer: &Postgres,
 ) -> WithQuery<'a> {
@@ -139,7 +139,7 @@ mod tests {
     };
     use exo_sql_pg_core::ExpressionBuilder;
     use exo_sql_pg_core::assert_binding;
-    use exo_sql_pg_core::{Predicate, sql_param_container::SQLParamContainer};
+    use exo_sql_pg_core::{PgExtension, Predicate, sql_param_container::SQLParamContainer};
 
     use crate::pg::Postgres;
     use crate::test_util::TestSetup;
@@ -195,7 +195,9 @@ mod tests {
              }| {
                 let predicate = AbstractPredicate::Eq(
                     ColumnPath::Physical(PhysicalColumnPath::leaf(concerts_name_column)),
-                    ColumnPath::Param(SQLParamContainer::string("v1".to_string())),
+                    ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
+                        "v1".to_string(),
+                    ))),
                 );
 
                 let adelete = AbstractDelete {
@@ -242,7 +244,9 @@ mod tests {
                         vec![concerts_venue_id_column, venues_name_column],
                         &database,
                     )),
-                    ColumnPath::Param(SQLParamContainer::string("v1".to_string())),
+                    ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
+                        "v1".to_string(),
+                    ))),
                 );
 
                 let adelete = AbstractDelete {
