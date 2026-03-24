@@ -1,4 +1,4 @@
-import { render } from "npm:jsx-email@2.8.4";
+import { render } from "npm:jsx-email";
 import * as React from "npm:react";
 import Email from "./jsx-email-template.tsx";
 

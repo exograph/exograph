@@ -43,11 +43,16 @@ const DENO_BUNDLE_WARNING: &[u8] = b"is experimental and subject to changes";
 async fn bundle_source(module_fs_path: &Path) -> Result<String, ModelBuildingError> {
     let deno_path = download_deno_if_needed().await?;
 
+    // Each module gets its own lock file (e.g. `src/foo.tsx.deno.lock`) so that
+    // multiple @deno modules in the same project don't overwrite each other.
+    let lock_path = PathBuf::from(format!("{}.deno.lock", module_fs_path.to_string_lossy()));
+
     let output = tokio::process::Command::new(deno_path)
         .arg("bundle")
         .arg("--allow-import")
         .arg("--quiet")
         .arg("--node-modules-dir=auto")
+        .arg(format!("--lock={}", lock_path.to_string_lossy()))
         .arg(module_fs_path.to_string_lossy().to_string())
         .output()
         .await;
