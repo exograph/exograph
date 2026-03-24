@@ -9,11 +9,10 @@
 
 use exo_sql_core::{Database, DatabaseError};
 use exo_sql_model::AbstractOperation;
+use exo_sql_pg::{PgExtension, TransactionStepResult, pg::Postgres};
 use exo_sql_pg_connect::{
     TransactionHolder, connect::database_client_manager::DatabaseClientManager,
 };
-use exo_sql_pg_core::{PgExtension, TransactionStepResult};
-use exo_sql_pg_transform::pg::Postgres;
 
 pub struct DatabaseExecutor {
     pub database_client: DatabaseClientManager,

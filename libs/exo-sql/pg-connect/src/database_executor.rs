@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use exo_sql_core::{Database, database_error::DatabaseError};
-use exo_sql_pg_core::transaction::{TransactionScript, TransactionStepResult};
+use exo_sql_pg::transaction::{TransactionScript, TransactionStepResult};
 
 use crate::{
     connect::database_client_manager::DatabaseClientManager, transaction_holder::TransactionHolder,
