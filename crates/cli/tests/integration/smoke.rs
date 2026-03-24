@@ -26,7 +26,7 @@ fn exo_smoke_tests() -> Result<(), Error> {
 
     let mut cmd = exo(tmp_dir.path(), ["new", "mariposas"]);
     let p = spawn_command(cmd, Some(5000))?;
-    p.process.wait()?;
+    p.process().wait()?;
 
     let mut project_dir = PathBuf::from(tmp_dir.path());
     project_dir.push("mariposas");
@@ -41,7 +41,7 @@ fn exo_smoke_tests() -> Result<(), Error> {
 
     cmd = exo(project_dir.clone(), ["build"]);
     let p = spawn_command(cmd, Some(5000))?;
-    p.process.wait()?;
+    p.process().wait()?;
 
     let mut target_dir = project_dir.clone();
     target_dir.push("target");
