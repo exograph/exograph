@@ -3,5 +3,5 @@ import * as React from "npm:react";
 import Email from "./react-email-template.tsx";
 
 export async function formatReactEmail(name: string): Promise<string> {
-  return await render(<Email name={name} />);
+  return render(<Email name={name} />);
 }

@@ -92,6 +92,8 @@ pub struct DenoModule {
     shim_object_names: Vec<String>,
     user_code: UserCode,
     explicit_error_class_name: Option<&'static str>,
+    /// Held for its Drop impl: cleans up the temp directory used for Deno's localStorage.
+    _origin_storage_dir: tempfile::TempDir,
 }
 
 /// A Deno-based runner for JavaScript.
@@ -211,10 +213,12 @@ impl DenoModule {
             embedded_dirs: embedded_script_dirs.unwrap_or_default(),
         });
 
+        let origin_storage_dir = tempfile::tempdir()?;
+
         let worker_options = WorkerOptions {
             startup_snapshot: Some(crate::deno_snapshot()),
             extensions,
-            origin_storage_dir: Some(std::env::temp_dir()),
+            origin_storage_dir: Some(origin_storage_dir.path().to_path_buf()),
             ..Default::default()
         };
 
@@ -271,6 +275,7 @@ impl DenoModule {
             shim_object_names,
             user_code,
             explicit_error_class_name,
+            _origin_storage_dir: origin_storage_dir,
         };
 
         Ok(deno_module)

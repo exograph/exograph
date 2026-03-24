@@ -37,6 +37,8 @@ serde_json.workspace = true
 tracing.workspace = true
 include_dir.workspace = true
 
+tempfile.workspace = true
+
 exo-env = { path = "../exo-env" }
 
 # deno_io uses winapi without the "std" feature, causing winapi::ctypes::c_void to be a
