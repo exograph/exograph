@@ -11,18 +11,19 @@ use maybe_owned::MaybeOwned;
 
 use crate::pg::pg_transformer::PgInsertTransformer;
 use crate::{
-    ArrayParamWrapper, Column, PgAbstractUpdate, PgColumnTypeExt, PgExtension,
-    PgNestedAbstractDelete, PgNestedAbstractInsert, PgNestedAbstractUpdate, SQLOperation,
-    TemplateSQLOperation,
-    delete::TemplateDelete,
-    select::Select,
-    table::Table,
+    Column, PgAbstractUpdate, PgColumnTypeExt, PgExtension, PgNestedAbstractDelete,
+    PgNestedAbstractInsert, PgNestedAbstractUpdate, SQLOperation,
+    core::delete::TemplateDelete,
+    core::pg_extension::ArrayParamWrapper,
+    core::select::Select,
+    core::sql_operation::TemplateSQLOperation,
+    core::table::Table,
+    core::update::{TemplateUpdate, Update},
     transaction::{
         ConcreteTransactionStep, DynamicTransactionStep, TemplateFilterOperation,
         TemplateTransactionStep, TransactionContext, TransactionScript, TransactionStep,
         TransactionStepId,
     },
-    update::{TemplateUpdate, Update},
 };
 use crate::{Predicate, sql_param_container::SQLParamContainer};
 use exo_sql_core::{ColumnId, Database, PhysicalColumn};
@@ -330,7 +331,7 @@ mod tests {
 
     use crate::pg::Postgres;
     use crate::pg::pg_transformer::PgUpdateTransformer;
-    use crate::transform_test_util::TestSetup;
+    use crate::transform::transform_test_util::TestSetup;
 
     use multiplatform_test::multiplatform_test;
 

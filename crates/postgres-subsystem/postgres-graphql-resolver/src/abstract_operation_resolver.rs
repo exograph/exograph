@@ -7,12 +7,11 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql::PgAbstractOperation;
 use exo_sql::database_error::DatabaseError;
+use exo_sql::{DatabaseBackend, PgAbstractOperation};
 
 use common::context::RequestContext;
 use core_resolver::{QueryResponse, QueryResponseBody};
-use postgres_core_resolver::database_helper::extractor;
 
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 
@@ -45,8 +44,7 @@ pub async fn resolve_operation<'e>(
     let mut result = result.map_err(PostgresExecutionError::Postgres)?;
 
     let body = if result.len() == 1 {
-        let string_result = extractor(result.swap_remove(0))?;
-        Ok(QueryResponseBody::Raw(Some(string_result)))
+        Ok(QueryResponseBody::Raw(Some(result.swap_remove(0))))
     } else if result.is_empty() {
         Ok(QueryResponseBody::Raw(None))
     } else {

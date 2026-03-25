@@ -8,6 +8,7 @@
 // by the Apache License, Version 2.0.
 
 pub mod column_path;
+pub mod database_backend;
 pub mod delete;
 pub mod insert;
 pub mod operation;
@@ -19,8 +20,8 @@ pub mod selection_level;
 pub mod transformer;
 pub mod update;
 
-// Re-export key types
 pub use column_path::{ColumnPath, ColumnPathLink, PhysicalColumnPath};
+pub use database_backend::DatabaseBackend;
 pub use delete::AbstractDelete;
 pub use insert::{
     AbstractInsert, ColumnValuePair, InsertionElement, InsertionRow, NestedInsertion,

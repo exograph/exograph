@@ -10,11 +10,13 @@
 use maybe_owned::MaybeOwned;
 
 use crate::{
-    ArrayParamWrapper, Column, PgAbstractInsert, PgColumnTypeExt, PgColumnValuePair, PgExtension,
-    PgInsertionRow, PgNestedInsertion, SQLOperation, TemplateSQLOperation,
+    Column, PgAbstractInsert, PgColumnTypeExt, PgColumnValuePair, PgExtension, PgInsertionRow,
+    PgNestedInsertion, SQLOperation,
     column::ProxyColumn,
-    insert::TemplateInsert,
-    select::Select,
+    core::insert::TemplateInsert,
+    core::pg_extension::ArrayParamWrapper,
+    core::select::Select,
+    core::sql_operation::TemplateSQLOperation,
     transaction::{
         ConcreteTransactionStep, DynamicTransactionStep, TemplateTransactionStep,
         TransactionContext, TransactionScript, TransactionStep, TransactionStepId,
@@ -221,7 +223,7 @@ fn insert_self_row<'a>(
             }))
         }
         None => {
-            let insert = SQLOperation::Insert(crate::insert::Insert {
+            let insert = SQLOperation::Insert(crate::core::insert::Insert {
                 table,
                 columns,
                 values_seq: vec![values],

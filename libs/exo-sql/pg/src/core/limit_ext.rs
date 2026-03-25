@@ -9,7 +9,7 @@
 
 use std::sync::Arc;
 
-use crate::sql_param::SQLParamWithType;
+use crate::core::sql_param::SQLParamWithType;
 use exo_sql_core::{Database, Limit};
 
 use crate::{ExpressionBuilder, SQLBuilder};

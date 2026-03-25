@@ -16,8 +16,8 @@
 use exo_sql_core::operation::{DatabaseExtension, ParamEquality};
 use exo_sql_core::{VectorDistanceFunction, physical_column::ColumnId};
 
-use crate::json_agg::JsonAgg;
-use crate::json_object::JsonObject;
+use crate::core::json_agg::JsonAgg;
+use crate::core::json_object::JsonObject;
 use crate::sql_param_container::SQLParamContainer;
 
 /// Postgres-specific extensions to the generic SQL AST types.

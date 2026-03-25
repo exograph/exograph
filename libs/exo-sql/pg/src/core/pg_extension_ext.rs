@@ -9,7 +9,7 @@
 
 use exo_sql_core::Database;
 
-use crate::pg_extension::{ArrayParamWrapper, PgExtension};
+use crate::core::pg_extension::{ArrayParamWrapper, PgExtension};
 use crate::{ExpressionBuilder, SQLBuilder};
 
 impl ExpressionBuilder for PgExtension {

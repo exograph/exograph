@@ -9,7 +9,7 @@
 
 use tracing::debug;
 
-use crate::select::Select;
+use crate::core::select::Select;
 use exo_sql_core::Database;
 
 use super::{

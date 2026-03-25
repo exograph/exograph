@@ -7,8 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::order::{OrderBy, OrderByElement, OrderByElementExpr};
-use crate::{PgAbstractOrderBy, PgColumnPath, PgExtension, VectorDistanceOperand};
+use crate::core::order::{OrderBy, OrderByElement, OrderByElementExpr};
+use crate::core::pg_extension::VectorDistanceOperand;
+use crate::{PgAbstractOrderBy, PgColumnPath, PgExtension};
 use exo_sql_core::Database;
 use exo_sql_model::{
     ColumnPath, order_by::AbstractOrderByExpr, selection_level::SelectionLevel,

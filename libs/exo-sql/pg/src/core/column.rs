@@ -12,7 +12,7 @@ use maybe_owned::MaybeOwned;
 use crate::ParamEquality;
 use exo_sql_core::Database;
 
-use crate::pg_extension::PgExtension;
+use crate::core::pg_extension::PgExtension;
 
 use crate::{ExpressionBuilder, SQLBuilder, transaction::TransactionStepId};
 

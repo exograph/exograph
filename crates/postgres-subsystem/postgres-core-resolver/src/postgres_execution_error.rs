@@ -26,9 +26,6 @@ pub enum PostgresExecutionError {
     #[error("{0}")]
     Postgres(#[from] exo_sql::database_error::DatabaseError),
 
-    #[error("{0}")]
-    EmptyRow(#[from] tokio_postgres::Error),
-
     #[error("Result has {0} entries; expected only zero or one")]
     NonUniqueResult(usize),
 

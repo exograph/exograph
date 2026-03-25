@@ -8,8 +8,8 @@
 // by the Apache License, Version 2.0.
 
 pub mod connect;
-pub mod database_executor;
 pub mod execution;
+pub mod pg_backend;
 pub mod transaction_holder;
 
 #[cfg(feature = "test-support")]
@@ -19,5 +19,5 @@ pub mod testing;
 pub use connect::creation::{Connect, TransactionMode};
 pub use connect::database_client::DatabaseClient;
 pub use connect::database_client_manager::DatabaseClientManager;
-pub use database_executor::DatabaseExecutor;
+pub use pg_backend::PgBackend;
 pub use transaction_holder::TransactionHolder;

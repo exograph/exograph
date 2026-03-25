@@ -15,8 +15,8 @@ use exo_sql_model::{
 
 use crate::{
     Column, PgExtension, PgSelection, PgSelectionElement,
-    json_agg::JsonAgg,
-    json_object::{JsonObject, JsonObjectElement},
+    core::json_agg::JsonAgg,
+    core::json_object::{JsonObject, JsonObjectElement},
 };
 
 use crate::pg::Postgres;

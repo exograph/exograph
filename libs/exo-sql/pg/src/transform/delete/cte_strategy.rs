@@ -10,8 +10,8 @@
 use crate::PgAbstractDelete;
 use crate::{
     Column, SQLOperation,
-    cte::{CteExpression, WithQuery},
-    delete::Delete,
+    core::cte::{CteExpression, WithQuery},
+    core::delete::Delete,
     transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
 };
 use exo_sql_core::Database;
@@ -141,7 +141,7 @@ mod tests {
     };
 
     use crate::pg::Postgres;
-    use crate::transform_test_util::TestSetup;
+    use crate::transform::transform_test_util::TestSetup;
 
     use multiplatform_test::multiplatform_test;
 
