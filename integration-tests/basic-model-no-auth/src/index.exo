@@ -3,6 +3,7 @@ module ConcertModule {
   @table("concerts")
   @projection(
     withVenue = /basic + venue/basic,
+    withVenueDetails = /basic + venue/nameOnly + venue/locationOnly,
     summary = id + title
   )
   @access(true)
@@ -16,6 +17,10 @@ module ConcertModule {
   }
 
   @table("venues")
+  @projection(
+    nameOnly = id + name,
+    locationOnly = id + latitude
+  )
   @access(true)
   type Venue {
     @pk id: Int = autoIncrement() 

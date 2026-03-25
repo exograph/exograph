@@ -411,7 +411,7 @@ fn compute_projection_elements<'a>(
                 }
                 ProjectionElement::RelationProjection {
                     relation_field_name,
-                    projection_name,
+                    projection_names,
                 } => {
                     let Some(field) = entity_type.field_by_name(relation_field_name) else {
                         continue;
@@ -422,7 +422,7 @@ fn compute_projection_elements<'a>(
                             let nested = compute_nested_select(
                                 relation.foreign_entity_id,
                                 SelectionCardinality::One,
-                                projection_name,
+                                projection_names,
                                 request_context,
                                 subsystem,
                             )
@@ -445,7 +445,7 @@ fn compute_projection_elements<'a>(
                             let nested = compute_nested_select(
                                 relation.foreign_entity_id,
                                 cardinality,
-                                projection_name,
+                                projection_names,
                                 request_context,
                                 subsystem,
                             )
@@ -471,10 +471,11 @@ fn compute_projection_elements<'a>(
 
 /// Build a nested select for a relation using the given projection.
 /// Applies entity-level access predicate on the foreign entity.
+/// When multiple projection names are given, their elements are unioned.
 async fn compute_nested_select<'a>(
     foreign_entity_id: SerializableSlabIndex<EntityType>,
     cardinality: SelectionCardinality,
-    projection_name: &str,
+    projection_names: &[String],
     request_context: &'a RequestContext<'a>,
     subsystem: &'a PostgresRpcSubsystemWithRouter,
 ) -> Result<PgAbstractSelect, SubsystemRpcError> {
@@ -488,20 +489,40 @@ async fn compute_nested_select<'a>(
     )
     .await?;
 
-    let projection = foreign_entity
-        .projection_by_name(projection_name)
-        .ok_or_else(|| {
-            SubsystemRpcError::InvalidParams(format!(
-                "Unknown projection `{}` for type `{}`",
-                projection_name, foreign_entity.name
-            ))
-        })?;
+    let mut all_elements = Vec::new();
+    let mut combined_field_access = PgAbstractPredicate::True;
 
-    let field_access_predicate =
-        check_projection_access(foreign_entity, projection, request_context, subsystem).await?;
+    for projection_name in projection_names {
+        let projection = foreign_entity
+            .projection_by_name(projection_name)
+            .ok_or_else(|| {
+                SubsystemRpcError::InvalidParams(format!(
+                    "Unknown projection `{}` for type `{}`",
+                    projection_name, foreign_entity.name
+                ))
+            })?;
 
-    let nested_elements =
-        compute_projection_elements(foreign_entity, projection, request_context, subsystem).await?;
+        let field_access =
+            check_projection_access(foreign_entity, projection, request_context, subsystem).await?;
+        combined_field_access = PgAbstractPredicate::and(combined_field_access, field_access);
+
+        let elements =
+            compute_projection_elements(foreign_entity, projection, request_context, subsystem)
+                .await?;
+
+        // Deduplicate: only add elements not already present (by alias name)
+        for elem in elements {
+            if !all_elements
+                .iter()
+                .any(|e: &PgAliasedSelectionElement| e.alias == elem.alias)
+            {
+                all_elements.push(elem);
+            }
+        }
+    }
+
+    let nested_elements = all_elements;
+    let field_access_predicate = combined_field_access;
 
     Ok(PgAbstractSelect {
         table_id: foreign_entity.table_id,

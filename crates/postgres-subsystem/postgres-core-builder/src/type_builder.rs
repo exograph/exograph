@@ -1094,7 +1094,7 @@ fn compute_basic_projection(entity_type: &EntityType) -> ResolvedProjection {
             PostgresRelation::Scalar { .. } => Some(ProjectionElement::ScalarField(f.name.clone())),
             PostgresRelation::ManyToOne { .. } => Some(ProjectionElement::RelationProjection {
                 relation_field_name: f.name.clone(),
-                projection_name: PROJECTION_PK.to_string(),
+                projection_names: vec![PROJECTION_PK.to_string()],
             }),
             // OneToMany and Embedded are not included in basic
             _ => None,
@@ -1144,14 +1144,13 @@ fn resolve_projection_expr(
             }
             Ok(vec![ProjectionElement::RelationProjection {
                 relation_field_name: relation_name.clone(),
-                projection_name: projection_name.clone(),
+                projection_names: vec![projection_name.clone()],
             }])
         }
         AstProjectionExpr::Union(left, right, _) => {
             let mut left_elements = resolve_projection_expr(left, known_projections, entity_type)?;
             let right_elements = resolve_projection_expr(right, known_projections, entity_type)?;
 
-            // Merge: deduplicate scalar fields, union relation projections for the same relation
             for element in right_elements {
                 match &element {
                     ProjectionElement::ScalarField(name) => {
@@ -1164,14 +1163,24 @@ fn resolve_projection_expr(
                     }
                     ProjectionElement::RelationProjection {
                         relation_field_name,
-                        ..
+                        projection_names: new_names,
                     } => {
-                        // For now, if the same relation appears, keep the last one
-                        // (full union of nested projections would require resolving the target type's projections)
+                        // Union: merge projection names for the same relation
+                        // e.g., /basic (includes venue/pk) + venue/basic → venue with [pk, basic]
                         if let Some(existing) = left_elements.iter_mut().find(|e| {
                             matches!(e, ProjectionElement::RelationProjection { relation_field_name: n, .. } if n == relation_field_name)
                         }) {
-                            *existing = element;
+                            if let ProjectionElement::RelationProjection {
+                                projection_names: existing_names,
+                                ..
+                            } = existing
+                            {
+                                for name in new_names {
+                                    if !existing_names.contains(name) {
+                                        existing_names.push(name.clone());
+                                    }
+                                }
+                            }
                         } else {
                             left_elements.push(element);
                         }

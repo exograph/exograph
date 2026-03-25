@@ -26,9 +26,10 @@ pub struct ResolvedProjection {
 pub enum ProjectionElement {
     /// A scalar field of this entity (field name).
     ScalarField(String),
-    /// A relation with a named projection applied.
+    /// A relation with one or more named projections applied.
+    /// Multiple projections are unioned at query time (e.g., `venue/summary + venue/withAddress`).
     RelationProjection {
         relation_field_name: String,
-        projection_name: String,
+        projection_names: Vec<String>,
     },
 }

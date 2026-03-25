@@ -168,6 +168,46 @@ stages:
       {
         "error": {
           "code": -32602,
-          "message": "Invalid enum value 'nonExistent' at 'projection': allowed values are [\"basic\", \"pk\", \"summary\", \"withVenue\"]"
+          "message": "Invalid enum value 'nonExistent' at 'projection': allowed values are [\"basic\", \"pk\", \"summary\", \"withVenue\", \"withVenueDetails\"]"
         }
+      }
+
+  # With withVenueDetails projection — union of venue/nameOnly + venue/locationOnly
+  # Venue gets fields from both projections: id, name (from nameOnly) + latitude (from locationOnly)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "where": {"venue": {"id": {"eq": 1}}},
+            "projection": "withVenueDetails"
+          }
+        }
+    response: |
+      {
+        "result": [
+          {
+            "id": 1,
+            "title": "Concert1",
+            "published": true,
+            "price": "20.50",
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "latitude": 37.7749
+            }
+          },
+          {
+            "id": 3,
+            "title": "Concert3",
+            "published": true,
+            "price": "30.50",
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "latitude": 37.7749
+            }
+          }
+        ]
       }

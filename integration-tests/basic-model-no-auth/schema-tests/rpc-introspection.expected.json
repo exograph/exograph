@@ -51,10 +51,11 @@
           "schema": {
             "type": "string",
             "enum": [
-              "pk",
               "basic",
+              "pk",
               "summary",
-              "withVenue"
+              "withVenue",
+              "withVenueDetails"
             ]
           }
         }
@@ -115,8 +116,10 @@
           "schema": {
             "type": "string",
             "enum": [
-              "pk",
-              "basic"
+              "basic",
+              "locationOnly",
+              "nameOnly",
+              "pk"
             ]
           }
         }
@@ -149,10 +152,11 @@
           "schema": {
             "type": "string",
             "enum": [
-              "pk",
               "basic",
+              "pk",
               "summary",
-              "withVenue"
+              "withVenue",
+              "withVenueDetails"
             ]
           }
         }
@@ -183,8 +187,10 @@
           "schema": {
             "type": "string",
             "enum": [
-              "pk",
-              "basic"
+              "basic",
+              "locationOnly",
+              "nameOnly",
+              "pk"
             ]
           }
         }

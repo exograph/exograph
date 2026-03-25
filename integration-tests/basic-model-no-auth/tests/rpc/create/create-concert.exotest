@@ -86,3 +86,29 @@ stages:
           "title": "New Concert"
         }
       }
+
+  # Verify with withVenueDetails — union of venue/nameOnly + venue/locationOnly
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {
+            "id": 5,
+            "projection": "withVenueDetails"
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 5,
+          "title": "New Concert",
+          "published": true,
+          "price": "15.00",
+          "venue": {
+            "id": 1,
+            "name": "Venue1",
+            "latitude": 37.7749
+          }
+        }
+      }

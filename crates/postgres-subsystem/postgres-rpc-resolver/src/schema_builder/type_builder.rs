@@ -212,18 +212,22 @@ fn ensure_projection_type_added(
             }
             ProjectionElement::RelationProjection {
                 relation_field_name,
-                projection_name,
+                projection_names,
             } => {
                 if let Some(field) = entity_type.field_by_name(relation_field_name) {
+                    // For the schema, use the first projection name for type naming.
+                    // Multiple projections are unioned at query time.
+                    let primary_name = &projection_names[0];
+
                     match &field.relation {
                         PostgresRelation::ManyToOne { relation, .. } => {
                             let foreign_entity =
                                 &subsystem.core_subsystem.entity_types[relation.foreign_entity_id];
                             let rel_type_name =
-                                projection_type_name(&foreign_entity.name, projection_name);
+                                projection_type_name(&foreign_entity.name, primary_name);
 
                             if let Some(foreign_projection) =
-                                foreign_entity.projection_by_name(projection_name)
+                                foreign_entity.projection_by_name(primary_name)
                             {
                                 ensure_projection_type_added(
                                     &rel_type_name,
@@ -253,10 +257,10 @@ fn ensure_projection_type_added(
                             let foreign_entity =
                                 &subsystem.core_subsystem.entity_types[relation.foreign_entity_id];
                             let rel_type_name =
-                                projection_type_name(&foreign_entity.name, projection_name);
+                                projection_type_name(&foreign_entity.name, primary_name);
 
                             if let Some(foreign_projection) =
-                                foreign_entity.projection_by_name(projection_name)
+                                foreign_entity.projection_by_name(primary_name)
                             {
                                 ensure_projection_type_added(
                                     &rel_type_name,
