@@ -19,11 +19,11 @@ use crate::sql_param_container::SQLParamContainer;
 
 use crate::{
     column::Column,
-    pg_extension::{ArrayParamWrapper, PgExtension},
-    predicate_ext::ConcretePredicate,
-    select::Select,
-    sql_operation::{SQLOperation, TemplateSQLOperation},
-    table::Table,
+    core::pg_extension::{ArrayParamWrapper, PgExtension},
+    core::predicate_ext::ConcretePredicate,
+    core::select::Select,
+    core::sql_operation::{SQLOperation, TemplateSQLOperation},
+    core::table::Table,
 };
 
 /// Rows obtained from a SQL operation
@@ -69,8 +69,8 @@ impl TransactionContext {
         step_id: TransactionStepId,
         row: usize,
         col: usize,
-    ) -> crate::sql_value::SQLValue {
-        self.results[step_id.0][row].get::<usize, crate::sql_value::SQLValue>(col)
+    ) -> crate::core::sql_value::SQLValue {
+        self.results[step_id.0][row].get::<usize, crate::core::sql_value::SQLValue>(col)
     }
 
     /// Returns the number of rows in the result of the given step id

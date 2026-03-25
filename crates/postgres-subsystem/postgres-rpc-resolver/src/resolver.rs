@@ -25,10 +25,10 @@ use core_resolver::plugin::subsystem_rpc_resolver::{SubsystemRpcError, Subsystem
 use core_resolver::{QueryResponse, QueryResponseBody};
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractUpdate, Column, ColumnId,
-    ColumnPath, ColumnValuePair, DatabaseExecutor, InsertionElement, InsertionRow, Limit,
-    ManyToOne, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractInsertSet,
-    NestedAbstractUpdate, NestedInsertion, Offset, OneToMany, PgAbstractOperation,
-    PgAbstractOrderBy, PgAbstractPredicate, PgAbstractSelect, PgAliasedSelectionElement,
+    ColumnPath, ColumnValuePair, DatabaseBackend, InsertionElement, InsertionRow, Limit, ManyToOne,
+    NestedAbstractDelete, NestedAbstractInsert, NestedAbstractInsertSet, NestedAbstractUpdate,
+    NestedInsertion, Offset, OneToMany, PgAbstractOperation, PgAbstractOrderBy,
+    PgAbstractPredicate, PgAbstractSelect, PgAliasedSelectionElement, PgBackend,
     PgInsertionElement, PgInsertionRow, PgNestedAbstractDelete, PgNestedAbstractInsertSet,
     PgNestedAbstractUpdate, PhysicalColumnPath, RelationId, Selection, SelectionCardinality,
     SelectionElement,
@@ -43,7 +43,6 @@ use postgres_core_model::relation::PostgresRelation;
 use postgres_core_model::relation::{ManyToOneRelation, OneToManyRelation, RelationCardinality};
 use postgres_core_model::types::{EntityType, PostgresField};
 use postgres_core_resolver::cast;
-use postgres_core_resolver::database_helper::extractor;
 use postgres_core_resolver::order_by_mapper::compute_order_by;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_core_resolver::predicate_mapper::compute_predicate;
@@ -59,7 +58,7 @@ pub struct PostgresSubsystemRpcResolver {
     #[allow(dead_code)]
     pub id: &'static str,
     pub subsystem: PostgresRpcSubsystemWithRouter,
-    pub executor: Arc<DatabaseExecutor>,
+    pub executor: Arc<PgBackend>,
     #[allow(dead_code)]
     pub api_path_prefix: String,
     rpc_schema: RpcSchema,
@@ -69,7 +68,7 @@ impl PostgresSubsystemRpcResolver {
     pub fn new(
         id: &'static str,
         subsystem: PostgresRpcSubsystemWithRouter,
-        executor: Arc<DatabaseExecutor>,
+        executor: Arc<PgBackend>,
         api_path_prefix: String,
     ) -> Self {
         let rpc_schema = crate::schema_builder::build_rpc_schema(&subsystem);
@@ -194,9 +193,7 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
                 .map_err(|e| from_postgres_error(PostgresExecutionError::Postgres(e)))?;
 
             let body = if result.len() == 1 {
-                let string_result: String =
-                    extractor(result.swap_remove(0)).map_err(from_postgres_error)?;
-                Ok(QueryResponseBody::Raw(Some(string_result)))
+                Ok(QueryResponseBody::Raw(Some(result.swap_remove(0))))
             } else if result.is_empty() {
                 Ok(QueryResponseBody::Raw(None))
             } else {

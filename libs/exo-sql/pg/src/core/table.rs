@@ -11,7 +11,7 @@ use exo_sql_core::Database;
 
 use crate::{ExpressionBuilder, SQLBuilder};
 
-use crate::pg_extension::PgExtension;
+use crate::core::pg_extension::PgExtension;
 
 // Re-export the core Table type specialized to PgExtension
 pub type Table = exo_sql_core::operation::Table<PgExtension>;

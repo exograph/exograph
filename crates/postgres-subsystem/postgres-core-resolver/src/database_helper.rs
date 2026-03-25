@@ -1,14 +1,11 @@
 use exo_env::Environment;
-use exo_sql::{DatabaseClientManager, DatabaseExecutor, TransactionMode};
+use exo_sql::{DatabaseClientManager, PgBackend, TransactionMode};
 use thiserror::Error;
-use tokio_postgres::{Row, types::FromSqlOwned};
-
-use crate::postgres_execution_error::PostgresExecutionError;
 
 pub async fn create_database_executor(
     existing_client: Option<DatabaseClientManager>,
     env: &dyn Environment,
-) -> Result<DatabaseExecutor, DatabaseHelperError> {
+) -> Result<PgBackend, DatabaseHelperError> {
     let database_client = if let Some(existing) = existing_client {
         existing
     } else {
@@ -51,7 +48,7 @@ pub async fn create_database_executor(
             panic!("Postgres URL feature is not enabled");
         }
     };
-    Ok(DatabaseExecutor { database_client })
+    Ok(PgBackend::new(database_client))
 }
 
 #[derive(Error, Debug)]
@@ -61,11 +58,4 @@ pub enum DatabaseHelperError {
 
     #[error("Boxed error: {0}")]
     BoxedError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
-}
-
-pub fn extractor<T: FromSqlOwned>(row: Row) -> Result<T, PostgresExecutionError> {
-    match row.try_get(0) {
-        Ok(col) => Ok(col),
-        Err(err) => Err(PostgresExecutionError::EmptyRow(err)),
-    }
 }

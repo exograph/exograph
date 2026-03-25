@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use crate::{CaseSensitivity, NumericComparator, Predicate};
-use crate::{ExpressionBuilder, SQLBuilder, column::Column, vector::VectorDistance};
+use crate::{ExpressionBuilder, SQLBuilder, column::Column, core::vector::VectorDistance};
 use exo_sql_core::Database;
 
 pub type ConcretePredicate = Predicate<Column>;

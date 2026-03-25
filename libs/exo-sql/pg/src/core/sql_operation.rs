@@ -11,13 +11,13 @@ use exo_sql_core::Database;
 
 use crate::{
     ExpressionBuilder, SQLBuilder,
-    cte::WithQuery,
-    delete::Delete,
-    delete::TemplateDelete,
-    insert::{Insert, TemplateInsert},
-    select::Select,
+    core::cte::WithQuery,
+    core::delete::Delete,
+    core::delete::TemplateDelete,
+    core::insert::{Insert, TemplateInsert},
+    core::select::Select,
+    core::update::{TemplateUpdate, Update},
     transaction::{TransactionContext, TransactionStepId},
-    update::{TemplateUpdate, Update},
 };
 
 /// Top-level SQL operation, which may be executed by the database.

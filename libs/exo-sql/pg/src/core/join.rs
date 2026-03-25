@@ -9,7 +9,7 @@
 
 use exo_sql_core::Database;
 
-use crate::pg_extension::PgExtension;
+use crate::core::pg_extension::PgExtension;
 use crate::{ExpressionBuilder, SQLBuilder};
 
 // Re-export the core LeftJoin type specialized to PgExtension
@@ -29,8 +29,9 @@ impl ExpressionBuilder for LeftJoin {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::{predicate_ext::ConcretePredicate, table::Table};
     use crate::test_database_builder::*;
-    use crate::{Column, SQLBuilder, predicate_ext::ConcretePredicate, table::Table};
+    use crate::{Column, SQLBuilder};
     use exo_sql_core::SchemaObjectName;
 
     use multiplatform_test::multiplatform_test;

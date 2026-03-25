@@ -11,7 +11,7 @@ use tracing::instrument;
 
 use crate::{
     PgAbstractSelect, PgExtension, SQLOperation,
-    select::Select,
+    core::select::Select,
     transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
 };
 use exo_sql_core::Database;
@@ -167,7 +167,7 @@ mod tests {
     };
 
     use crate::pg::Postgres;
-    use crate::transform_test_util::TestSetup;
+    use crate::transform::transform_test_util::TestSetup;
     use exo_sql_model::transformer::SelectTransformer;
 
     use multiplatform_test::multiplatform_test;

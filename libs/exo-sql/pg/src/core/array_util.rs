@@ -14,7 +14,7 @@ use exo_sql_core::DatabaseError;
 
 use crate::sql_param_container::SQLParamContainer;
 
-use crate::pg_column_type::PgColumnTypeExt;
+use crate::core::pg_column_type::PgColumnTypeExt;
 use postgres_array::{Array, Dimension};
 use tokio_postgres::types::Type;
 

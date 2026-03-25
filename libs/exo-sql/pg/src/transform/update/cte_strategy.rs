@@ -3,9 +3,9 @@ use maybe_owned::MaybeOwned;
 use crate::PgAbstractUpdate;
 use crate::{
     Column, SQLOperation,
-    cte::{CteExpression, WithQuery},
+    core::cte::{CteExpression, WithQuery},
+    core::update::Update,
     transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
-    update::Update,
 };
 use exo_sql_core::{Database, PhysicalColumn};
 use exo_sql_model::{

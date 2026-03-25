@@ -9,7 +9,9 @@
 
 use exo_sql_core::{Database, SchemaObjectName};
 
-use crate::{ExpressionBuilder, SQLBuilder, select::Select, sql_operation::SQLOperation};
+use crate::{
+    ExpressionBuilder, SQLBuilder, core::select::Select, core::sql_operation::SQLOperation,
+};
 
 /// A query with common table expressions of the form `WITH <expressions> <select>`.
 #[derive(Debug)]

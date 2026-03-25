@@ -57,12 +57,12 @@ macro_rules! assert_params {
                         let actual_head = actual_head.param.as_ref();
                         assert_eq!(
                             &actual_head,
-                            &(&$expected_param as &dyn $crate::sql_param::SQLParam),
+                            &(&$expected_param as &dyn $crate::core::sql_param::SQLParam),
                             "Parameter mismatch"
                         );
                     },
                     None => {
-                        assert_eq!(actual_head.param.as_ref(), (&$expected_param as &dyn $crate::sql_param::SQLParam), "Parameter mismatch");
+                        assert_eq!(actual_head.param.as_ref(), (&$expected_param as &dyn $crate::core::sql_param::SQLParam), "Parameter mismatch");
                     }
                 }
                 assert_eq!(actual_tail.len(), 0, "Extra actual parameters")
@@ -80,14 +80,14 @@ macro_rules! assert_params {
                         let actual_head = actual_head.param.as_ref();
                         assert_eq!(
                             &actual_head,
-                            &(&$expected_param as &dyn $crate::sql_param::SQLParam),
+                            &(&$expected_param as &dyn $crate::core::sql_param::SQLParam),
                             "Parameter mismatch"
                         );
                     },
                     None => {
                         assert_eq!(
                             &actual_head.param.as_ref(),
-                            &(&$expected_param as &dyn $crate::sql_param::SQLParam),
+                            &(&$expected_param as &dyn $crate::core::sql_param::SQLParam),
                             "Parameter mismatch"
                         );
                     }

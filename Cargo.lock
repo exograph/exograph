@@ -4533,6 +4533,7 @@ dependencies = [
 name = "exo-sql-model"
 version = "0.28.0"
 dependencies = [
+ "async-trait",
  "exo-sql-core",
  "tracing",
 ]
@@ -4565,9 +4566,11 @@ dependencies = [
 name = "exo-sql-pg-connect"
 version = "0.28.0"
 dependencies = [
+ "async-trait",
  "ctor",
  "deadpool-postgres",
  "exo-sql-core",
+ "exo-sql-model",
  "exo-sql-pg",
  "futures",
  "rand 0.10.0",

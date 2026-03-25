@@ -9,7 +9,8 @@
 
 use crate::NumericComparator;
 use crate::{
-    Column, ConcretePredicate, PgAbstractPredicate, PgAbstractSelect, PgColumnPath, PgExtension,
+    Column, PgAbstractPredicate, PgAbstractSelect, PgColumnPath, PgExtension,
+    core::predicate_ext::ConcretePredicate,
 };
 use exo_sql_core::{Database, VectorDistanceFunction};
 use exo_sql_model::{
@@ -450,7 +451,7 @@ mod tests {
     use exo_sql_model::{AbstractPredicate, ColumnPath, PhysicalColumnPath};
 
     use crate::pg::Postgres;
-    use crate::transform_test_util::TestSetup;
+    use crate::transform::transform_test_util::TestSetup;
 
     use multiplatform_test::multiplatform_test;
 

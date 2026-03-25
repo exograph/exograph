@@ -7,10 +7,9 @@ use common::http::{Headers, RequestPayload, ResponseBody, ResponsePayload};
 
 use core_resolver::plugin::{SubsystemResolutionError, SubsystemRestResolver};
 use exo_sql::{
-    AbstractOperation, AbstractPredicate, DatabaseExecutor, PgAbstractOperation, PgAbstractSelect,
-    SelectionCardinality,
+    AbstractOperation, AbstractPredicate, DatabaseBackend, PgAbstractOperation, PgAbstractSelect,
+    PgBackend, SelectionCardinality,
 };
-use postgres_core_resolver::database_helper::extractor;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_rest_model::{
     operation::PostgresOperation, subsystem::PostgresRestSubsystemWithRouter,
@@ -21,7 +20,7 @@ pub struct PostgresSubsystemRestResolver {
     pub id: &'static str,
     pub subsystem: PostgresRestSubsystemWithRouter,
     #[allow(dead_code)]
-    pub executor: Arc<DatabaseExecutor>,
+    pub executor: Arc<PgBackend>,
     pub api_path_prefix: String,
 }
 
@@ -59,8 +58,7 @@ impl SubsystemRestResolver for PostgresSubsystemRestResolver {
                 .map_err(PostgresExecutionError::Postgres)?;
 
             let body = if result.len() == 1 {
-                let string_result: String = extractor(result.swap_remove(0))?;
-                Ok(ResponseBody::Bytes(string_result.into()))
+                Ok(ResponseBody::Bytes(result.swap_remove(0).into()))
             } else if result.is_empty() {
                 Ok(ResponseBody::None)
             } else {
