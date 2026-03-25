@@ -1657,11 +1657,20 @@ fn build_pk_predicate(
         let column = column_id.get_column(&subsystem.core_subsystem.database);
         let value_column = cast::literal_column(value, column)
             .map_err(|e| SubsystemRpcError::UserDisplayError(e.user_error_message()))?;
-        let Column::Param(param) = value_column else {
-            return Err(SubsystemRpcError::UserDisplayError(format!(
-                "Expected a literal value for PK field '{}'",
-                pk_field.name
-            )));
+        let param = match value_column {
+            Column::Param(param) => param,
+            Column::Null => {
+                return Err(SubsystemRpcError::UserDisplayError(format!(
+                    "Primary key field '{}' cannot be null",
+                    pk_field.name
+                )));
+            }
+            _ => {
+                return Err(SubsystemRpcError::UserDisplayError(format!(
+                    "Expected a literal value for PK field '{}'",
+                    pk_field.name
+                )));
+            }
         };
         let value_path = ColumnPath::Param(param);
         predicate = AbstractPredicate::and(
