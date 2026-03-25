@@ -16,7 +16,7 @@ use core_model::mapped_arena::SerializableSlab;
 use core_resolver::access_solver::AccessSolver;
 use exo_sql::{
     AbstractPredicate, ArrayColumnType, ColumnPath, ColumnPathLink, Database, NumericComparator,
-    PgAbstractPredicate, PgColumnPath, PgExtension, PhysicalColumnPath, PhysicalColumnType,
+    PgAbstractPredicate, PgColumnPath, PhysicalColumnPath, PhysicalColumnType,
     PhysicalColumnTypeExt, Predicate, SQLParamContainer, StringColumnType,
 };
 use futures::future::{BoxFuture, FutureExt, try_join_all};
@@ -226,12 +226,10 @@ fn map_predicate<'a, F: FieldAccessChecker>(
                                                     )
                                                     .unwrap(),
                                                 ),
-                                                ColumnPath::Param(PgExtension::Param(
-                                                    target_vector,
-                                                )),
+                                                ColumnPath::Param(target_vector),
                                                 param.vector_distance_function.unwrap_or_default(),
                                                 distance_comparator,
-                                                ColumnPath::Param(PgExtension::Param(threshold)),
+                                                ColumnPath::Param(threshold),
                                             ))
                                         }
                                         _ => Err(PostgresExecutionError::Validation(

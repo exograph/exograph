@@ -11,7 +11,8 @@ use super::ParamEquality;
 
 /// Supertrait that all database extension types must satisfy.
 /// Used as the bound on the `Ext` type parameter throughout the SQL AST types.
-pub trait DatabaseExtension: std::fmt::Debug + PartialEq + ParamEquality + Clone {}
-
-/// Blanket implementation so any type satisfying the bounds automatically implements DatabaseExtension.
-impl<T: std::fmt::Debug + PartialEq + ParamEquality + Clone> DatabaseExtension for T {}
+pub trait DatabaseExtension: std::fmt::Debug + PartialEq + ParamEquality + Clone {
+    /// The type used for parameterized query values (e.g., `$1`, `?`).
+    /// Parameters are a universal SQL concept; only the rendering format is backend-specific.
+    type Param: std::fmt::Debug + PartialEq + Clone;
+}

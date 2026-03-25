@@ -243,7 +243,7 @@ fn leaf_column(
             };
             Column::physical(links.leaf_column(), alias)
         }
-        ColumnPath::Param(l) => Column::Extension(l.clone()),
+        ColumnPath::Param(l) => Column::Param(l.clone()),
         ColumnPath::Null => Column::Null,
         ColumnPath::Predicate(_) => unreachable!(),
     }
@@ -445,8 +445,7 @@ fn attempt_subselect_predicate(
 mod tests {
     use crate::ExpressionBuilder;
     use crate::{
-        CaseSensitivity, PgAbstractPredicate, PgColumnPath, PgExtension,
-        sql_param_container::SQLParamContainer,
+        CaseSensitivity, PgAbstractPredicate, PgColumnPath, sql_param_container::SQLParamContainer,
     };
     use exo_sql_model::{AbstractPredicate, ColumnPath, PhysicalColumnPath};
 
@@ -467,9 +466,7 @@ mod tests {
              }| {
                 let abstract_predicate = AbstractPredicate::Eq(
                     ColumnPath::Physical(PhysicalColumnPath::leaf(concerts_name_column)),
-                    ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
-                        "v1".to_string(),
-                    ))),
+                    ColumnPath::Param(SQLParamContainer::string("v1".to_string())),
                 );
 
                 {
@@ -555,16 +552,14 @@ mod tests {
                 let abstract_predicate = AbstractPredicate::and(
                     AbstractPredicate::Eq(
                         ColumnPath::Physical(PhysicalColumnPath::leaf(concerts_venue_id_column)),
-                        ColumnPath::Param(PgExtension::Param(SQLParamContainer::i32(1))),
+                        ColumnPath::Param(SQLParamContainer::i32(1)),
                     ),
                     AbstractPredicate::Eq(
                         ColumnPath::Physical(PhysicalColumnPath::from_columns(
                             vec![concerts_venue_id_column, venues_name_column],
                             &database,
                         )),
-                        ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
-                            "v1".to_string(),
-                        ))),
+                        ColumnPath::Param(SQLParamContainer::string("v1".to_string())),
                     ),
                 );
 
@@ -622,9 +617,8 @@ mod tests {
                         vec![concerts_venue_id_column, venues_name_column],
                         &database,
                     ));
-                    let literal_column = ColumnPath::Param(PgExtension::Param(
-                        SQLParamContainer::string("v1".to_string()),
-                    ));
+                    let literal_column =
+                        ColumnPath::Param(SQLParamContainer::string("v1".to_string()));
 
                     let abstract_predicate = if literal_on_the_right {
                         op(physical_column, literal_column)

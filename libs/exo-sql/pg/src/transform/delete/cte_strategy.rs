@@ -134,7 +134,7 @@ fn to_delete<'a>(
 #[cfg(test)]
 mod tests {
     use crate::ExpressionBuilder;
-    use crate::{PgExtension, Predicate, sql_param_container::SQLParamContainer};
+    use crate::{Predicate, sql_param_container::SQLParamContainer};
     use exo_sql_model::{
         AbstractDelete, AbstractPredicate, AbstractSelect, ColumnPath, PhysicalColumnPath,
         selection::{AliasedSelectionElement, Selection, SelectionElement},
@@ -194,9 +194,7 @@ mod tests {
              }| {
                 let predicate = AbstractPredicate::Eq(
                     ColumnPath::Physical(PhysicalColumnPath::leaf(concerts_name_column)),
-                    ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
-                        "v1".to_string(),
-                    ))),
+                    ColumnPath::Param(SQLParamContainer::string("v1".to_string())),
                 );
 
                 let adelete = AbstractDelete {
@@ -243,9 +241,7 @@ mod tests {
                         vec![concerts_venue_id_column, venues_name_column],
                         &database,
                     )),
-                    ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
-                        "v1".to_string(),
-                    ))),
+                    ColumnPath::Param(SQLParamContainer::string("v1".to_string())),
                 );
 
                 let adelete = AbstractDelete {

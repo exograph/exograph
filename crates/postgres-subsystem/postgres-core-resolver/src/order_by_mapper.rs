@@ -16,7 +16,7 @@ use core_model::mapped_arena::SerializableSlab;
 use core_resolver::access_solver::AccessSolver;
 use exo_sql::{
     AbstractOrderBy, AbstractOrderByExpr, AbstractPredicate, ColumnPath, Ordering,
-    PgAbstractOrderBy, PgAbstractPredicate, PgExtension, PhysicalColumnPath, SQLParamContainer,
+    PgAbstractOrderBy, PgAbstractPredicate, PhysicalColumnPath, SQLParamContainer,
     VectorDistanceFunction,
 };
 use futures::future::join_all;
@@ -182,8 +182,8 @@ async fn order_by_pair<'a, F: OrderByFieldAccessChecker>(
                                     AbstractOrderBy(vec![(
                                         AbstractOrderByExpr::VectorDistance(
                                             ColumnPath::Physical(new_column_path),
-                                            ColumnPath::Param(PgExtension::Param(
-                                                SQLParamContainer::f32_array(vector_value),
+                                            ColumnPath::Param(SQLParamContainer::f32_array(
+                                                vector_value,
                                             )),
                                             parameter
                                                 .vector_distance_function

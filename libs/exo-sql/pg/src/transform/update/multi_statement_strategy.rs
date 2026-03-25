@@ -320,7 +320,7 @@ fn delete_op<'a>(
 #[cfg(test)]
 mod tests {
     use crate::Column;
-    use crate::{PgExtension, Predicate, sql_param_container::SQLParamContainer};
+    use crate::{Predicate, sql_param_container::SQLParamContainer};
     use exo_sql_core::physical_column::get_otm_relation_for_columns;
     use exo_sql_model::{
         AbstractPredicate, AbstractSelect, AbstractUpdate, ColumnPath, NestedAbstractUpdate,
@@ -346,7 +346,7 @@ mod tests {
              }| {
                 let venue_id_path =
                     ColumnPath::Physical(PhysicalColumnPath::leaf(venues_id_column));
-                let literal = ColumnPath::Param(PgExtension::Param(SQLParamContainer::i32(5)));
+                let literal = ColumnPath::Param(SQLParamContainer::i32(5));
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let abs_update = AbstractUpdate {
@@ -354,9 +354,7 @@ mod tests {
                     predicate,
                     column_values: vec![(
                         venues_name_column,
-                        Column::Extension(PgExtension::Param(SQLParamContainer::string(
-                            "new_name".to_string(),
-                        ))),
+                        Column::Param(SQLParamContainer::string("new_name".to_string())),
                     )],
                     nested_updates: vec![],
                     nested_inserts: vec![],
@@ -406,7 +404,7 @@ mod tests {
                 let venue_id_path =
                     ColumnPath::Physical(PhysicalColumnPath::leaf(venues_id_column));
 
-                let literal = ColumnPath::Param(PgExtension::Param(SQLParamContainer::i32(5)));
+                let literal = ColumnPath::Param(SQLParamContainer::i32(5));
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let nested_abs_update = NestedAbstractUpdate {
@@ -421,9 +419,9 @@ mod tests {
                         predicate: Predicate::True,
                         column_values: vec![(
                             concerts_name_column,
-                            Column::Extension(PgExtension::Param(SQLParamContainer::string(
+                            Column::Param(SQLParamContainer::string(
                                 "new_concert_name".to_string(),
-                            ))),
+                            )),
                         )],
                         selection: AbstractSelect {
                             table_id: venues_table,
@@ -445,9 +443,7 @@ mod tests {
                     predicate,
                     column_values: vec![(
                         venues_name_column,
-                        Column::Extension(PgExtension::Param(SQLParamContainer::string(
-                            "new_name".to_string(),
-                        ))),
+                        Column::Param(SQLParamContainer::string("new_name".to_string())),
                     )],
                     nested_updates: vec![nested_abs_update],
                     nested_inserts: vec![],

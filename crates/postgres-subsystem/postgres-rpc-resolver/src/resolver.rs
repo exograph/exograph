@@ -28,9 +28,9 @@ use exo_sql::{
     DatabaseExecutor, InsertionElement, InsertionRow, Limit, ManyToOne, NestedAbstractDelete,
     NestedAbstractInsert, NestedAbstractInsertSet, NestedAbstractUpdate, NestedInsertion, Offset,
     OneToMany, PgAbstractOperation, PgAbstractOrderBy, PgAbstractPredicate, PgAbstractSelect,
-    PgAliasedSelectionElement, PgExtension, PgInsertionElement, PgInsertionRow,
-    PgNestedAbstractDelete, PgNestedAbstractInsertSet, PgNestedAbstractUpdate, PhysicalColumnPath,
-    RelationId, Selection, SelectionCardinality, SelectionElement,
+    PgAliasedSelectionElement, PgInsertionElement, PgInsertionRow, PgNestedAbstractDelete,
+    PgNestedAbstractInsertSet, PgNestedAbstractUpdate, PhysicalColumnPath, RelationId, Selection,
+    SelectionCardinality, SelectionElement,
 };
 use postgres_core_model::access::{
     DatabaseAccessPrimitiveExpression, PrecheckAccessPrimitiveExpression,
@@ -1657,13 +1657,22 @@ fn build_pk_predicate(
         let column = column_id.get_column(&subsystem.core_subsystem.database);
         let value_column = cast::literal_column(value, column)
             .map_err(|e| SubsystemRpcError::UserDisplayError(e.user_error_message()))?;
-        let Column::Extension(PgExtension::Param(param)) = value_column else {
-            return Err(SubsystemRpcError::UserDisplayError(format!(
-                "Expected a literal value for PK field '{}'",
-                pk_field.name
-            )));
+        let param = match value_column {
+            Column::Param(param) => param,
+            Column::Null => {
+                return Err(SubsystemRpcError::UserDisplayError(format!(
+                    "Primary key field '{}' cannot be null",
+                    pk_field.name
+                )));
+            }
+            _ => {
+                return Err(SubsystemRpcError::UserDisplayError(format!(
+                    "Expected a literal value for PK field '{}'",
+                    pk_field.name
+                )));
+            }
         };
-        let value_path = ColumnPath::Param(PgExtension::Param(param));
+        let value_path = ColumnPath::Param(param);
         predicate = AbstractPredicate::and(
             predicate,
             AbstractPredicate::eq(

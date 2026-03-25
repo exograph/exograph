@@ -18,7 +18,7 @@ use super::table::Table;
 
 /// A select statement
 #[derive(Debug, PartialEq, Clone)]
-pub struct Select<Ext: DatabaseExtension = ()> {
+pub struct Select<Ext: DatabaseExtension> {
     /// The table to select from
     pub table: Table<Ext>,
     /// The columns to select

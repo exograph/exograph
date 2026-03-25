@@ -14,7 +14,7 @@ use super::table::Table;
 
 /// Represents a join between two tables. Currently, supports only left join.
 #[derive(Debug, PartialEq, Clone)]
-pub struct LeftJoin<Ext: DatabaseExtension = ()> {
+pub struct LeftJoin<Ext: DatabaseExtension> {
     /// The left table in the join such as `concerts`.
     left: Box<Table<Ext>>,
     /// The right table in the join such as `venues`.

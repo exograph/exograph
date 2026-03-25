@@ -19,9 +19,8 @@ use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate, Column,
     ColumnId, ColumnPath, ManyToOne, NestedAbstractDelete, NestedAbstractInsert,
     NestedAbstractInsertSet, NestedAbstractUpdate, OneToMany, PgAbstractPredicate,
-    PgAbstractSelect, PgAbstractUpdate, PgExtension, PgNestedAbstractDelete,
-    PgNestedAbstractInsert, PgNestedAbstractInsertSet, PgNestedAbstractUpdate, PhysicalColumnPath,
-    Selection,
+    PgAbstractSelect, PgAbstractUpdate, PgNestedAbstractDelete, PgNestedAbstractInsert,
+    PgNestedAbstractInsertSet, PgNestedAbstractUpdate, PhysicalColumnPath, Selection,
 };
 use futures::StreamExt;
 use postgres_core_model::{
@@ -314,9 +313,7 @@ async fn compute_nested_update_object_arg<'a>(
             .into_iter()
             .fold(AbstractPredicate::True, |acc, (pk_col, value)| {
                 let value = match value {
-                    Column::Extension(PgExtension::Param(value)) => {
-                        ColumnPath::Param(PgExtension::Param(value))
-                    }
+                    Column::Param(value) => ColumnPath::Param(value),
                     _ => panic!("Expected literal"),
                 };
                 AbstractPredicate::and(
@@ -537,9 +534,7 @@ async fn compute_nested_delete_object_arg<'a>(
             .into_iter()
             .fold(AbstractPredicate::True, |acc, (pk_col, value)| {
                 let value = match value {
-                    Column::Extension(PgExtension::Param(value)) => {
-                        ColumnPath::Param(PgExtension::Param(value))
-                    }
+                    Column::Param(value) => ColumnPath::Param(value),
                     _ => panic!("Expected literal"),
                 };
                 AbstractPredicate::and(

@@ -16,10 +16,3 @@ pub trait ParamEquality {
     /// the parameters are equal, and `Some(false)` if they are not.
     fn param_eq(&self, other: &Self) -> Option<bool>;
 }
-
-/// Default implementation for the unit type (used as the default `Ext` parameter).
-impl ParamEquality for () {
-    fn param_eq(&self, _other: &Self) -> Option<bool> {
-        None
-    }
-}

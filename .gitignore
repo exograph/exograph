@@ -1,5 +1,6 @@
 target
 node_modules
+deno.lock
 *.deno.lock
 *.exo_ir
 .vscode

@@ -20,7 +20,7 @@ use super::select::Select;
 /// The `Ext` type parameter allows database-specific extensions (e.g., Postgres-specific
 /// parameter binding, JSON aggregation, etc.) without polluting the core types.
 #[derive(Debug, PartialEq, Clone)]
-pub enum Column<Ext: DatabaseExtension = ()> {
+pub enum Column<Ext: DatabaseExtension> {
     /// An actual physical column in a table
     Physical {
         column_id: ColumnId,
@@ -39,6 +39,8 @@ pub enum Column<Ext: DatabaseExtension = ()> {
     Star(Option<SchemaObjectName>),
     /// A null value
     Null,
+    /// A literal value such as a string or number. Mapped to a placeholder to avoid SQL injection.
+    Param(Ext::Param),
     /// A function applied to a column (e.g., `count(id)`)
     Function(Function<Ext>),
     /// A predicate used as a column expression
@@ -59,6 +61,7 @@ impl<Ext: DatabaseExtension> Column<Ext> {
 impl<Ext: DatabaseExtension> ParamEquality for Column<Ext> {
     fn param_eq(&self, other: &Self) -> Option<bool> {
         match (self, other) {
+            (Column::Param(v1), Column::Param(v2)) => Some(v1 == v2),
             (Column::Extension(e1), Column::Extension(e2)) => e1.param_eq(e2),
             _ => None,
         }
