@@ -16,7 +16,7 @@ use core_model::{
     },
 };
 use core_model_builder::{
-    ast::ast_types::{AstFieldDefaultValue, default_span},
+    ast::ast_types::{AstFieldDefaultValue, AstProjectionExpr, default_span},
     typechecker::Typed,
 };
 
@@ -64,6 +64,9 @@ pub struct ResolvedCompositeType {
     pub fields: Vec<ResolvedField>,
     pub table_name: SchemaObjectName,
     pub access: ResolvedAccess,
+    /// User-defined projection expressions from `@projection` annotation.
+    /// Each entry is (projection_name, expression).
+    pub projection_exprs: Vec<(String, AstProjectionExpr)>,
     pub doc_comments: Option<String>,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]

@@ -1,25 +1,49 @@
-# A regular user cannot see the internalTier field (access requires tier-querier or admin role).
 # internalTier has @access(query=AuthContext.role == "tier-querier" || AuthContext.role == "admin").
-# This resolves to false for a regular user, so internalTier is omitted from the response.
-# Entity access: self.userId == AuthContext.id -> user sees only their own customer.
-operation:
-  type: rpc
-  payload: |
-    {
-      "method": "get_customers"
-    }
-auth: |
-  {
-    "sub": 1,
-    "role": "user"
-  }
-response: |
-  {
-    "result": [
+# The "basic" projection is overridden to exclude internalTier, so regular users can query normally.
+# The "full" projection includes internalTier, so requesting it as a regular user errors.
+stages:
+  # Default basic projection (overridden to exclude internalTier) → succeeds for regular user
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_customers"
+        }
+    auth: |
       {
-        "id": $.c1id,
-        "name": "C1",
-        "userId": 1
+        "sub": 1,
+        "role": "user"
       }
-    ]
-  }
+    response: |
+      {
+        "result": [
+          {
+            "id": $.c1id,
+            "name": "C1",
+            "userId": 1
+          }
+        ]
+      }
+
+  # "full" projection includes internalTier → authorization error for regular user
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_customers",
+          "params": {
+            "projection": "full"
+          }
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "user"
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }

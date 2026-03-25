@@ -8,18 +8,19 @@
 // by the Apache License, Version 2.0.
 
 use core_model::types::{FieldType, OperationReturnType, TypeValidation};
+use postgres_core_model::projection::{
+    PROJECTION_BASIC, PROJECTION_PK, ProjectionElement, ResolvedProjection,
+};
 use postgres_core_model::relation::PostgresRelation;
 use postgres_core_model::types::{EntityType, PostgresFieldType, PostgresPrimitiveTypeKind};
 use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
 use rpc_introspection::schema::{RpcObjectField, RpcObjectType, RpcSchema, RpcTypeSchema};
 use std::collections::HashSet;
 
-use super::ReturnTypeKind;
-
 /// Shared recursive return type schema builder.
 pub(crate) fn build_return_type_schema_with(
     return_type: &OperationReturnType<EntityType>,
-    kind: ReturnTypeKind,
+    projection_name: &str,
     subsystem: &PostgresRpcSubsystemWithRouter,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
@@ -27,23 +28,33 @@ pub(crate) fn build_return_type_schema_with(
     match return_type {
         OperationReturnType::Plain(base) => {
             let entity_type = &subsystem.core_subsystem.entity_types[base.associated_type_id];
-            match kind {
-                ReturnTypeKind::Full => {
-                    ensure_entity_type_added(entity_type, subsystem, schema, added_types);
-                    RpcTypeSchema::object(&entity_type.name)
-                }
-                ReturnTypeKind::PkOnly => {
-                    ensure_pk_type_added(entity_type, subsystem, schema, added_types);
-                    RpcTypeSchema::object(pk_type_name(&entity_type.name))
-                }
-            }
+
+            let projection = entity_type.projection_by_name(projection_name);
+
+            let projection = projection.unwrap_or_else(|| {
+                panic!(
+                    "Projection `{}` not found for type `{}`",
+                    projection_name, entity_type.name
+                )
+            });
+
+            let type_name = projection_type_name(&entity_type.name, &projection.name);
+            ensure_projection_type_added(
+                &type_name,
+                entity_type,
+                projection,
+                subsystem,
+                schema,
+                added_types,
+            );
+            RpcTypeSchema::object(&type_name)
         }
         OperationReturnType::Optional(inner) => RpcTypeSchema::optional(
-            build_return_type_schema_with(inner, kind, subsystem, schema, added_types),
+            build_return_type_schema_with(inner, projection_name, subsystem, schema, added_types),
         ),
         OperationReturnType::List(inner) => RpcTypeSchema::array(build_return_type_schema_with(
             inner,
-            kind,
+            projection_name,
             subsystem,
             schema,
             added_types,
@@ -51,41 +62,8 @@ pub(crate) fn build_return_type_schema_with(
     }
 }
 
-pub(crate) fn pk_type_name(entity_name: &str) -> String {
+fn pk_type_name(entity_name: &str) -> String {
     format!("{entity_name}PK")
-}
-
-/// Ensure the PK type for an entity is added to the schema.
-/// PK types have `additionalProperties: false` so they can be used in oneOf for disambiguation.
-pub(crate) fn ensure_pk_type_added(
-    entity_type: &EntityType,
-    subsystem: &PostgresRpcSubsystemWithRouter,
-    schema: &mut RpcSchema,
-    added_types: &mut HashSet<String>,
-) {
-    let type_name = pk_type_name(&entity_type.name);
-
-    if added_types.contains(&type_name) {
-        return;
-    }
-    added_types.insert(type_name.clone());
-
-    let mut pk_obj = RpcObjectType::new(&type_name).with_additional_properties_false();
-
-    for pk_field in entity_type.pk_fields() {
-        if let PostgresRelation::Scalar { .. } = pk_field.relation {
-            let field_schema = build_field_type_schema(
-                &pk_field.typ,
-                pk_field.type_validation.as_ref(),
-                subsystem,
-                schema,
-                added_types,
-            );
-            pk_obj = pk_obj.with_field(RpcObjectField::new(&pk_field.name, field_schema));
-        }
-    }
-
-    schema.add_object_type(type_name, pk_obj);
 }
 
 pub(crate) fn ensure_entity_type_added(
@@ -175,6 +153,139 @@ pub(crate) fn ensure_ref_type_added(
         schema.add_object_type(ref_type_name.clone(), ref_obj);
     }
     ref_type_name
+}
+
+/// Generate a type name for a projection: "Concert" for basic, "ConcertPK" for pk,
+/// "ConcertWithVenue" for custom projections.
+fn projection_type_name(entity_name: &str, projection_name: &str) -> String {
+    match projection_name {
+        PROJECTION_BASIC => entity_name.to_string(),
+        PROJECTION_PK => pk_type_name(entity_name),
+        name => {
+            let mut chars = name.chars();
+            let capitalized: String = match chars.next() {
+                Some(c) => c.to_uppercase().chain(chars).collect(),
+                None => String::new(),
+            };
+            format!("{entity_name}{capitalized}")
+        }
+    }
+}
+
+/// Ensure a projection-based type is added to the schema.
+fn ensure_projection_type_added(
+    type_name: &str,
+    entity_type: &EntityType,
+    projection: &ResolvedProjection,
+    subsystem: &PostgresRpcSubsystemWithRouter,
+    schema: &mut RpcSchema,
+    added_types: &mut HashSet<String>,
+) {
+    if added_types.contains(type_name) {
+        return;
+    }
+    added_types.insert(type_name.to_string());
+
+    let mut obj_type = RpcObjectType::new(type_name);
+
+    if let Some(doc) = &entity_type.doc_comments {
+        obj_type = obj_type.with_description(doc);
+    }
+
+    for element in &projection.elements {
+        match element {
+            ProjectionElement::ScalarField(field_name) => {
+                if let Some(field) = entity_type.field_by_name(field_name) {
+                    let field_schema = build_field_type_schema(
+                        &field.typ,
+                        field.type_validation.as_ref(),
+                        subsystem,
+                        schema,
+                        added_types,
+                    );
+                    let mut obj_field = RpcObjectField::new(&field.name, field_schema);
+                    if let Some(doc) = &field.doc_comments {
+                        obj_field = obj_field.with_description(doc);
+                    }
+                    obj_type = obj_type.with_field(obj_field);
+                }
+            }
+            ProjectionElement::RelationProjection {
+                relation_field_name,
+                projection_name,
+            } => {
+                if let Some(field) = entity_type.field_by_name(relation_field_name) {
+                    match &field.relation {
+                        PostgresRelation::ManyToOne { relation, .. } => {
+                            let foreign_entity =
+                                &subsystem.core_subsystem.entity_types[relation.foreign_entity_id];
+                            let rel_type_name =
+                                projection_type_name(&foreign_entity.name, projection_name);
+
+                            if let Some(foreign_projection) =
+                                foreign_entity.projection_by_name(projection_name)
+                            {
+                                ensure_projection_type_added(
+                                    &rel_type_name,
+                                    foreign_entity,
+                                    foreign_projection,
+                                    subsystem,
+                                    schema,
+                                    added_types,
+                                );
+                            }
+
+                            let ref_schema = match &field.typ {
+                                FieldType::Optional(_) => {
+                                    RpcTypeSchema::optional(RpcTypeSchema::object(&rel_type_name))
+                                }
+                                _ => RpcTypeSchema::object(&rel_type_name),
+                            };
+
+                            let mut obj_field =
+                                RpcObjectField::new(relation_field_name, ref_schema);
+                            if let Some(doc) = &field.doc_comments {
+                                obj_field = obj_field.with_description(doc);
+                            }
+                            obj_type = obj_type.with_field(obj_field);
+                        }
+                        PostgresRelation::OneToMany(relation) => {
+                            let foreign_entity =
+                                &subsystem.core_subsystem.entity_types[relation.foreign_entity_id];
+                            let rel_type_name =
+                                projection_type_name(&foreign_entity.name, projection_name);
+
+                            if let Some(foreign_projection) =
+                                foreign_entity.projection_by_name(projection_name)
+                            {
+                                ensure_projection_type_added(
+                                    &rel_type_name,
+                                    foreign_entity,
+                                    foreign_projection,
+                                    subsystem,
+                                    schema,
+                                    added_types,
+                                );
+                            }
+
+                            let item_schema = RpcTypeSchema::object(&rel_type_name);
+                            let array_schema = RpcTypeSchema::array(item_schema);
+
+                            let mut obj_field =
+                                RpcObjectField::new(relation_field_name, array_schema);
+                            if let Some(doc) = &field.doc_comments {
+                                obj_field = obj_field.with_description(doc);
+                            }
+                            obj_type = obj_type.with_field(obj_field);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+
+    schema.add_object_type(type_name.to_string(), obj_type);
 }
 
 pub(crate) fn build_field_type_schema(

@@ -123,6 +123,10 @@ impl EntityType {
         self.fields.iter().find(|field| field.name == name)
     }
 
+    pub fn projection_by_name(&self, name: &str) -> Option<&ResolvedProjection> {
+        self.projections.iter().find(|p| p.name == name)
+    }
+
     pub fn pk_fields(&self) -> Vec<&PostgresField<EntityType>> {
         self.fields
             .iter()

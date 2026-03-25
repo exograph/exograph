@@ -24,7 +24,7 @@ stages:
       payload: |
         {
           "method": "get_customer",
-          "params": {"id": 5}
+          "params": {"id": 5, "projection": "full"}
         }
     auth: |
       {

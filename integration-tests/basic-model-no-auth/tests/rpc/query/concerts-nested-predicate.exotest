@@ -68,3 +68,106 @@ stages:
           {"id": 4, "title": "Concert4", "published": false, "price": "22.50", "venue": {"id": 2}}
         ]
       }
+
+  # With withVenue projection — venue expanded to include all basic fields
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "where": {"venue": {"id": {"eq": 1}}},
+            "projection": "withVenue"
+          }
+        }
+    response: |
+      {
+        "result": [
+          {
+            "id": 1,
+            "title": "Concert1",
+            "published": true,
+            "price": "20.50",
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "published": true,
+              "latitude": 37.7749
+            }
+          },
+          {
+            "id": 3,
+            "title": "Concert3",
+            "published": true,
+            "price": "30.50",
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "published": true,
+              "latitude": 37.7749
+            }
+          }
+        ]
+      }
+
+  # With summary projection — only id and title
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "where": {"venue": {"id": {"eq": 1}}},
+            "projection": "summary"
+          }
+        }
+    response: |
+      {
+        "result": [
+          {
+            "id": 1,
+            "title": "Concert1"
+          },
+          {
+            "id": 3,
+            "title": "Concert3"
+          }
+        ]
+      }
+
+  # With pk projection — only id
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "where": {"venue": {"id": {"eq": 1}}},
+            "projection": "pk"
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": 1},
+          {"id": 3}
+        ]
+      }
+
+  # Non-existent projection name — rejected by schema validation
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "projection": "nonExistent"
+          }
+        }
+    response: |
+      {
+        "error": {
+          "code": -32602,
+          "message": "Invalid enum value 'nonExistent' at 'projection': allowed values are [\"basic\", \"pk\", \"summary\", \"withVenue\"]"
+        }
+      }

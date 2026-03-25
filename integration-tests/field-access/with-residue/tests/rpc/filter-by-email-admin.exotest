@@ -5,7 +5,8 @@ operation:
     {
       "method": "get_people",
       "params": {
-        "where": {"email": {"eq": "p1@example.com"}}
+        "where": {"email": {"eq": "p1@example.com"}},
+        "projection": "full"
       }
     }
 auth: |

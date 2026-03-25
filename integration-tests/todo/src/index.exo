@@ -12,6 +12,7 @@ context AuthContext {
 
 @postgres
 module TodoDatabase {
+  @projection(withUser = /basic + user/basic)
   @access(self.user.id == AuthContext.id || AuthContext.role == "admin")
   type Todo {
     @pk id: Int = autoIncrement()

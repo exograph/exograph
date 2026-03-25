@@ -9,6 +9,11 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Built-in projection name: primary key fields only. Default for mutations.
+pub const PROJECTION_PK: &str = "pk";
+/// Built-in projection name: all scalars + ManyToOne as PK refs. Default for queries.
+pub const PROJECTION_BASIC: &str = "basic";
+
 /// A resolved projection — the concrete set of fields to include in a response.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResolvedProjection {

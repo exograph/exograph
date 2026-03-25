@@ -5,6 +5,11 @@ context AuthContext {
 
 @postgres
 module PeopleDatabase {
+  @projection(
+    // Redefine basic to exclude access-controlled field
+    basic = id + name + age + authId,
+    full = /basic + email
+  )
   @access(true)
   @plural("People")
   type Person {

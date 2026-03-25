@@ -1,6 +1,10 @@
 @postgres
 module ConcertModule {
   @table("concerts")
+  @projection(
+    withVenue = /basic + venue/basic,
+    summary = id + title
+  )
   @access(true)
   type Concert {
     @pk

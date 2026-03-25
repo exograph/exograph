@@ -43,6 +43,20 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "pk",
+              "basic",
+              "summary",
+              "withVenue"
+            ]
+          }
         }
       ],
       "result": {
@@ -93,6 +107,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "pk",
+              "basic"
+            ]
+          }
         }
       ],
       "result": {
@@ -115,6 +141,20 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "pk",
+              "basic",
+              "summary",
+              "withVenue"
+            ]
+          }
         }
       ],
       "result": {
@@ -134,6 +174,18 @@
           "required": true,
           "schema": {
             "type": "integer"
+          }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "pk",
+              "basic"
+            ]
           }
         }
       ],
@@ -444,7 +496,7 @@
   ],
   "components": {
     "schemas": {
-      "VenueRef": {
+      "VenuePK": {
         "type": "object",
         "properties": {
           "id": {
@@ -465,7 +517,7 @@
             "type": "string"
           },
           "venue": {
-            "$ref": "#/components/schemas/VenueRef"
+            "$ref": "#/components/schemas/VenuePK"
           },
           "published": {
             "type": "boolean"
@@ -768,10 +820,9 @@
         },
         "required": [
           "id"
-        ],
-        "additionalProperties": false
+        ]
       },
-      "VenuePK": {
+      "VenueRef": {
         "type": "object",
         "properties": {
           "id": {
@@ -780,8 +831,7 @@
         },
         "required": [
           "id"
-        ],
-        "additionalProperties": false
+        ]
       },
       "ConcertUpdateInput": {
         "type": "object",

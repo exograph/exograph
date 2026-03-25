@@ -20,7 +20,7 @@ stages:
         "result": {"id": 5}
       }
 
-  # Verify it was created
+  # Verify it was created (default basic projection)
   - operation:
       type: rpc
       payload: |
@@ -38,5 +38,51 @@ stages:
           "published": true,
           "price": "15.00",
           "venue": {"id": 1}
+        }
+      }
+
+  # Verify with withVenue projection — venue expanded
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {
+            "id": 5,
+            "projection": "withVenue"
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 5,
+          "title": "New Concert",
+          "published": true,
+          "price": "15.00",
+          "venue": {
+            "id": 1,
+            "name": "Venue1",
+            "published": true,
+            "latitude": 37.7749
+          }
+        }
+      }
+
+  # Verify with summary projection — only id and title
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concert",
+          "params": {
+            "id": 5,
+            "projection": "summary"
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 5,
+          "title": "New Concert"
         }
       }

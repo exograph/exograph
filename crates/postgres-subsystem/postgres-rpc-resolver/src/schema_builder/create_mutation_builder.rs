@@ -8,6 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use core_model::types::FieldType;
+use postgres_core_model::projection::PROJECTION_PK;
 use postgres_core_model::relation::{OneToManyRelation, PostgresRelation};
 use postgres_core_model::types::EntityType;
 use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
@@ -16,7 +17,6 @@ use rpc_introspection::schema::{
 };
 use std::collections::HashSet;
 
-use super::ReturnTypeKind;
 use super::type_builder::{
     build_field_type_schema, build_return_type_schema_with, ensure_ref_type_added,
 };
@@ -37,7 +37,7 @@ pub(super) fn build_create_method<P>(
     let entity_type = op.return_type.typ(&subsystem.core_subsystem.entity_types);
     let result_schema = build_return_type_schema_with(
         &op.return_type,
-        ReturnTypeKind::PkOnly,
+        PROJECTION_PK,
         subsystem,
         schema,
         added_types,

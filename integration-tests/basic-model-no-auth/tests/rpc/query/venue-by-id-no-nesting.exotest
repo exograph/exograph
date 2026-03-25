@@ -36,3 +36,19 @@ stages:
           "latitude": 35.6762
         }
       }
+
+  # With pk projection — only id
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venue",
+          "params": {
+            "id": 1,
+            "projection": "pk"
+          }
+        }
+    response: |
+      {
+        "result": {"id": 1}
+      }

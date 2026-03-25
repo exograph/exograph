@@ -122,3 +122,39 @@ stages:
           {"id": $.u2TodoIds[2], "title": "U2-T3", "completed": false, "priority": "LOW", "user": {"id": $.u2Id}}
         ]
       }
+
+  # With withUser projection — user expanded to include basic fields
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todos",
+          "params": {
+            "where": {"priority": {"eq": "HIGH"}},
+            "projection": "withUser"
+          }
+        }
+    auth: |
+      {
+        "role": "admin",
+        "sub": null
+      }
+    response: |
+      {
+        "result": [
+          {
+            "id": $.u1TodoIds[2],
+            "title": "U1-T3",
+            "completed": false,
+            "priority": "HIGH",
+            "user": {
+              "id": $.u1Id,
+              "email": "one@example.com",
+              "firstName": "F1",
+              "lastName": "L1",
+              "profileImageUrl": "https://example.com/1.jpg",
+              "role": "user"
+            }
+          }
+        ]
+      }

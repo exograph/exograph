@@ -39,7 +39,7 @@ use core_model_builder::{
     ast::ast_types::{
         AstAccessExpr, AstAnnotation, AstAnnotationParam, AstAnnotationParams, AstField,
         AstFieldDefault, AstFieldDefaultKind, AstFieldType, AstLiteral, AstModel, AstModelKind,
-        default_span,
+        AstProjectionExpr, default_span,
     },
     builder::resolved_builder::{AnnotationMapHelper, compute_fragment_fields},
     error::ModelBuildingError,
@@ -251,6 +251,8 @@ fn resolve_composite_type(
         let resolved_fields =
             resolve_composite_type_fields(ct, is_json, table_managed, typechecked_system, errors);
 
+        let projection_exprs = extract_projection_exprs(ct);
+
         resolved_postgres_types.add(
             &ct.name,
             ResolvedType::Composite(ResolvedCompositeType {
@@ -263,6 +265,7 @@ fn resolve_composite_type(
                     schema: schema_name,
                 },
                 access: access.clone(),
+                projection_exprs,
                 doc_comments: ct.doc_comments.clone(),
                 span: ct.span,
             }),
@@ -1262,6 +1265,24 @@ fn extract_table_annotation(
                 managed: None,
             })
         }
+    }
+}
+
+/// Extract projection expressions from the `@projection` annotation on a type.
+fn extract_projection_exprs(ct: &AstModel<Typed>) -> Vec<(String, AstProjectionExpr)> {
+    let Some(params) = ct.annotations.get("projection") else {
+        return vec![];
+    };
+
+    match params {
+        AstAnnotationParams::Map(params, _) => params
+            .iter()
+            .filter_map(|(name, param)| match param {
+                AstAnnotationParam::Projection(expr) => Some((name.clone(), expr.clone())),
+                _ => None,
+            })
+            .collect(),
+        _ => vec![],
     }
 }
 

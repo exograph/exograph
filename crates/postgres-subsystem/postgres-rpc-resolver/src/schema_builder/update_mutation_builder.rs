@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use postgres_core_model::projection::PROJECTION_PK;
 use postgres_core_model::relation::{OneToManyRelation, PostgresRelation};
 use postgres_core_model::types::EntityType;
 use postgres_rpc_model::operation::{CollectionUpdate, HasPredicateParams};
@@ -21,8 +22,7 @@ use super::type_builder::{
     build_field_type_schema, build_return_type_schema_with, ensure_ref_type_added,
 };
 use super::{
-    BuildRpcMethod, BuildRpcTypeSchema, HasMethodNameAndReturnType, ReturnTypeKind,
-    build_predicate_params_method,
+    BuildRpcMethod, BuildRpcTypeSchema, HasMethodNameAndReturnType, build_predicate_params_method,
 };
 
 fn update_input_type_name(entity_name: &str) -> String {
@@ -39,7 +39,7 @@ impl BuildRpcMethod for CollectionUpdate {
         let entity_type = self.return_type.typ(&subsystem.core_subsystem.entity_types);
         let result_schema = build_return_type_schema_with(
             &self.return_type,
-            ReturnTypeKind::PkOnly,
+            PROJECTION_PK,
             subsystem,
             schema,
             added_types,
@@ -89,7 +89,7 @@ where
     T: HasPredicateParams + HasMethodNameAndReturnType,
 {
     let mut method =
-        build_predicate_params_method(op, ReturnTypeKind::PkOnly, subsystem, schema, added_types);
+        build_predicate_params_method(op, PROJECTION_PK, subsystem, schema, added_types);
 
     // Append `data` parameter
     let entity_type = op.return_type().typ(&subsystem.core_subsystem.entity_types);
