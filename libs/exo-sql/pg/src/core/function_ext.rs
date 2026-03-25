@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use crate::Function;
-use crate::pg_extension::PgExtension;
+use crate::core::pg_extension::PgExtension;
 use crate::physical_column_type::{PhysicalColumnTypeExt, VectorColumnType};
 use exo_sql_core::Database;
 

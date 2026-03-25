@@ -12,8 +12,8 @@ use std::collections::HashMap;
 use exo_sql_core::Database;
 
 use crate::{
-    ExpressionBuilder, SQLBuilder, column::Column, pg_extension::PgExtension,
-    predicate_ext::ConcretePredicate, table::Table,
+    ExpressionBuilder, SQLBuilder, column::Column, core::pg_extension::PgExtension,
+    core::predicate_ext::ConcretePredicate, core::table::Table,
 };
 
 // Re-export the core Select type specialized to PgExtension
@@ -84,8 +84,8 @@ mod tests {
     use crate::test_database_builder::*;
     use exo_sql_core::SchemaObjectName;
 
-    use crate::json_object::{JsonObject, JsonObjectElement};
-    use crate::pg_extension::PgExtension;
+    use crate::core::json_object::{JsonObject, JsonObjectElement};
+    use crate::core::pg_extension::PgExtension;
 
     use multiplatform_test::multiplatform_test;
 

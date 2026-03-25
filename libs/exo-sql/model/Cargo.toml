@@ -5,6 +5,7 @@ edition.workspace = true
 publish = false
 
 [dependencies]
+async-trait.workspace = true
 exo-sql-core = { path = "../core" }
 tracing.workspace = true
 

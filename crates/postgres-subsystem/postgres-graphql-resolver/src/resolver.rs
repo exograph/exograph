@@ -22,14 +22,14 @@ use core_resolver::{
     system_resolver::GraphQLSystemResolver,
     validation::field::ValidatedField,
 };
-use exo_sql::DatabaseExecutor;
+use exo_sql::PgBackend;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
 pub struct PostgresSubsystemResolver {
     pub id: &'static str,
     pub subsystem: PostgresGraphQLSubsystem,
-    pub executor: Arc<DatabaseExecutor>,
+    pub executor: Arc<PgBackend>,
 }
 
 #[async_trait]

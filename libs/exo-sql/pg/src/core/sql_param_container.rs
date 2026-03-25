@@ -19,9 +19,9 @@ use tokio_postgres::types::{ToSql, Type, to_sql_checked};
 use exo_sql_core::SchemaObjectName;
 
 use crate::{
-    sql_bytes::SQLBytes,
-    sql_param::{SQLParam, SQLParamWithType},
-    sql_value::SQLValue,
+    core::sql_bytes::SQLBytes,
+    core::sql_param::{SQLParam, SQLParamWithType},
+    core::sql_value::SQLValue,
 };
 
 #[derive(Clone)]

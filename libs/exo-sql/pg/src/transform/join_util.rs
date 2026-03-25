@@ -7,7 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{Column, ConcretePredicate, join::LeftJoin, table::Table};
+use crate::Column;
+use crate::core::{join::LeftJoin, predicate_ext::ConcretePredicate, table::Table};
 use exo_sql_core::{Database, TableId};
 use exo_sql_model::selection_level::SelectionLevel;
 use exo_sql_model::{
@@ -15,7 +16,7 @@ use exo_sql_model::{
     column_path::{ColumnPathLink, RelationLink},
 };
 
-use crate::table_dependency::{DependencyLink, TableDependency};
+use crate::transform::table_dependency::{DependencyLink, TableDependency};
 
 /// Compute the join needed to access the leaf columns of a list of column paths. Will return a
 /// `Table::Physical` if there are no dependencies to join otherwise a `Table::Join`.
@@ -114,7 +115,7 @@ mod tests {
     use exo_sql_core::PhysicalColumnPath;
     use exo_sql_model::selection_level::SelectionLevel;
 
-    use crate::transform_test_util::TestSetup;
+    use crate::transform::transform_test_util::TestSetup;
 
     use multiplatform_test::multiplatform_test;
 

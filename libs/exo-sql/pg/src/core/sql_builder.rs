@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use exo_sql_core::Database;
 
 use crate::ExpressionBuilder;
-use crate::sql_param::SQLParamWithType;
+use crate::core::sql_param::SQLParamWithType;
 use exo_sql_core::SchemaObjectName;
 
 pub struct SQLBuilder {

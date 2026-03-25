@@ -8,8 +8,8 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    Column, ConcretePredicate, PgAbstractOrderBy, PgAbstractPredicate, PgExtension, PgSelection,
-    select::Select, table::Table,
+    Column, PgAbstractOrderBy, PgAbstractPredicate, PgExtension, PgSelection,
+    core::predicate_ext::ConcretePredicate, core::select::Select, core::table::Table,
 };
 use exo_sql_core::{Database, Limit, Offset, RelationId, SchemaObjectName, TableId};
 use exo_sql_model::{
@@ -18,7 +18,7 @@ use exo_sql_model::{
     transformer::{OrderByTransformer, PredicateTransformer},
 };
 
-use crate::{join_util, pg::Postgres};
+use crate::{pg::Postgres, transform::join_util};
 
 use super::selection::SelectionExt;
 use super::selection_context::SelectionContext;

@@ -19,7 +19,9 @@ pool = ["deadpool-postgres"]
 test-support = ["ctor", "postgres-url", "tls"]
 
 [dependencies]
+async-trait.workspace = true
 exo-sql-core = { path = "../core" }
+exo-sql-model = { path = "../model" }
 exo-sql-pg = { path = "../pg" }
 futures.workspace = true
 tokio-postgres = { workspace = true, features = [

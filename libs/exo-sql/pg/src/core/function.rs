@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::pg_extension::PgExtension;
+use crate::core::pg_extension::PgExtension;
 
 /// A function in a Postgres context (uses PgExtension for VectorDistance etc.)
 pub type Function = exo_sql_core::operation::Function<PgExtension>;

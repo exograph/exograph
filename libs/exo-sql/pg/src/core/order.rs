@@ -9,8 +9,8 @@
 
 use exo_sql_core::{Database, Ordering};
 
-use crate::pg_extension::{PgExtension, VectorDistanceOperand};
-use crate::{ExpressionBuilder, SQLBuilder, vector::VectorDistance};
+use crate::core::pg_extension::{PgExtension, VectorDistanceOperand};
+use crate::{ExpressionBuilder, SQLBuilder, core::vector::VectorDistance};
 
 // Re-export the core OrderBy types specialized to PgExtension
 pub type OrderBy = exo_sql_core::operation::OrderBy<PgExtension>;

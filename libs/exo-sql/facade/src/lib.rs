@@ -9,12 +9,11 @@
 
 //! The core idea in this library is that of [AbstractOperation], which along with
 //! its variants, allows declaring an intention of a database operation at a higher
-//! level. It also offers [DatabaseExecutor], which is responsible for transforming
-//! an [AbstractOperation] into one or more SQL operations and executing them. This
-//! separation of intention vs execution allows for simplified expression from the
-//! user of the library and leaves out the details of the database operations.
-//! Although, currently it focuses solely on Postgres support, it should be easy to
-//! extend to other databases.
+//! level. It also offers [DatabaseBackend] (with [PgBackend] as the Postgres
+//! implementation), which is responsible for transforming an [AbstractOperation]
+//! into one or more SQL operations and executing them. This separation of intention
+//! vs execution allows for simplified expression from the user of the library and
+//! leaves out the details of the database operations.
 //!
 //! For example, consider [AbstractSelect]. It allows expressing the intention to
 //! query data by specifying the root table, a predicate, and (potentially nested)
@@ -40,6 +39,10 @@
 
 pub mod schema;
 
+pub mod array_util {
+    pub use exo_sql_pg::array_util::*;
+}
+
 pub mod column_default {
     pub use exo_sql_core::column_default::*;
 }
@@ -53,10 +56,6 @@ pub mod testing {
     pub use exo_sql_pg_connect::testing::*;
 }
 
-pub mod array_util {
-    pub use exo_sql_pg::array_util::*;
-}
-
 pub use exo_sql_model::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractOrderBy, AbstractOrderByExpr,
     AbstractPredicate, AbstractPredicateExt, AbstractSelect, AbstractUpdate,
@@ -67,9 +66,8 @@ pub use exo_sql_model::{
 
 pub use exo_sql_core::{ColumnPathLink, PhysicalColumnPath};
 
-mod database_executor;
-
-pub use database_executor::DatabaseExecutor;
+pub use exo_sql_model::DatabaseBackend;
+pub use exo_sql_pg_connect::PgBackend;
 pub use exo_sql_pg_connect::{
     TransactionHolder,
     connect::creation::{Connect, TransactionMode},
@@ -78,9 +76,7 @@ pub use exo_sql_pg_connect::{
 };
 
 pub use exo_sql_pg::column::Column;
-pub use exo_sql_pg::{
-    PgColumnType, PgColumnTypeExt, as_pg_column_type, ensure_registry_initialized, to_pg_array_type,
-};
+pub use exo_sql_pg::{PgColumnTypeExt, ensure_registry_initialized};
 
 pub use exo_sql_pg::physical_column_type::{
     ArrayColumnType, BlobColumnType, BooleanColumnType, DateColumnType, EnumColumnType, FloatBits,
@@ -93,18 +89,17 @@ pub use exo_sql_pg::physical_column_type::{
 pub use exo_sql_pg::{
     CaseSensitivity, Function, NumericComparator, ParamEquality, PgAbstractDelete,
     PgAbstractInsert, PgAbstractOperation, PgAbstractOrderBy, PgAbstractPredicate,
-    PgAbstractSelect, PgAbstractUpdate, PgAliasedSelectionElement, PgColumnPath, PgColumnValuePair,
-    PgExtension, PgInsertionElement, PgInsertionRow, PgNestedAbstractDelete,
-    PgNestedAbstractInsert, PgNestedAbstractInsertSet, PgNestedAbstractUpdate, PgNestedInsertion,
-    PgSelection, PgSelectionElement, Predicate, sql_bytes::SQLBytes, sql_param::SQLParam,
+    PgAbstractSelect, PgAbstractUpdate, PgAliasedSelectionElement, PgColumnPath, PgExtension,
+    PgInsertionElement, PgInsertionRow, PgNestedAbstractDelete, PgNestedAbstractInsert,
+    PgNestedAbstractInsertSet, PgNestedAbstractUpdate, PgSelectionElement, Predicate,
     sql_param_container::SQLParamContainer,
 };
 
 // Types that remain in core
 pub use exo_sql_core::{
-    ColumnId, ColumnReference, Database, DatabaseError, HNWSParams, IndexKind, Limit, ManyToOne,
-    ManyToOneId, Offset, OneToMany, OneToManyId, Ordering, PhysicalColumn, PhysicalEnum,
-    PhysicalIndex, PhysicalTable, RelationColumnPair, RelationId, SchemaObjectName, TableId,
+    ColumnId, ColumnReference, Database, DatabaseError, IndexKind, Limit, ManyToOne, ManyToOneId,
+    Offset, OneToMany, OneToManyId, Ordering, PhysicalColumn, PhysicalEnum, PhysicalIndex,
+    PhysicalTable, RelationColumnPair, RelationId, SchemaObjectName, TableId,
     physical_column::{get_mto_relation_for_columns, get_otm_relation_for_columns},
     vector::{DEFAULT_VECTOR_SIZE, VectorDistanceFunction},
 };
