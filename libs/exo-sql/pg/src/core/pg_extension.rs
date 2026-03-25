@@ -13,7 +13,7 @@
 //! that don't belong in database-agnostic types. Column, Function, and OrderByElementExpr
 //! use `Extension(PgExtension)` for their Postgres-specific variants.
 
-use exo_sql_core::operation::ParamEquality;
+use exo_sql_core::operation::{DatabaseExtension, ParamEquality};
 use exo_sql_core::{VectorDistanceFunction, physical_column::ColumnId};
 
 use crate::json_agg::JsonAgg;
@@ -24,9 +24,6 @@ use crate::sql_param_container::SQLParamContainer;
 #[derive(Debug, PartialEq, Clone)]
 pub enum PgExtension {
     // -- Column extensions --
-    /// A literal value such as a string or number e.g. 'Sam'. This will be mapped to a placeholder
-    /// to avoid SQL injection.
-    Param(SQLParamContainer),
     /// An array parameter with a wrapping such as ANY() or ALL()
     ArrayParam {
         param: SQLParamContainer,
@@ -54,6 +51,10 @@ pub enum PgExtension {
     ),
 }
 
+impl DatabaseExtension for PgExtension {
+    type Param = SQLParamContainer;
+}
+
 /// The wrapper type for array parameters (e.g., `ANY($1)` or `ALL($1)`)
 #[derive(Debug, PartialEq, Clone)]
 pub enum ArrayParamWrapper {
@@ -70,10 +71,7 @@ pub enum VectorDistanceOperand {
 }
 
 impl ParamEquality for PgExtension {
-    fn param_eq(&self, other: &Self) -> Option<bool> {
-        match (self, other) {
-            (PgExtension::Param(v1), PgExtension::Param(v2)) => Some(v1 == v2),
-            _ => None,
-        }
+    fn param_eq(&self, _other: &Self) -> Option<bool> {
+        None
     }
 }

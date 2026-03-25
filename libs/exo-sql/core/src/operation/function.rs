@@ -11,7 +11,7 @@ use crate::physical_column::ColumnId;
 
 /// A function applied to a column. For example, `count(id)` or `lower(first_name)`.
 #[derive(Debug, PartialEq, Clone)]
-pub enum Function<Ext = ()> {
+pub enum Function<Ext> {
     Named {
         function_name: String,
         column_id: ColumnId,

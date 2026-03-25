@@ -10,8 +10,8 @@
 use base64::DecodeError;
 use common::value::Val;
 use exo_sql::{
-    Column, ColumnPath, PgColumnPath, PgExtension, PhysicalColumn, PhysicalColumnType,
-    PhysicalColumnTypeExt, SQLParamContainer,
+    Column, ColumnPath, PgColumnPath, PhysicalColumn, PhysicalColumnType, PhysicalColumnTypeExt,
+    SQLParamContainer,
 };
 use indexmap::IndexMap;
 use std::sync::LazyLock;
@@ -75,11 +75,7 @@ pub fn literal_column(
     associated_column: &PhysicalColumn,
 ) -> Result<Column, PostgresExecutionError> {
     cast_value(value, associated_column.typ.inner(), false)
-        .map(|value| {
-            value
-                .map(|v| Column::Extension(PgExtension::Param(v)))
-                .unwrap_or(Column::Null)
-        })
+        .map(|value| value.map(Column::Param).unwrap_or(Column::Null))
         .map_err(PostgresExecutionError::CastError)
 }
 
@@ -89,11 +85,7 @@ pub fn literal_column_path(
     unnest: bool,
 ) -> Result<PgColumnPath, PostgresExecutionError> {
     cast_value(value, destination_type, unnest)
-        .map(|value| {
-            value
-                .map(|v| ColumnPath::Param(PgExtension::Param(v)))
-                .unwrap_or(ColumnPath::Null)
-        })
+        .map(|value| value.map(ColumnPath::Param).unwrap_or(ColumnPath::Null))
         .map_err(PostgresExecutionError::CastError)
 }
 

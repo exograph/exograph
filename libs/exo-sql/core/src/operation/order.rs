@@ -12,21 +12,21 @@ use crate::{ColumnId, Ordering};
 use super::DatabaseExtension;
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct OrderByElement<Ext: DatabaseExtension = ()>(
+pub struct OrderByElement<Ext: DatabaseExtension>(
     pub OrderByElementExpr<Ext>,
     pub Ordering,
     pub Option<String>,
 );
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum OrderByElementExpr<Ext: DatabaseExtension = ()> {
+pub enum OrderByElementExpr<Ext: DatabaseExtension> {
     Column(ColumnId),
     /// Database-specific ordering expression (e.g., pgvector distance)
     Extension(Ext),
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct OrderBy<Ext: DatabaseExtension = ()>(pub Vec<OrderByElement<Ext>>);
+pub struct OrderBy<Ext: DatabaseExtension>(pub Vec<OrderByElement<Ext>>);
 
 impl<Ext: DatabaseExtension> OrderBy<Ext> {
     pub fn new(elements: Vec<OrderByElement<Ext>>) -> Self {

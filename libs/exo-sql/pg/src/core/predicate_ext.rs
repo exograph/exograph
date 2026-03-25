@@ -166,7 +166,6 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use crate::pg_extension::PgExtension;
     use crate::sql_param_container::SQLParamContainer;
     use crate::test_database_builder::*;
     use exo_sql_core::{ColumnId, Database, SchemaObjectName};
@@ -197,7 +196,7 @@ mod tests {
         let age_column_id = database.get_column_id(people_table_id, "age").unwrap();
 
         let age_col = Column::physical(age_column_id, None);
-        let age_value_col = Column::Extension(PgExtension::Param(SQLParamContainer::i32(5)));
+        let age_value_col = Column::Param(SQLParamContainer::i32(5));
 
         let predicate = Predicate::Eq(age_col, age_value_col);
 
@@ -217,8 +216,8 @@ mod tests {
         let name_col_id = database.get_column_id(people_table_id, "name").unwrap();
         let age_col_id = database.get_column_id(people_table_id, "age").unwrap();
 
-        let name_value_col = Column::Extension(PgExtension::Param(SQLParamContainer::str("foo")));
-        let age_value_col = Column::Extension(PgExtension::Param(SQLParamContainer::i32(5)));
+        let name_value_col = Column::Param(SQLParamContainer::str("foo"));
+        let age_value_col = Column::Param(SQLParamContainer::i32(5));
 
         let name_predicate =
             ConcretePredicate::Eq(Column::physical(name_col_id, None), name_value_col);
@@ -249,8 +248,7 @@ mod tests {
 
         fn title_test_data(title_col_id: ColumnId) -> (Column, Column) {
             let title_col = Column::physical(title_col_id, None);
-            let title_value_col =
-                Column::Extension(PgExtension::Param(SQLParamContainer::str("utawaku")));
+            let title_value_col = Column::Param(SQLParamContainer::str("utawaku"));
 
             (title_col, title_value_col)
         }
@@ -323,16 +321,14 @@ mod tests {
                 "#,
             )
             .unwrap();
-            let json_value_col = Column::Extension(PgExtension::Param(SQLParamContainer::json(
-                json_value.clone(),
-            )));
+            let json_value_col = Column::Param(SQLParamContainer::json(json_value.clone()));
 
             (json_col, Arc::new(json_value), json_value_col)
         }
 
         let json_key_list: serde_json::Value = serde_json::from_str(r#"["a", "b"]"#).unwrap();
 
-        let json_key_col = Column::Extension(PgExtension::Param(SQLParamContainer::str("a")));
+        let json_key_col = Column::Param(SQLParamContainer::str("a"));
 
         //// Test bindings starting now
 
@@ -357,9 +353,7 @@ mod tests {
         );
 
         // matchKey
-        let json_key_list_col = Column::Extension(PgExtension::Param(SQLParamContainer::json(
-            json_key_list.clone(),
-        )));
+        let json_key_list_col = Column::Param(SQLParamContainer::json(json_key_list.clone()));
 
         let (json_col, _, _) = json_test_data(json_col_id);
 
@@ -382,9 +376,7 @@ mod tests {
         );
 
         // matchAllKeys
-        let json_key_list_col = Column::Extension(PgExtension::Param(SQLParamContainer::json(
-            json_key_list.clone(),
-        )));
+        let json_key_list_col = Column::Param(SQLParamContainer::json(json_key_list.clone()));
 
         let (json_col, _, _) = json_test_data(json_col_id);
 

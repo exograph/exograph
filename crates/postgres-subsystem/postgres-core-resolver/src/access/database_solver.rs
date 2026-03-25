@@ -26,8 +26,8 @@ use core_resolver::access_solver::{
     reduce_common_primitive_expression,
 };
 use exo_sql::{
-    AbstractPredicate, ColumnPath, PgAbstractPredicate, PgColumnPath, PgExtension,
-    PhysicalColumnPath, SQLParamContainer,
+    AbstractPredicate, ColumnPath, PgAbstractPredicate, PgColumnPath, PhysicalColumnPath,
+    SQLParamContainer,
 };
 use postgres_core_model::{
     access::DatabaseAccessPrimitiveExpression, subsystem::PostgresCoreSubsystem,
@@ -212,11 +212,9 @@ pub fn to_column_path(physical_column_path: &PhysicalColumnPath) -> PgColumnPath
 pub fn literal_column(value: Val) -> PgColumnPath {
     match value {
         Val::Null => ColumnPath::Null,
-        Val::Bool(v) => ColumnPath::Param(PgExtension::Param(SQLParamContainer::bool(v))),
-        Val::Number(v) => ColumnPath::Param(PgExtension::Param(SQLParamContainer::i32(
-            v.as_i64().unwrap() as i32,
-        ))), // TODO: Deal with the exact number type
-        Val::String(v) => ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(v))),
+        Val::Bool(v) => ColumnPath::Param(SQLParamContainer::bool(v)),
+        Val::Number(v) => ColumnPath::Param(SQLParamContainer::i32(v.as_i64().unwrap() as i32)), // TODO: Deal with the exact number type
+        Val::String(v) => ColumnPath::Param(SQLParamContainer::string(v)),
         Val::List(_) | Val::Object(_) | Val::Binary(_) | Val::Enum(_) => todo!(),
     }
 }

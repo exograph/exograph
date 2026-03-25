@@ -15,15 +15,6 @@ use crate::{ExpressionBuilder, SQLBuilder};
 impl ExpressionBuilder for PgExtension {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         match self {
-            PgExtension::Param(value) => {
-                if value.has_unnest() {
-                    builder.push_str("(SELECT unnest(");
-                    builder.push_param(value.param());
-                    builder.push_str("))");
-                } else {
-                    builder.push_param(value.param());
-                }
-            }
             PgExtension::ArrayParam { param, wrapper } => {
                 let wrapper_string = match wrapper {
                     ArrayParamWrapper::Any => "ANY",
@@ -45,7 +36,7 @@ impl ExpressionBuilder for PgExtension {
             }
             PgExtension::JsonAgg(agg) => agg.build(database, builder),
             // PgExtension is a flat enum shared across Column, Function, and OrderBy.
-            // Only column variants (Param, ArrayParam, JsonObject, JsonAgg) are valid here.
+            // Only column variants (ArrayParam, JsonObject, JsonAgg) are valid here.
             // TODO: Refactor PgExtension into separate enums for ColumnExtension, FunctionExtension, and OrderByExtension to enforce this at the type level.
             PgExtension::VectorDistanceFunction { .. } | PgExtension::VectorDistance(..) => {
                 unreachable!("Non-column PgExtension variant used in Column::Extension")

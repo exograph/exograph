@@ -66,6 +66,15 @@ impl ExpressionBuilder for Column {
             Column::Null => {
                 builder.push_str("NULL");
             }
+            Column::Param(value) => {
+                if value.has_unnest() {
+                    builder.push_str("(SELECT unnest(");
+                    builder.push_param(value.param());
+                    builder.push_str("))");
+                } else {
+                    builder.push_param(value.param());
+                }
+            }
             Column::Predicate(predicate) => {
                 builder.push('(');
                 predicate.build(database, builder);
@@ -117,6 +126,3 @@ impl PartialEq for ProxyColumn<'_> {
         }
     }
 }
-
-// ParamEquality for Column<PgExtension> is provided by core's blanket impl
-// which delegates to PgExtension::param_eq (defined in pg_extension.rs)

@@ -15,7 +15,7 @@ use super::select::Select;
 
 /// A table-like concept that can be used in place of `SELECT FROM <table-query> ...`.
 #[derive(Debug, PartialEq, Clone)]
-pub enum Table<Ext: DatabaseExtension = ()> {
+pub enum Table<Ext: DatabaseExtension> {
     /// A physical table such as `concerts`.
     Physical {
         table_id: TableId,

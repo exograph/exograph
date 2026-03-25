@@ -52,7 +52,7 @@ impl OrderByTransformer<PgExtension> for Postgres {
                                 ColumnPath::Physical(path) => {
                                     VectorDistanceOperand::PhysicalColumn(path.leaf_column())
                                 }
-                                ColumnPath::Param(PgExtension::Param(value)) => {
+                                ColumnPath::Param(value) => {
                                     VectorDistanceOperand::Param(value.clone())
                                 }
                                 _ => panic!("Expected physical column path or a parameter"),

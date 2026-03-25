@@ -28,7 +28,7 @@ pub use exo_sql_core::column_path::{ColumnPathLink, PhysicalColumnPath, Relation
 #[derive(Debug, PartialEq, Clone)]
 pub enum ColumnPath<Ext: DatabaseExtension> {
     Physical(PhysicalColumnPath),
-    Param(Ext),
+    Param(Ext::Param),
     Predicate(Box<AbstractPredicate<Ext>>),
     Null,
 }
@@ -36,7 +36,7 @@ pub enum ColumnPath<Ext: DatabaseExtension> {
 impl<Ext: DatabaseExtension> ParamEquality for ColumnPath<Ext> {
     fn param_eq(&self, other: &Self) -> Option<bool> {
         match (self, other) {
-            (Self::Param(v1), Self::Param(v2)) => v1.param_eq(v2),
+            (Self::Param(v1), Self::Param(v2)) => Some(v1 == v2),
             _ => None,
         }
     }

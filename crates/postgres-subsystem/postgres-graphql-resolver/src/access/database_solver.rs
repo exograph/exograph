@@ -17,8 +17,8 @@ mod tests {
 
     use exo_env::MapEnvironment;
     use exo_sql::{
-        AbstractPredicate, ColumnPath, PgAbstractPredicate, PgColumnPath, PgExtension,
-        PhysicalColumnPath, SQLParamContainer, SchemaObjectName,
+        AbstractPredicate, ColumnPath, PgAbstractPredicate, PgColumnPath, PhysicalColumnPath,
+        SQLParamContainer, SchemaObjectName,
     };
     use postgres_core_model::access::DatabaseAccessPrimitiveExpression;
     use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
@@ -233,12 +233,8 @@ mod tests {
             assert_eq!(
                 solved_predicate,
                 context_match_predicate(
-                    ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
-                        "token_value".to_string()
-                    ))),
-                    ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
-                        "token_value".to_string()
-                    ))),
+                    ColumnPath::Param(SQLParamContainer::string("token_value".to_string())),
+                    ColumnPath::Param(SQLParamContainer::string("token_value".to_string())),
                 )
             );
 
@@ -255,12 +251,8 @@ mod tests {
             assert_eq!(
                 solved_predicate,
                 context_mismatch_predicate(
-                    ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
-                        "token_value1".to_string()
-                    ))),
-                    ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
-                        "token_value2".to_string()
-                    ))),
+                    ColumnPath::Param(SQLParamContainer::string("token_value1".to_string())),
+                    ColumnPath::Param(SQLParamContainer::string("token_value2".to_string())),
                 )
             );
         }
@@ -282,9 +274,7 @@ mod tests {
                     &test_ae,
                     &context,
                     context_value_predicate(
-                        ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
-                            "u1".to_string()
-                        ))),
+                        ColumnPath::Param(SQLParamContainer::string("u1".to_string())),
                         test_system.owner_id_column(),
                     )
                 );
@@ -306,9 +296,7 @@ mod tests {
                     &context,
                     context_value_predicate(
                         test_system.owner_id_column(),
-                        ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
-                            "u1".to_string()
-                        ))),
+                        ColumnPath::Param(SQLParamContainer::string("u1".to_string())),
                     )
                 );
                 // No user_id, so we can definitely declare it Predicate::False
@@ -557,7 +545,7 @@ mod tests {
                     solved_predicate,
                     predicate_fn(AbstractPredicate::Eq(
                         test_system.published_column(),
-                        ColumnPath::Param(PgExtension::Param(SQLParamContainer::bool(true)))
+                        ColumnPath::Param(SQLParamContainer::bool(true))
                     ))
                 );
 
@@ -572,7 +560,7 @@ mod tests {
                     solved_predicate,
                     predicate_fn(AbstractPredicate::Eq(
                         test_system.published_column(),
-                        ColumnPath::Param(PgExtension::Param(SQLParamContainer::bool(true)))
+                        ColumnPath::Param(SQLParamContainer::bool(true))
                     ))
                 );
             }
@@ -592,11 +580,11 @@ mod tests {
                 both_columns(
                     Box::new(AbstractPredicate::Eq(
                         test_system.published_column(),
-                        ColumnPath::Param(PgExtension::Param(SQLParamContainer::bool(true)))
+                        ColumnPath::Param(SQLParamContainer::bool(true))
                     )),
                     Box::new(AbstractPredicate::Eq(
                         test_system.published2_column(),
-                        ColumnPath::Param(PgExtension::Param(SQLParamContainer::bool(true)))
+                        ColumnPath::Param(SQLParamContainer::bool(true))
                     ))
                 )
             );
@@ -703,7 +691,7 @@ mod tests {
                 solved_predicate,
                 AbstractPredicate::Neq(
                     test_system.published_column(),
-                    ColumnPath::Param(PgExtension::Param(SQLParamContainer::bool(true)))
+                    ColumnPath::Param(SQLParamContainer::bool(true))
                 )
             );
         }
@@ -779,7 +767,7 @@ mod tests {
             solved_predicate,
             AbstractPredicate::Eq(
                 test_system.published_column(),
-                ColumnPath::Param(PgExtension::Param(SQLParamContainer::bool(true)))
+                ColumnPath::Param(SQLParamContainer::bool(true))
             )
         );
     }
@@ -812,9 +800,7 @@ mod tests {
         assert_eq!(
             solved_predicate,
             AbstractPredicate::Eq(
-                ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
-                    "1".to_string()
-                ))),
+                ColumnPath::Param(SQLParamContainer::string("1".to_string())),
                 test_system.owner_id_column(),
             )
         );
@@ -824,9 +810,7 @@ mod tests {
         assert_eq!(
             solved_predicate,
             AbstractPredicate::Eq(
-                ColumnPath::Param(PgExtension::Param(SQLParamContainer::string(
-                    "2".to_string()
-                ))),
+                ColumnPath::Param(SQLParamContainer::string("2".to_string())),
                 test_system.owner_id_column(),
             )
         );
@@ -895,7 +879,7 @@ mod tests {
             solved_predicate,
             AbstractPredicate::Eq(
                 test_system.published_column(),
-                ColumnPath::Param(PgExtension::Param(SQLParamContainer::bool(true))),
+                ColumnPath::Param(SQLParamContainer::bool(true)),
             )
         );
 
@@ -962,7 +946,7 @@ mod tests {
             solved_predicate,
             AbstractPredicate::Eq(
                 test_system.published_column(),
-                ColumnPath::Param(PgExtension::Param(SQLParamContainer::bool(true)))
+                ColumnPath::Param(SQLParamContainer::bool(true))
             )
         );
     }

@@ -11,7 +11,6 @@ use maybe_owned::MaybeOwned;
 
 use exo_sql_core::{Database, OneToMany, PhysicalTable};
 
-use crate::pg_extension::PgExtension;
 use crate::sql_param_container::SQLParamContainer;
 
 use crate::{
@@ -101,13 +100,11 @@ impl<'a> TemplateDelete<'a> {
                                     column_id: column_pair.foreign_column_id,
                                     table_alias: None,
                                 },
-                                Column::Extension(PgExtension::Param(
-                                    SQLParamContainer::from_sql_value(
-                                        transaction_context.resolve_value(
-                                            prev_step_id,
-                                            row_index,
-                                            column_index,
-                                        ),
+                                Column::Param(SQLParamContainer::from_sql_value(
+                                    transaction_context.resolve_value(
+                                        prev_step_id,
+                                        row_index,
+                                        column_index,
                                     ),
                                 )),
                             ),
