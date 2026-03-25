@@ -169,6 +169,7 @@ values:
           creation: ~
           update: ~
           delete: ~
+        projection_exprs: []
         doc_comments: ~
   - - ~
     - Composite:
@@ -241,6 +242,7 @@ values:
           creation: ~
           update: ~
           delete: ~
+        projection_exprs: []
         doc_comments: ~
   - ~
 map:

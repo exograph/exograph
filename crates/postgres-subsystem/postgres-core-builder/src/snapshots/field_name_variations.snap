@@ -221,6 +221,7 @@ values:
           creation: ~
           update: ~
           delete: ~
+        projection_exprs: []
         doc_comments: ~
   - ~
   - ~
