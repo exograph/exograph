@@ -1,0 +1,206 @@
+# Test projections on the Project type (User/Project/Question model from design doc).
+# Project has: withOwner = /basic + owner/basic, withQuestions = /basic + questions/basic,
+#              full = /basic + owner/basic + questions/basic
+# Access: AuthContext.isAdmin || self.owner.id == AuthContext.userId
+stages:
+  # Admin: default basic projection — just scalars + owner as PK ref
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_project",
+          "params": {
+            "id": $.p1Id
+          }
+        }
+    auth: |
+      {
+        "isAdmin": true
+      }
+    response: |
+      {
+        "result": {
+          "id": $.p1Id,
+          "name": "P1",
+          "owner": {
+            "id": $.u1Id
+          }
+        }
+      }
+
+  # Admin: withOwner projection — owner expanded to include name
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_project",
+          "params": {
+            "id": $.p1Id,
+            "projection": "withOwner"
+          }
+        }
+    auth: |
+      {
+        "isAdmin": true
+      }
+    response: |
+      {
+        "result": {
+          "id": $.p1Id,
+          "name": "P1",
+          "owner": {
+            "id": $.u1Id,
+            "name": "U1"
+          }
+        }
+      }
+
+  # Admin: withQuestions projection — OneToMany expansion
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_project",
+          "params": {
+            "id": $.p1Id,
+            "projection": "withQuestions"
+          }
+        }
+    auth: |
+      {
+        "isAdmin": true
+      }
+    response: |
+      {
+        "result": {
+          "id": $.p1Id,
+          "name": "P1",
+          "owner": {
+            "id": $.u1Id
+          },
+          "questions": [
+            {
+              "id": $.q1Ids[0],
+              "text": "Q1A",
+              "project": {
+                "id": $.p1Id
+              }
+            },
+            {
+              "id": $.q1Ids[1],
+              "text": "Q1B",
+              "project": {
+                "id": $.p1Id
+              }
+            }
+          ]
+        }
+      }
+
+  # Admin: full projection — owner expanded + questions expanded
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_project",
+          "params": {
+            "id": $.p1Id,
+            "projection": "full"
+          }
+        }
+    auth: |
+      {
+        "isAdmin": true
+      }
+    response: |
+      {
+        "result": {
+          "id": $.p1Id,
+          "name": "P1",
+          "owner": {
+            "id": $.u1Id,
+            "name": "U1"
+          },
+          "questions": [
+            {
+              "id": $.q1Ids[0],
+              "text": "Q1A",
+              "project": {
+                "id": $.p1Id
+              }
+            },
+            {
+              "id": $.q1Ids[1],
+              "text": "Q1B",
+              "project": {
+                "id": $.p1Id
+              }
+            }
+          ]
+        }
+      }
+
+  # Owner (u1): can see own project with full projection
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_project",
+          "params": {
+            "id": $.p1Id,
+            "projection": "full"
+          }
+        }
+    auth: |
+      {
+        "sub": $.u1Id,
+        "isAdmin": false
+      }
+    response: |
+      {
+        "result": {
+          "id": $.p1Id,
+          "name": "P1",
+          "owner": {
+            "id": $.u1Id,
+            "name": "U1"
+          },
+          "questions": [
+            {
+              "id": $.q1Ids[0],
+              "text": "Q1A",
+              "project": {
+                "id": $.p1Id
+              }
+            },
+            {
+              "id": $.q1Ids[1],
+              "text": "Q1B",
+              "project": {
+                "id": $.p1Id
+              }
+            }
+          ]
+        }
+      }
+
+  # Non-owner (u2): cannot see u1's project — returns null
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_project",
+          "params": {
+            "id": $.p1Id,
+            "projection": "full"
+          }
+        }
+    auth: |
+      {
+        "sub": $.u2Id,
+        "isAdmin": false
+      }
+    response: |
+      {
+        "result": null
+      }

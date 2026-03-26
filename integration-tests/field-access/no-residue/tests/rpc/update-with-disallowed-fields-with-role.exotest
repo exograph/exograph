@@ -19,13 +19,34 @@ stages:
         "result": {"id": 1}
       }
 
-  # Verify the internalTier was set
+  # tier-updater can update internalTier but NOT query it — full projection errors
   - operation:
       type: rpc
       payload: |
         {
           "method": "get_customer",
-          "params": {"id": 1}
+          "params": {"id": 1, "projection": "full"}
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "tier-updater"
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+
+  # tier-querier CAN query internalTier — full projection succeeds
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_customer",
+          "params": {"id": 1, "projection": "full"}
         }
     auth: |
       {
@@ -34,5 +55,10 @@ stages:
       }
     response: |
       {
-        "result": {"id": 1, "name": "C5", "userId": 1, "internalTier": 55}
+        "result": {
+          "id": 1,
+          "name": "C5",
+          "userId": 1,
+          "internalTier": 55
+        }
       }

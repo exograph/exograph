@@ -9,6 +9,11 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Built-in projection name: primary key fields only. Default for mutations.
+pub const PROJECTION_PK: &str = "pk";
+/// Built-in projection name: all scalars + ManyToOne as PK refs. Default for queries.
+pub const PROJECTION_BASIC: &str = "basic";
+
 /// A resolved projection — the concrete set of fields to include in a response.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResolvedProjection {
@@ -21,9 +26,10 @@ pub struct ResolvedProjection {
 pub enum ProjectionElement {
     /// A scalar field of this entity (field name).
     ScalarField(String),
-    /// A relation with a named projection applied.
+    /// A relation with one or more named projections applied.
+    /// Multiple projections are unioned at query time (e.g., `venue/summary + venue/withAddress`).
     RelationProjection {
         relation_field_name: String,
-        projection_name: String,
+        projection_names: Vec<String>,
     },
 }

@@ -5,6 +5,7 @@ operation:
     {
       "method": "get_customers",
       "params": {
+        "projection": "full",
         "orderBy": [{"internalTier": "ASC"}]
       }
     }

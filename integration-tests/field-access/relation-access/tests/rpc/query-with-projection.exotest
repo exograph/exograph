@@ -1,0 +1,99 @@
+# Tests field-level @access on a relation field.
+# Concert.venue has @access(query=AuthContext.role == "admin").
+# "basic" projection excludes venue, "withVenue" includes it.
+stages:
+  # User with basic projection — succeeds (no venue field in projection)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "user"
+      }
+    response: |
+      {
+        "result": [
+          {
+            "id": 1,
+            "title": "Concert1",
+            "published": true
+          },
+          {
+            "id": 2,
+            "title": "Concert2",
+            "published": false
+          }
+        ]
+      }
+
+  # User with withVenue projection — authorization error
+  # (venue field's access predicate resolves to False for non-admin)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "projection": "withVenue",
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "user"
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+
+  # Admin with withVenue projection — sees all concerts with venue data
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "projection": "withVenue",
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": [
+          {
+            "id": 1,
+            "title": "Concert1",
+            "published": true,
+            "venue": {
+              "id": 1,
+              "name": "Venue1"
+            }
+          },
+          {
+            "id": 2,
+            "title": "Concert2",
+            "published": false,
+            "venue": {
+              "id": 2,
+              "name": "Venue2"
+            }
+          }
+        ]
+      }

@@ -43,6 +43,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -65,6 +77,18 @@
           "schema": {
             "type": "string",
             "format": "uuid"
+          }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
           }
         }
       ],
@@ -364,8 +388,7 @@
         },
         "required": [
           "id"
-        ],
-        "additionalProperties": false
+        ]
       },
       "ImageUpdateInput": {
         "type": "object",

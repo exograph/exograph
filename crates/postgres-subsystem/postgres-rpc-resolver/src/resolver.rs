@@ -15,6 +15,7 @@ use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
 
+use crate::schema_builder::PROJECTION_PARAM_NAME;
 use core_model::access::AccessPredicateExpression;
 use core_model::mapped_arena::SerializableSlabIndex;
 use core_model::types::OperationReturnType;
@@ -23,21 +24,23 @@ use core_resolver::plugin::SubsystemRpcResolver;
 use core_resolver::plugin::subsystem_rpc_resolver::{SubsystemRpcError, SubsystemRpcResponse};
 use core_resolver::{QueryResponse, QueryResponseBody};
 use exo_sql::{
-    AbstractDelete, AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect,
-    AbstractUpdate, AliasedSelectionElement, Column, ColumnId, ColumnPath, ColumnValuePair,
-    DatabaseBackend, InsertionElement, InsertionRow, Limit, ManyToOne, NestedAbstractDelete,
-    NestedAbstractInsert, NestedAbstractInsertSet, NestedAbstractUpdate, NestedInsertion, Offset,
-    OneToMany, PgAbstractOperation, PgAbstractOrderBy, PgAbstractPredicate, PgAbstractSelect,
-    PgAliasedSelectionElement, PgBackend, PgInsertionElement, PgInsertionRow,
-    PgNestedAbstractDelete, PgNestedAbstractInsertSet, PgNestedAbstractUpdate, PhysicalColumnPath,
-    RelationId, Selection, SelectionCardinality, SelectionElement,
+    AbstractDelete, AbstractInsert, AbstractOperation, AbstractUpdate, Column, ColumnId,
+    ColumnPath, ColumnValuePair, DatabaseBackend, InsertionElement, InsertionRow, Limit, ManyToOne,
+    NestedAbstractDelete, NestedAbstractInsert, NestedAbstractInsertSet, NestedAbstractUpdate,
+    NestedInsertion, Offset, OneToMany, PgAbstractOperation, PgAbstractOrderBy,
+    PgAbstractPredicate, PgAbstractSelect, PgAliasedSelectionElement, PgBackend,
+    PgInsertionElement, PgInsertionRow, PgNestedAbstractDelete, PgNestedAbstractInsertSet,
+    PgNestedAbstractUpdate, PhysicalColumnPath, RelationId, Selection, SelectionCardinality,
+    SelectionElement,
 };
 use postgres_core_model::access::{
     DatabaseAccessPrimitiveExpression, PrecheckAccessPrimitiveExpression,
 };
-use postgres_core_model::relation::ManyToOneRelation;
-use postgres_core_model::relation::OneToManyRelation;
+use postgres_core_model::projection::{
+    PROJECTION_BASIC, PROJECTION_PK, ProjectionElement, ResolvedProjection,
+};
 use postgres_core_model::relation::PostgresRelation;
+use postgres_core_model::relation::{ManyToOneRelation, OneToManyRelation, RelationCardinality};
 use postgres_core_model::types::{EntityType, PostgresField};
 use postgres_core_resolver::cast;
 use postgres_core_resolver::order_by_mapper::compute_order_by;
@@ -255,6 +258,14 @@ impl<T: OperationSelectionResolver + Send + Sync> OperationResolver for T {
     }
 }
 
+/// Extract the projection name from validated params, defaulting to the given default.
+fn extract_projection_name(validated_params: &mut HashMap<String, Val>, default: &str) -> String {
+    match validated_params.remove(PROJECTION_PARAM_NAME) {
+        Some(Val::String(name)) | Some(Val::Enum(name)) => name,
+        _ => default.to_string(),
+    }
+}
+
 struct ComputeSelectOpts<'a> {
     predicate: PgAbstractPredicate,
     order_by: Option<PgAbstractOrderBy>,
@@ -262,10 +273,10 @@ struct ComputeSelectOpts<'a> {
     offset: Option<Offset>,
     entity_type: &'a EntityType,
     return_type: &'a OperationReturnType<EntityType>,
+    projection_name: &'a str,
 }
 
-/// Shared function to compute the final PgAbstractSelect.
-/// Similar to GraphQL's compute_select pattern.
+/// Shared function to compute the final PgAbstractSelect using projection-driven field selection.
 async fn compute_select<'a>(
     opts: ComputeSelectOpts<'a>,
     request_context: &'a RequestContext<'a>,
@@ -278,96 +289,245 @@ async fn compute_select<'a>(
         offset,
         entity_type,
         return_type,
+        projection_name,
     } = opts;
     let selection_cardinality = match return_type {
         OperationReturnType::List(_) => SelectionCardinality::Many,
         _ => SelectionCardinality::One,
     };
 
-    let mut elements = Vec::new();
+    let projection = entity_type.projection_by_name(projection_name);
 
-    for field in &entity_type.fields {
-        // Check field-level read access; only include fields that resolve to unconditional True.
-        // Row-dependent predicates are skipped since RPC can't conditionally null per row.
-        let field_access_predicate =
-            solve_access_expression(field.access.read, request_context, subsystem).await?;
-        // TODO: Make this less strict. We will first need to make schema make access controlled fields nullable,
-        // then we can include fields with row-dependent access predicates.
-        if field_access_predicate != AbstractPredicate::True {
-            continue;
-        }
+    let projection = projection.ok_or_else(|| {
+        SubsystemRpcError::InvalidParams(format!(
+            "Unknown projection `{}` for type `{}`",
+            projection_name, entity_type.name
+        ))
+    })?;
 
-        match &field.relation {
-            PostgresRelation::Scalar { column_id, .. } => {
-                elements.push(AliasedSelectionElement::new(
-                    field.name.clone(),
-                    SelectionElement::Physical(*column_id),
-                ));
-            }
-            PostgresRelation::ManyToOne { relation, .. } => {
-                let foreign_entity =
-                    &subsystem.core_subsystem.entity_types[relation.foreign_entity_id];
+    let field_access_predicate =
+        check_projection_access(entity_type, projection, request_context, subsystem).await?;
 
-                let foreign_access_predicate = compute_entity_access_predicate(
-                    foreign_entity,
-                    AccessKind::Read,
-                    request_context,
-                    subsystem,
-                )
-                .await?;
-
-                // Select only PK scalar fields of the foreign entity that are accessible
-                // TODO: We should warn users during model building that adding access control to pk field will have implications
-                let mut pk_elements = Vec::new();
-                for pk_field in foreign_entity.pk_fields() {
-                    let column_id = match pk_field.relation {
-                        PostgresRelation::Scalar { column_id, .. } => column_id,
-                        _ => continue,
-                    };
-
-                    let pk_field_access =
-                        solve_access_expression(pk_field.access.read, request_context, subsystem)
-                            .await?;
-                    if pk_field_access != AbstractPredicate::True {
-                        continue;
-                    }
-
-                    pk_elements.push(AliasedSelectionElement::new(
-                        pk_field.name.clone(),
-                        SelectionElement::Physical(column_id),
-                    ));
-                }
-
-                let nested_select = AbstractSelect {
-                    table_id: foreign_entity.table_id,
-                    selection: Selection::Json(pk_elements, SelectionCardinality::One),
-                    predicate: foreign_access_predicate,
-                    order_by: None,
-                    offset: None,
-                    limit: None,
-                };
-
-                elements.push(AliasedSelectionElement::new(
-                    field.name.clone(),
-                    SelectionElement::SubSelect(
-                        RelationId::ManyToOne(relation.relation_id),
-                        Box::new(nested_select),
-                    ),
-                ));
-            }
-            _ => {}
-        }
-    }
+    let elements =
+        compute_projection_elements(entity_type, projection, request_context, subsystem).await?;
 
     let selection = Selection::Json(elements, selection_cardinality);
 
-    Ok(AbstractSelect {
+    Ok(PgAbstractSelect {
         table_id: entity_type.table_id,
         selection,
-        predicate,
+        predicate: PgAbstractPredicate::and(predicate, field_access_predicate),
         order_by,
         offset,
         limit,
+    })
+}
+
+/// Check that all fields in the projection are accessible to the current user.
+/// Mirrors GraphQL's `check_selection_access` — the projection is treated like a selection set.
+/// Returns a combined access predicate from relation fields to be ANDed into the parent WHERE clause.
+async fn check_projection_access<'a>(
+    entity_type: &'a EntityType,
+    projection: &'a ResolvedProjection,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> Result<PgAbstractPredicate, SubsystemRpcError> {
+    let mut combined = PgAbstractPredicate::True;
+
+    for element in &projection.elements {
+        let field_name = match element {
+            ProjectionElement::ScalarField(name) => name,
+            ProjectionElement::RelationProjection {
+                relation_field_name,
+                ..
+            } => relation_field_name,
+        };
+
+        let Some(field) = entity_type.field_by_name(field_name) else {
+            continue;
+        };
+
+        let field_access_predicate =
+            solve_access_expression(field.access.read, request_context, subsystem).await?;
+
+        match element {
+            // Scalar fields: reject unless unconditionally allowed. RPC can't
+            // conditionally null per row (unlike GraphQL), so row-dependent
+            // predicates are rejected. Users should override "basic" to exclude
+            // such fields and define a separate projection for authorized roles.
+            ProjectionElement::ScalarField(_) => {
+                if field_access_predicate != PgAbstractPredicate::True {
+                    return Err(SubsystemRpcError::Authorization);
+                }
+            }
+            // Relation fields: reject if unconditionally denied (matches GraphQL).
+            // Otherwise AND the predicate into the combined result, applied as a
+            // SQL WHERE clause on the parent entity.
+            ProjectionElement::RelationProjection { .. } => {
+                if field_access_predicate == PgAbstractPredicate::False {
+                    return Err(SubsystemRpcError::Authorization);
+                }
+                combined = PgAbstractPredicate::and(combined, field_access_predicate);
+            }
+        }
+    }
+
+    Ok(combined)
+}
+
+/// Build selection elements from a resolved projection.
+/// Access control must be checked separately via `check_projection_access`.
+fn compute_projection_elements<'a>(
+    entity_type: &'a EntityType,
+    projection: &'a ResolvedProjection,
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> std::pin::Pin<
+    Box<
+        dyn std::future::Future<Output = Result<Vec<PgAliasedSelectionElement>, SubsystemRpcError>>
+            + Send
+            + 'a,
+    >,
+> {
+    Box::pin(async move {
+        let mut elements = Vec::new();
+
+        for element in &projection.elements {
+            match element {
+                ProjectionElement::ScalarField(field_name) => {
+                    let Some(field) = entity_type.field_by_name(field_name) else {
+                        continue;
+                    };
+
+                    if let PostgresRelation::Scalar { column_id, .. } = &field.relation {
+                        elements.push(PgAliasedSelectionElement::new(
+                            field.name.clone(),
+                            SelectionElement::Physical(*column_id),
+                        ));
+                    }
+                }
+                ProjectionElement::RelationProjection {
+                    relation_field_name,
+                    projection_names,
+                } => {
+                    let Some(field) = entity_type.field_by_name(relation_field_name) else {
+                        continue;
+                    };
+
+                    match &field.relation {
+                        PostgresRelation::ManyToOne { relation, .. } => {
+                            let nested = compute_nested_select(
+                                relation.foreign_entity_id,
+                                SelectionCardinality::One,
+                                projection_names,
+                                request_context,
+                                subsystem,
+                            )
+                            .await?;
+
+                            elements.push(PgAliasedSelectionElement::new(
+                                field.name.clone(),
+                                SelectionElement::SubSelect(
+                                    RelationId::ManyToOne(relation.relation_id),
+                                    Box::new(nested),
+                                ),
+                            ));
+                        }
+                        PostgresRelation::OneToMany(relation) => {
+                            let cardinality = match relation.cardinality {
+                                RelationCardinality::Unbounded => SelectionCardinality::Many,
+                                RelationCardinality::Optional => SelectionCardinality::One,
+                            };
+
+                            let nested = compute_nested_select(
+                                relation.foreign_entity_id,
+                                cardinality,
+                                projection_names,
+                                request_context,
+                                subsystem,
+                            )
+                            .await?;
+
+                            elements.push(PgAliasedSelectionElement::new(
+                                field.name.clone(),
+                                SelectionElement::SubSelect(
+                                    RelationId::OneToMany(relation.relation_id),
+                                    Box::new(nested),
+                                ),
+                            ));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        Ok(elements)
+    })
+}
+
+/// Build a nested select for a relation using the given projection.
+/// Applies entity-level access predicate on the foreign entity.
+/// When multiple projection names are given, their elements are unioned.
+async fn compute_nested_select<'a>(
+    foreign_entity_id: SerializableSlabIndex<EntityType>,
+    cardinality: SelectionCardinality,
+    projection_names: &[String],
+    request_context: &'a RequestContext<'a>,
+    subsystem: &'a PostgresRpcSubsystemWithRouter,
+) -> Result<PgAbstractSelect, SubsystemRpcError> {
+    let foreign_entity = &subsystem.core_subsystem.entity_types[foreign_entity_id];
+
+    let foreign_access_predicate = compute_entity_access_predicate(
+        foreign_entity,
+        AccessKind::Read,
+        request_context,
+        subsystem,
+    )
+    .await?;
+
+    let mut all_elements = Vec::new();
+    let mut combined_field_access = PgAbstractPredicate::True;
+
+    for projection_name in projection_names {
+        let projection = foreign_entity
+            .projection_by_name(projection_name)
+            .ok_or_else(|| {
+                SubsystemRpcError::InvalidParams(format!(
+                    "Unknown projection `{}` for type `{}`",
+                    projection_name, foreign_entity.name
+                ))
+            })?;
+
+        let field_access =
+            check_projection_access(foreign_entity, projection, request_context, subsystem).await?;
+        combined_field_access = PgAbstractPredicate::and(combined_field_access, field_access);
+
+        let elements =
+            compute_projection_elements(foreign_entity, projection, request_context, subsystem)
+                .await?;
+
+        // Deduplicate: only add elements not already present (by alias name)
+        for elem in elements {
+            if !all_elements
+                .iter()
+                .any(|e: &PgAliasedSelectionElement| e.alias == elem.alias)
+            {
+                all_elements.push(elem);
+            }
+        }
+    }
+
+    let nested_elements = all_elements;
+    let field_access_predicate = combined_field_access;
+
+    Ok(PgAbstractSelect {
+        table_id: foreign_entity.table_id,
+        selection: Selection::Json(nested_elements, cardinality),
+        predicate: PgAbstractPredicate::and(foreign_access_predicate, field_access_predicate),
+        order_by: None,
+        offset: None,
+        limit: None,
     })
 }
 
@@ -410,7 +570,7 @@ async fn compute_entity_access_predicate<'a>(
 
     let predicate = solve_access_expression(access_index, request_context, subsystem).await?;
 
-    if matches!(access_kind, AccessKind::Delete) && predicate == AbstractPredicate::False {
+    if matches!(access_kind, AccessKind::Delete) && predicate == PgAbstractPredicate::False {
         return Err(SubsystemRpcError::Authorization);
     }
 
@@ -449,7 +609,7 @@ async fn compute_create_access<'a>(
         .map(|p| p.0)
         .resolve();
 
-    if precheck_predicate == AbstractPredicate::False {
+    if precheck_predicate == PgAbstractPredicate::False {
         return Err(SubsystemRpcError::Authorization);
     }
 
@@ -464,11 +624,11 @@ async fn compute_create_access<'a>(
     )
     .await?;
 
-    if field_precheck == AbstractPredicate::False {
+    if field_precheck == PgAbstractPredicate::False {
         return Err(SubsystemRpcError::Authorization);
     }
 
-    Ok(AbstractPredicate::and(precheck_predicate, field_precheck))
+    Ok(PgAbstractPredicate::and(precheck_predicate, field_precheck))
 }
 
 /// Compute field-level precheck predicates for the given data.
@@ -490,10 +650,10 @@ where
 {
     let data_fields = match data_val {
         Val::Object(fields) => fields,
-        _ => return Ok(AbstractPredicate::True),
+        _ => return Ok(PgAbstractPredicate::True),
     };
 
-    let mut combined = AbstractPredicate::True;
+    let mut combined = PgAbstractPredicate::True;
 
     // For field-level access checks, use ignore_missing_value: false to match GraphQL behavior.
     // The entity-level precheck uses true (update data may omit fields), but field-level checks
@@ -519,11 +679,11 @@ where
                 .map(|p| p.0)
                 .resolve();
 
-            if field_predicate == AbstractPredicate::False {
+            if field_predicate == PgAbstractPredicate::False {
                 return Err(SubsystemRpcError::Authorization);
             }
 
-            combined = AbstractPredicate::and(combined, field_predicate);
+            combined = PgAbstractPredicate::and(combined, field_predicate);
         }
     }
 
@@ -785,8 +945,8 @@ impl OperationResolver for Create {
     }
 }
 
-/// Build a PK-only PgAbstractSelect for the RETURNING clause of delete operations.
-/// Only selects PK columns — no read access checks needed since the user proved delete access.
+/// Build a PK-only PgAbstractSelect for the RETURNING clause of mutation operations.
+/// Uses the "pk" projection if available, otherwise falls back to PK fields directly.
 fn compute_pk_only_select(
     entity_type: &EntityType,
     return_type: &OperationReturnType<EntityType>,
@@ -796,11 +956,23 @@ fn compute_pk_only_select(
         _ => SelectionCardinality::One,
     };
 
-    let elements: Vec<PgAliasedSelectionElement> = entity_type
-        .pk_fields()
+    let pk_fields: Vec<&PostgresField<EntityType>> =
+        match entity_type.projection_by_name(PROJECTION_PK) {
+            Some(pk_proj) => pk_proj
+                .elements
+                .iter()
+                .filter_map(|e| match e {
+                    ProjectionElement::ScalarField(name) => entity_type.field_by_name(name),
+                    _ => None,
+                })
+                .collect(),
+            None => entity_type.pk_fields(),
+        };
+
+    let elements: Vec<PgAliasedSelectionElement> = pk_fields
         .iter()
         .filter_map(|field| match &field.relation {
-            PostgresRelation::Scalar { column_id, .. } => Some(AliasedSelectionElement::new(
+            PostgresRelation::Scalar { column_id, .. } => Some(PgAliasedSelectionElement::new(
                 field.name.clone(),
                 SelectionElement::Physical(*column_id),
             )),
@@ -810,10 +982,10 @@ fn compute_pk_only_select(
 
     let selection = Selection::Json(elements, selection_cardinality);
 
-    AbstractSelect {
+    PgAbstractSelect {
         table_id: entity_type.table_id,
         selection,
-        predicate: AbstractPredicate::True,
+        predicate: PgAbstractPredicate::True,
         order_by: None,
         offset: None,
         limit: None,
@@ -846,7 +1018,7 @@ async fn resolve_delete_predicate_params<'a>(
     )
     .await?;
 
-    let predicate = AbstractPredicate::and(query_predicate, access_predicate);
+    let predicate = PgAbstractPredicate::and(query_predicate, access_predicate);
 
     let selection = compute_pk_only_select(entity_type, return_type);
 
@@ -854,7 +1026,7 @@ async fn resolve_delete_predicate_params<'a>(
         table_id: entity_type.table_id,
         predicate,
         selection,
-        precheck_predicates: vec![AbstractPredicate::True],
+        precheck_predicates: vec![PgAbstractPredicate::True],
     }))
 }
 
@@ -909,7 +1081,7 @@ impl OperationResolver for CollectionDelete {
         )
         .await?;
 
-        let predicate = AbstractPredicate::and(user_predicate, access_predicate);
+        let predicate = PgAbstractPredicate::and(user_predicate, access_predicate);
 
         let selection = compute_pk_only_select(entity_type, &self.return_type);
 
@@ -917,7 +1089,7 @@ impl OperationResolver for CollectionDelete {
             table_id: entity_type.table_id,
             predicate,
             selection,
-            precheck_predicates: vec![AbstractPredicate::True],
+            precheck_predicates: vec![PgAbstractPredicate::True],
         }))
     }
 }
@@ -949,7 +1121,7 @@ async fn compute_update_access<'a>(
         .map(|p| p.0)
         .resolve();
 
-    if precheck_predicate == AbstractPredicate::False {
+    if precheck_predicate == PgAbstractPredicate::False {
         return Err(SubsystemRpcError::Authorization);
     }
 
@@ -964,7 +1136,7 @@ async fn compute_update_access<'a>(
     )
     .await?;
 
-    if field_precheck == AbstractPredicate::False {
+    if field_precheck == PgAbstractPredicate::False {
         return Err(SubsystemRpcError::Authorization);
     }
 
@@ -976,7 +1148,7 @@ async fn compute_update_access<'a>(
     )
     .await?;
 
-    if database_predicate == AbstractPredicate::False {
+    if database_predicate == PgAbstractPredicate::False {
         return Err(SubsystemRpcError::Authorization);
     }
 
@@ -984,7 +1156,7 @@ async fn compute_update_access<'a>(
     // assertions, matching the GraphQL behavior. The precheck assertion mechanism expects
     // exactly 1 row, but field-level predicates with relation traversals can produce joins
     // that return multiple rows.
-    let combined_database_predicate = AbstractPredicate::and(database_predicate, field_precheck);
+    let combined_database_predicate = PgAbstractPredicate::and(database_predicate, field_precheck);
 
     Ok((precheck_predicate, combined_database_predicate))
 }
@@ -1001,7 +1173,7 @@ async fn build_update_operation<'a>(
     let (precheck_predicate, access_predicate) =
         compute_update_access(entity_type, &data_val, request_context, subsystem).await?;
 
-    let predicate = AbstractPredicate::and(query_predicate, access_predicate);
+    let predicate = PgAbstractPredicate::and(query_predicate, access_predicate);
 
     let column_values = compute_update_columns(entity_type, &data_val, subsystem)?;
     let selection = compute_pk_only_select(entity_type, return_type);
@@ -1239,7 +1411,7 @@ impl OperationSelectionResolver for CollectionQuery {
         };
 
         // Combine user predicate with access predicate
-        let predicate = AbstractPredicate::and(user_predicate, access_predicate);
+        let predicate = PgAbstractPredicate::and(user_predicate, access_predicate);
 
         // Extract limit and offset parameters
         let limit =
@@ -1249,6 +1421,8 @@ impl OperationSelectionResolver for CollectionQuery {
             extract_i64_from_val(validated_params.remove(&self.parameters.offset_param.name))
                 .map(Offset);
 
+        let projection_name = extract_projection_name(validated_params, PROJECTION_BASIC);
+
         compute_select(
             ComputeSelectOpts {
                 predicate,
@@ -1257,6 +1431,7 @@ impl OperationSelectionResolver for CollectionQuery {
                 offset,
                 entity_type,
                 return_type: &self.return_type,
+                projection_name: &projection_name,
             },
             request_context,
             subsystem,
@@ -1276,7 +1451,7 @@ async fn resolve_optional_predicate_param<'a>(
         Some(val) => compute_predicate(param, &val, &subsystem.core_subsystem, request_context)
             .await
             .map_err(from_postgres_error),
-        None => Ok(AbstractPredicate::True),
+        None => Ok(PgAbstractPredicate::True),
     }
 }
 
@@ -1313,8 +1488,8 @@ async fn resolve_predicate_param_list<'a>(
 
     Ok(predicates
         .into_iter()
-        .reduce(AbstractPredicate::and)
-        .unwrap_or(AbstractPredicate::True))
+        .reduce(PgAbstractPredicate::and)
+        .unwrap_or(PgAbstractPredicate::True))
 }
 
 /// Shared logic for resolving PK/unique query predicate params into a select
@@ -1339,7 +1514,9 @@ async fn resolve_query_predicate_params<'a>(
     )
     .await?;
 
-    let predicate = AbstractPredicate::and(query_predicate, access_predicate);
+    let predicate = PgAbstractPredicate::and(query_predicate, access_predicate);
+
+    let projection_name = extract_projection_name(validated_params, PROJECTION_BASIC);
 
     compute_select(
         ComputeSelectOpts {
@@ -1349,6 +1526,7 @@ async fn resolve_query_predicate_params<'a>(
             offset: None,
             entity_type,
             return_type,
+            projection_name: &projection_name,
         },
         request_context,
         subsystem,
@@ -1500,10 +1678,10 @@ async fn compute_nested_create_for_update<'a>(
                 table_id: foreign_entity.table_id,
                 rows: vec![InsertionRow { elems: elements }],
                 precheck_predicates: vec![precheck],
-                selection: AbstractSelect {
+                selection: PgAbstractSelect {
                     table_id: foreign_entity.table_id,
                     selection: Selection::Seq(vec![]),
-                    predicate: AbstractPredicate::True,
+                    predicate: PgAbstractPredicate::True,
                     order_by: None,
                     offset: None,
                     limit: None,
@@ -1545,7 +1723,7 @@ async fn compute_nested_update_items<'a>(
 
         // Build predicate from PK values for row identification
         let arg_predicate = build_pk_predicate(foreign_entity, item, subsystem)?;
-        let predicate = AbstractPredicate::and(arg_predicate, entity_predicate);
+        let predicate = PgAbstractPredicate::and(arg_predicate, entity_predicate);
 
         // Compute non-PK column values (reuses compute_update_columns which skips PKs)
         let update_columns = compute_update_columns(foreign_entity, item, subsystem)?;
@@ -1556,10 +1734,10 @@ async fn compute_nested_update_items<'a>(
                 table_id: foreign_entity.table_id,
                 predicate,
                 column_values: update_columns,
-                selection: AbstractSelect {
+                selection: PgAbstractSelect {
                     table_id: foreign_entity.table_id,
                     selection: Selection::Seq(vec![]),
-                    predicate: AbstractPredicate::True,
+                    predicate: PgAbstractPredicate::True,
                     order_by: None,
                     offset: None,
                     limit: None,
@@ -1599,22 +1777,22 @@ async fn compute_nested_delete_items<'a>(
     for item in items {
         // Extract PK values and build predicate
         let pk_predicate = build_pk_predicate(foreign_entity, item, subsystem)?;
-        let predicate = AbstractPredicate::and(pk_predicate, access_predicate.clone());
+        let predicate = PgAbstractPredicate::and(pk_predicate, access_predicate.clone());
 
         deletes.push(NestedAbstractDelete {
             nesting_relation: nesting_relation.clone(),
             delete: AbstractDelete {
                 table_id: foreign_entity.table_id,
                 predicate,
-                selection: AbstractSelect {
+                selection: PgAbstractSelect {
                     table_id: foreign_entity.table_id,
                     selection: Selection::Seq(vec![]),
-                    predicate: AbstractPredicate::True,
+                    predicate: PgAbstractPredicate::True,
                     order_by: None,
                     offset: None,
                     limit: None,
                 },
-                precheck_predicates: vec![AbstractPredicate::True],
+                precheck_predicates: vec![PgAbstractPredicate::True],
             },
         });
     }
@@ -1639,7 +1817,7 @@ fn build_pk_predicate(
     data_val: &Val,
     subsystem: &PostgresRpcSubsystemWithRouter,
 ) -> Result<PgAbstractPredicate, SubsystemRpcError> {
-    let mut predicate = AbstractPredicate::True;
+    let mut predicate = PgAbstractPredicate::True;
 
     for pk_field in entity_type.pk_fields() {
         let PostgresRelation::Scalar { column_id, .. } = &pk_field.relation else {
@@ -1670,9 +1848,9 @@ fn build_pk_predicate(
             }
         };
         let value_path = ColumnPath::Param(param);
-        predicate = AbstractPredicate::and(
+        predicate = PgAbstractPredicate::and(
             predicate,
-            AbstractPredicate::eq(
+            PgAbstractPredicate::eq(
                 ColumnPath::Physical(PhysicalColumnPath::leaf(*column_id)),
                 value_path,
             ),

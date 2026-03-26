@@ -43,6 +43,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -64,6 +76,18 @@
           "required": true,
           "schema": {
             "type": "integer"
+          }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
           }
         }
       ],
@@ -436,8 +460,7 @@
         },
         "required": [
           "id"
-        ],
-        "additionalProperties": false
+        ]
       },
       "DocumentUpdateInput": {
         "type": "object",

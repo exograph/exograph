@@ -1,0 +1,63 @@
+# Test that delete returns PK-only (no projection param on mutations)
+stages:
+  # Delete questions first (foreign key constraint)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_questions",
+          "params": {
+            "where": {"project": {"id": {"eq": $.p2Id}}}
+          }
+        }
+    auth: |
+      {
+        "isAdmin": true
+      }
+    response: |
+      {
+        "result": [
+          {"id": $.q2Ids[0]},
+          {"id": $.q2Ids[1]}
+        ]
+      }
+
+  # Admin deletes project — returns only the PK
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_project",
+          "params": {
+            "id": $.p2Id
+          }
+        }
+    auth: |
+      {
+        "isAdmin": true
+      }
+    response: |
+      {
+        "result": {
+          "id": $.p2Id
+        }
+      }
+
+  # Verify it's gone
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_project",
+          "params": {
+            "id": $.p2Id
+          }
+        }
+    auth: |
+      {
+        "isAdmin": true
+      }
+    response: |
+      {
+        "result": null
+      }

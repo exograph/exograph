@@ -7,13 +7,14 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use postgres_core_model::projection::PROJECTION_PK;
 use postgres_rpc_model::operation::CollectionDelete;
 use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
 use rpc_introspection::schema::{RpcMethod, RpcParameter, RpcSchema, RpcTypeSchema};
 use std::collections::HashSet;
 
 use super::type_builder::build_return_type_schema_with;
-use super::{BuildRpcMethod, BuildRpcTypeSchema, ReturnTypeKind};
+use super::{BuildRpcMethod, BuildRpcTypeSchema};
 
 impl BuildRpcMethod for CollectionDelete {
     fn build_rpc_method(
@@ -25,7 +26,7 @@ impl BuildRpcMethod for CollectionDelete {
         let entity_type = self.return_type.typ(&subsystem.core_subsystem.entity_types);
         let result_schema = build_return_type_schema_with(
             &self.return_type,
-            ReturnTypeKind::PkOnly,
+            PROJECTION_PK,
             subsystem,
             schema,
             added_types,

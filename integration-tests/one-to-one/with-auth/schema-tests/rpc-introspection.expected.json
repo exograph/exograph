@@ -43,6 +43,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -93,6 +105,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -115,6 +139,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -135,6 +171,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -154,6 +202,18 @@
           "required": true,
           "schema": {
             "$ref": "#/components/schemas/UserUniqueFilter"
+          }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
           }
         }
       ],
@@ -687,7 +747,7 @@
           }
         }
       },
-      "UserRef": {
+      "UserPK": {
         "type": "object",
         "properties": {
           "id": {
@@ -708,7 +768,7 @@
             "type": "string"
           },
           "user": {
-            "$ref": "#/components/schemas/UserRef"
+            "$ref": "#/components/schemas/UserPK"
           }
         },
         "required": [
@@ -725,18 +785,6 @@
           }
         }
       },
-      "UserPK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ],
-        "additionalProperties": false
-      },
       "MembershipPK": {
         "type": "object",
         "properties": {
@@ -746,8 +794,7 @@
         },
         "required": [
           "id"
-        ],
-        "additionalProperties": false
+        ]
       },
       "MembershipCreateInputFromUser": {
         "type": "object",
@@ -818,6 +865,17 @@
             "$ref": "#/components/schemas/MembershipUpdateOpsFromUser"
           }
         }
+      },
+      "UserRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
       },
       "MembershipUpdateInput": {
         "type": "object",

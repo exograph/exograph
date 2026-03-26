@@ -36,7 +36,7 @@ use core_model::{
     mapped_arena::SerializableSlabIndex, primitive_type::PrimitiveType, types::FieldType,
 };
 use core_model_builder::{
-    ast::ast_types::{AstAccessExpr, AstFieldDefaultValue, AstLiteral},
+    ast::ast_types::{AstAccessExpr, AstFieldDefaultValue, AstLiteral, AstProjectionExpr},
     error::ModelBuildingError,
     typechecker::Typed,
 };
@@ -49,6 +49,7 @@ use exo_sql::{
 use postgres_core_model::{
     access::{Access, DatabaseAccessPrimitiveExpression, UpdateAccessExpression},
     aggregate::{AggregateField, AggregateFieldType},
+    projection::{PROJECTION_BASIC, PROJECTION_PK, ProjectionElement, ResolvedProjection},
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
     types::{EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType, TypeIndex},
     vector_distance::{VectorDistanceField, VectorDistanceType},
@@ -93,6 +94,12 @@ pub(super) fn build_expanded(
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
             expand_type_access(c, resolved_env, building)?;
+        }
+    }
+
+    for (_, resolved_type) in resolved_env.resolved_types.iter() {
+        if let ResolvedType::Composite(c) = &resolved_type {
+            expand_type_projections(c, building)?;
         }
     }
 
@@ -1002,6 +1009,188 @@ fn compute_one_to_many_relation(
         },
         is_pk: field.is_pk,
     })
+}
+
+/// Compute projections for a type: built-in `pk` and `basic`, plus user-defined from `@projection`.
+fn expand_type_projections(
+    resolved_type: &ResolvedCompositeType,
+    building: &mut SystemContextBuilding,
+) -> Result<(), ModelBuildingError> {
+    if resolved_type.representation == EntityRepresentation::Json {
+        return Ok(());
+    }
+
+    let existing_type_id = building.get_entity_type_id(&resolved_type.name).unwrap();
+    let existing_type = &building.entity_types[existing_type_id];
+
+    let pk_projection = compute_pk_projection(existing_type);
+    let basic_projection = compute_basic_projection(existing_type);
+
+    let mut projections = vec![pk_projection, basic_projection];
+
+    // Resolve projections iteratively — each pass resolves projections whose
+    // dependencies are already resolved. Repeat until all are resolved or no
+    // progress is made (cycle).
+    let mut remaining: Vec<&(String, AstProjectionExpr)> =
+        resolved_type.projection_exprs.iter().collect();
+
+    while !remaining.is_empty() {
+        let before = remaining.len();
+
+        remaining.retain(|&(name, expr)| {
+            match resolve_projection_expr(expr, &projections, existing_type) {
+                Ok(elements) => {
+                    if let Some(existing) = projections.iter_mut().find(|p| p.name == *name) {
+                        existing.elements = elements;
+                    } else {
+                        projections.push(ResolvedProjection {
+                            name: name.clone(),
+                            elements,
+                        });
+                    }
+                    false // resolved — remove from remaining
+                }
+                Err(_) => true, // unresolved dependency — keep for next pass
+            }
+        });
+
+        if remaining.len() == before {
+            let unresolved: Vec<&str> = remaining.iter().map(|(n, _)| n.as_str()).collect();
+            return Err(ModelBuildingError::Generic(format!(
+                "Circular or unresolvable projection references in type `{}`: {}",
+                resolved_type.name,
+                unresolved.join(", ")
+            )));
+        }
+    }
+
+    let existing_type = &mut building.entity_types[existing_type_id];
+    existing_type.projections = projections;
+
+    Ok(())
+}
+
+/// Built-in `pk` projection: all `@pk` scalar fields.
+fn compute_pk_projection(entity_type: &EntityType) -> ResolvedProjection {
+    let elements = entity_type
+        .fields
+        .iter()
+        .filter(|f| f.relation.is_pk())
+        .map(|f| ProjectionElement::ScalarField(f.name.clone()))
+        .collect();
+
+    ResolvedProjection {
+        name: PROJECTION_PK.to_string(),
+        elements,
+    }
+}
+
+/// Built-in `basic` projection: all scalar fields + ManyToOne relations as `/pk`.
+fn compute_basic_projection(entity_type: &EntityType) -> ResolvedProjection {
+    let elements = entity_type
+        .fields
+        .iter()
+        .filter_map(|f| match &f.relation {
+            PostgresRelation::Scalar { .. } => Some(ProjectionElement::ScalarField(f.name.clone())),
+            PostgresRelation::ManyToOne { .. } => Some(ProjectionElement::RelationProjection {
+                relation_field_name: f.name.clone(),
+                projection_names: vec![PROJECTION_PK.to_string()],
+            }),
+            // OneToMany and Embedded are not included in basic
+            _ => None,
+        })
+        .collect();
+
+    ResolvedProjection {
+        name: PROJECTION_BASIC.to_string(),
+        elements,
+    }
+}
+
+/// Resolve a projection expression into concrete elements.
+fn resolve_projection_expr(
+    expr: &AstProjectionExpr,
+    known_projections: &[ResolvedProjection],
+    entity_type: &EntityType,
+) -> Result<Vec<ProjectionElement>, ModelBuildingError> {
+    match expr {
+        AstProjectionExpr::Field(name, _) => {
+            // Validate field exists
+            if entity_type.field_by_name(name).is_none() {
+                return Err(ModelBuildingError::Generic(format!(
+                    "Unknown field `{name}` in projection for type `{}`",
+                    entity_type.name
+                )));
+            }
+            Ok(vec![ProjectionElement::ScalarField(name.clone())])
+        }
+        AstProjectionExpr::SelfProjection(name, _) => {
+            // Look up the named projection on this type
+            let projection = known_projections.iter().find(|p| p.name == *name).ok_or(
+                ModelBuildingError::Generic(format!(
+                    "Unknown projection `/{name}` for type `{}`",
+                    entity_type.name
+                )),
+            )?;
+            Ok(projection.elements.clone())
+        }
+        AstProjectionExpr::RelationProjection(relation_name, projection_name, _) => {
+            // Validate relation field exists
+            if entity_type.field_by_name(relation_name).is_none() {
+                return Err(ModelBuildingError::Generic(format!(
+                    "Unknown relation `{relation_name}` in projection for type `{}`",
+                    entity_type.name
+                )));
+            }
+            Ok(vec![ProjectionElement::RelationProjection {
+                relation_field_name: relation_name.clone(),
+                projection_names: vec![projection_name.clone()],
+            }])
+        }
+        AstProjectionExpr::Union(left, right, _) => {
+            let mut left_elements = resolve_projection_expr(left, known_projections, entity_type)?;
+            let right_elements = resolve_projection_expr(right, known_projections, entity_type)?;
+
+            for element in right_elements {
+                match &element {
+                    ProjectionElement::ScalarField(name) => {
+                        if !left_elements
+                            .iter()
+                            .any(|e| matches!(e, ProjectionElement::ScalarField(n) if n == name))
+                        {
+                            left_elements.push(element);
+                        }
+                    }
+                    ProjectionElement::RelationProjection {
+                        relation_field_name,
+                        projection_names: new_names,
+                    } => {
+                        // Union: merge projection names for the same relation
+                        // e.g., /basic (includes venue/pk) + venue/basic → venue with [pk, basic]
+                        if let Some(existing) = left_elements.iter_mut().find(|e| {
+                            matches!(e, ProjectionElement::RelationProjection { relation_field_name: n, .. } if n == relation_field_name)
+                        }) {
+                            if let ProjectionElement::RelationProjection {
+                                projection_names: existing_names,
+                                ..
+                            } = existing
+                            {
+                                for name in new_names {
+                                    if !existing_names.contains(name) {
+                                        existing_names.push(name.clone());
+                                    }
+                                }
+                            }
+                        } else {
+                            left_elements.push(element);
+                        }
+                    }
+                }
+            }
+
+            Ok(left_elements)
+        }
+    }
 }
 
 fn restrictive_access() -> Access {

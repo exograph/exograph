@@ -1,46 +1,121 @@
-# A non-admin user cannot see the email field even for their own row.
 # email has @access(self.authId == AuthContext.id || AuthContext.role == "admin").
-# Since this is row-dependent and can't be unconditionally resolved to true,
-# the field is omitted from the RPC response entirely (TODO: this needs to be fixed to return the email when row-level access is granted).
-operation:
-  type: rpc
-  payload: |
-    {
-      "method": "get_people"
-    }
-  unorderedPaths:
-    - result
-auth: |
-  {
-    "sub": 1,
-    "role": "user"
-  }
-response: |
-  {
-    "result": [
+# The "basic" projection is overridden to exclude email, so non-admin users can query normally.
+# The "full" projection includes email, so requesting it as a non-admin user errors.
+stages:
+  # Default basic projection (overridden to exclude email) → succeeds for non-admin
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_people"
+        }
+      unorderedPaths:
+        - result
+    auth: |
       {
-        "id": $.p1id,
-        "name": "P1",
-        "age": 10,
-        "authId": 1
-      },
-      {
-        "id": $.p2id,
-        "name": "P2",
-        "age": 20,
-        "authId": 2
-      },
-      {
-        "id": $.p3id,
-        "name": "P3",
-        "age": 30,
-        "authId": 3
-      },
-      {
-        "id": $.p4id,
-        "name": "P4",
-        "age": 40,
-        "authId": 4
+        "sub": 1,
+        "role": "user"
       }
-    ]
-  }
+    response: |
+      {
+        "result": [
+          {
+            "id": $.p1id,
+            "name": "P1",
+            "age": 10,
+            "authId": 1
+          },
+          {
+            "id": $.p2id,
+            "name": "P2",
+            "age": 20,
+            "authId": 2
+          },
+          {
+            "id": $.p3id,
+            "name": "P3",
+            "age": 30,
+            "authId": 3
+          },
+          {
+            "id": $.p4id,
+            "name": "P4",
+            "age": 40,
+            "authId": 4
+          }
+        ]
+      }
+
+  # "full" projection includes email → authorization error for non-admin
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_people",
+          "params": {
+            "projection": "full"
+          }
+        }
+    auth: |
+      {
+        "sub": 1,
+        "role": "user"
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+
+  # Admin with "full" projection — email IS visible
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_people",
+          "params": {
+            "projection": "full"
+          }
+        }
+      unorderedPaths:
+        - result
+    auth: |
+      {
+        "sub": null,
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": [
+          {
+            "id": $.p1id,
+            "name": "P1",
+            "age": 10,
+            "authId": 1,
+            "email": "p1@example.com"
+          },
+          {
+            "id": $.p2id,
+            "name": "P2",
+            "age": 20,
+            "authId": 2,
+            "email": "p2@example.com"
+          },
+          {
+            "id": $.p3id,
+            "name": "P3",
+            "age": 30,
+            "authId": 3,
+            "email": "p3@example.com"
+          },
+          {
+            "id": $.p4id,
+            "name": "P4",
+            "age": 40,
+            "authId": 4,
+            "email": "p4@example.com"
+          }
+        ]
+      }

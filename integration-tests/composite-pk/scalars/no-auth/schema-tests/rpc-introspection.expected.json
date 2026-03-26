@@ -43,6 +43,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -93,6 +105,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -121,6 +145,18 @@
           "required": true,
           "schema": {
             "type": "string"
+          }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
           }
         }
       ],
@@ -162,6 +198,18 @@
           "required": true,
           "schema": {
             "type": "integer"
+          }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
           }
         }
       ],
@@ -528,7 +576,7 @@
   ],
   "components": {
     "schemas": {
-      "AddressRef": {
+      "AddressPK": {
         "type": "object",
         "properties": {
           "street": {
@@ -564,7 +612,7 @@
             "type": "integer"
           },
           "address": {
-            "$ref": "#/components/schemas/AddressRef"
+            "$ref": "#/components/schemas/AddressPK"
           }
         },
         "required": [
@@ -809,10 +857,9 @@
         "required": [
           "firstName",
           "lastName"
-        ],
-        "additionalProperties": false
+        ]
       },
-      "AddressPK": {
+      "AddressRef": {
         "type": "object",
         "properties": {
           "street": {
@@ -833,8 +880,7 @@
           "city",
           "state",
           "zip"
-        ],
-        "additionalProperties": false
+        ]
       },
       "PersonUpdateInput": {
         "type": "object",

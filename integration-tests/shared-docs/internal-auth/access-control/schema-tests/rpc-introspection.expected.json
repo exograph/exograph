@@ -43,6 +43,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -92,6 +104,18 @@
           "required": false,
           "schema": {
             "type": "integer"
+          }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
           }
         }
       ],
@@ -143,6 +167,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -165,6 +201,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -185,6 +233,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -204,6 +264,18 @@
           "required": true,
           "schema": {
             "type": "integer"
+          }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
           }
         }
       ],
@@ -858,7 +930,7 @@
           }
         }
       },
-      "DocumentRef": {
+      "DocumentPK": {
         "type": "object",
         "properties": {
           "id": {
@@ -869,7 +941,7 @@
           "id"
         ]
       },
-      "UserRef": {
+      "UserPK": {
         "type": "object",
         "properties": {
           "id": {
@@ -887,10 +959,10 @@
             "type": "integer"
           },
           "document": {
-            "$ref": "#/components/schemas/DocumentRef"
+            "$ref": "#/components/schemas/DocumentPK"
           },
           "user": {
-            "$ref": "#/components/schemas/UserRef"
+            "$ref": "#/components/schemas/UserPK"
           },
           "read": {
             "type": "boolean"
@@ -973,18 +1045,6 @@
           "name"
         ]
       },
-      "DocumentPK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ],
-        "additionalProperties": false
-      },
       "PermissionPK": {
         "type": "object",
         "properties": {
@@ -994,10 +1054,9 @@
         },
         "required": [
           "id"
-        ],
-        "additionalProperties": false
+        ]
       },
-      "UserPK": {
+      "UserRef": {
         "type": "object",
         "properties": {
           "id": {
@@ -1006,8 +1065,7 @@
         },
         "required": [
           "id"
-        ],
-        "additionalProperties": false
+        ]
       },
       "PermissionCreateInputFromDocument": {
         "type": "object",
@@ -1092,6 +1150,17 @@
             "$ref": "#/components/schemas/PermissionUpdateOpsFromDocument"
           }
         }
+      },
+      "DocumentRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
       },
       "PermissionUpdateInput": {
         "type": "object",
