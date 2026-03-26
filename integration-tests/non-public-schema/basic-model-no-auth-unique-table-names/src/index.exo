@@ -2,9 +2,9 @@
 module ConcertModule {
   @table(name="concerts", schema="c")
   @projection(
-    withVenue = /basic + venue/basic,
-    withVenueDetails = /basic + venue/nameOnly + venue/locationOnly,
-    summary = id + title
+    withVenue = [/basic, venue/basic],
+    withVenueDetails = [/basic, venue/nameOnly, venue/locationOnly],
+    summary = [id, title]
   )
   @access(true)
   type Concert {
@@ -18,8 +18,8 @@ module ConcertModule {
 
   @table(name="venues", schema="v")
   @projection(
-    nameOnly = id + name,
-    locationOnly = id + latitude
+    nameOnly = [id, name],
+    locationOnly = [id, latitude]
   )
   @access(true)
   type Venue {

@@ -655,29 +655,13 @@ fn convert_annotation_value(
 }
 
 fn convert_projection_expr(node: Node, source: &[u8], source_span: Span) -> AstProjectionExpr {
-    let first_child = node.child(0).unwrap();
+    let mut cursor = node.walk();
+    let elements: Vec<AstProjectionExpr> = node
+        .children_by_field_name("element", &mut cursor)
+        .map(|child| convert_projection_atom(child, source, source_span))
+        .collect();
 
-    match first_child.kind() {
-        "projection_union" => {
-            let left = convert_projection_expr(
-                first_child.child_by_field_name("left").unwrap(),
-                source,
-                source_span,
-            );
-            let right = convert_projection_expr(
-                first_child.child_by_field_name("right").unwrap(),
-                source,
-                source_span,
-            );
-            AstProjectionExpr::Union(
-                Box::new(left),
-                Box::new(right),
-                span_from_node(source_span, first_child),
-            )
-        }
-        "projection_atom" => convert_projection_atom(first_child, source, source_span),
-        o => panic!("unsupported projection expr kind: {o}"),
-    }
+    AstProjectionExpr::List(elements, span_from_node(source_span, node))
 }
 
 fn convert_projection_atom(node: Node, source: &[u8], source_span: Span) -> AstProjectionExpr {
@@ -1220,12 +1204,13 @@ mod tests {
             @postgres
             module TestModule {
                 @projection(
-                    withOwner = /basic + owner/basic,
-                    summary = id + name,
-                    idOnly = id,
-                    selfOnly = /basic,
-                    relOnly = owner/basic,
-                    full = /basic + owner/basic + questions/basic
+                    withOwner = [/basic, owner/basic],
+                    summary = [id, name],
+                    idOnly = [id],
+                    selfOnly = [/basic],
+                    relOnly = [owner/basic],
+                    full = [/basic, owner/basic, questions/basic],
+                    empty = []
                 )
                 @access(true)
                 type Project {

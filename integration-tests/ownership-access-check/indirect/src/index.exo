@@ -16,9 +16,9 @@ module ChatModule {
   }
 
   @projection(
-    withOwner = /basic + owner/basic,
-    withQuestions = /basic + questions/basic,
-    full = /basic + owner/basic + questions/basic
+    withOwner = [/basic, owner/basic],
+    withQuestions = [/basic, questions/basic],
+    full = [/basic, owner/basic, questions/basic]
   )
   @access(AuthContext.isAdmin || self.owner.id == AuthContext.userId)
   type Project {

@@ -34,10 +34,6 @@ module.exports = grammar({
   ],
 
   conflicts: $ => [
-    // A bare term in annotation_map_param can be either an access_expr (via selection → term)
-    // or a projection_atom (via term). Tree-sitter keeps both alternatives alive until
-    // context disambiguates (e.g., + or / for projections, . or == for access).
-    [$.selection, $.projection_atom],
   ],
 
   rules: {
@@ -270,13 +266,14 @@ module.exports = grammar({
     relational_in: $ => prec.left(relational_level, seq(
       field("left", $.access_expr), "in", field("right", $.access_expr)
     )),
-    projection_expr: $ => choice(
-      $.projection_union,
-      $.projection_atom,
+    projection_expr: $ => seq(
+      "[",
+      optional(seq(
+        commaSep(field("element", $.projection_atom)),
+        optional(",")  // trailing comma
+      )),
+      "]"
     ),
-    projection_union: $ => prec.left(1, seq(
-      field("left", $.projection_expr), "+", field("right", $.projection_expr)
-    )),
     projection_atom: $ => choice(
       seq("/", field("name", $.term)),                                     // /basic (self-projection)
       prec(1, seq(field("relation", $.term), "/", field("name", $.term))), // owner/basic (relation projection)

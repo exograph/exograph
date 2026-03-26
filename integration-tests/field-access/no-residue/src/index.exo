@@ -7,8 +7,8 @@ context AuthContext {
 module CustomerDatabase {
   @projection(
     // "full" references /basic, which is defined after it — tests dependency ordering
-    full = /basic + internalTier,
-    basic = id + name + userId
+    full = [/basic, internalTier],
+    basic = [id, name, userId]
   )
   @access(self.userId == AuthContext.id || AuthContext.role == "admin")
   type Customer {

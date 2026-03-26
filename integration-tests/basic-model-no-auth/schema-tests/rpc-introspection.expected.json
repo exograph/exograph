@@ -117,6 +117,7 @@
             "type": "string",
             "enum": [
               "basic",
+              "empty",
               "locationOnly",
               "nameOnly",
               "pk"
@@ -188,6 +189,7 @@
             "type": "string",
             "enum": [
               "basic",
+              "empty",
               "locationOnly",
               "nameOnly",
               "pk"
