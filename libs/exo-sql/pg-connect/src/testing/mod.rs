@@ -11,6 +11,7 @@ pub mod db;
 pub mod error;
 
 mod docker;
+mod existing;
 mod local;
 
 pub mod test_support;

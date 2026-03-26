@@ -33,6 +33,20 @@ pub struct DockerPostgresDatabase {
 }
 
 impl DockerPostgresDatabaseServer {
+    pub fn create_server()
+    -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
+        let available = Self::check_availability();
+        if let Ok(true) = available {
+            tracing::info!("Launching PostgreSQL in Docker...");
+            Self::start()
+        } else {
+            tracing::error!("Docker PostgreSQL is not available");
+            Err(EphemeralDatabaseSetupError::Generic(
+                "Docker PostgreSQL is not available".to_string(),
+            ))
+        }
+    }
+
     pub fn check_availability() -> Result<bool, EphemeralDatabaseSetupError> {
         if let Err(e) = which::which("docker") {
             tracing::error!("docker not found: {}", e);
