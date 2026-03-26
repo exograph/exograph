@@ -11,7 +11,7 @@ use std::io::BufRead;
 
 use super::{
     docker::DockerPostgresDatabaseServer, error::EphemeralDatabaseSetupError,
-    local::LocalPostgresDatabaseServer,
+    existing::ExistingPostgresDatabaseServer, local::LocalPostgresDatabaseServer,
 };
 
 enum EphemeralDatabaseLaunchPreference {
@@ -19,6 +19,7 @@ enum EphemeralDatabaseLaunchPreference {
     PreferDocker,
     LocalOnly,
     DockerOnly,
+    ExistingDbOnly,
 }
 
 pub const EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE: &str =
@@ -38,6 +39,7 @@ impl EphemeralDatabaseLauncher {
             "prefer-docker" => EphemeralDatabaseLaunchPreference::PreferDocker,
             "local-only" => EphemeralDatabaseLaunchPreference::LocalOnly,
             "docker-only" => EphemeralDatabaseLaunchPreference::DockerOnly,
+            "existing-db-only" => EphemeralDatabaseLaunchPreference::ExistingDbOnly,
             _ => {
                 tracing::error!(
                     "Invalid value for EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE: {preference_env:?}"
@@ -49,48 +51,32 @@ impl EphemeralDatabaseLauncher {
         Self { preference }
     }
 
-    fn create_local_server()
-    -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
-        let local_available = LocalPostgresDatabaseServer::check_availability();
-        if let Ok(true) = local_available {
-            tracing::info!("Launching PostgreSQL locally...");
-            LocalPostgresDatabaseServer::start()
-        } else {
-            tracing::error!("Local PostgreSQL is not available");
-            Err(EphemeralDatabaseSetupError::Generic(
-                "Local PostgreSQL is not available".to_string(),
-            ))
-        }
-    }
-
-    fn create_docker_server()
-    -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
-        let docker_available = DockerPostgresDatabaseServer::check_availability();
-        if let Ok(true) = docker_available {
-            tracing::info!("Launching PostgreSQL in Docker...");
-            DockerPostgresDatabaseServer::start()
-        } else {
-            tracing::error!("Docker PostgreSQL is not available");
-            Err(EphemeralDatabaseSetupError::Generic(
-                "Docker PostgreSQL is not available".to_string(),
-            ))
-        }
-    }
-
-    /// Create a new database server.
-    /// Currently, it prefers a local installation, but falls back to Docker if it's not available
+    /// Creates an ephemeral database server based on the configured launch preference.
+    ///
+    /// Dispatches to the appropriate server implementation:
+    /// - `PreferLocal` / `PreferDocker`: tries the preferred backend first, falls back to the other.
+    /// - `LocalOnly` / `DockerOnly` / `ExistingDbOnly`: uses exactly that backend.
     pub fn create_server(
         &self,
     ) -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
         match self.preference {
             EphemeralDatabaseLaunchPreference::PreferLocal => {
-                Self::create_local_server().or_else(|_| Self::create_docker_server())
+                LocalPostgresDatabaseServer::create_server()
+                    .or_else(|_| DockerPostgresDatabaseServer::create_server())
             }
             EphemeralDatabaseLaunchPreference::PreferDocker => {
-                Self::create_docker_server().or_else(|_| Self::create_local_server())
+                DockerPostgresDatabaseServer::create_server()
+                    .or_else(|_| LocalPostgresDatabaseServer::create_server())
             }
-            EphemeralDatabaseLaunchPreference::LocalOnly => Self::create_local_server(),
-            EphemeralDatabaseLaunchPreference::DockerOnly => Self::create_docker_server(),
+            EphemeralDatabaseLaunchPreference::LocalOnly => {
+                LocalPostgresDatabaseServer::create_server()
+            }
+            EphemeralDatabaseLaunchPreference::DockerOnly => {
+                DockerPostgresDatabaseServer::create_server()
+            }
+            EphemeralDatabaseLaunchPreference::ExistingDbOnly => {
+                ExistingPostgresDatabaseServer::create_server()
+            }
         }
     }
 }

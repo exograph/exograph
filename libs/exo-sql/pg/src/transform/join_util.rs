@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use crate::Column;
-use crate::core::{join::LeftJoin, predicate_ext::ConcretePredicate, table::Table};
+use crate::core::{ConcretePredicate, join::LeftJoin, table::Table};
 use exo_sql_core::{Database, TableId};
 use exo_sql_model::selection_level::SelectionLevel;
 use exo_sql_model::{

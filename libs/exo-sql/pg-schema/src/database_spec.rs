@@ -23,7 +23,7 @@ use crate::{
     column_spec::{ColumnReferenceSpec, ColumnSpec},
     enum_spec::EnumSpec,
     function_spec::FunctionSpec,
-    index_spec::IndexSpec,
+    index_spec::{IndexKind, IndexSpec},
     issue::WithIssues,
     op::{RenameTableOp, SchemaOp},
     spec::MigrationScopeMatches,
@@ -144,7 +144,7 @@ impl DatabaseSpec {
                 .map(|index_spec| PhysicalIndex {
                     name: index_spec.name.to_owned(),
                     columns: index_spec.columns.to_owned(),
-                    index_kind: index_spec.index_kind.to_owned(),
+                    index_kind: Box::new(index_spec.index_kind.clone()),
                 })
                 .collect();
         }
@@ -282,12 +282,16 @@ impl DatabaseSpec {
                         .collect(),
                     table
                         .indices
-                        .clone()
-                        .into_iter()
+                        .iter()
                         .map(|index| IndexSpec {
-                            name: index.name,
-                            columns: index.columns.into_iter().collect(),
-                            index_kind: index.index_kind,
+                            name: index.name.clone(),
+                            columns: index.columns.clone(),
+                            index_kind: index
+                                .index_kind
+                                .as_any()
+                                .downcast_ref::<IndexKind>()
+                                .cloned()
+                                .expect("PhysicalIndex should contain a Postgres IndexKind"),
                         })
                         .collect(),
                     trigger_specs,

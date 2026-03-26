@@ -27,8 +27,6 @@ pub use physical::physical_column_type;
 pub use physical::physical_table;
 pub use physical::relation;
 pub use physical::schema_object;
-pub use physical::vector;
-
 // Re-export commonly used types at the crate root
 pub use column_default::{
     ColumnAutoincrement, ColumnDefault, IdentityGeneration, UuidGenerationMethod,
@@ -38,7 +36,7 @@ pub use database::Database;
 pub use database::EnumId;
 pub use database::TableId;
 pub use database_error::DatabaseError;
-pub use index_kind::{HNWSParams, IndexKind};
+pub use index_kind::{DefaultIndexKind, PhysicalIndexKind};
 pub use limit::Limit;
 pub use offset::Offset;
 pub use order::Ordering;
@@ -53,4 +51,3 @@ pub use relation::{
 };
 pub use schema_object::SchemaObjectName;
 pub use statement::SchemaStatement;
-pub use vector::{DEFAULT_VECTOR_SIZE, VectorDistanceFunction};

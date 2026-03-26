@@ -9,12 +9,14 @@
 
 use crate::physical_column::ColumnId;
 
+use super::DatabaseExtension;
+
 /// A function applied to a column. For example, `count(id)` or `lower(first_name)`.
 #[derive(Debug, PartialEq, Clone)]
-pub enum Function<Ext> {
+pub enum Function<Ext: DatabaseExtension> {
     Named {
         function_name: String,
         column_id: ColumnId,
     },
-    Extension(Ext),
+    Extension(Ext::FunctionExtension),
 }

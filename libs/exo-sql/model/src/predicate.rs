@@ -7,14 +7,14 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql_core::operation::{DatabaseExtension, Predicate};
+use exo_sql_core::operation::{DatabaseExtension, Predicate, PredicateExtensionPaths};
 
 use crate::column_path::ColumnPath;
 
 /// A version of predicate that uses `ColumnPath`s so that resolvers don't have to deal with
 /// low-level concepts such as joins and subselects. These are handled by the
 /// `transformer::*_transformer` modules.
-pub type AbstractPredicate<Ext> = Predicate<ColumnPath<Ext>>;
+pub type AbstractPredicate<Ext> = Predicate<ColumnPath<Ext>, Ext>;
 
 /// Extension methods for `AbstractPredicate`
 pub trait AbstractPredicateExt<Ext: DatabaseExtension> {
@@ -42,7 +42,7 @@ impl<Ext: DatabaseExtension> AbstractPredicateExt<Ext> for AbstractPredicate<Ext
             | AbstractPredicate::JsonMatchAnyKey(l, r)
             | AbstractPredicate::JsonMatchAllKeys(l, r) => vec![l, r],
 
-            AbstractPredicate::VectorDistance(c1, c2, _, _, c3) => vec![c1, c2, c3],
+            AbstractPredicate::Extension(ext) => ext.column_paths(),
 
             AbstractPredicate::And(l, r) | AbstractPredicate::Or(l, r) => {
                 let mut result = l.column_paths();

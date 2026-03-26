@@ -9,21 +9,43 @@
 
 //! Postgres-specific extensions to the generic SQL AST types.
 //!
-//! `PgExtension` is the unified extension type for all Postgres-specific AST variants
-//! that don't belong in database-agnostic types. Column, Function, and OrderByElementExpr
-//! use `Extension(PgExtension)` for their Postgres-specific variants.
+//! Each extension point has its own dedicated type:
+//! - `PgColumnExtension` for `Column::Extension`
+//! - `PgFunctionExtension` for `Function::Extension`
+//! - `PgOrderByExtension` for `OrderByElementExpr::Extension`
+//!
+//! `PgExtension` is a unit struct that ties them together via `DatabaseExtension`.
 
-use exo_sql_core::operation::{DatabaseExtension, ParamEquality};
-use exo_sql_core::{VectorDistanceFunction, physical_column::ColumnId};
+use std::fmt::Debug;
+
+use exo_sql_core::column_path::PhysicalColumnPath;
+use exo_sql_core::operation::{
+    AbstractOrderByExtensionPaths, DatabaseExtension, ParamEquality, PredicateExtensionPaths,
+};
+use exo_sql_core::physical_column::ColumnId;
 
 use crate::core::json_agg::JsonAgg;
 use crate::core::json_object::JsonObject;
+use crate::core::vector::VectorDistanceFunction;
 use crate::sql_param_container::SQLParamContainer;
 
-/// Postgres-specific extensions to the generic SQL AST types.
+use exo_sql_model::ColumnPath;
+
+/// Postgres database extension marker type.
+///
+/// Ties together all Postgres-specific extension types via `DatabaseExtension`.
+#[derive(PartialEq, Clone)]
+pub struct PgExtension;
+
+impl std::fmt::Debug for PgExtension {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("PgExtension")
+    }
+}
+
+/// Postgres-specific column extensions.
 #[derive(Debug, PartialEq, Clone)]
-pub enum PgExtension {
-    // -- Column extensions --
+pub enum PgColumnExtension {
     /// An array parameter with a wrapping such as ANY() or ALL()
     ArrayParam {
         param: SQLParamContainer,
@@ -33,17 +55,23 @@ pub enum PgExtension {
     JsonObject(JsonObject),
     /// A JSON array aggregation (`json_agg(...)`)
     JsonAgg(JsonAgg),
+}
 
-    // -- Function extensions --
-    /// Vector distance function (pgvector)
-    VectorDistanceFunction {
+/// Postgres-specific function extensions.
+#[derive(Debug, PartialEq, Clone)]
+pub enum PgFunctionExtension {
+    /// pgvector distance function (e.g., `column <=> target::vector`)
+    VectorDistance {
         column_id: ColumnId,
         distance_function: VectorDistanceFunction,
         target: SQLParamContainer,
     },
+}
 
-    // -- OrderBy extensions --
-    /// Vector distance ordering (pgvector)
+/// Postgres-specific order-by extensions.
+#[derive(Debug, PartialEq, Clone)]
+pub enum PgOrderByExtension {
+    /// pgvector distance ordering
     VectorDistance(
         VectorDistanceOperand,
         VectorDistanceOperand,
@@ -51,8 +79,69 @@ pub enum PgExtension {
     ),
 }
 
+/// Postgres-specific predicate extensions.
+#[derive(Debug, PartialEq, Clone)]
+pub enum PgPredicateExtension<C> {
+    VectorDistance {
+        lhs: C,
+        rhs: C,
+        distance_function: VectorDistanceFunction,
+        comparator: exo_sql_core::operation::NumericComparator,
+        threshold: C,
+    },
+}
+
+impl<C: Debug + PartialEq + ParamEquality + Clone> PredicateExtensionPaths<C>
+    for PgPredicateExtension<C>
+{
+    fn column_paths(&self) -> Vec<&C> {
+        match self {
+            PgPredicateExtension::VectorDistance {
+                lhs,
+                rhs,
+                threshold,
+                ..
+            } => vec![lhs, rhs, threshold],
+        }
+    }
+}
+
+/// Postgres-specific abstract order-by extensions.
+#[derive(Debug)]
+pub enum PgAbstractOrderByExtension {
+    /// pgvector distance ordering
+    VectorDistance {
+        lhs: PgColumnPath,
+        rhs: PgColumnPath,
+        distance_function: VectorDistanceFunction,
+    },
+}
+
+type PgColumnPath = ColumnPath<PgExtension>;
+
+impl AbstractOrderByExtensionPaths for PgAbstractOrderByExtension {
+    fn physical_column_paths(&self) -> Vec<&PhysicalColumnPath> {
+        match self {
+            PgAbstractOrderByExtension::VectorDistance { lhs, rhs, .. } => [lhs, rhs]
+                .iter()
+                .filter_map(|path| match path {
+                    ColumnPath::Physical(path) => Some(path),
+                    _ => None,
+                })
+                .collect(),
+        }
+    }
+}
+
 impl DatabaseExtension for PgExtension {
     type Param = SQLParamContainer;
+    type ColumnExtension = PgColumnExtension;
+    type FunctionExtension = PgFunctionExtension;
+    type OrderByExtension = PgOrderByExtension;
+
+    type PredicateExtension<C: Debug + PartialEq + ParamEquality + Clone> = PgPredicateExtension<C>;
+
+    type AbstractOrderByExtension = PgAbstractOrderByExtension;
 }
 
 /// The wrapper type for array parameters (e.g., `ANY($1)` or `ALL($1)`)
@@ -70,7 +159,7 @@ pub enum VectorDistanceOperand {
     Param(SQLParamContainer),
 }
 
-impl ParamEquality for PgExtension {
+impl ParamEquality for PgColumnExtension {
     fn param_eq(&self, _other: &Self) -> Option<bool> {
         None
     }

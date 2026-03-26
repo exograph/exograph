@@ -16,7 +16,7 @@ use crate::sql_param_container::SQLParamContainer;
 use crate::{
     ExpressionBuilder, SQLBuilder,
     column::Column,
-    core::predicate_ext::ConcretePredicate,
+    core::ConcretePredicate,
     transaction::{TransactionContext, TransactionStepId},
 };
 

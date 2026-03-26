@@ -37,6 +37,20 @@ pub struct LocalPostgresDatabase {
 }
 
 impl LocalPostgresDatabaseServer {
+    pub fn create_server()
+    -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
+        let available = Self::check_availability();
+        if let Ok(true) = available {
+            tracing::info!("Launching PostgreSQL locally...");
+            Self::start()
+        } else {
+            tracing::error!("Local PostgreSQL is not available");
+            Err(EphemeralDatabaseSetupError::Generic(
+                "Local PostgreSQL is not available".to_string(),
+            ))
+        }
+    }
+
     pub fn check_availability() -> Result<bool, EphemeralDatabaseSetupError> {
         if let Err(e) = which::which("initdb") {
             tracing::error!("initdb not found: {}", e);

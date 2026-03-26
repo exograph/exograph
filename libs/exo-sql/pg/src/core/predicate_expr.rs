@@ -7,11 +7,12 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use crate::core::pg_extension::{PgExtension, PgPredicateExtension};
 use crate::{CaseSensitivity, NumericComparator, Predicate};
 use crate::{ExpressionBuilder, SQLBuilder, column::Column, core::vector::VectorDistance};
 use exo_sql_core::Database;
 
-pub type ConcretePredicate = Predicate<Column>;
+pub type ConcretePredicate = Predicate<Column, PgExtension>;
 
 impl ExpressionBuilder for ConcretePredicate {
     /// Build a predicate into a SQL string.
@@ -92,16 +93,16 @@ impl ExpressionBuilder for ConcretePredicate {
                 relational_combine(column1, column2, "?&", database, builder)
             }
 
-            ConcretePredicate::VectorDistance(
-                column1,
-                column2,
-                distance_op,
-                numeric_comp_op,
-                numeric_value,
-            ) => {
-                VectorDistance::new(column1, column2, *distance_op).build(database, builder);
+            ConcretePredicate::Extension(PgPredicateExtension::VectorDistance {
+                lhs,
+                rhs,
+                distance_function,
+                comparator,
+                threshold,
+            }) => {
+                VectorDistance::new(lhs, rhs, *distance_function).build(database, builder);
                 builder.push_space();
-                match numeric_comp_op {
+                match comparator {
                     NumericComparator::Eq => builder.push_str("="),
                     NumericComparator::Neq => builder.push_str("<>"),
                     NumericComparator::Lt => builder.push_str("<"),
@@ -110,7 +111,7 @@ impl ExpressionBuilder for ConcretePredicate {
                     NumericComparator::Gte => builder.push_str(">="),
                 }
                 builder.push_space();
-                numeric_value.build(database, builder);
+                threshold.build(database, builder);
             }
 
             ConcretePredicate::And(predicate1, predicate2) => {

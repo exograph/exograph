@@ -17,4 +17,3 @@ pub mod physical_column_type;
 pub mod physical_table;
 pub mod relation;
 pub mod schema_object;
-pub mod vector;

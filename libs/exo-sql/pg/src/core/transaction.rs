@@ -13,14 +13,15 @@ use tokio_postgres::Row;
 
 use crate::PgColumnTypeExt;
 use crate::Predicate;
+use crate::core::sql_value;
 use exo_sql_core::{Database, TableId};
 
 use crate::sql_param_container::SQLParamContainer;
 
 use crate::{
     column::Column,
-    core::pg_extension::{ArrayParamWrapper, PgExtension},
-    core::predicate_ext::ConcretePredicate,
+    core::ConcretePredicate,
+    core::pg_extension::{ArrayParamWrapper, PgColumnExtension},
     core::select::Select,
     core::sql_operation::{SQLOperation, TemplateSQLOperation},
     core::table::Table,
@@ -69,8 +70,8 @@ impl TransactionContext {
         step_id: TransactionStepId,
         row: usize,
         col: usize,
-    ) -> crate::core::sql_value::SQLValue {
-        self.results[step_id.0][row].get::<usize, crate::core::sql_value::SQLValue>(col)
+    ) -> sql_value::SQLValue {
+        self.results[step_id.0][row].get::<usize, sql_value::SQLValue>(col)
     }
 
     /// Returns the number of rows in the result of the given step id
@@ -166,7 +167,7 @@ impl TemplateFilterOperation {
                     predicate,
                     Predicate::Eq(
                         Column::physical(*pk_column_id, None),
-                        Column::Extension(PgExtension::ArrayParam {
+                        Column::Extension(PgColumnExtension::ArrayParam {
                             param: SQLParamContainer::from_sql_values(
                                 (0..rows)
                                     .map(|row| {

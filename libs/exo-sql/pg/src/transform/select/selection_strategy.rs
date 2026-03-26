@@ -9,7 +9,7 @@
 
 use crate::{
     Column, PgAbstractOrderBy, PgAbstractPredicate, PgExtension, PgSelection,
-    core::predicate_ext::ConcretePredicate, core::select::Select, core::table::Table,
+    core::ConcretePredicate, core::select::Select, core::table::Table,
 };
 use exo_sql_core::{Database, Limit, Offset, RelationId, SchemaObjectName, TableId};
 use exo_sql_model::{
