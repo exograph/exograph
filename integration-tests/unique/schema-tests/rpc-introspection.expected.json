@@ -43,6 +43,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -92,6 +104,18 @@
           "required": false,
           "schema": {
             "type": "integer"
+          }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
           }
         }
       ],
@@ -143,6 +167,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -165,6 +201,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -185,6 +233,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -204,6 +264,18 @@
           "required": true,
           "schema": {
             "type": "integer"
+          }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
           }
         }
       ],
@@ -232,6 +304,18 @@
           "schema": {
             "$ref": "#/components/schemas/UserUniqueFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -259,6 +343,18 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -278,6 +374,18 @@
           "required": true,
           "schema": {
             "type": "string"
+          }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
           }
         }
       ],
@@ -306,6 +414,18 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -332,6 +452,18 @@
           "required": true,
           "schema": {
             "$ref": "#/components/schemas/UserUniqueFilter"
+          }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
           }
         }
       ],
@@ -520,11 +652,11 @@
       }
     },
     {
-      "name": "delete_user_by_primary_email",
-      "description": "Delete a single `User` by primary email",
+      "name": "delete_user_by_secondary_email",
+      "description": "Delete a single `User` by secondary email",
       "params": [
         {
-          "name": "primaryEmailId",
+          "name": "secondaryEmailId",
           "required": true,
           "schema": {
             "type": "string"
@@ -547,11 +679,11 @@
       }
     },
     {
-      "name": "delete_user_by_secondary_email",
-      "description": "Delete a single `User` by secondary email",
+      "name": "delete_user_by_primary_email",
+      "description": "Delete a single `User` by primary email",
       "params": [
         {
-          "name": "secondaryEmailId",
+          "name": "primaryEmailId",
           "required": true,
           "schema": {
             "type": "string"
@@ -813,18 +945,11 @@
       }
     },
     {
-      "name": "update_user_by_primary_email",
-      "description": "Update a single `User` by primary email with the provided data. Any fields not provided will remain unchanged",
+      "name": "update_user_by_username",
+      "description": "Update a single `User` by username with the provided data. Any fields not provided will remain unchanged",
       "params": [
         {
-          "name": "primaryEmailId",
-          "required": true,
-          "schema": {
-            "type": "string"
-          }
-        },
-        {
-          "name": "emailDomain",
+          "name": "username",
           "required": true,
           "schema": {
             "type": "string"
@@ -848,11 +973,18 @@
       }
     },
     {
-      "name": "update_user_by_username",
-      "description": "Update a single `User` by username with the provided data. Any fields not provided will remain unchanged",
+      "name": "update_user_by_primary_email",
+      "description": "Update a single `User` by primary email with the provided data. Any fields not provided will remain unchanged",
       "params": [
         {
-          "name": "username",
+          "name": "primaryEmailId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "emailDomain",
           "required": true,
           "schema": {
             "type": "string"
@@ -1086,7 +1218,7 @@
   ],
   "components": {
     "schemas": {
-      "UserRef": {
+      "UserPK": {
         "type": "object",
         "properties": {
           "id": {
@@ -1107,7 +1239,7 @@
             "type": "string"
           },
           "user": {
-            "$ref": "#/components/schemas/UserRef"
+            "$ref": "#/components/schemas/UserPK"
           },
           "count": {
             "type": "integer"
@@ -1388,7 +1520,7 @@
             "type": "string"
           },
           "user": {
-            "$ref": "#/components/schemas/UserRef"
+            "$ref": "#/components/schemas/UserPK"
           },
           "count": {
             "type": "integer"
@@ -1447,20 +1579,7 @@
         },
         "required": [
           "id"
-        ],
-        "additionalProperties": false
-      },
-      "UserPK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ],
-        "additionalProperties": false
+        ]
       },
       "InternalRsvpPK": {
         "type": "object",
@@ -1471,8 +1590,18 @@
         },
         "required": [
           "id"
-        ],
-        "additionalProperties": false
+        ]
+      },
+      "UserRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
       },
       "RsvpUpdateInput": {
         "type": "object",

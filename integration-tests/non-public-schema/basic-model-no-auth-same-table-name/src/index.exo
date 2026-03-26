@@ -3,17 +3,26 @@
 @postgres
 module ConcertModule {
   @table(name="info", schema="concerts")
+  @projection(
+    withVenue = /basic + venue/basic,
+    withVenueDetails = /basic + venue/nameOnly + venue/locationOnly,
+    summary = id + title
+  )
   @access(true)
   type Concert {
     @pk
     id: Int = autoIncrement();
     title: String
-    @column("venueid") venue: Venue 
+    @column("venueid") venue: Venue
     published: Boolean
-    @precision(20) @scale(2) price: Decimal 
+    @precision(20) @scale(2) price: Decimal
   }
 
   @table(name="info", schema="venues")
+  @projection(
+    nameOnly = id + name,
+    locationOnly = id + latitude
+  )
   @access(true)
   type Venue {
     @pk id: Int = autoIncrement() 

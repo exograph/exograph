@@ -43,6 +43,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -93,6 +105,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -115,6 +139,18 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -134,6 +170,18 @@
           "required": true,
           "schema": {
             "type": "integer"
+          }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
           }
         }
       ],
@@ -594,7 +642,7 @@
           }
         }
       },
-      "UserRef": {
+      "UserPK": {
         "type": "object",
         "properties": {
           "id": {
@@ -615,7 +663,7 @@
             "type": "string"
           },
           "user": {
-            "$ref": "#/components/schemas/UserRef"
+            "$ref": "#/components/schemas/UserPK"
           }
         },
         "required": [
@@ -646,18 +694,6 @@
           }
         }
       },
-      "UserPK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ],
-        "additionalProperties": false
-      },
       "DocumentPK": {
         "type": "object",
         "properties": {
@@ -667,8 +703,7 @@
         },
         "required": [
           "id"
-        ],
-        "additionalProperties": false
+        ]
       },
       "DocumentCreateInputFromUser": {
         "type": "object",
@@ -739,6 +774,17 @@
             "$ref": "#/components/schemas/DocumentUpdateOpsFromUser"
           }
         }
+      },
+      "UserRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
       },
       "DocumentUpdateInput": {
         "type": "object",
