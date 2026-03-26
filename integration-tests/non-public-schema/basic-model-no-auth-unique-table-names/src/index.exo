@@ -19,7 +19,8 @@ module ConcertModule {
   @table(name="venues", schema="v")
   @projection(
     nameOnly = [id, name],
-    locationOnly = [id, latitude]
+    locationOnly = [id, latitude],
+    empty = []
   )
   @access(true)
   type Venue {
