@@ -9,12 +9,16 @@
 
 use std::collections::HashSet;
 
-use exo_sql_core::{DatabaseError, IndexKind, SchemaObjectName, VectorDistanceFunction};
+use exo_sql_core::{DatabaseError, SchemaObjectName};
+use exo_sql_pg::VectorDistanceFunction;
 use exo_sql_pg_connect::DatabaseClient;
 
 use crate::{
     DebugPrintTo, column_spec::ColumnSpec, issue::WithIssues, op::SchemaOp, table_spec::TableSpec,
 };
+
+// Re-export from pg where the canonical definitions now live
+pub use exo_sql_pg::{HNWSParams, IndexKind};
 
 #[derive(Debug, Clone)]
 pub struct IndexSpec {

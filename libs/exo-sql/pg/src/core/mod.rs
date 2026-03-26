@@ -36,21 +36,24 @@ pub mod vector;
 
 pub mod function;
 pub mod pg_extension;
+pub mod pg_schema_types;
 pub mod physical_column_type;
 pub mod sql_bytes;
 pub mod sql_param;
 pub mod sql_param_container;
 pub mod sql_value;
 
-pub(crate) mod predicate_ext;
+mod predicate_expr;
+pub(crate) use predicate_expr::ConcretePredicate;
 
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_database_builder;
 
-mod function_ext;
-mod limit_ext;
-mod offset_ext;
-pub(crate) mod pg_column_type;
-mod pg_extension_ext;
-mod physical_column_ext;
-mod physical_table_ext;
+mod function_expr;
+mod limit_expr;
+mod offset_expr;
+mod pg_column_type;
+pub use pg_column_type::PgColumnTypeExt;
+mod column_extension_expr;
+mod physical_column_expr;
+mod physical_table_expr;

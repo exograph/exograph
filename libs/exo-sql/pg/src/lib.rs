@@ -29,10 +29,15 @@ pub use core::test_database_builder;
 pub use transform as pg;
 
 // Re-export commonly used types
+pub use core::PgColumnTypeExt;
 pub use core::function::Function;
-pub use core::pg_column_type::PgColumnTypeExt;
-pub use core::pg_extension::PgExtension;
+pub use core::pg_extension::{
+    PgAbstractOrderByExtension, PgColumnExtension, PgExtension, PgFunctionExtension,
+    PgOrderByExtension, PgPredicateExtension,
+};
+pub use core::pg_schema_types::{HNWSParams, IndexKind, ensure_index_kind_registry_initialized};
 pub use core::physical_column_type::ensure_registry_initialized;
+pub use core::vector::{DEFAULT_VECTOR_SIZE, VectorDistanceFunction};
 pub use exo_sql_core::operation::{CaseSensitivity, NumericComparator, ParamEquality, Predicate};
 
 // Pg-specialized model type aliases

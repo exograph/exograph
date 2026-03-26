@@ -10,11 +10,11 @@
 use maybe_owned::MaybeOwned;
 
 use crate::{
-    Column, PgAbstractInsert, PgColumnTypeExt, PgColumnValuePair, PgExtension, PgInsertionRow,
+    Column, PgAbstractInsert, PgColumnTypeExt, PgColumnValuePair, PgInsertionRow,
     PgNestedInsertion, SQLOperation,
     column::ProxyColumn,
     core::insert::TemplateInsert,
-    core::pg_extension::ArrayParamWrapper,
+    core::pg_extension::{ArrayParamWrapper, PgColumnExtension},
     core::select::Select,
     core::sql_operation::TemplateSQLOperation,
     transaction::{
@@ -118,7 +118,7 @@ impl InsertionStrategy for MultiStatementStrategy {
                             predicate,
                             Predicate::Eq(
                                 Column::physical(pk_column_id, None),
-                                Column::Extension(PgExtension::ArrayParam {
+                                Column::Extension(PgColumnExtension::ArrayParam {
                                     param: in_values,
                                     wrapper: ArrayParamWrapper::Any,
                                 }),

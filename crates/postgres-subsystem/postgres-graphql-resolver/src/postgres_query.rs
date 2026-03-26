@@ -20,8 +20,8 @@ use core_model::types::OperationReturnType;
 use core_resolver::validation::field::ValidatedField;
 use exo_sql::{
     AbstractPredicate, Limit, Offset, PgAbstractOrderBy, PgAbstractPredicate, PgAbstractSelect,
-    PgAliasedSelectionElement, PgExtension, PgSelectionElement, RelationId, SelectionCardinality,
-    SelectionElement,
+    PgAliasedSelectionElement, PgFunctionExtension, PgSelectionElement, RelationId,
+    SelectionCardinality, SelectionElement,
 };
 use exo_sql::{Function, SQLParamContainer};
 use futures::StreamExt;
@@ -327,7 +327,7 @@ async fn map_vector_distance_field(
     let to_vector_value = to_pg_vector(to_arg, "to")?;
 
     Ok(SelectionElement::Function(Function::Extension(
-        PgExtension::VectorDistanceFunction {
+        PgFunctionExtension::VectorDistance {
             column_id: vector_distance_field.column_id,
             distance_function: vector_distance_field.distance_function,
             target: SQLParamContainer::f32_array(to_vector_value),

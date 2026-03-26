@@ -11,7 +11,9 @@
 
 use common::value::Val;
 use common::value::val::ValNumber;
-use exo_sql::{CaseSensitivity, ParamEquality, Predicate};
+use std::fmt::Debug;
+
+use exo_sql::{CaseSensitivity, ParamEquality, PgExtension, Predicate};
 
 use crate::postgres_execution_error::PostgresExecutionError;
 
@@ -51,11 +53,11 @@ pub fn to_pg_vector(value: &Val, param_name: &str) -> Result<Vec<f32>, PostgresE
 }
 
 /// Map predicate from operation name to a Predicate
-pub(crate) fn predicate_from_name<C: PartialEq + ParamEquality>(
+pub(crate) fn predicate_from_name<C: Debug + PartialEq + ParamEquality + Clone>(
     op_name: &str,
     lhs: C,
     rhs: C,
-) -> Result<Predicate<C>, PostgresExecutionError> {
+) -> Result<Predicate<C, PgExtension>, PostgresExecutionError> {
     match op_name {
         "eq" => Ok(Predicate::Eq(lhs, rhs)),
         "neq" => Ok(Predicate::Neq(lhs, rhs)),

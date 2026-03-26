@@ -20,13 +20,15 @@ pub mod table;
 pub mod transaction_step_id;
 
 pub use column::Column;
-pub use database_extension::DatabaseExtension;
+pub use database_extension::{
+    AbstractOrderByExtensionPaths, DatabaseExtension, PredicateExtensionPaths,
+};
 pub use function::Function;
 pub use group_by::GroupBy;
 pub use join::LeftJoin;
 pub use order::{OrderBy, OrderByElement, OrderByElementExpr};
 pub use param_equality::ParamEquality;
-pub use predicate::{CaseSensitivity, NumericComparator, Predicate};
+pub use predicate::{CaseSensitivity, ColumnPredicate, NumericComparator, Predicate};
 pub use select::Select;
 pub use table::Table;
 pub use transaction_step_id::TransactionStepId;

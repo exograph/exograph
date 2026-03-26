@@ -14,7 +14,7 @@ use crate::{
     Column, PgAbstractUpdate, PgColumnTypeExt, PgExtension, PgNestedAbstractDelete,
     PgNestedAbstractInsert, PgNestedAbstractUpdate, SQLOperation,
     core::delete::TemplateDelete,
-    core::pg_extension::ArrayParamWrapper,
+    core::pg_extension::{ArrayParamWrapper, PgColumnExtension},
     core::select::Select,
     core::sql_operation::TemplateSQLOperation,
     core::table::Table,
@@ -231,7 +231,7 @@ impl UpdateStrategy for MultiStatementStrategy {
                             predicate,
                             Predicate::Eq(
                                 Column::physical(pk_column_id, None),
-                                Column::Extension(PgExtension::ArrayParam {
+                                Column::Extension(PgColumnExtension::ArrayParam {
                                     param: in_values,
                                     wrapper: ArrayParamWrapper::Any,
                                 }),

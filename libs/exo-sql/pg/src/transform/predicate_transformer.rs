@@ -8,11 +8,13 @@
 // by the Apache License, Version 2.0.
 
 use crate::NumericComparator;
+use crate::core::pg_extension::PgPredicateExtension;
+use crate::core::vector::VectorDistanceFunction;
 use crate::{
     Column, PgAbstractPredicate, PgAbstractSelect, PgColumnPath, PgExtension,
-    core::predicate_ext::ConcretePredicate,
+    core::ConcretePredicate,
 };
-use exo_sql_core::{Database, VectorDistanceFunction};
+use exo_sql_core::Database;
 use exo_sql_model::{
     AbstractPredicate, AliasedSelectionElement, ColumnPath, Selection, SelectionElement,
     column_path::{ColumnPathLink, RelationLink},
@@ -102,19 +104,19 @@ fn to_join_predicate(
             ConcretePredicate::JsonMatchAllKeys(compute_leaf_column(l), compute_leaf_column(r))
         }
 
-        AbstractPredicate::VectorDistance(
-            c1,
-            c2,
-            distance_op,
-            numeric_comparator_op,
+        AbstractPredicate::Extension(PgPredicateExtension::VectorDistance {
+            lhs,
+            rhs,
+            distance_function,
+            comparator,
             threshold,
-        ) => ConcretePredicate::VectorDistance(
-            compute_leaf_column(c1),
-            compute_leaf_column(c2),
-            *distance_op,
-            *numeric_comparator_op,
-            compute_leaf_column(threshold),
-        ),
+        }) => ConcretePredicate::Extension(PgPredicateExtension::VectorDistance {
+            lhs: compute_leaf_column(lhs),
+            rhs: compute_leaf_column(rhs),
+            distance_function: *distance_function,
+            comparator: *comparator,
+            threshold: compute_leaf_column(threshold),
+        }),
 
         AbstractPredicate::And(l, r) => ConcretePredicate::and(
             to_join_predicate(l, selection_level, database),
@@ -295,85 +297,39 @@ fn attempt_subselect_predicate(
         comparator: &NumericComparator,
         comparator_path: &PgColumnPath,
     ) -> Option<(RelationLink, PgAbstractPredicate)> {
+        let vd = |lhs, rhs, threshold| {
+            AbstractPredicate::Extension(PgPredicateExtension::VectorDistance {
+                lhs,
+                rhs,
+                distance_function: *distance_function,
+                comparator: *comparator,
+                threshold,
+            })
+        };
+
         match (split(l), split(r), split(comparator_path)) {
             (None, None, None) => None,
-            (None, None, Some((c_link, c_tail))) => Some((
-                c_link,
-                AbstractPredicate::VectorDistance(
-                    l.clone(),
-                    r.clone(),
-                    *distance_function,
-                    *comparator,
-                    c_tail,
-                ),
-            )),
-            (None, Some((r_link, r_tail)), None) => Some((
-                r_link,
-                AbstractPredicate::VectorDistance(
-                    l.clone(),
-                    r_tail,
-                    *distance_function,
-                    *comparator,
-                    comparator_path.clone(),
-                ),
-            )),
-            (None, Some((r_link, r_tail)), Some((c_link, c_tail))) => {
-                (r_link == c_link).then_some((
-                    r_link,
-                    AbstractPredicate::VectorDistance(
-                        l.clone(),
-                        r_tail,
-                        *distance_function,
-                        *comparator,
-                        c_tail,
-                    ),
-                ))
+            (None, None, Some((c_link, c_tail))) => {
+                Some((c_link, vd(l.clone(), r.clone(), c_tail)))
             }
-            (Some((l_link, l_tail)), None, None) => Some((
-                l_link,
-                AbstractPredicate::VectorDistance(
-                    l_tail,
-                    r.clone(),
-                    *distance_function,
-                    *comparator,
-                    comparator_path.clone(),
-                ),
-            )),
+            (None, Some((r_link, r_tail)), None) => {
+                Some((r_link, vd(l.clone(), r_tail, comparator_path.clone())))
+            }
+            (None, Some((r_link, r_tail)), Some((c_link, c_tail))) => {
+                (r_link == c_link).then_some((r_link, vd(l.clone(), r_tail, c_tail)))
+            }
+            (Some((l_link, l_tail)), None, None) => {
+                Some((l_link, vd(l_tail, r.clone(), comparator_path.clone())))
+            }
             (Some((l_link, l_tail)), None, Some((c_link, c_tail))) => {
-                (l_link == c_link).then_some((
-                    l_link,
-                    AbstractPredicate::VectorDistance(
-                        l_tail,
-                        r.clone(),
-                        *distance_function,
-                        *comparator,
-                        c_tail,
-                    ),
-                ))
+                (l_link == c_link).then_some((l_link, vd(l_tail, r.clone(), c_tail)))
             }
             (Some((l_link, l_tail)), Some((r_link, r_tail)), None) => {
-                (l_link == r_link).then_some((
-                    l_link,
-                    AbstractPredicate::VectorDistance(
-                        l_tail,
-                        r_tail,
-                        *distance_function,
-                        *comparator,
-                        comparator_path.clone(),
-                    ),
-                ))
+                (l_link == r_link).then_some((l_link, vd(l_tail, r_tail, comparator_path.clone())))
             }
             (Some((l_link, l_tail)), Some((r_link, r_tail)), Some((c_link, c_tail))) => {
-                (l_link == r_link && r_link == c_link).then_some((
-                    l_link,
-                    AbstractPredicate::VectorDistance(
-                        l_tail,
-                        r_tail,
-                        *distance_function,
-                        *comparator,
-                        c_tail,
-                    ),
-                ))
+                (l_link == r_link && r_link == c_link)
+                    .then_some((l_link, vd(l_tail, r_tail, c_tail)))
             }
         }
     }
@@ -425,14 +381,14 @@ fn attempt_subselect_predicate(
             binary_operator(l, r, AbstractPredicate::JsonMatchAllKeys)
         }
 
-        AbstractPredicate::VectorDistance(l, r, distance_function, comparator, comparator_path) => {
-            vector_distance_subselect_predicate(
-                l,
-                r,
-                distance_function,
-                comparator,
-                comparator_path,
-            )
+        AbstractPredicate::Extension(PgPredicateExtension::VectorDistance {
+            lhs,
+            rhs,
+            distance_function,
+            comparator,
+            threshold,
+        }) => {
+            vector_distance_subselect_predicate(lhs, rhs, distance_function, comparator, threshold)
         }
 
         AbstractPredicate::And(l, r) => logical_binary_op(l, r, AbstractPredicate::And),

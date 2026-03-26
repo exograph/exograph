@@ -16,8 +16,8 @@ use core_model::mapped_arena::SerializableSlab;
 use core_resolver::access_solver::AccessSolver;
 use exo_sql::{
     AbstractOrderBy, AbstractOrderByExpr, AbstractPredicate, ColumnPath, Ordering,
-    PgAbstractOrderBy, PgAbstractPredicate, PhysicalColumnPath, SQLParamContainer,
-    VectorDistanceFunction,
+    PgAbstractOrderBy, PgAbstractOrderByExtension, PgAbstractPredicate, PhysicalColumnPath,
+    SQLParamContainer, VectorDistanceFunction,
 };
 use futures::future::join_all;
 use postgres_core_model::order::{
@@ -180,14 +180,16 @@ async fn order_by_pair<'a, F: OrderByFieldAccessChecker>(
 
                                 ordering(order).map(|ordering| {
                                     AbstractOrderBy(vec![(
-                                        AbstractOrderByExpr::VectorDistance(
-                                            ColumnPath::Physical(new_column_path),
-                                            ColumnPath::Param(SQLParamContainer::f32_array(
-                                                vector_value,
-                                            )),
-                                            parameter
-                                                .vector_distance_function
-                                                .unwrap_or(VectorDistanceFunction::default()),
+                                        AbstractOrderByExpr::Extension(
+                                            PgAbstractOrderByExtension::VectorDistance {
+                                                lhs: ColumnPath::Physical(new_column_path),
+                                                rhs: ColumnPath::Param(
+                                                    SQLParamContainer::f32_array(vector_value),
+                                                ),
+                                                distance_function: parameter
+                                                    .vector_distance_function
+                                                    .unwrap_or(VectorDistanceFunction::default()),
+                                            },
                                         ),
                                         ordering,
                                     )])

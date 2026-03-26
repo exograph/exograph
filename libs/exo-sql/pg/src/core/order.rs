@@ -9,7 +9,7 @@
 
 use exo_sql_core::{Database, Ordering};
 
-use crate::core::pg_extension::{PgExtension, VectorDistanceOperand};
+use crate::core::pg_extension::{PgExtension, PgOrderByExtension, VectorDistanceOperand};
 use crate::{ExpressionBuilder, SQLBuilder, core::vector::VectorDistance};
 
 // Re-export the core OrderBy types specialized to PgExtension
@@ -31,14 +31,13 @@ impl ExpressionBuilder for OrderByElement {
                     }
                 }
             }
-            OrderByElementExpr::Extension(PgExtension::VectorDistance(lhs, rhs, function)) => {
+            OrderByElementExpr::Extension(PgOrderByExtension::VectorDistance(
+                lhs,
+                rhs,
+                function,
+            )) => {
                 VectorDistance::new((lhs, self.2.as_ref()), (rhs, self.2.as_ref()), *function)
                     .build(database, builder);
-            }
-            // PgExtension is a flat enum shared across Column, Function, and OrderBy.
-            // Only VectorDistance is valid here.
-            OrderByElementExpr::Extension(_) => {
-                unreachable!("Non-orderby PgExtension variant used in OrderByElementExpr")
             }
         }
         builder.push_space();

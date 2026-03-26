@@ -8,7 +8,9 @@
 // by the Apache License, Version 2.0.
 
 use crate::core::order::{OrderBy, OrderByElement, OrderByElementExpr};
-use crate::core::pg_extension::VectorDistanceOperand;
+use crate::core::pg_extension::{
+    PgAbstractOrderByExtension, PgOrderByExtension, VectorDistanceOperand,
+};
 use crate::{PgAbstractOrderBy, PgColumnPath, PgExtension};
 use exo_sql_core::Database;
 use exo_sql_model::{
@@ -47,7 +49,13 @@ impl OrderByTransformer<PgExtension> for Postgres {
                         let column_id = path.leaf_column();
                         OrderByElement::new(column_id, *ordering, table_alias)
                     }
-                    AbstractOrderByExpr::VectorDistance(lhs, rhs, op) => {
+                    AbstractOrderByExpr::Extension(
+                        PgAbstractOrderByExtension::VectorDistance {
+                            lhs,
+                            rhs,
+                            distance_function,
+                        },
+                    ) => {
                         fn to_column(column_path: &PgColumnPath) -> VectorDistanceOperand {
                             match column_path {
                                 ColumnPath::Physical(path) => {
@@ -61,9 +69,12 @@ impl OrderByTransformer<PgExtension> for Postgres {
                         }
                         let lhs_column = to_column(lhs);
                         let rhs_column = to_column(rhs);
-                        let expr = OrderByElementExpr::Extension(PgExtension::VectorDistance(
-                            lhs_column, rhs_column, *op,
-                        ));
+                        let expr =
+                            OrderByElementExpr::Extension(PgOrderByExtension::VectorDistance(
+                                lhs_column,
+                                rhs_column,
+                                *distance_function,
+                            ));
 
                         OrderByElement::from_expr(expr, *ordering, None)
                     }

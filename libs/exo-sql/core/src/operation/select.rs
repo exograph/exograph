@@ -10,10 +10,10 @@
 use crate::{Limit, Offset};
 
 use super::DatabaseExtension;
-use super::Predicate;
 use super::column::Column;
 use super::group_by::GroupBy;
 use super::order::OrderBy;
+use super::predicate::ColumnPredicate;
 use super::table::Table;
 
 /// A select statement
@@ -24,7 +24,7 @@ pub struct Select<Ext: DatabaseExtension> {
     /// The columns to select
     pub columns: Vec<Column<Ext>>,
     /// The predicate to filter the rows
-    pub predicate: Predicate<Column<Ext>>,
+    pub predicate: ColumnPredicate<Ext>,
     /// The order by clause
     pub order_by: Option<OrderBy<Ext>>,
     /// The offset clause

@@ -29,7 +29,7 @@ impl ExpressionBuilder for LeftJoin {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::{predicate_ext::ConcretePredicate, table::Table};
+    use crate::core::{ConcretePredicate, table::Table};
     use crate::test_database_builder::*;
     use crate::{Column, SQLBuilder};
     use exo_sql_core::SchemaObjectName;

@@ -14,9 +14,10 @@ use exo_sql_model::{
 };
 
 use crate::{
-    Column, PgExtension, PgSelection, PgSelectionElement,
+    Column, PgSelection, PgSelectionElement,
     core::json_agg::JsonAgg,
     core::json_object::{JsonObject, JsonObjectElement},
+    core::pg_extension::PgColumnExtension,
 };
 
 use crate::pg::Postgres;
@@ -82,12 +83,13 @@ impl SelectionExt for PgSelection {
                     })
                     .collect();
 
-                let json_obj = Column::Extension(PgExtension::JsonObject(JsonObject(object_elems)));
+                let json_obj =
+                    Column::Extension(PgColumnExtension::JsonObject(JsonObject(object_elems)));
 
                 match cardinality {
                     SelectionCardinality::One => SelectionSQL::Single(json_obj),
                     SelectionCardinality::Many => SelectionSQL::Single(Column::Extension(
-                        PgExtension::JsonAgg(JsonAgg(Box::new(json_obj))),
+                        PgColumnExtension::JsonAgg(JsonAgg(Box::new(json_obj))),
                     )),
                 }
             }
@@ -134,7 +136,7 @@ impl SelectionElementExt for PgSelectionElement {
                         )
                     })
                     .collect();
-                Column::Extension(PgExtension::JsonObject(JsonObject(elements)))
+                Column::Extension(PgColumnExtension::JsonObject(JsonObject(elements)))
             }
             SelectionElement::SubSelect(relation_id, select) => {
                 let new_selection_level = selection_level.with_relation_id(relation_id);

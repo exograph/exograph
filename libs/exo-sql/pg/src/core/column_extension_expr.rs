@@ -9,13 +9,13 @@
 
 use exo_sql_core::Database;
 
-use crate::core::pg_extension::{ArrayParamWrapper, PgExtension};
+use crate::core::pg_extension::{ArrayParamWrapper, PgColumnExtension};
 use crate::{ExpressionBuilder, SQLBuilder};
 
-impl ExpressionBuilder for PgExtension {
+impl ExpressionBuilder for PgColumnExtension {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         match self {
-            PgExtension::ArrayParam { param, wrapper } => {
+            PgColumnExtension::ArrayParam { param, wrapper } => {
                 let wrapper_string = match wrapper {
                     ArrayParamWrapper::Any => "ANY",
                     ArrayParamWrapper::All => "ALL",
@@ -31,16 +31,10 @@ impl ExpressionBuilder for PgExtension {
                     builder.push(')');
                 }
             }
-            PgExtension::JsonObject(obj) => {
+            PgColumnExtension::JsonObject(obj) => {
                 obj.build(database, builder);
             }
-            PgExtension::JsonAgg(agg) => agg.build(database, builder),
-            // PgExtension is a flat enum shared across Column, Function, and OrderBy.
-            // Only column variants (ArrayParam, JsonObject, JsonAgg) are valid here.
-            // TODO: Refactor PgExtension into separate enums for ColumnExtension, FunctionExtension, and OrderByExtension to enforce this at the type level.
-            PgExtension::VectorDistanceFunction { .. } | PgExtension::VectorDistance(..) => {
-                unreachable!("Non-column PgExtension variant used in Column::Extension")
-            }
+            PgColumnExtension::JsonAgg(agg) => agg.build(database, builder),
         }
     }
 }
