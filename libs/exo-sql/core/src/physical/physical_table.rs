@@ -9,7 +9,7 @@
 
 use std::collections::HashSet;
 
-use crate::index_kind::IndexKind;
+use crate::index_kind::PhysicalIndexKind;
 use crate::physical_column::PhysicalColumn;
 use crate::schema_object::SchemaObjectName;
 
@@ -35,12 +35,22 @@ pub struct PhysicalEnum {
     pub variants: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PhysicalIndex {
     pub name: String,
     pub columns: HashSet<String>,
-    pub index_kind: IndexKind,
+    pub index_kind: Box<dyn PhysicalIndexKind>,
 }
+
+impl PartialEq for PhysicalIndex {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.columns == other.columns
+            && self.index_kind.equals(other.index_kind.as_ref())
+    }
+}
+
+impl Eq for PhysicalIndex {}
 
 /// The derived implementation of `Debug` is quite verbose, so we implement it manually
 /// to print the table and columns names only.

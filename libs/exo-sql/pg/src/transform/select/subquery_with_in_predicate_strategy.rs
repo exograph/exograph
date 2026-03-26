@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::core::{predicate_ext::ConcretePredicate, select::Select};
+use crate::core::{ConcretePredicate, select::Select};
 use exo_sql_core::Database;
 use exo_sql_model::transformer::PredicateTransformer;
 

@@ -16,8 +16,8 @@ use core_model::mapped_arena::SerializableSlab;
 use core_resolver::access_solver::AccessSolver;
 use exo_sql::{
     AbstractPredicate, ArrayColumnType, ColumnPath, ColumnPathLink, Database, NumericComparator,
-    PgAbstractPredicate, PgColumnPath, PhysicalColumnPath, PhysicalColumnType,
-    PhysicalColumnTypeExt, Predicate, SQLParamContainer, StringColumnType,
+    PgAbstractPredicate, PgColumnPath, PgPredicateExtension, PhysicalColumnPath,
+    PhysicalColumnType, PhysicalColumnTypeExt, Predicate, SQLParamContainer, StringColumnType,
 };
 use futures::future::{BoxFuture, FutureExt, try_join_all};
 use futures::{StreamExt, TryStreamExt};
@@ -218,18 +218,22 @@ fn map_predicate<'a, F: FieldAccessChecker>(
                                             let target_vector =
                                                 SQLParamContainer::f32_array(vector_value);
 
-                                            Ok(AbstractPredicate::VectorDistance(
-                                                ColumnPath::Physical(
-                                                    to_column_path(
-                                                        &parent_column_path,
-                                                        &param.column_path_link,
-                                                    )
-                                                    .unwrap(),
-                                                ),
-                                                ColumnPath::Param(target_vector),
-                                                param.vector_distance_function.unwrap_or_default(),
-                                                distance_comparator,
-                                                ColumnPath::Param(threshold),
+                                            Ok(AbstractPredicate::Extension(
+                                                PgPredicateExtension::VectorDistance {
+                                                    lhs: ColumnPath::Physical(
+                                                        to_column_path(
+                                                            &parent_column_path,
+                                                            &param.column_path_link,
+                                                        )
+                                                        .unwrap(),
+                                                    ),
+                                                    rhs: ColumnPath::Param(target_vector),
+                                                    distance_function: param
+                                                        .vector_distance_function
+                                                        .unwrap_or_default(),
+                                                    comparator: distance_comparator,
+                                                    threshold: ColumnPath::Param(threshold),
+                                                },
                                             ))
                                         }
                                         _ => Err(PostgresExecutionError::Validation(

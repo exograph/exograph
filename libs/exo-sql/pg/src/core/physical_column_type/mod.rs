@@ -176,10 +176,11 @@ static REGISTRY_INIT: LazyLock<()> = LazyLock::new(|| {
     set_physical_column_type_registry(registry);
 });
 
-/// Ensure the physical column type registry is initialized.
-/// Must be called before any serialization/deserialization of PhysicalColumn.
+/// Ensure the physical column type and index kind registries are initialized.
+/// Must be called before any serialization/deserialization of PhysicalColumn or PhysicalIndex.
 pub fn ensure_registry_initialized() {
     LazyLock::force(&REGISTRY_INIT);
+    super::pg_schema_types::ensure_index_kind_registry_initialized();
 }
 
 /// Create physical column types from PostgreSQL type strings (e.g., "INT", "VARCHAR(255)", "BOOLEAN[]")

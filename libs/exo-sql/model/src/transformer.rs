@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use exo_sql_core::Database;
-use exo_sql_core::operation::{Column, DatabaseExtension, OrderBy, Predicate, Select};
+use exo_sql_core::operation::{ColumnPredicate, DatabaseExtension, OrderBy, Select};
 
 use crate::{
     order_by::AbstractOrderBy, predicate::AbstractPredicate, select::AbstractSelect,
@@ -34,7 +34,7 @@ pub trait PredicateTransformer<Ext: DatabaseExtension> {
         selection_level: &SelectionLevel,
         assume_tables_in_context: bool,
         database: &Database,
-    ) -> Predicate<Column<Ext>>;
+    ) -> ColumnPredicate<Ext>;
 }
 
 pub trait OrderByTransformer<Ext: DatabaseExtension> {

@@ -22,7 +22,7 @@ pub struct OrderByElement<Ext: DatabaseExtension>(
 pub enum OrderByElementExpr<Ext: DatabaseExtension> {
     Column(ColumnId),
     /// Database-specific ordering expression (e.g., pgvector distance)
-    Extension(Ext),
+    Extension(Ext::OrderByExtension),
 }
 
 #[derive(Debug, PartialEq, Clone)]

@@ -85,23 +85,23 @@ pub use exo_sql_pg::physical_column_type::{
     VectorColumnType, physical_column_type_from_string,
 };
 
-// Types from pg-core (moved from core)
+// Types from pg (moved from core)
 pub use exo_sql_pg::{
-    CaseSensitivity, Function, NumericComparator, ParamEquality, PgAbstractDelete,
-    PgAbstractInsert, PgAbstractOperation, PgAbstractOrderBy, PgAbstractPredicate,
-    PgAbstractSelect, PgAbstractUpdate, PgAliasedSelectionElement, PgColumnPath, PgExtension,
+    CaseSensitivity, DEFAULT_VECTOR_SIZE, Function, HNWSParams, IndexKind, NumericComparator,
+    ParamEquality, PgAbstractDelete, PgAbstractInsert, PgAbstractOperation, PgAbstractOrderBy,
+    PgAbstractOrderByExtension, PgAbstractPredicate, PgAbstractSelect, PgAbstractUpdate,
+    PgAliasedSelectionElement, PgColumnExtension, PgColumnPath, PgExtension, PgFunctionExtension,
     PgInsertionElement, PgInsertionRow, PgNestedAbstractDelete, PgNestedAbstractInsert,
-    PgNestedAbstractInsertSet, PgNestedAbstractUpdate, PgSelectionElement, Predicate,
-    sql_param_container::SQLParamContainer,
+    PgNestedAbstractInsertSet, PgNestedAbstractUpdate, PgOrderByExtension, PgPredicateExtension,
+    PgSelectionElement, Predicate, VectorDistanceFunction, sql_param_container::SQLParamContainer,
 };
 
 // Types that remain in core
 pub use exo_sql_core::{
-    ColumnId, ColumnReference, Database, DatabaseError, IndexKind, Limit, ManyToOne, ManyToOneId,
-    Offset, OneToMany, OneToManyId, Ordering, PhysicalColumn, PhysicalEnum, PhysicalIndex,
-    PhysicalTable, RelationColumnPair, RelationId, SchemaObjectName, TableId,
+    ColumnId, ColumnReference, Database, DatabaseError, Limit, ManyToOne, ManyToOneId, Offset,
+    OneToMany, OneToManyId, Ordering, PhysicalColumn, PhysicalEnum, PhysicalIndex, PhysicalTable,
+    RelationColumnPair, RelationId, SchemaObjectName, TableId,
     physical_column::{get_mto_relation_for_columns, get_otm_relation_for_columns},
-    vector::{DEFAULT_VECTOR_SIZE, VectorDistanceFunction},
 };
 
 #[cfg(feature = "bigdecimal")]

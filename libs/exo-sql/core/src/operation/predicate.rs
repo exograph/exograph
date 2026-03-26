@@ -7,8 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::VectorDistanceFunction;
+use std::fmt::Debug;
 
+use super::DatabaseExtension;
 use super::ParamEquality;
 
 /// Case sensitivity for string predicates.
@@ -28,11 +29,14 @@ pub enum NumericComparator {
     Gte,
 }
 
+/// Convenience alias for predicates over concrete SQL columns.
+pub type ColumnPredicate<Ext> = Predicate<super::Column<Ext>, Ext>;
+
 /// A predicate is a boolean expression that can be used in a WHERE clause.
 #[derive(Debug, PartialEq, Clone)]
-pub enum Predicate<C>
+pub enum Predicate<C, Ext: DatabaseExtension>
 where
-    C: PartialEq + ParamEquality,
+    C: Debug + PartialEq + ParamEquality + Clone,
 {
     True,
     False,
@@ -56,22 +60,23 @@ where
     JsonMatchAnyKey(C, C),
     JsonMatchAllKeys(C, C),
 
-    VectorDistance(C, C, VectorDistanceFunction, NumericComparator, C),
+    /// Database-specific predicate extension (e.g., pgvector distance predicates)
+    Extension(Ext::PredicateExtension<C>),
 
     // Prefer Predicate::and(), which simplifies the clause
-    And(Box<Predicate<C>>, Box<Predicate<C>>),
+    And(Box<Predicate<C, Ext>>, Box<Predicate<C, Ext>>),
     // Prefer Predicate::or(), which simplifies the clause
-    Or(Box<Predicate<C>>, Box<Predicate<C>>),
+    Or(Box<Predicate<C, Ext>>, Box<Predicate<C, Ext>>),
     // Prefer Predicate::not(), which simplifies the clause
-    Not(Box<Predicate<C>>),
+    Not(Box<Predicate<C, Ext>>),
 }
 
-impl<C> Predicate<C>
+impl<C, Ext: DatabaseExtension> Predicate<C, Ext>
 where
-    C: PartialEq + ParamEquality,
+    C: Debug + PartialEq + ParamEquality + Clone,
 {
     /// Compare two columns and reduce to a simpler predicate if possible.
-    pub fn eq(lhs: C, rhs: C) -> Predicate<C> {
+    pub fn eq(lhs: C, rhs: C) -> Predicate<C, Ext> {
         if lhs == rhs {
             Predicate::True
         } else {
@@ -84,12 +89,12 @@ where
     }
 
     /// Compare two columns and reduce to a simpler predicate if possible
-    pub fn neq(lhs: C, rhs: C) -> Predicate<C> {
+    pub fn neq(lhs: C, rhs: C) -> Predicate<C, Ext> {
         !Self::eq(lhs, rhs)
     }
 
     /// Logical and of two predicates, reducing to a simpler predicate if possible.
-    pub fn and(lhs: Predicate<C>, rhs: Predicate<C>) -> Predicate<C> {
+    pub fn and(lhs: Predicate<C, Ext>, rhs: Predicate<C, Ext>) -> Predicate<C, Ext> {
         match (lhs, rhs) {
             (Predicate::False, _) | (_, Predicate::False) => Predicate::False,
             (Predicate::True, rhs) => rhs,
@@ -108,7 +113,7 @@ where
     }
 
     /// Logical or of two predicates, reducing to a simpler predicate if possible.
-    pub fn or(lhs: Predicate<C>, rhs: Predicate<C>) -> Predicate<C> {
+    pub fn or(lhs: Predicate<C, Ext>, rhs: Predicate<C, Ext>) -> Predicate<C, Ext> {
         match (lhs, rhs) {
             (Predicate::True, _) | (_, Predicate::True) => Predicate::True,
             (Predicate::False, rhs) => rhs,
@@ -119,20 +124,20 @@ where
     }
 }
 
-impl<C> From<bool> for Predicate<C>
+impl<C, Ext: DatabaseExtension> From<bool> for Predicate<C, Ext>
 where
-    C: PartialEq + ParamEquality,
+    C: Debug + PartialEq + ParamEquality + Clone,
 {
-    fn from(b: bool) -> Predicate<C> {
+    fn from(b: bool) -> Predicate<C, Ext> {
         if b { Predicate::True } else { Predicate::False }
     }
 }
 
-impl<C> std::ops::Not for Predicate<C>
+impl<C, Ext: DatabaseExtension> std::ops::Not for Predicate<C, Ext>
 where
-    C: PartialEq + ParamEquality,
+    C: Debug + PartialEq + ParamEquality + Clone,
 {
-    type Output = Predicate<C>;
+    type Output = Predicate<C, Ext>;
 
     fn not(self) -> Self::Output {
         match self {

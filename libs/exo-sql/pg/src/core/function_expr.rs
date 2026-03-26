@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use crate::Function;
-use crate::core::pg_extension::PgExtension;
+use crate::core::pg_extension::PgFunctionExtension;
 use crate::physical_column_type::{PhysicalColumnTypeExt, VectorColumnType};
 use exo_sql_core::Database;
 
@@ -31,7 +31,7 @@ impl ExpressionBuilder for Function {
                     builder.push_str("::real[]");
                 }
             }
-            Function::Extension(PgExtension::VectorDistanceFunction {
+            Function::Extension(PgFunctionExtension::VectorDistance {
                 column_id,
                 distance_function,
                 target,
@@ -43,12 +43,6 @@ impl ExpressionBuilder for Function {
                 builder.push_space();
                 builder.push_param(target.param());
                 builder.push_str("::vector");
-            }
-            // PgExtension is a flat enum shared across Column, Function, and OrderBy.
-            // Only VectorDistanceFunction is valid here.
-            // TODO: Refactor PgExtension into separate enums for ColumnExtension, FunctionExtension, and OrderByExtension to enforce this at the type level.
-            Function::Extension(_) => {
-                unreachable!("Non-function PgExtension variant used in Function::Extension")
             }
         }
     }

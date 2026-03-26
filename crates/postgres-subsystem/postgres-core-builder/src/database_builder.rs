@@ -167,12 +167,12 @@ fn expand_database_info(
                                 })
                                 .unwrap_or_default();
 
-                            IndexKind::HNWS {
+                            Box::new(IndexKind::HNWS {
                                 distance_function,
                                 params: None,
-                            }
+                            })
                         } else {
-                            IndexKind::default()
+                            Box::new(IndexKind::default())
                         },
                     }),
                 }

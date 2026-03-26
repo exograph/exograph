@@ -12,8 +12,8 @@ use std::collections::HashMap;
 use exo_sql_core::Database;
 
 use crate::{
-    ExpressionBuilder, SQLBuilder, column::Column, core::pg_extension::PgExtension,
-    core::predicate_ext::ConcretePredicate, core::table::Table,
+    ExpressionBuilder, SQLBuilder, column::Column, core::ConcretePredicate,
+    core::pg_extension::PgColumnExtension, core::pg_extension::PgExtension, core::table::Table,
 };
 
 // Re-export the core Select type specialized to PgExtension
@@ -35,13 +35,15 @@ impl ExpressionBuilder for Select {
 
         // Columns
         builder.with_table_alias_map(table_alias_map.clone(), |builder| {
-            builder.push_iter(self.columns.iter(), ", ", |builder, col| {
+            builder.push_iter(self.columns.iter(), ", ", |builder, col: &Column| {
                 col.build(database, builder);
 
                 if self.top_level_selection
                     && matches!(
                         col,
-                        Column::Extension(PgExtension::JsonObject(_) | PgExtension::JsonAgg(_))
+                        Column::Extension(
+                            PgColumnExtension::JsonObject(_) | PgColumnExtension::JsonAgg(_)
+                        )
                     )
                 {
                     // See the comment on `top_level_selection` for why we do this
@@ -85,7 +87,7 @@ mod tests {
     use exo_sql_core::SchemaObjectName;
 
     use crate::core::json_object::{JsonObject, JsonObjectElement};
-    use crate::core::pg_extension::PgExtension;
+    use crate::core::pg_extension::PgColumnExtension;
 
     use multiplatform_test::multiplatform_test;
 
@@ -104,7 +106,7 @@ mod tests {
         let age_col2_id = database.get_column_id(table_id, "age").unwrap();
         let name_col_id = database.get_column_id(table_id, "name").unwrap();
 
-        let json_col = Column::Extension(PgExtension::JsonObject(JsonObject(vec![
+        let json_col = Column::Extension(PgColumnExtension::JsonObject(JsonObject(vec![
             JsonObjectElement::new("namex".to_string(), Column::physical(name_col_id, None)),
             JsonObjectElement::new("agex".to_string(), Column::physical(age_col_id, None)),
         ])));

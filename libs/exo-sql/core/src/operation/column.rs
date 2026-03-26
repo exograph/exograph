@@ -11,8 +11,8 @@ use crate::{ColumnId, SchemaObjectName};
 
 use super::DatabaseExtension;
 use super::ParamEquality;
-use super::Predicate;
 use super::function::Function;
+use super::predicate::ColumnPredicate;
 use super::select::Select;
 
 /// A column-like concept covering any usage where a database table column could be used.
@@ -44,9 +44,9 @@ pub enum Column<Ext: DatabaseExtension> {
     /// A function applied to a column (e.g., `count(id)`)
     Function(Function<Ext>),
     /// A predicate used as a column expression
-    Predicate(Box<Predicate<Column<Ext>>>),
+    Predicate(Box<ColumnPredicate<Ext>>),
     /// Database-specific extension
-    Extension(Ext),
+    Extension(Ext::ColumnExtension),
 }
 
 impl<Ext: DatabaseExtension> Column<Ext> {
