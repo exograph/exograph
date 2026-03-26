@@ -51,6 +51,11 @@ impl EphemeralDatabaseLauncher {
         Self { preference }
     }
 
+    /// Creates an ephemeral database server based on the configured launch preference.
+    ///
+    /// Dispatches to the appropriate server implementation:
+    /// - `PreferLocal` / `PreferDocker`: tries the preferred backend first, falls back to the other.
+    /// - `LocalOnly` / `DockerOnly` / `ExistingDbOnly`: uses exactly that backend.
     pub fn create_server(
         &self,
     ) -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {

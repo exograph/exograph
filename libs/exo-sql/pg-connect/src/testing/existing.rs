@@ -73,7 +73,8 @@ impl ExistingPostgresDatabaseServer {
                 url.set_path("");
                 url
             }
-            Err(_) => url::Url::parse("postgres://localhost/").unwrap(),
+            Err(_) => url::Url::parse("postgres://localhost/")
+                .expect("Hardcoded default URL should always be valid"),
         };
 
         let url_string = base_url.to_string();
@@ -132,6 +133,8 @@ impl Drop for ExistingPostgresDatabase {
             &["--maintenance-db", &maintenance_url, "--force", &self.name],
             false,
         )
-        .unwrap_or(());
+        .unwrap_or_else(|e| {
+            tracing::error!("Failed to drop database '{}': {}", self.name, e);
+        });
     }
 }
