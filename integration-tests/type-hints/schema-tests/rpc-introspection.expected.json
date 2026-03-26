@@ -62,7 +62,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Video"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VideoPK"
+              },
+              {
+                "$ref": "#/components/schemas/Video"
+              }
+            ]
           }
         }
       }
@@ -94,8 +101,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Video",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/VideoPK"
+            },
+            {
+              "$ref": "#/components/schemas/Video"
+            }
+          ]
         }
       }
     },
@@ -250,6 +264,17 @@
   ],
   "components": {
     "schemas": {
+      "VideoPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "Video": {
         "type": "object",
         "properties": {
@@ -426,17 +451,6 @@
             ]
           }
         }
-      },
-      "VideoPK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ]
       },
       "VideoUpdateInput": {
         "type": "object",

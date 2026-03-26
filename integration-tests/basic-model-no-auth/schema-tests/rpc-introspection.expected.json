@@ -65,7 +65,23 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Concert"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ConcertPK"
+              },
+              {
+                "$ref": "#/components/schemas/Concert"
+              },
+              {
+                "$ref": "#/components/schemas/ConcertWithVenue"
+              },
+              {
+                "$ref": "#/components/schemas/ConcertWithVenueDetails"
+              },
+              {
+                "$ref": "#/components/schemas/ConcertSummary"
+              }
+            ]
           }
         }
       }
@@ -130,7 +146,23 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Venue"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VenuePK"
+              },
+              {
+                "$ref": "#/components/schemas/Venue"
+              },
+              {
+                "$ref": "#/components/schemas/VenueNameOnly"
+              },
+              {
+                "$ref": "#/components/schemas/VenueLocationOnly"
+              },
+              {
+                "$ref": "#/components/schemas/VenueEmpty"
+              }
+            ]
           }
         }
       }
@@ -165,8 +197,24 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Concert",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/ConcertPK"
+            },
+            {
+              "$ref": "#/components/schemas/Concert"
+            },
+            {
+              "$ref": "#/components/schemas/ConcertWithVenue"
+            },
+            {
+              "$ref": "#/components/schemas/ConcertWithVenueDetails"
+            },
+            {
+              "$ref": "#/components/schemas/ConcertSummary"
+            }
+          ]
         }
       }
     },
@@ -200,8 +248,24 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Venue",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/VenuePK"
+            },
+            {
+              "$ref": "#/components/schemas/Venue"
+            },
+            {
+              "$ref": "#/components/schemas/VenueNameOnly"
+            },
+            {
+              "$ref": "#/components/schemas/VenueLocationOnly"
+            },
+            {
+              "$ref": "#/components/schemas/VenueEmpty"
+            }
+          ]
         }
       }
     },
@@ -504,6 +568,17 @@
   ],
   "components": {
     "schemas": {
+      "ConcertPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "VenuePK": {
         "type": "object",
         "properties": {
@@ -540,6 +615,117 @@
           "venue",
           "published",
           "price"
+        ]
+      },
+      "Venue": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "latitude": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "published",
+          "latitude"
+        ]
+      },
+      "ConcertWithVenue": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "venue": {
+            "$ref": "#/components/schemas/Venue"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "price": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "venue",
+          "published",
+          "price"
+        ]
+      },
+      "VenueLocationOnlyNameOnly": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "latitude"
+        ]
+      },
+      "ConcertWithVenueDetails": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "venue": {
+            "$ref": "#/components/schemas/VenueLocationOnlyNameOnly"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "price": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "venue",
+          "published",
+          "price"
+        ]
+      },
+      "ConcertSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
         ]
       },
       "IntFilter": {
@@ -796,7 +982,7 @@
           }
         }
       },
-      "Venue": {
+      "VenueNameOnly": {
         "type": "object",
         "properties": {
           "id": {
@@ -804,9 +990,18 @@
           },
           "name": {
             "type": "string"
-          },
-          "published": {
-            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "VenueLocationOnly": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
           },
           "latitude": {
             "type": "number"
@@ -814,21 +1009,11 @@
         },
         "required": [
           "id",
-          "name",
-          "published",
           "latitude"
         ]
       },
-      "ConcertPK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ]
+      "VenueEmpty": {
+        "type": "object"
       },
       "VenueRef": {
         "type": "object",

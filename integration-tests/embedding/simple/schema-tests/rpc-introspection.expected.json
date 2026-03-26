@@ -62,7 +62,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Document"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocumentPK"
+              },
+              {
+                "$ref": "#/components/schemas/Document"
+              }
+            ]
           }
         }
       }
@@ -94,8 +101,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Document",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/DocumentPK"
+            },
+            {
+              "$ref": "#/components/schemas/Document"
+            }
+          ]
         }
       }
     },
@@ -250,6 +264,17 @@
   ],
   "components": {
     "schemas": {
+      "DocumentPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "Document": {
         "type": "object",
         "properties": {
@@ -450,17 +475,6 @@
             "$ref": "#/components/schemas/VectorOrdering"
           }
         }
-      },
-      "DocumentPK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ]
       },
       "DocumentUpdateInput": {
         "type": "object",

@@ -62,7 +62,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Foo"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FooPK"
+              },
+              {
+                "$ref": "#/components/schemas/Foo"
+              }
+            ]
           }
         }
       }
@@ -94,8 +101,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Foo",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/FooPK"
+            },
+            {
+              "$ref": "#/components/schemas/Foo"
+            }
+          ]
         }
       }
     },
@@ -250,6 +264,17 @@
   ],
   "components": {
     "schemas": {
+      "FooPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "Foo": {
         "type": "object",
         "properties": {
@@ -355,17 +380,6 @@
             ]
           }
         }
-      },
-      "FooPK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ]
       },
       "FooUpdateInput": {
         "type": "object",

@@ -62,7 +62,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Book"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BookPK"
+              },
+              {
+                "$ref": "#/components/schemas/Book"
+              }
+            ]
           }
         }
       }
@@ -94,8 +101,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Book",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/BookPK"
+            },
+            {
+              "$ref": "#/components/schemas/Book"
+            }
+          ]
         }
       }
     },
@@ -250,6 +264,17 @@
   ],
   "components": {
     "schemas": {
+      "BookPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "Book": {
         "type": "object",
         "properties": {
@@ -543,17 +568,6 @@
             ]
           }
         }
-      },
-      "BookPK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ]
       },
       "BookUpdateInput": {
         "type": "object",

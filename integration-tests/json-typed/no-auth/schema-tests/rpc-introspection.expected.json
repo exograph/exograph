@@ -62,7 +62,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Todo"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TodoPK"
+              },
+              {
+                "$ref": "#/components/schemas/Todo"
+              }
+            ]
           }
         }
       }
@@ -94,8 +101,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Todo",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/TodoPK"
+            },
+            {
+              "$ref": "#/components/schemas/Todo"
+            }
+          ]
         }
       }
     },
@@ -250,6 +264,17 @@
   ],
   "components": {
     "schemas": {
+      "TodoPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "Metadata": {
         "type": "object"
       },
@@ -380,17 +405,6 @@
             ]
           }
         }
-      },
-      "TodoPK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ]
       },
       "TodoUpdateInput": {
         "type": "object",

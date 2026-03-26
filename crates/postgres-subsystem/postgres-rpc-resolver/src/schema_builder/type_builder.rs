@@ -14,7 +14,9 @@ use postgres_core_model::projection::{
 use postgres_core_model::relation::PostgresRelation;
 use postgres_core_model::types::{EntityType, PostgresFieldType, PostgresPrimitiveTypeKind};
 use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
-use rpc_introspection::schema::{RpcObjectField, RpcObjectType, RpcSchema, RpcTypeSchema};
+use rpc_introspection::schema::{
+    OneOfVariant, RpcObjectField, RpcObjectType, RpcSchema, RpcTypeSchema,
+};
 use std::collections::HashSet;
 
 /// Shared recursive return type schema builder.
@@ -29,14 +31,14 @@ pub(crate) fn build_return_type_schema_with(
         OperationReturnType::Plain(base) => {
             let entity_type = &subsystem.core_subsystem.entity_types[base.associated_type_id];
 
-            let projection = entity_type.projection_by_name(projection_name);
-
-            let projection = projection.unwrap_or_else(|| {
-                panic!(
-                    "Projection `{}` not found for type `{}`",
-                    projection_name, entity_type.name
-                )
-            });
+            let projection = entity_type
+                .projection_by_name(projection_name)
+                .unwrap_or_else(|| {
+                    panic!(
+                        "Projection `{}` not found for type `{}`",
+                        projection_name, entity_type.name
+                    )
+                });
 
             let type_name = projection_type_name(&entity_type.name, &projection.name);
             ensure_projection_type_added(
@@ -60,6 +62,58 @@ pub(crate) fn build_return_type_schema_with(
             added_types,
         )),
     }
+}
+
+/// Build a return type schema that includes all projections as a oneOf.
+/// Generates all projection types and wraps them in a oneOf at the innermost level,
+/// preserving the outer Optional/List wrapping.
+pub(crate) fn build_return_type_schema_all_projections(
+    return_type: &OperationReturnType<EntityType>,
+    subsystem: &PostgresRpcSubsystemWithRouter,
+    schema: &mut RpcSchema,
+    added_types: &mut HashSet<String>,
+) -> RpcTypeSchema {
+    match return_type {
+        OperationReturnType::Plain(base) => {
+            let entity_type = &subsystem.core_subsystem.entity_types[base.associated_type_id];
+
+            let variants: Vec<OneOfVariant> = entity_type
+                .projections
+                .iter()
+                .map(|projection| {
+                    let type_name = projection_type_name(&entity_type.name, &projection.name);
+                    ensure_projection_type_added(
+                        &type_name,
+                        entity_type,
+                        projection,
+                        subsystem,
+                        schema,
+                        added_types,
+                    );
+                    OneOfVariant::Ref(type_name)
+                })
+                .collect();
+
+            RpcTypeSchema::one_of(variants)
+        }
+        OperationReturnType::Optional(inner) => RpcTypeSchema::optional(
+            build_return_type_schema_all_projections(inner, subsystem, schema, added_types),
+        ),
+        OperationReturnType::List(inner) => RpcTypeSchema::array(
+            build_return_type_schema_all_projections(inner, subsystem, schema, added_types),
+        ),
+    }
+}
+
+/// Build the return type schema for an entity as a oneOf of all its projection variants.
+/// Every entity has at least `pk` and `basic` projections.
+pub(crate) fn build_return_type_schema_for_entity(
+    return_type: &OperationReturnType<EntityType>,
+    subsystem: &PostgresRpcSubsystemWithRouter,
+    schema: &mut RpcSchema,
+    added_types: &mut HashSet<String>,
+) -> RpcTypeSchema {
+    build_return_type_schema_all_projections(return_type, subsystem, schema, added_types)
 }
 
 fn pk_type_name(entity_name: &str) -> String {
@@ -161,14 +215,114 @@ fn projection_type_name(entity_name: &str, projection_name: &str) -> String {
     match projection_name {
         PROJECTION_BASIC => entity_name.to_string(),
         PROJECTION_PK => pk_type_name(entity_name),
-        name => {
-            let mut chars = name.chars();
-            let capitalized: String = match chars.next() {
-                Some(c) => c.to_uppercase().chain(chars).collect(),
-                None => String::new(),
-            };
-            format!("{entity_name}{capitalized}")
+        name => format!("{entity_name}{}", capitalize(name)),
+    }
+}
+
+/// Generate a type name for a relation projected with one or more projections.
+/// For a single name, delegates to `projection_type_name`.
+/// For multiple, filters out "pk" (always a subset), sorts the rest, and combines.
+fn relation_projection_type_name(entity_name: &str, projection_names: &[String]) -> String {
+    if projection_names.len() == 1 {
+        return projection_type_name(entity_name, &projection_names[0]);
+    }
+
+    // Filter out pk — it is always a subset of any other projection
+    let custom_names: Vec<&str> = projection_names
+        .iter()
+        .map(|s| s.as_str())
+        .filter(|n| *n != PROJECTION_PK)
+        .collect();
+
+    match custom_names.len() {
+        0 => pk_type_name(entity_name),
+        1 => projection_type_name(entity_name, custom_names[0]),
+        _ => {
+            // TODO: Move this to builder (then we can use heck to do proper CamelCase) — we want to avoid doing this string manipulation in the common case of a single projection
+            let mut capitalized: Vec<String> =
+                custom_names.iter().map(|name| capitalize(name)).collect();
+            capitalized.sort();
+            format!("{entity_name}{}", capitalized.join(""))
         }
+    }
+}
+
+fn capitalize(s: &str) -> String {
+    let mut chars = s.chars();
+    match chars.next() {
+        Some(c) => c.to_uppercase().chain(chars).collect(),
+        None => String::new(),
+    }
+}
+
+/// Create a merged projection by unioning fields from multiple named projections.
+fn merge_projections(entity_type: &EntityType, projection_names: &[String]) -> ResolvedProjection {
+    // Fast path: single projection doesn't need merging
+    if projection_names.len() == 1 {
+        let proj = entity_type
+            .projection_by_name(&projection_names[0])
+            .unwrap_or_else(|| {
+                panic!(
+                    "Projection `{}` not found for type `{}`",
+                    projection_names[0], entity_type.name
+                )
+            });
+        return proj.clone();
+    }
+
+    let mut scalar_elements: Vec<ProjectionElement> = Vec::new();
+    let mut seen_scalars: HashSet<String> = HashSet::new();
+    let mut relation_entries: Vec<(String, Vec<String>)> = Vec::new();
+
+    for proj_name in projection_names {
+        let projection = entity_type
+            .projection_by_name(proj_name)
+            .unwrap_or_else(|| {
+                panic!(
+                    "Projection `{}` not found for type `{}`",
+                    proj_name, entity_type.name
+                )
+            });
+
+        for element in &projection.elements {
+            match element {
+                ProjectionElement::ScalarField(name) => {
+                    if seen_scalars.insert(name.clone()) {
+                        scalar_elements.push(element.clone());
+                    }
+                }
+                ProjectionElement::RelationProjection {
+                    relation_field_name,
+                    projection_names: nested,
+                } => {
+                    if let Some((_, existing)) = relation_entries
+                        .iter_mut()
+                        .find(|(n, _)| n == relation_field_name)
+                    {
+                        for name in nested {
+                            if !existing.contains(name) {
+                                existing.push(name.clone());
+                            }
+                        }
+                    } else {
+                        relation_entries.push((relation_field_name.clone(), nested.clone()));
+                    }
+                }
+            }
+        }
+    }
+
+    let mut merged_elements = scalar_elements;
+    for (relation_name, names) in relation_entries {
+        merged_elements.push(ProjectionElement::RelationProjection {
+            relation_field_name: relation_name,
+            projection_names: names,
+        });
+    }
+
+    ResolvedProjection {
+        name: projection_names.join("_"),
+        elements: merged_elements,
     }
 }
 
@@ -215,29 +369,28 @@ fn ensure_projection_type_added(
                 projection_names,
             } => {
                 if let Some(field) = entity_type.field_by_name(relation_field_name) {
-                    // For the schema, use the first projection name for type naming.
-                    // Multiple projections are unioned at query time.
-                    let primary_name = &projection_names[0];
+                    let mut get_foreign_type_name = |foreign_entity: &EntityType| -> String {
+                        let rel_type_name =
+                            relation_projection_type_name(&foreign_entity.name, projection_names);
+                        if !added_types.contains(&rel_type_name) {
+                            let merged = merge_projections(foreign_entity, projection_names);
+                            ensure_projection_type_added(
+                                &rel_type_name,
+                                foreign_entity,
+                                &merged,
+                                subsystem,
+                                schema,
+                                added_types,
+                            );
+                        }
+                        rel_type_name
+                    };
 
                     match &field.relation {
                         PostgresRelation::ManyToOne { relation, .. } => {
                             let foreign_entity =
                                 &subsystem.core_subsystem.entity_types[relation.foreign_entity_id];
-                            let rel_type_name =
-                                projection_type_name(&foreign_entity.name, primary_name);
-
-                            if let Some(foreign_projection) =
-                                foreign_entity.projection_by_name(primary_name)
-                            {
-                                ensure_projection_type_added(
-                                    &rel_type_name,
-                                    foreign_entity,
-                                    foreign_projection,
-                                    subsystem,
-                                    schema,
-                                    added_types,
-                                );
-                            }
+                            let rel_type_name = get_foreign_type_name(foreign_entity);
 
                             let ref_schema = match &field.typ {
                                 FieldType::Optional(_) => {
@@ -256,24 +409,10 @@ fn ensure_projection_type_added(
                         PostgresRelation::OneToMany(relation) => {
                             let foreign_entity =
                                 &subsystem.core_subsystem.entity_types[relation.foreign_entity_id];
-                            let rel_type_name =
-                                projection_type_name(&foreign_entity.name, primary_name);
+                            let rel_type_name = get_foreign_type_name(foreign_entity);
 
-                            if let Some(foreign_projection) =
-                                foreign_entity.projection_by_name(primary_name)
-                            {
-                                ensure_projection_type_added(
-                                    &rel_type_name,
-                                    foreign_entity,
-                                    foreign_projection,
-                                    subsystem,
-                                    schema,
-                                    added_types,
-                                );
-                            }
-
-                            let item_schema = RpcTypeSchema::object(&rel_type_name);
-                            let array_schema = RpcTypeSchema::array(item_schema);
+                            let array_schema =
+                                RpcTypeSchema::array(RpcTypeSchema::object(&rel_type_name));
 
                             let mut obj_field =
                                 RpcObjectField::new(relation_field_name, array_schema);

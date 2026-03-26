@@ -23,7 +23,7 @@ mod type_builder;
 mod update_mutation_builder;
 
 use core_model::types::OperationReturnType;
-use postgres_core_model::projection::{PROJECTION_BASIC, PROJECTION_PK};
+use postgres_core_model::projection::PROJECTION_PK;
 use postgres_core_model::types::EntityType;
 use postgres_rpc_model::operation::HasPredicateParams;
 use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
@@ -31,7 +31,7 @@ use rpc_introspection::schema::{RpcMethod, RpcParameter, RpcSchema, RpcTypeSchem
 use std::collections::HashSet;
 
 use create_mutation_builder::build_create_method;
-use type_builder::build_return_type_schema_with;
+use type_builder::{build_return_type_schema_for_entity, build_return_type_schema_with};
 use update_mutation_builder::build_update_predicate_params_method;
 
 /// Trait for converting a query into an `RpcMethod`.
@@ -86,39 +86,13 @@ pub fn build_rpc_schema(subsystem: &PostgresRpcSubsystemWithRouter) -> RpcSchema
     }
 
     // Build PK query methods (get_<entity>)
-    for (_, pk_query) in subsystem.pk_queries.iter() {
-        let mut method = build_predicate_params_method(
-            pk_query,
-            PROJECTION_BASIC,
-            subsystem,
-            &mut schema,
-            &mut added_types,
-        );
-        let entity_type = pk_query
-            .return_type
-            .typ(&subsystem.core_subsystem.entity_types);
-        if !entity_type.projections.is_empty() {
-            method = method.with_param(build_projection_param(entity_type));
-        }
-        schema.add_method(method);
+    for (_, query) in subsystem.pk_queries.iter() {
+        build_query_with_projections(query, subsystem, &mut schema, &mut added_types);
     }
 
     // Build unique query methods (get_<entity>_by_<constraint>)
-    for (_, unique_query) in subsystem.unique_queries.iter() {
-        let mut method = build_predicate_params_method(
-            unique_query,
-            PROJECTION_BASIC,
-            subsystem,
-            &mut schema,
-            &mut added_types,
-        );
-        let entity_type = unique_query
-            .return_type
-            .typ(&subsystem.core_subsystem.entity_types);
-        if !entity_type.projections.is_empty() {
-            method = method.with_param(build_projection_param(entity_type));
-        }
-        schema.add_method(method);
+    for (_, query) in subsystem.unique_queries.iter() {
+        build_query_with_projections(query, subsystem, &mut schema, &mut added_types);
     }
 
     // Build collection delete methods (delete_<entities>)
@@ -227,6 +201,38 @@ pub(crate) fn build_projection_param(entity_type: &EntityType) -> RpcParameter {
 
     RpcParameter::new(PROJECTION_PARAM_NAME, schema)
         .with_description("Response projection — controls which fields are returned")
+}
+
+/// Build a query method, augmenting with projection support if the entity has projections.
+fn build_query_with_projections<T>(
+    query: &T,
+    subsystem: &PostgresRpcSubsystemWithRouter,
+    schema: &mut RpcSchema,
+    added_types: &mut HashSet<String>,
+) where
+    T: HasPredicateParams + HasMethodNameAndReturnType,
+{
+    let entity_type = query
+        .return_type()
+        .typ(&subsystem.core_subsystem.entity_types);
+    let result_schema =
+        build_return_type_schema_for_entity(query.return_type(), subsystem, schema, added_types);
+
+    let mut method = RpcMethod::new(query.method_name().to_string(), result_schema);
+
+    if let Some(doc) = query.doc_comments() {
+        method = method.with_description(doc);
+    }
+
+    for param in query.predicate_params() {
+        let param_schema = param.build_rpc_type_schema(subsystem, schema, added_types);
+        let rpc_param = RpcParameter::new(&param.name, param_schema);
+        method = method.with_param(rpc_param);
+    }
+
+    method = method.with_param(build_projection_param(entity_type));
+
+    schema.add_method(method);
 }
 
 /// Build an RPC method from an operation with predicate params (PK or unique query/delete).

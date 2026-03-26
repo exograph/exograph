@@ -62,7 +62,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Numbers"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/NumbersPK"
+              },
+              {
+                "$ref": "#/components/schemas/Numbers"
+              }
+            ]
           }
         }
       }
@@ -124,7 +131,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/OtherNumbers"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OtherNumbersPK"
+              },
+              {
+                "$ref": "#/components/schemas/OtherNumbers"
+              }
+            ]
           }
         }
       }
@@ -156,8 +170,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Numbers",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/NumbersPK"
+            },
+            {
+              "$ref": "#/components/schemas/Numbers"
+            }
+          ]
         }
       }
     },
@@ -188,8 +209,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/OtherNumbers",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/OtherNumbersPK"
+            },
+            {
+              "$ref": "#/components/schemas/OtherNumbers"
+            }
+          ]
         }
       }
     },
@@ -492,6 +520,17 @@
   ],
   "components": {
     "schemas": {
+      "NumbersPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "Numbers": {
         "type": "object",
         "properties": {
@@ -640,6 +679,17 @@
           }
         }
       },
+      "OtherNumbersPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "OtherNumbers": {
         "type": "object",
         "properties": {
@@ -741,28 +791,6 @@
             ]
           }
         }
-      },
-      "NumbersPK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ]
-      },
-      "OtherNumbersPK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ]
       },
       "NumbersUpdateInput": {
         "type": "object",
