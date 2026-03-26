@@ -1168,18 +1168,15 @@ fn resolve_projection_expr(
                         } => {
                             // Merge projection names for the same relation
                             // e.g., /basic (includes venue/pk) + venue/basic → venue with [pk, basic]
-                            if let Some(existing) = all_elements.iter_mut().find(|e| {
+                            if let Some(ProjectionElement::RelationProjection {
+                                projection_names: existing_names,
+                                ..
+                            }) = all_elements.iter_mut().find(|e| {
                                 matches!(e, ProjectionElement::RelationProjection { relation_field_name: n, .. } if n == relation_field_name)
                             }) {
-                                if let ProjectionElement::RelationProjection {
-                                    projection_names: existing_names,
-                                    ..
-                                } = existing
-                                {
-                                    for name in new_names {
-                                        if !existing_names.contains(name) {
-                                            existing_names.push(name.clone());
-                                        }
+                                for name in new_names {
+                                    if !existing_names.contains(name) {
+                                        existing_names.push(name.clone());
                                     }
                                 }
                             } else {
