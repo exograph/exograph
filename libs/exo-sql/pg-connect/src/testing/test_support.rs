@@ -42,24 +42,18 @@ pub async fn with_client<Fut, T>(f: impl FnOnce(DatabaseClient) -> Fut) -> T
 where
     Fut: Future<Output = T>,
 {
-    let database_name = generate_random_string();
+    with_db_url(|url| async move {
+        let client =
+            DatabaseClientManager::from_url_direct(&url, false, TransactionMode::ReadWrite)
+                .await
+                .unwrap()
+                .get_client()
+                .await
+                .unwrap();
 
-    let database_server = DATABASE_SERVER.lock().await;
-    let database_server = database_server.as_ref();
-
-    DATABASE_SERVER_INITIALIZED.store(true, Ordering::Relaxed);
-
-    let database = database_server.create_database(&database_name).unwrap();
-
-    let client =
-        DatabaseClientManager::from_url_direct(&database.url(), false, TransactionMode::ReadWrite)
-            .await
-            .unwrap()
-            .get_client()
-            .await
-            .unwrap();
-
-    f(client).await
+        f(client).await
+    })
+    .await
 }
 
 /// Like `with_client`, but provides the database URL so the test can create multiple connections.
