@@ -443,10 +443,9 @@ pub enum AstProjectionExpr {
         #[serde(default = "default_span")]
         Span,
     ),
-    /// Union of two projections: `left + right`
-    Union(
-        Box<AstProjectionExpr>,
-        Box<AstProjectionExpr>,
+    /// A list of projection atoms: `[/basic, venue/nameOnly, venue/locationOnly]`
+    List(
+        Vec<AstProjectionExpr>,
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
@@ -460,7 +459,7 @@ impl AstProjectionExpr {
             AstProjectionExpr::Field(_, s) => *s,
             AstProjectionExpr::SelfProjection(_, s) => *s,
             AstProjectionExpr::RelationProjection(_, _, s) => *s,
-            AstProjectionExpr::Union(_, _, s) => *s,
+            AstProjectionExpr::List(_, s) => *s,
         }
     }
 }

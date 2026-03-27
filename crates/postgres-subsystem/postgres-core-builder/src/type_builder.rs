@@ -1147,48 +1147,47 @@ fn resolve_projection_expr(
                 projection_names: vec![projection_name.clone()],
             }])
         }
-        AstProjectionExpr::Union(left, right, _) => {
-            let mut left_elements = resolve_projection_expr(left, known_projections, entity_type)?;
-            let right_elements = resolve_projection_expr(right, known_projections, entity_type)?;
+        AstProjectionExpr::List(elements, _) => {
+            let mut all_elements: Vec<ProjectionElement> = Vec::new();
 
-            for element in right_elements {
-                match &element {
-                    ProjectionElement::ScalarField(name) => {
-                        if !left_elements
-                            .iter()
-                            .any(|e| matches!(e, ProjectionElement::ScalarField(n) if n == name))
-                        {
-                            left_elements.push(element);
+            for elem_expr in elements {
+                let resolved = resolve_projection_expr(elem_expr, known_projections, entity_type)?;
+
+                for element in resolved {
+                    match &element {
+                        ProjectionElement::ScalarField(name) => {
+                            if !all_elements.iter().any(
+                                |e| matches!(e, ProjectionElement::ScalarField(n) if n == name),
+                            ) {
+                                all_elements.push(element);
+                            }
                         }
-                    }
-                    ProjectionElement::RelationProjection {
-                        relation_field_name,
-                        projection_names: new_names,
-                    } => {
-                        // Union: merge projection names for the same relation
-                        // e.g., /basic (includes venue/pk) + venue/basic → venue with [pk, basic]
-                        if let Some(existing) = left_elements.iter_mut().find(|e| {
-                            matches!(e, ProjectionElement::RelationProjection { relation_field_name: n, .. } if n == relation_field_name)
-                        }) {
-                            if let ProjectionElement::RelationProjection {
+                        ProjectionElement::RelationProjection {
+                            relation_field_name,
+                            projection_names: new_names,
+                        } => {
+                            // Merge projection names for the same relation
+                            // e.g., /basic (includes venue/pk) + venue/basic → venue with [pk, basic]
+                            if let Some(ProjectionElement::RelationProjection {
                                 projection_names: existing_names,
                                 ..
-                            } = existing
-                            {
+                            }) = all_elements.iter_mut().find(|e| {
+                                matches!(e, ProjectionElement::RelationProjection { relation_field_name: n, .. } if n == relation_field_name)
+                            }) {
                                 for name in new_names {
                                     if !existing_names.contains(name) {
                                         existing_names.push(name.clone());
                                     }
                                 }
+                            } else {
+                                all_elements.push(element);
                             }
-                        } else {
-                            left_elements.push(element);
                         }
                     }
                 }
             }
 
-            Ok(left_elements)
+            Ok(all_elements)
         }
     }
 }

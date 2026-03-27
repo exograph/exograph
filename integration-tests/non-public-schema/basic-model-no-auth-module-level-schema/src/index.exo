@@ -1,9 +1,9 @@
 @postgres(schema="entertainment")
 module ConcertModule {
   @projection(
-    withVenue = /basic + venue/basic,
-    withVenueDetails = /basic + venue/nameOnly + venue/locationOnly,
-    summary = id + title
+    withVenue = [/basic, venue/basic],
+    withVenueDetails = [/basic, venue/nameOnly, venue/locationOnly],
+    summary = [id, title]
   )
   @access(true)
   type Concert {
@@ -16,8 +16,9 @@ module ConcertModule {
   }
 
   @projection(
-    nameOnly = id + name,
-    locationOnly = id + latitude
+    nameOnly = [id, name],
+    locationOnly = [id, latitude],
+    empty = []
   )
   @access(true)
   type Venue {

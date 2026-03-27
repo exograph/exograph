@@ -7,8 +7,8 @@ context AuthContext {
 module ConcertModule {
   @table("concerts")
   @projection(
-    withVenue = /basic + venue/basic,
-    summary = id + title
+    withVenue = [/basic, venue/basic],
+    summary = [id, title]
   )
   @access(query=AuthContext.role == "ROLE_ADMIN" || self.published, mutation=AuthContext.role == "ROLE_ADMIN")
   type Concert {

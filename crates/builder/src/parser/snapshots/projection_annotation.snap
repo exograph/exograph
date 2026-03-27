@@ -1,7 +1,6 @@
 ---
 source: crates/builder/src/parser/converter.rs
-assertion_line: 1260
-expression: "convert_root(parsed.root_node(), src.as_bytes(), file_span,\nPath::new(\"input.exo\")).unwrap()"
+expression: "convert_root(parsed.root_node(),\nr#\"\n            @postgres\n            module TestModule {\n                @projection(\n                    withOwner = [/basic, owner/basic],\n                    summary = [id, name],\n                    idOnly = [id],\n                    selfOnly = [/basic],\n                    relOnly = [owner/basic],\n                    full = [/basic, owner/basic, questions/basic],\n                    empty = []\n                )\n                @access(true)\n                type Project {\n                    @pk id: Int = autoIncrement()\n                    name: String\n                    owner: User\n                    questions: Set<Question>?\n                }\n\n                @access(true)\n                type User {\n                    @pk id: Int = autoIncrement()\n                    name: String\n                }\n\n                @access(true)\n                type Question {\n                    @pk id: Int = autoIncrement()\n                    text: String\n                    project: Project\n                }\n            }\n        \"#.as_bytes(),\nfile_span, Path :: new(\"input.exo\")).unwrap()"
 ---
 types: []
 modules:
@@ -69,46 +68,52 @@ modules:
           - name: projection
             params:
               Map:
-                - full:
+                - empty:
                     Projection:
-                      Union:
-                        - Union:
-                            - SelfProjection:
-                                - basic
-                            - RelationProjection:
-                                - owner
-                                - basic
-                        - RelationProjection:
-                            - questions
-                            - basic
+                      List:
+                        - []
+                  full:
+                    Projection:
+                      List:
+                        - - SelfProjection:
+                              - basic
+                          - RelationProjection:
+                              - owner
+                              - basic
+                          - RelationProjection:
+                              - questions
+                              - basic
                   idOnly:
                     Projection:
-                      Field:
-                        - id
+                      List:
+                        - - Field:
+                              - id
                   relOnly:
                     Projection:
-                      RelationProjection:
-                        - owner
-                        - basic
+                      List:
+                        - - RelationProjection:
+                              - owner
+                              - basic
                   selfOnly:
                     Projection:
-                      SelfProjection:
-                        - basic
+                      List:
+                        - - SelfProjection:
+                              - basic
                   summary:
                     Projection:
-                      Union:
-                        - Field:
-                            - id
-                        - Field:
-                            - name
+                      List:
+                        - - Field:
+                              - id
+                          - Field:
+                              - name
                   withOwner:
                     Projection:
-                      Union:
-                        - SelfProjection:
-                            - basic
-                        - RelationProjection:
-                            - owner
-                            - basic
+                      List:
+                        - - SelfProjection:
+                              - basic
+                          - RelationProjection:
+                              - owner
+                              - basic
           - name: access
             params:
               Single:

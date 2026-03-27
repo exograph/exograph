@@ -7,8 +7,8 @@ context AuthContext {
 module ConcertModule {
   @projection(
     // Override basic to exclude the access-controlled venue field
-    basic = id + title + published,
-    withVenue = /basic + venue/basic
+    basic = [id, title, published],
+    withVenue = [/basic, venue/basic]
   )
   @access(true)
   type Concert {

@@ -52,3 +52,19 @@ stages:
       {
         "result": {"id": 1}
       }
+
+  # With empty projection — no fields
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venue",
+          "params": {
+            "id": 1,
+            "projection": "empty"
+          }
+        }
+    response: |
+      {
+        "result": {}
+      }

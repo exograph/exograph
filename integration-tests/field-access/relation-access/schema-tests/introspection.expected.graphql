@@ -1,0 +1,248 @@
+type BooleanAgg {
+  count: Int
+}
+
+input BooleanFilter {
+  eq: Boolean
+  neq: Boolean
+}
+
+type Concert {
+  id: Int!
+  title: String!
+  venue: Venue!
+  published: Boolean!
+}
+
+"""An aggregate for the `Concert` type."""
+type ConcertAgg {
+  id: IntAgg
+  title: StringAgg
+  published: BooleanAgg
+}
+
+input ConcertCreationInput {
+  title: String!
+  venue: VenueReferenceInput!
+  published: Boolean!
+}
+
+input ConcertCreationInputFromVenue {
+  title: String!
+  published: Boolean!
+}
+
+"""
+Predicate for the `Concert` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input ConcertFilter {
+  id: IntFilter
+  title: StringFilter
+  venue: VenueFilter
+  published: BooleanFilter
+  and: [ConcertFilter!]
+  or: [ConcertFilter!]
+  not: ConcertFilter
+}
+
+input ConcertOrdering {
+  id: Ordering
+  title: Ordering
+  venue: [VenueOrdering!]
+  published: Ordering
+}
+
+input ConcertReferenceInput {
+  id: Int!
+}
+
+input ConcertUpdateInput {
+  id: Int
+  title: String
+  venue: VenueReferenceInput
+  published: Boolean
+}
+
+input ConcertUpdateInputFromVenue {
+  create: [ConcertCreationInputFromVenue!]
+  update: [ConcertUpdateInputFromVenueNested!]
+  delete: [ConcertReferenceInput!]
+}
+
+input ConcertUpdateInputFromVenueNested {
+  id: Int!
+  title: String
+  published: Boolean
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Venue {
+  id: Int!
+  name: String!
+  concerts(where: ConcertFilter, orderBy: [ConcertOrdering!], limit: Int, offset: Int): [Concert!]
+  concertsAgg(where: ConcertFilter): ConcertAgg
+}
+
+"""An aggregate for the `Venue` type."""
+type VenueAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input VenueCreationInput {
+  name: String!
+  concerts: [ConcertCreationInputFromVenue!]
+}
+
+"""
+Predicate for the `Venue` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input VenueFilter {
+  id: IntFilter
+  name: StringFilter
+  concerts: ConcertFilter
+  and: [VenueFilter!]
+  or: [VenueFilter!]
+  not: VenueFilter
+}
+
+input VenueOrdering {
+  id: Ordering
+  name: Ordering
+}
+
+input VenueReferenceInput {
+  id: Int!
+}
+
+input VenueUpdateInput {
+  id: Int
+  name: String
+  concerts: ConcertUpdateInputFromVenue
+}
+
+type Query {
+  """Get a single `Concert` by primary key"""
+  concert(id: Int!): Concert
+
+  """
+  Get multiple `Concert`s given the provided `where` filter, order by, limit, and offset
+  """
+  concerts(where: ConcertFilter, orderBy: [ConcertOrdering!], limit: Int, offset: Int): [Concert!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Concert`s given the provided `where` filter
+  """
+  concertsAgg(where: ConcertFilter): ConcertAgg!
+
+  """Get a single `Venue` by primary key"""
+  venue(id: Int!): Venue
+
+  """
+  Get multiple `Venue`s given the provided `where` filter, order by, limit, and offset
+  """
+  venues(where: VenueFilter, orderBy: [VenueOrdering!], limit: Int, offset: Int): [Venue!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Venue`s given the provided `where` filter
+  """
+  venuesAgg(where: VenueFilter): VenueAgg!
+}
+
+type Mutation {
+  """
+  Create a new Concert. Check the `ConcertCreationInput` type for the expected shape of the data.
+  """
+  createConcert(data: ConcertCreationInput!): Concert!
+
+  """
+  Create multiple Concerts. Check the `ConcertCreationInput` type for the expected shape of the data.
+  """
+  createConcerts(data: [ConcertCreationInput!]!): [Concert!]!
+
+  """
+  Create a new Venue. Check the `VenueCreationInput` type for the expected shape of the data.
+  """
+  createVenue(data: VenueCreationInput!): Venue!
+
+  """
+  Create multiple Venues. Check the `VenueCreationInput` type for the expected shape of the data.
+  """
+  createVenues(data: [VenueCreationInput!]!): [Venue!]!
+
+  """Delete the Concert with the provided primary key."""
+  deleteConcert(id: Int!): Concert
+
+  """Delete multiple Concerts matching the provided `where` filter."""
+  deleteConcerts(where: ConcertFilter): [Concert!]!
+
+  """Delete the Venue with the provided primary key."""
+  deleteVenue(id: Int!): Venue
+
+  """Delete multiple Venues matching the provided `where` filter."""
+  deleteVenues(where: VenueFilter): [Venue!]!
+
+  """
+  Update the Concert with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateConcert(id: Int!, data: ConcertUpdateInput!): Concert
+
+  """
+  Update multiple Concerts matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateConcerts(where: ConcertFilter, data: ConcertUpdateInput!): [Concert!]!
+
+  """
+  Update the Venue with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateVenue(id: Int!, data: VenueUpdateInput!): Venue
+
+  """
+  Update multiple Venues matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateVenues(where: VenueFilter, data: VenueUpdateInput!): [Venue!]!
+}
