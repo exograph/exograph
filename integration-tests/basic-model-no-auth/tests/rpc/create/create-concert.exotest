@@ -1,6 +1,6 @@
-# Test single create concert via RPC - with venue ref, returns PK only
+# Test single create concert via RPC with various projections on the mutation itself
 stages:
-  # Create a new concert referencing venue 1
+  # Create with default projection (pk)
   - operation:
       type: rpc
       payload: |
@@ -20,45 +20,80 @@ stages:
         "result": {"id": 5}
       }
 
-  # Verify it was created (default basic projection)
+  # Create with basic projection — returns all scalars + venue as PK ref
   - operation:
       type: rpc
       payload: |
         {
-          "method": "get_concert",
+          "method": "create_concert",
           "params": {
-            "id": 5
+            "data": {
+              "title": "Concert Basic",
+              "venue": {"id": 2},
+              "published": false,
+              "price": "18.00"
+            },
+            "projection": "basic"
           }
         }
     response: |
       {
         "result": {
-          "id": 5,
-          "title": "New Concert",
-          "published": true,
-          "price": "15.00",
-          "venue": {"id": 1}
+          "id": 6,
+          "title": "Concert Basic",
+          "published": false,
+          "price": "18.00",
+          "venue": {"id": 2}
         }
       }
 
-  # Verify with withVenue projection — venue expanded
+  # Create with summary projection — only id and title
   - operation:
       type: rpc
       payload: |
         {
-          "method": "get_concert",
+          "method": "create_concert",
           "params": {
-            "id": 5,
+            "data": {
+              "title": "Concert Summary",
+              "venue": {"id": 1},
+              "published": true,
+              "price": "22.00"
+            },
+            "projection": "summary"
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 7,
+          "title": "Concert Summary"
+        }
+      }
+
+  # Create with withVenue projection — venue expanded
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_concert",
+          "params": {
+            "data": {
+              "title": "Concert WithVenue",
+              "venue": {"id": 1},
+              "published": true,
+              "price": "25.00"
+            },
             "projection": "withVenue"
           }
         }
     response: |
       {
         "result": {
-          "id": 5,
-          "title": "New Concert",
+          "id": 8,
+          "title": "Concert WithVenue",
           "published": true,
-          "price": "15.00",
+          "price": "25.00",
           "venue": {
             "id": 1,
             "name": "Venue1",
@@ -68,47 +103,85 @@ stages:
         }
       }
 
-  # Verify with summary projection — only id and title
+  # Create with withVenueDetails projection — union of venue/nameOnly + venue/locationOnly
   - operation:
       type: rpc
       payload: |
         {
-          "method": "get_concert",
+          "method": "create_concert",
           "params": {
-            "id": 5,
-            "projection": "summary"
-          }
-        }
-    response: |
-      {
-        "result": {
-          "id": 5,
-          "title": "New Concert"
-        }
-      }
-
-  # Verify with withVenueDetails — union of venue/nameOnly + venue/locationOnly
-  - operation:
-      type: rpc
-      payload: |
-        {
-          "method": "get_concert",
-          "params": {
-            "id": 5,
+            "data": {
+              "title": "Concert WithVenueDetails",
+              "venue": {"id": 2},
+              "published": false,
+              "price": "30.00"
+            },
             "projection": "withVenueDetails"
           }
         }
     response: |
       {
         "result": {
-          "id": 5,
-          "title": "New Concert",
-          "published": true,
-          "price": "15.00",
+          "id": 9,
+          "title": "Concert WithVenueDetails",
+          "published": false,
+          "price": "30.00",
           "venue": {
-            "id": 1,
-            "name": "Venue1",
-            "latitude": 37.7749
+            "id": 2,
+            "name": "Venue2",
+            "latitude": 35.6762
           }
         }
+      }
+
+  # Verify all concerts were actually created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "where": {"id": {"gte": 5}},
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {
+            "id": 5,
+            "title": "New Concert",
+            "published": true,
+            "price": "15.00",
+            "venue": {"id": 1}
+          },
+          {
+            "id": 6,
+            "title": "Concert Basic",
+            "published": false,
+            "price": "18.00",
+            "venue": {"id": 2}
+          },
+          {
+            "id": 7,
+            "title": "Concert Summary",
+            "published": true,
+            "price": "22.00",
+            "venue": {"id": 1}
+          },
+          {
+            "id": 8,
+            "title": "Concert WithVenue",
+            "published": true,
+            "price": "25.00",
+            "venue": {"id": 1}
+          },
+          {
+            "id": 9,
+            "title": "Concert WithVenueDetails",
+            "published": false,
+            "price": "30.00",
+            "venue": {"id": 2}
+          }
+        ]
       }

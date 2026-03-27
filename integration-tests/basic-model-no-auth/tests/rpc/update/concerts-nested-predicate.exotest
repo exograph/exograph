@@ -1,4 +1,6 @@
+# Test collection update with nested predicate and projection
 stages:
+  # Collection update with summary projection
   - operation:
       type: rpc
       payload: |
@@ -6,17 +8,21 @@ stages:
           "method": "update_concerts",
           "params": {
             "where": {"venue": {"name": {"eq": "Venue1"}}},
-            "data": {"price": "50"}
+            "data": {"price": "50"},
+            "projection": "summary"
           }
         }
       unorderedPaths:
         - result
     response: |
       {
-        "result": [{"id": 1}, {"id": 3}]
+        "result": [
+          {"id": 1, "title": "Concert1"},
+          {"id": 3, "title": "Concert3"}
+        ]
       }
 
-  # Verify the updates
+  # Verify the updates still applied
   - operation:
       type: rpc
       payload: |

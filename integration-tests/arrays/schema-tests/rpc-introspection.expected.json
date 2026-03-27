@@ -124,6 +124,18 @@
           "schema": {
             "$ref": "#/components/schemas/ChessPieceFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -131,7 +143,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/ChessPiecePK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ChessPiecePK"
+              },
+              {
+                "$ref": "#/components/schemas/ChessPiece"
+              }
+            ]
           }
         }
       }
@@ -146,13 +165,32 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/ChessPiecePK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/ChessPiecePK"
+            },
+            {
+              "$ref": "#/components/schemas/ChessPiece"
+            }
+          ]
         }
       }
     },
@@ -175,6 +213,18 @@
           "schema": {
             "$ref": "#/components/schemas/ChessPieceUpdateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -182,7 +232,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/ChessPiecePK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ChessPiecePK"
+              },
+              {
+                "$ref": "#/components/schemas/ChessPiece"
+              }
+            ]
           }
         }
       }
@@ -199,6 +256,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for ChessPiece",
           "required": true,
@@ -210,8 +279,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/ChessPiecePK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/ChessPiecePK"
+            },
+            {
+              "$ref": "#/components/schemas/ChessPiece"
+            }
+          ]
         }
       }
     },
@@ -226,12 +302,31 @@
           "schema": {
             "$ref": "#/components/schemas/ChessPieceCreateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/ChessPiecePK"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/ChessPiecePK"
+            },
+            {
+              "$ref": "#/components/schemas/ChessPiece"
+            }
+          ]
         }
       }
     },
@@ -249,6 +344,18 @@
               "$ref": "#/components/schemas/ChessPieceCreateInput"
             }
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -256,7 +363,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/ChessPiecePK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ChessPiecePK"
+              },
+              {
+                "$ref": "#/components/schemas/ChessPiece"
+              }
+            ]
           }
         }
       }

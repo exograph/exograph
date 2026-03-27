@@ -1,6 +1,6 @@
-# Test bulk create concerts via RPC - returns list of PKs
+# Test bulk create concerts via RPC with projections
 stages:
-  # Create multiple concerts
+  # Bulk create with default projection (pk)
   - operation:
       type: rpc
       payload: |
@@ -28,44 +28,122 @@ stages:
         "result": [{"id": 5}, {"id": 6}]
       }
 
-  # Verify first concert was created
+  # Bulk create with summary projection
   - operation:
       type: rpc
       payload: |
         {
-          "method": "get_concert",
+          "method": "create_concerts",
           "params": {
-            "id": 5
+            "data": [
+              {
+                "title": "Bulk Summary 1",
+                "venue": {"id": 1},
+                "published": true,
+                "price": "11.00"
+              },
+              {
+                "title": "Bulk Summary 2",
+                "venue": {"id": 2},
+                "published": false,
+                "price": "26.00"
+              }
+            ],
+            "projection": "summary"
           }
         }
     response: |
       {
-        "result": {
-          "id": 5,
-          "title": "Bulk Concert 1",
-          "published": true,
-          "price": "10.00",
-          "venue": {"id": 1}
-        }
+        "result": [
+          {"id": 7, "title": "Bulk Summary 1"},
+          {"id": 8, "title": "Bulk Summary 2"}
+        ]
       }
 
-  # Verify second concert was created
+  # Bulk create with withVenue projection
   - operation:
       type: rpc
       payload: |
         {
-          "method": "get_concert",
+          "method": "create_concerts",
           "params": {
-            "id": 6
+            "data": [
+              {
+                "title": "Bulk WithVenue 1",
+                "venue": {"id": 1},
+                "published": true,
+                "price": "12.00"
+              }
+            ],
+            "projection": "withVenue"
           }
         }
     response: |
       {
-        "result": {
-          "id": 6,
-          "title": "Bulk Concert 2",
-          "published": false,
-          "price": "25.00",
-          "venue": {"id": 2}
+        "result": [
+          {
+            "id": 9,
+            "title": "Bulk WithVenue 1",
+            "published": true,
+            "price": "12.00",
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "published": true,
+              "latitude": 37.7749
+            }
+          }
+        ]
+      }
+
+  # Verify all concerts were actually created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "where": {"id": {"gte": 5}},
+            "orderBy": [{"id": "ASC"}]
+          }
         }
+    response: |
+      {
+        "result": [
+          {
+            "id": 5,
+            "title": "Bulk Concert 1",
+            "published": true,
+            "price": "10.00",
+            "venue": {"id": 1}
+          },
+          {
+            "id": 6,
+            "title": "Bulk Concert 2",
+            "published": false,
+            "price": "25.00",
+            "venue": {"id": 2}
+          },
+          {
+            "id": 7,
+            "title": "Bulk Summary 1",
+            "published": true,
+            "price": "11.00",
+            "venue": {"id": 1}
+          },
+          {
+            "id": 8,
+            "title": "Bulk Summary 2",
+            "published": false,
+            "price": "26.00",
+            "venue": {"id": 2}
+          },
+          {
+            "id": 9,
+            "title": "Bulk WithVenue 1",
+            "published": true,
+            "price": "12.00",
+            "venue": {"id": 1}
+          }
+        ]
       }

@@ -125,6 +125,18 @@
           "schema": {
             "$ref": "#/components/schemas/ImageFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -132,7 +144,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/ImagePK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ImagePK"
+              },
+              {
+                "$ref": "#/components/schemas/Image"
+              }
+            ]
           }
         }
       }
@@ -148,13 +167,32 @@
             "type": "string",
             "format": "uuid"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/ImagePK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/ImagePK"
+            },
+            {
+              "$ref": "#/components/schemas/Image"
+            }
+          ]
         }
       }
     },
@@ -177,6 +215,18 @@
           "schema": {
             "$ref": "#/components/schemas/ImageUpdateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -184,7 +234,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/ImagePK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ImagePK"
+              },
+              {
+                "$ref": "#/components/schemas/Image"
+              }
+            ]
           }
         }
       }
@@ -202,6 +259,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for Image",
           "required": true,
@@ -213,8 +282,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/ImagePK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/ImagePK"
+            },
+            {
+              "$ref": "#/components/schemas/Image"
+            }
+          ]
         }
       }
     },
@@ -229,12 +305,31 @@
           "schema": {
             "$ref": "#/components/schemas/ImageCreateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/ImagePK"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/ImagePK"
+            },
+            {
+              "$ref": "#/components/schemas/Image"
+            }
+          ]
         }
       }
     },
@@ -252,6 +347,18 @@
               "$ref": "#/components/schemas/ImageCreateInput"
             }
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -259,7 +366,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/ImagePK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ImagePK"
+              },
+              {
+                "$ref": "#/components/schemas/Image"
+              }
+            ]
           }
         }
       }

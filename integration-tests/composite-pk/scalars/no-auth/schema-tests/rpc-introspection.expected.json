@@ -260,6 +260,18 @@
           "schema": {
             "$ref": "#/components/schemas/PersonFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -267,7 +279,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/PersonPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PersonPK"
+              },
+              {
+                "$ref": "#/components/schemas/Person"
+              }
+            ]
           }
         }
       }
@@ -283,6 +302,18 @@
           "schema": {
             "$ref": "#/components/schemas/AddressFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -290,7 +321,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/AddressPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AddressPK"
+              },
+              {
+                "$ref": "#/components/schemas/Address"
+              }
+            ]
           }
         }
       }
@@ -312,13 +350,32 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/PersonPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/PersonPK"
+            },
+            {
+              "$ref": "#/components/schemas/Person"
+            }
+          ]
         }
       }
     },
@@ -353,13 +410,32 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/AddressPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/AddressPK"
+            },
+            {
+              "$ref": "#/components/schemas/Address"
+            }
+          ]
         }
       }
     },
@@ -382,6 +458,18 @@
           "schema": {
             "$ref": "#/components/schemas/PersonUpdateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -389,7 +477,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/PersonPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PersonPK"
+              },
+              {
+                "$ref": "#/components/schemas/Person"
+              }
+            ]
           }
         }
       }
@@ -413,6 +508,18 @@
           "schema": {
             "$ref": "#/components/schemas/AddressUpdateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -420,7 +527,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/AddressPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AddressPK"
+              },
+              {
+                "$ref": "#/components/schemas/Address"
+              }
+            ]
           }
         }
       }
@@ -444,6 +558,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for Person",
           "required": true,
@@ -455,8 +581,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/PersonPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/PersonPK"
+            },
+            {
+              "$ref": "#/components/schemas/Person"
+            }
+          ]
         }
       }
     },
@@ -493,6 +626,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for Address",
           "required": true,
@@ -504,8 +649,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/AddressPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/AddressPK"
+            },
+            {
+              "$ref": "#/components/schemas/Address"
+            }
+          ]
         }
       }
     },
@@ -520,12 +672,31 @@
           "schema": {
             "$ref": "#/components/schemas/PersonCreateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/PersonPK"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/PersonPK"
+            },
+            {
+              "$ref": "#/components/schemas/Person"
+            }
+          ]
         }
       }
     },
@@ -540,12 +711,31 @@
           "schema": {
             "$ref": "#/components/schemas/AddressCreateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/AddressPK"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/AddressPK"
+            },
+            {
+              "$ref": "#/components/schemas/Address"
+            }
+          ]
         }
       }
     },
@@ -563,6 +753,18 @@
               "$ref": "#/components/schemas/PersonCreateInput"
             }
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -570,7 +772,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/PersonPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PersonPK"
+              },
+              {
+                "$ref": "#/components/schemas/Person"
+              }
+            ]
           }
         }
       }
@@ -589,6 +798,18 @@
               "$ref": "#/components/schemas/AddressCreateInput"
             }
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -596,7 +817,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/AddressPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AddressPK"
+              },
+              {
+                "$ref": "#/components/schemas/Address"
+              }
+            ]
           }
         }
       }

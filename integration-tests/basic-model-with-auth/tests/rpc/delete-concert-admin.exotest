@@ -1,6 +1,6 @@
-# Test admin can delete concert via RPC
+# Test admin can delete concert via RPC with projections
 stages:
-  # Admin deletes concert
+  # Admin deletes concert — default projection (pk)
   - operation:
       type: rpc
       payload: |
@@ -19,14 +19,15 @@ stages:
         "result": {"id": 2}
       }
 
-  # Verify deletion
+  # Admin deletes concert — summary projection
   - operation:
       type: rpc
       payload: |
         {
-          "method": "get_concert",
+          "method": "delete_concert",
           "params": {
-            "id": 2
+            "id": 3,
+            "projection": "summary"
           }
         }
     auth: |
@@ -35,5 +36,61 @@ stages:
       }
     response: |
       {
-        "result": null
+        "result": {"id": 3, "title": "Concert3"}
+      }
+
+  # Admin deletes concert — withVenue projection
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_concert",
+          "params": {
+            "id": 4,
+            "projection": "withVenue"
+          }
+        }
+    auth: |
+      {
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": {
+          "id": 4,
+          "title": "Concert4",
+          "published": true,
+          "price": "22.50",
+          "venue": {
+            "id": 2,
+            "name": "Venue2",
+            "published": false,
+            "latitude": 35.6762
+          }
+        }
+      }
+
+  # Verify deletions
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {}
+        }
+    auth: |
+      {
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {
+            "id": 1,
+            "title": "Concert1",
+            "published": true,
+            "price": "20.50",
+            "venue": {"id": 1}
+          }
+        ]
       }

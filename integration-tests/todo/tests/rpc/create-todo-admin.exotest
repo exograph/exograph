@@ -1,6 +1,6 @@
-# Test admin can create a todo via RPC
+# Test admin can create a todo via RPC with projections
 stages:
-  # Admin creates a todo for user1
+  # Admin creates a todo — default projection (pk)
   - operation:
       type: rpc
       payload: |
@@ -21,4 +21,65 @@ stages:
     response: |
       {
         "result": {"id": ($.u2TodoIds[2] + 1)}
+      }
+
+  # Admin creates a todo — withUser projection expands user relation
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_todo",
+          "params": {
+            "data": {
+              "title": "Admin-created todo 2",
+              "completed": true,
+              "priority": "HIGH",
+              "user": {"id": $.u2Id}
+            },
+            "projection": "withUser"
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {
+          "id": ($.u2TodoIds[2] + 2),
+          "title": "Admin-created todo 2",
+          "completed": true,
+          "priority": "HIGH",
+          "user": {
+            "id": $.u2Id,
+            "email": "two@example.com",
+            "firstName": "F2",
+            "lastName": "L2",
+            "profileImageUrl": "https://example.com/2.jpg",
+            "role": "user"
+          }
+        }
+      }
+
+  # Verify both created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todo",
+          "params": {"id": ($.u2TodoIds[2] + 1)}
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {
+          "id": ($.u2TodoIds[2] + 1),
+          "title": "Admin-created todo",
+          "completed": false,
+          "priority": "MEDIUM",
+          "user": {"id": $.u1Id}
+        }
       }

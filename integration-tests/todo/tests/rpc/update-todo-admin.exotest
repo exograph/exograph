@@ -1,6 +1,6 @@
-# Test admin can update any todo by PK
+# Test admin can update any todo by PK with projections
 stages:
-  # Admin updates user1's todo
+  # Admin updates — default projection (pk)
   - operation:
       type: rpc
       payload: |
@@ -20,14 +20,16 @@ stages:
         "result": {"id": $.u1TodoIds[0]}
       }
 
-  # Verify update
+  # Admin updates — withUser projection
   - operation:
       type: rpc
       payload: |
         {
-          "method": "get_todo",
+          "method": "update_todo",
           "params": {
-            "id": $.u1TodoIds[0]
+            "id": $.u1TodoIds[0],
+            "data": {"title": "U1-T1-updated2"},
+            "projection": "withUser"
           }
         }
     auth: |
@@ -38,11 +40,39 @@ stages:
       {
         "result": {
           "id": $.u1TodoIds[0],
-          "title": "U1-T1-updated",
+          "title": "U1-T1-updated2",
           "completed": false,
           "priority": "MEDIUM",
           "user": {
-            "id": $.u1Id
+            "id": $.u1Id,
+            "email": "one@example.com",
+            "firstName": "F1",
+            "lastName": "L1",
+            "profileImageUrl": "https://example.com/1.jpg",
+            "role": "user"
           }
+        }
+      }
+
+  # Verify final state
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todo",
+          "params": {"id": $.u1TodoIds[0]}
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {
+          "id": $.u1TodoIds[0],
+          "title": "U1-T1-updated2",
+          "completed": false,
+          "priority": "MEDIUM",
+          "user": {"id": $.u1Id}
         }
       }

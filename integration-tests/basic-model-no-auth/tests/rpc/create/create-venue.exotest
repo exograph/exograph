@@ -1,5 +1,6 @@
+# Test single create venue via RPC with various projections
 stages:
-  # Create a new venue
+  # Create with default projection (pk)
   - operation:
       type: rpc
       payload: |
@@ -18,22 +19,140 @@ stages:
         "result": {"id": 3}
       }
 
-  # Verify it was created
+  # Create with basic projection
   - operation:
       type: rpc
       payload: |
         {
-          "method": "get_venue",
+          "method": "create_venue",
           "params": {
-            "id": 3
+            "data": {
+              "name": "V2",
+              "published": false,
+              "latitude": 2.0
+            },
+            "projection": "basic"
           }
         }
     response: |
       {
         "result": {
-          "id": 3,
-          "name": "V1",
-          "published": true,
-          "latitude": 1.0
+          "id": 4,
+          "name": "V2",
+          "published": false,
+          "latitude": 2.0
         }
+      }
+
+  # Create with nameOnly projection
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_venue",
+          "params": {
+            "data": {
+              "name": "V3",
+              "published": true,
+              "latitude": 3.0
+            },
+            "projection": "nameOnly"
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 5,
+          "name": "V3"
+        }
+      }
+
+  # Create with locationOnly projection
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_venue",
+          "params": {
+            "data": {
+              "name": "V4",
+              "published": false,
+              "latitude": 4.0
+            },
+            "projection": "locationOnly"
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 6,
+          "latitude": 4.0
+        }
+      }
+
+  # Create with empty projection
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_venue",
+          "params": {
+            "data": {
+              "name": "V5",
+              "published": true,
+              "latitude": 5.0
+            },
+            "projection": "empty"
+          }
+        }
+    response: |
+      {
+        "result": {}
+      }
+
+  # Verify all venues were actually created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venues",
+          "params": {
+            "where": {"id": {"gte": 3}},
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {
+            "id": 3,
+            "name": "V1",
+            "published": true,
+            "latitude": 1.0
+          },
+          {
+            "id": 4,
+            "name": "V2",
+            "published": false,
+            "latitude": 2.0
+          },
+          {
+            "id": 5,
+            "name": "V3",
+            "published": true,
+            "latitude": 3.0
+          },
+          {
+            "id": 6,
+            "name": "V4",
+            "published": false,
+            "latitude": 4.0
+          },
+          {
+            "id": 7,
+            "name": "V5",
+            "published": true,
+            "latitude": 5.0
+          }
+        ]
       }

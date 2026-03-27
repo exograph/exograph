@@ -276,6 +276,25 @@ struct ComputeSelectOpts<'a> {
     projection_name: &'a str,
 }
 
+impl<'a> ComputeSelectOpts<'a> {
+    /// Build opts for a mutation's RETURNING clause — no filtering, just projection.
+    fn for_mutation(
+        entity_type: &'a EntityType,
+        return_type: &'a OperationReturnType<EntityType>,
+        projection_name: &'a str,
+    ) -> Self {
+        Self {
+            predicate: PgAbstractPredicate::True,
+            order_by: None,
+            limit: None,
+            offset: None,
+            entity_type,
+            return_type,
+            projection_name,
+        }
+    }
+}
+
 /// Shared function to compute the final PgAbstractSelect using projection-driven field selection.
 async fn compute_select<'a>(
     opts: ComputeSelectOpts<'a>,
@@ -886,10 +905,16 @@ async fn build_create_operation<'a>(
     entity_type: &EntityType,
     return_type: &OperationReturnType<EntityType>,
     data_val: Val,
+    projection_name: &str,
     request_context: &'a RequestContext<'a>,
     subsystem: &'a PostgresRpcSubsystemWithRouter,
 ) -> Result<PgAbstractOperation, SubsystemRpcError> {
-    let selection = compute_pk_only_select(entity_type, return_type);
+    let selection = compute_select(
+        ComputeSelectOpts::for_mutation(entity_type, return_type, projection_name),
+        request_context,
+        subsystem,
+    )
+    .await?;
 
     let (rows, precheck_predicates) = match data_val {
         Val::List(items) => {
@@ -925,6 +950,7 @@ impl OperationResolver for Create {
     ) -> Result<PgAbstractOperation, SubsystemRpcError> {
         let entity_type = self.return_type.typ(&subsystem.core_subsystem.entity_types);
         let data_param_name = &self.parameters.data_param.name;
+        let projection_name = extract_projection_name(validated_params, PROJECTION_PK);
 
         let data_val = validated_params
             .remove(data_param_name.as_str())
@@ -938,6 +964,7 @@ impl OperationResolver for Create {
             entity_type,
             &self.return_type,
             data_val,
+            &projection_name,
             request_context,
             subsystem,
         )
@@ -945,57 +972,11 @@ impl OperationResolver for Create {
     }
 }
 
-/// Build a PK-only PgAbstractSelect for the RETURNING clause of mutation operations.
-/// Uses the "pk" projection if available, otherwise falls back to PK fields directly.
-fn compute_pk_only_select(
-    entity_type: &EntityType,
-    return_type: &OperationReturnType<EntityType>,
-) -> PgAbstractSelect {
-    let selection_cardinality = match return_type {
-        OperationReturnType::List(_) => SelectionCardinality::Many,
-        _ => SelectionCardinality::One,
-    };
-
-    let pk_fields: Vec<&PostgresField<EntityType>> =
-        match entity_type.projection_by_name(PROJECTION_PK) {
-            Some(pk_proj) => pk_proj
-                .elements
-                .iter()
-                .filter_map(|e| match e {
-                    ProjectionElement::ScalarField(name) => entity_type.field_by_name(name),
-                    _ => None,
-                })
-                .collect(),
-            None => entity_type.pk_fields(),
-        };
-
-    let elements: Vec<PgAliasedSelectionElement> = pk_fields
-        .iter()
-        .filter_map(|field| match &field.relation {
-            PostgresRelation::Scalar { column_id, .. } => Some(PgAliasedSelectionElement::new(
-                field.name.clone(),
-                SelectionElement::Physical(*column_id),
-            )),
-            _ => None,
-        })
-        .collect();
-
-    let selection = Selection::Json(elements, selection_cardinality);
-
-    PgAbstractSelect {
-        table_id: entity_type.table_id,
-        selection,
-        predicate: PgAbstractPredicate::True,
-        order_by: None,
-        offset: None,
-        limit: None,
-    }
-}
-
 /// Shared logic for resolving delete predicate params (PK or unique delete)
 async fn resolve_delete_predicate_params<'a>(
     predicate_params: &[postgres_core_model::predicate::PredicateParameter],
     return_type: &OperationReturnType<EntityType>,
+    projection_name: &str,
     validated_params: &mut HashMap<String, Val>,
     request_context: &'a RequestContext<'a>,
     subsystem: &'a PostgresRpcSubsystemWithRouter,
@@ -1020,7 +1001,12 @@ async fn resolve_delete_predicate_params<'a>(
 
     let predicate = PgAbstractPredicate::and(query_predicate, access_predicate);
 
-    let selection = compute_pk_only_select(entity_type, return_type);
+    let selection = compute_select(
+        ComputeSelectOpts::for_mutation(entity_type, return_type, projection_name),
+        request_context,
+        subsystem,
+    )
+    .await?;
 
     Ok(AbstractOperation::Delete(AbstractDelete {
         table_id: entity_type.table_id,
@@ -1040,9 +1026,11 @@ macro_rules! impl_delete_resolver {
                 request_context: &'a RequestContext<'a>,
                 subsystem: &'a PostgresRpcSubsystemWithRouter,
             ) -> Result<PgAbstractOperation, SubsystemRpcError> {
+                let projection_name = extract_projection_name(validated_params, PROJECTION_PK);
                 resolve_delete_predicate_params(
                     &self.parameters.predicate_params,
                     &self.return_type,
+                    &projection_name,
                     validated_params,
                     request_context,
                     subsystem,
@@ -1064,6 +1052,7 @@ impl OperationResolver for CollectionDelete {
         subsystem: &'a PostgresRpcSubsystemWithRouter,
     ) -> Result<PgAbstractOperation, SubsystemRpcError> {
         let entity_type = self.return_type.typ(&subsystem.core_subsystem.entity_types);
+        let projection_name = extract_projection_name(validated_params, PROJECTION_PK);
 
         let access_predicate = compute_entity_access_predicate(
             entity_type,
@@ -1083,7 +1072,12 @@ impl OperationResolver for CollectionDelete {
 
         let predicate = PgAbstractPredicate::and(user_predicate, access_predicate);
 
-        let selection = compute_pk_only_select(entity_type, &self.return_type);
+        let selection = compute_select(
+            ComputeSelectOpts::for_mutation(entity_type, &self.return_type, &projection_name),
+            request_context,
+            subsystem,
+        )
+        .await?;
 
         Ok(AbstractOperation::Delete(AbstractDelete {
             table_id: entity_type.table_id,
@@ -1167,6 +1161,7 @@ async fn build_update_operation<'a>(
     return_type: &OperationReturnType<EntityType>,
     data_val: Val,
     query_predicate: PgAbstractPredicate,
+    projection_name: &str,
     request_context: &'a RequestContext<'a>,
     subsystem: &'a PostgresRpcSubsystemWithRouter,
 ) -> Result<PgAbstractOperation, SubsystemRpcError> {
@@ -1176,7 +1171,12 @@ async fn build_update_operation<'a>(
     let predicate = PgAbstractPredicate::and(query_predicate, access_predicate);
 
     let column_values = compute_update_columns(entity_type, &data_val, subsystem)?;
-    let selection = compute_pk_only_select(entity_type, return_type);
+    let selection = compute_select(
+        ComputeSelectOpts::for_mutation(entity_type, return_type, projection_name),
+        request_context,
+        subsystem,
+    )
+    .await?;
 
     let (nested_updates, nested_inserts, nested_deletes) =
         compute_nested_update_ops(entity_type, &data_val, request_context, subsystem).await?;
@@ -1198,6 +1198,7 @@ async fn resolve_update_predicate_params<'a>(
     predicate_params: &[postgres_core_model::predicate::PredicateParameter],
     data_param_name: &str,
     return_type: &OperationReturnType<EntityType>,
+    projection_name: &str,
     validated_params: &mut HashMap<String, Val>,
     request_context: &'a RequestContext<'a>,
     subsystem: &'a PostgresRpcSubsystemWithRouter,
@@ -1221,6 +1222,7 @@ async fn resolve_update_predicate_params<'a>(
         return_type,
         data_val,
         query_predicate,
+        projection_name,
         request_context,
         subsystem,
     )
@@ -1314,10 +1316,12 @@ macro_rules! impl_update_resolver {
                 request_context: &'a RequestContext<'a>,
                 subsystem: &'a PostgresRpcSubsystemWithRouter,
             ) -> Result<PgAbstractOperation, SubsystemRpcError> {
+                let projection_name = extract_projection_name(validated_params, PROJECTION_PK);
                 resolve_update_predicate_params(
                     &self.parameters.predicate_params,
                     &self.parameters.data_param.name,
                     &self.return_type,
+                    &projection_name,
                     validated_params,
                     request_context,
                     subsystem,
@@ -1340,6 +1344,7 @@ impl OperationResolver for CollectionUpdate {
     ) -> Result<PgAbstractOperation, SubsystemRpcError> {
         let entity_type = self.return_type.typ(&subsystem.core_subsystem.entity_types);
         let data_param_name = &self.parameters.data_param.name;
+        let projection_name = extract_projection_name(validated_params, PROJECTION_PK);
 
         let data_val = validated_params
             .remove(data_param_name.as_str())
@@ -1362,6 +1367,7 @@ impl OperationResolver for CollectionUpdate {
             &self.return_type,
             data_val,
             query_predicate,
+            &projection_name,
             request_context,
             subsystem,
         )

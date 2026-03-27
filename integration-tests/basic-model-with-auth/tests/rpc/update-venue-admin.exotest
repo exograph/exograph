@@ -1,6 +1,6 @@
-# Test admin can update venue via RPC
+# Test admin can update venue via RPC with projections
 stages:
-  # Admin updates venue
+  # Admin updates venue — default projection (pk)
   - operation:
       type: rpc
       payload: |
@@ -20,14 +20,16 @@ stages:
         "result": {"id": 1}
       }
 
-  # Verify update
+  # Admin updates venue — basic projection returns all scalars
   - operation:
       type: rpc
       payload: |
         {
-          "method": "get_venue",
+          "method": "update_venue",
           "params": {
-            "id": 1
+            "id": 1,
+            "data": {"name": "Venue1-updated2"},
+            "projection": "basic"
           }
         }
     auth: |
@@ -36,5 +38,32 @@ stages:
       }
     response: |
       {
-        "result": {"id": 1, "name": "Venue1-updated", "published": true, "latitude": 37.7749}
+        "result": {
+          "id": 1,
+          "name": "Venue1-updated2",
+          "published": true,
+          "latitude": 37.7749
+        }
+      }
+
+  # Verify final state
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venue",
+          "params": {"id": 1}
+        }
+    auth: |
+      {
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "name": "Venue1-updated2",
+          "published": true,
+          "latitude": 37.7749
+        }
       }

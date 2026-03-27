@@ -1,4 +1,4 @@
-# Test that delete returns PK-only (no projection param on mutations)
+# Test delete with projections
 stages:
   # Delete questions first (foreign key constraint)
   - operation:
@@ -22,14 +22,15 @@ stages:
         ]
       }
 
-  # Admin deletes project — returns only the PK
+  # Admin deletes project — withOwner projection returns expanded owner
   - operation:
       type: rpc
       payload: |
         {
           "method": "delete_project",
           "params": {
-            "id": $.p2Id
+            "id": $.p2Id,
+            "projection": "withOwner"
           }
         }
     auth: |
@@ -39,7 +40,12 @@ stages:
     response: |
       {
         "result": {
-          "id": $.p2Id
+          "id": $.p2Id,
+          "name": "P2",
+          "owner": {
+            "id": $.u2Id,
+            "name": "U2"
+          }
         }
       }
 

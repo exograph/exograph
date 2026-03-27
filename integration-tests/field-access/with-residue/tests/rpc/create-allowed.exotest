@@ -1,5 +1,6 @@
 # self.authId == AuthContext.id, so email field is allowed
 stages:
+  # Create with default projection (pk)
   - operation:
       type: rpc
       payload: |
@@ -16,4 +17,51 @@ stages:
     response: |
       {
         "result": {"id": 5}
+      }
+
+  # Create with basic projection — excludes email
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_person",
+          "params": {
+            "data": {"name": "P6", "age": 60, "email": "p6@example.com", "authId": 6},
+            "projection": "basic"
+          }
+        }
+    auth: |
+      {
+        "sub": 6
+      }
+    response: |
+      {
+        "result": {
+          "id": 6,
+          "name": "P6",
+          "age": 60,
+          "authId": 6
+        }
+      }
+
+  # Verify both created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_person",
+          "params": {"id": 5}
+        }
+    auth: |
+      {
+        "sub": 5
+      }
+    response: |
+      {
+        "result": {
+          "id": 5,
+          "name": "P5",
+          "age": 50,
+          "authId": 5
+        }
       }

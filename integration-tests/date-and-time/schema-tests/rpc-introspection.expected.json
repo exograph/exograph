@@ -124,6 +124,18 @@
           "schema": {
             "$ref": "#/components/schemas/BookFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -131,7 +143,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/BookPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BookPK"
+              },
+              {
+                "$ref": "#/components/schemas/Book"
+              }
+            ]
           }
         }
       }
@@ -146,13 +165,32 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/BookPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/BookPK"
+            },
+            {
+              "$ref": "#/components/schemas/Book"
+            }
+          ]
         }
       }
     },
@@ -175,6 +213,18 @@
           "schema": {
             "$ref": "#/components/schemas/BookUpdateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -182,7 +232,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/BookPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BookPK"
+              },
+              {
+                "$ref": "#/components/schemas/Book"
+              }
+            ]
           }
         }
       }
@@ -199,6 +256,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for Book",
           "required": true,
@@ -210,8 +279,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/BookPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/BookPK"
+            },
+            {
+              "$ref": "#/components/schemas/Book"
+            }
+          ]
         }
       }
     },
@@ -226,12 +302,31 @@
           "schema": {
             "$ref": "#/components/schemas/BookCreateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/BookPK"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/BookPK"
+            },
+            {
+              "$ref": "#/components/schemas/Book"
+            }
+          ]
         }
       }
     },
@@ -249,6 +344,18 @@
               "$ref": "#/components/schemas/BookCreateInput"
             }
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -256,7 +363,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/BookPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BookPK"
+              },
+              {
+                "$ref": "#/components/schemas/Book"
+              }
+            ]
           }
         }
       }

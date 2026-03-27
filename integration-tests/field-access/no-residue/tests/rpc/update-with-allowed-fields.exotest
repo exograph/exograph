@@ -1,4 +1,6 @@
+# Test update with allowed fields and projections
 stages:
+  # Update with default projection (pk)
   - operation:
       type: rpc
       payload: |
@@ -16,4 +18,50 @@ stages:
     response: |
       {
         "result": {"id": 1}
+      }
+
+  # Update with basic projection — returns id, name, userId
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_customer",
+          "params": {
+            "id": 1,
+            "data": {"name": "C1-updated2"},
+            "projection": "basic"
+          }
+        }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "name": "C1-updated2",
+          "userId": 1
+        }
+      }
+
+  # Verify final state
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_customer",
+          "params": {"id": 1}
+        }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "name": "C1-updated2",
+          "userId": 1
+        }
       }

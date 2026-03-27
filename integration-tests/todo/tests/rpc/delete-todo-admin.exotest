@@ -1,6 +1,6 @@
-# Test admin can delete any todo by PK
+# Test admin can delete any todo by PK with projections
 stages:
-  # Admin deletes user1's todo
+  # Admin deletes — default projection (pk)
   - operation:
       type: rpc
       payload: |
@@ -19,15 +19,62 @@ stages:
         "result": {"id": $.u1TodoIds[0]}
       }
 
-  # Verify deletion
+  # Admin deletes — withUser projection returns expanded user
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_todo",
+          "params": {
+            "id": $.u1TodoIds[1],
+            "projection": "withUser"
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": {
+          "id": $.u1TodoIds[1],
+          "title": "U1-T2",
+          "completed": true,
+          "priority": "MEDIUM",
+          "user": {
+            "id": $.u1Id,
+            "email": "one@example.com",
+            "firstName": "F1",
+            "lastName": "L1",
+            "profileImageUrl": "https://example.com/1.jpg",
+            "role": "user"
+          }
+        }
+      }
+
+  # Verify both deleted
   - operation:
       type: rpc
       payload: |
         {
           "method": "get_todo",
-          "params": {
-            "id": $.u1TodoIds[0]
-          }
+          "params": {"id": $.u1TodoIds[0]}
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "result": null
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_todo",
+          "params": {"id": $.u1TodoIds[1]}
         }
     auth: |
       {

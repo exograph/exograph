@@ -1,6 +1,6 @@
-# Test admin can create venue via RPC
+# Test admin can create venue via RPC with projections
 stages:
-  # Admin creates venue
+  # Admin creates venue — default projection (pk)
   - operation:
       type: rpc
       payload: |
@@ -19,14 +19,15 @@ stages:
         "result": {"id": 3}
       }
 
-  # Verify creation
+  # Admin creates venue — basic projection
   - operation:
       type: rpc
       payload: |
         {
-          "method": "get_venue",
+          "method": "create_venue",
           "params": {
-            "id": 3
+            "data": {"name": "Another Venue", "published": false, "latitude": 51.5074},
+            "projection": "basic"
           }
         }
     auth: |
@@ -35,5 +36,43 @@ stages:
       }
     response: |
       {
-        "result": {"id": 3, "name": "New Venue", "published": true, "latitude": 40.7128}
+        "result": {
+          "id": 4,
+          "name": "Another Venue",
+          "published": false,
+          "latitude": 51.5074
+        }
+      }
+
+  # Verify both created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_venues",
+          "params": {
+            "where": {"id": {"gte": 3}},
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    auth: |
+      {
+        "role": "ROLE_ADMIN"
+      }
+    response: |
+      {
+        "result": [
+          {
+            "id": 3,
+            "name": "New Venue",
+            "published": true,
+            "latitude": 40.7128
+          },
+          {
+            "id": 4,
+            "name": "Another Venue",
+            "published": false,
+            "latitude": 51.5074
+          }
+        ]
       }

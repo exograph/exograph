@@ -1,4 +1,6 @@
+# Test collection delete via RPC with projections
 stages:
+  # Delete with default projection (pk)
   - operation:
       type: rpc
       payload: |
@@ -13,15 +15,66 @@ stages:
         "result": [{"id": 1}]
       }
 
-  # Verify it was deleted
+  # Delete with basic projection — returns full data of deleted rows
   - operation:
       type: rpc
       payload: |
         {
-          "method": "get_concert",
-          "params": {"id": 1}
+          "method": "delete_concerts",
+          "params": {
+            "where": {"venue": {"id": {"eq": 2}}},
+            "projection": "basic"
+          }
         }
     response: |
       {
-        "result": null
+        "result": [
+          {
+            "id": 2,
+            "title": "Concert2",
+            "published": false,
+            "price": "12.50",
+            "venue": {"id": 2}
+          },
+          {
+            "id": 4,
+            "title": "Concert4",
+            "published": false,
+            "price": "22.50",
+            "venue": {"id": 2}
+          }
+        ]
+      }
+
+  # Delete with summary projection
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_concerts",
+          "params": {
+            "where": {"title": {"eq": "Concert3"}},
+            "projection": "summary"
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": 3, "title": "Concert3"}
+        ]
+      }
+
+  # Verify all targeted concerts were deleted
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    response: |
+      {
+        "result": []
       }

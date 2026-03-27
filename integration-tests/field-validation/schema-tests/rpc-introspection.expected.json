@@ -232,6 +232,18 @@
           "schema": {
             "$ref": "#/components/schemas/NumbersFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -239,7 +251,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/NumbersPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/NumbersPK"
+              },
+              {
+                "$ref": "#/components/schemas/Numbers"
+              }
+            ]
           }
         }
       }
@@ -255,6 +274,18 @@
           "schema": {
             "$ref": "#/components/schemas/OtherNumbersFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -262,7 +293,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/OtherNumbersPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OtherNumbersPK"
+              },
+              {
+                "$ref": "#/components/schemas/OtherNumbers"
+              }
+            ]
           }
         }
       }
@@ -277,13 +315,32 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/NumbersPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/NumbersPK"
+            },
+            {
+              "$ref": "#/components/schemas/Numbers"
+            }
+          ]
         }
       }
     },
@@ -297,13 +354,32 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/OtherNumbersPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/OtherNumbersPK"
+            },
+            {
+              "$ref": "#/components/schemas/OtherNumbers"
+            }
+          ]
         }
       }
     },
@@ -326,6 +402,18 @@
           "schema": {
             "$ref": "#/components/schemas/NumbersUpdateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -333,7 +421,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/NumbersPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/NumbersPK"
+              },
+              {
+                "$ref": "#/components/schemas/Numbers"
+              }
+            ]
           }
         }
       }
@@ -357,6 +452,18 @@
           "schema": {
             "$ref": "#/components/schemas/OtherNumbersUpdateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -364,7 +471,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/OtherNumbersPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OtherNumbersPK"
+              },
+              {
+                "$ref": "#/components/schemas/OtherNumbers"
+              }
+            ]
           }
         }
       }
@@ -381,6 +495,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for Numbers",
           "required": true,
@@ -392,8 +518,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/NumbersPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/NumbersPK"
+            },
+            {
+              "$ref": "#/components/schemas/Numbers"
+            }
+          ]
         }
       }
     },
@@ -409,6 +542,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for OtherNumbers",
           "required": true,
@@ -420,8 +565,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/OtherNumbersPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/OtherNumbersPK"
+            },
+            {
+              "$ref": "#/components/schemas/OtherNumbers"
+            }
+          ]
         }
       }
     },
@@ -436,12 +588,31 @@
           "schema": {
             "$ref": "#/components/schemas/NumbersCreateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/NumbersPK"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/NumbersPK"
+            },
+            {
+              "$ref": "#/components/schemas/Numbers"
+            }
+          ]
         }
       }
     },
@@ -456,12 +627,31 @@
           "schema": {
             "$ref": "#/components/schemas/OtherNumbersCreateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/OtherNumbersPK"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/OtherNumbersPK"
+            },
+            {
+              "$ref": "#/components/schemas/OtherNumbers"
+            }
+          ]
         }
       }
     },
@@ -479,6 +669,18 @@
               "$ref": "#/components/schemas/NumbersCreateInput"
             }
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -486,7 +688,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/NumbersPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/NumbersPK"
+              },
+              {
+                "$ref": "#/components/schemas/Numbers"
+              }
+            ]
           }
         }
       }
@@ -505,6 +714,18 @@
               "$ref": "#/components/schemas/OtherNumbersCreateInput"
             }
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -512,7 +733,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/OtherNumbersPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OtherNumbersPK"
+              },
+              {
+                "$ref": "#/components/schemas/OtherNumbers"
+              }
+            ]
           }
         }
       }

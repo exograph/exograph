@@ -73,10 +73,10 @@
                 "$ref": "#/components/schemas/Concert"
               },
               {
-                "$ref": "#/components/schemas/ConcertWithVenue"
+                "$ref": "#/components/schemas/ConcertWithVenueDetails"
               },
               {
-                "$ref": "#/components/schemas/ConcertWithVenueDetails"
+                "$ref": "#/components/schemas/ConcertWithVenue"
               },
               {
                 "$ref": "#/components/schemas/ConcertSummary"
@@ -154,13 +154,13 @@
                 "$ref": "#/components/schemas/Venue"
               },
               {
+                "$ref": "#/components/schemas/VenueEmpty"
+              },
+              {
                 "$ref": "#/components/schemas/VenueNameOnly"
               },
               {
                 "$ref": "#/components/schemas/VenueLocationOnly"
-              },
-              {
-                "$ref": "#/components/schemas/VenueEmpty"
               }
             ]
           }
@@ -206,10 +206,10 @@
               "$ref": "#/components/schemas/Concert"
             },
             {
-              "$ref": "#/components/schemas/ConcertWithVenue"
+              "$ref": "#/components/schemas/ConcertWithVenueDetails"
             },
             {
-              "$ref": "#/components/schemas/ConcertWithVenueDetails"
+              "$ref": "#/components/schemas/ConcertWithVenue"
             },
             {
               "$ref": "#/components/schemas/ConcertSummary"
@@ -257,13 +257,13 @@
               "$ref": "#/components/schemas/Venue"
             },
             {
+              "$ref": "#/components/schemas/VenueEmpty"
+            },
+            {
               "$ref": "#/components/schemas/VenueNameOnly"
             },
             {
               "$ref": "#/components/schemas/VenueLocationOnly"
-            },
-            {
-              "$ref": "#/components/schemas/VenueEmpty"
             }
           ]
         }
@@ -280,6 +280,21 @@
           "schema": {
             "$ref": "#/components/schemas/ConcertFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk",
+              "summary",
+              "withVenue",
+              "withVenueDetails"
+            ]
+          }
         }
       ],
       "result": {
@@ -287,7 +302,23 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/ConcertPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ConcertPK"
+              },
+              {
+                "$ref": "#/components/schemas/Concert"
+              },
+              {
+                "$ref": "#/components/schemas/ConcertWithVenueDetails"
+              },
+              {
+                "$ref": "#/components/schemas/ConcertWithVenue"
+              },
+              {
+                "$ref": "#/components/schemas/ConcertSummary"
+              }
+            ]
           }
         }
       }
@@ -303,6 +334,21 @@
           "schema": {
             "$ref": "#/components/schemas/VenueFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "empty",
+              "locationOnly",
+              "nameOnly",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -310,7 +356,23 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/VenuePK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VenuePK"
+              },
+              {
+                "$ref": "#/components/schemas/Venue"
+              },
+              {
+                "$ref": "#/components/schemas/VenueEmpty"
+              },
+              {
+                "$ref": "#/components/schemas/VenueNameOnly"
+              },
+              {
+                "$ref": "#/components/schemas/VenueLocationOnly"
+              }
+            ]
           }
         }
       }
@@ -325,13 +387,44 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk",
+              "summary",
+              "withVenue",
+              "withVenueDetails"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/ConcertPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/ConcertPK"
+            },
+            {
+              "$ref": "#/components/schemas/Concert"
+            },
+            {
+              "$ref": "#/components/schemas/ConcertWithVenueDetails"
+            },
+            {
+              "$ref": "#/components/schemas/ConcertWithVenue"
+            },
+            {
+              "$ref": "#/components/schemas/ConcertSummary"
+            }
+          ]
         }
       }
     },
@@ -345,13 +438,44 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "empty",
+              "locationOnly",
+              "nameOnly",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/VenuePK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/VenuePK"
+            },
+            {
+              "$ref": "#/components/schemas/Venue"
+            },
+            {
+              "$ref": "#/components/schemas/VenueEmpty"
+            },
+            {
+              "$ref": "#/components/schemas/VenueNameOnly"
+            },
+            {
+              "$ref": "#/components/schemas/VenueLocationOnly"
+            }
+          ]
         }
       }
     },
@@ -374,6 +498,21 @@
           "schema": {
             "$ref": "#/components/schemas/ConcertUpdateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk",
+              "summary",
+              "withVenue",
+              "withVenueDetails"
+            ]
+          }
         }
       ],
       "result": {
@@ -381,7 +520,23 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/ConcertPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ConcertPK"
+              },
+              {
+                "$ref": "#/components/schemas/Concert"
+              },
+              {
+                "$ref": "#/components/schemas/ConcertWithVenueDetails"
+              },
+              {
+                "$ref": "#/components/schemas/ConcertWithVenue"
+              },
+              {
+                "$ref": "#/components/schemas/ConcertSummary"
+              }
+            ]
           }
         }
       }
@@ -405,6 +560,21 @@
           "schema": {
             "$ref": "#/components/schemas/VenueUpdateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "empty",
+              "locationOnly",
+              "nameOnly",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -412,7 +582,23 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/VenuePK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VenuePK"
+              },
+              {
+                "$ref": "#/components/schemas/Venue"
+              },
+              {
+                "$ref": "#/components/schemas/VenueEmpty"
+              },
+              {
+                "$ref": "#/components/schemas/VenueNameOnly"
+              },
+              {
+                "$ref": "#/components/schemas/VenueLocationOnly"
+              }
+            ]
           }
         }
       }
@@ -429,6 +615,21 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk",
+              "summary",
+              "withVenue",
+              "withVenueDetails"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for Concert",
           "required": true,
@@ -440,8 +641,24 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/ConcertPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/ConcertPK"
+            },
+            {
+              "$ref": "#/components/schemas/Concert"
+            },
+            {
+              "$ref": "#/components/schemas/ConcertWithVenueDetails"
+            },
+            {
+              "$ref": "#/components/schemas/ConcertWithVenue"
+            },
+            {
+              "$ref": "#/components/schemas/ConcertSummary"
+            }
+          ]
         }
       }
     },
@@ -457,6 +674,21 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "empty",
+              "locationOnly",
+              "nameOnly",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for Venue",
           "required": true,
@@ -468,8 +700,24 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/VenuePK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/VenuePK"
+            },
+            {
+              "$ref": "#/components/schemas/Venue"
+            },
+            {
+              "$ref": "#/components/schemas/VenueEmpty"
+            },
+            {
+              "$ref": "#/components/schemas/VenueNameOnly"
+            },
+            {
+              "$ref": "#/components/schemas/VenueLocationOnly"
+            }
+          ]
         }
       }
     },
@@ -484,12 +732,43 @@
           "schema": {
             "$ref": "#/components/schemas/ConcertCreateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk",
+              "summary",
+              "withVenue",
+              "withVenueDetails"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/ConcertPK"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/ConcertPK"
+            },
+            {
+              "$ref": "#/components/schemas/Concert"
+            },
+            {
+              "$ref": "#/components/schemas/ConcertWithVenueDetails"
+            },
+            {
+              "$ref": "#/components/schemas/ConcertWithVenue"
+            },
+            {
+              "$ref": "#/components/schemas/ConcertSummary"
+            }
+          ]
         }
       }
     },
@@ -504,12 +783,43 @@
           "schema": {
             "$ref": "#/components/schemas/VenueCreateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "empty",
+              "locationOnly",
+              "nameOnly",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/VenuePK"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/VenuePK"
+            },
+            {
+              "$ref": "#/components/schemas/Venue"
+            },
+            {
+              "$ref": "#/components/schemas/VenueEmpty"
+            },
+            {
+              "$ref": "#/components/schemas/VenueNameOnly"
+            },
+            {
+              "$ref": "#/components/schemas/VenueLocationOnly"
+            }
+          ]
         }
       }
     },
@@ -527,6 +837,21 @@
               "$ref": "#/components/schemas/ConcertCreateInput"
             }
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk",
+              "summary",
+              "withVenue",
+              "withVenueDetails"
+            ]
+          }
         }
       ],
       "result": {
@@ -534,7 +859,23 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/ConcertPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ConcertPK"
+              },
+              {
+                "$ref": "#/components/schemas/Concert"
+              },
+              {
+                "$ref": "#/components/schemas/ConcertWithVenueDetails"
+              },
+              {
+                "$ref": "#/components/schemas/ConcertWithVenue"
+              },
+              {
+                "$ref": "#/components/schemas/ConcertSummary"
+              }
+            ]
           }
         }
       }
@@ -553,6 +894,21 @@
               "$ref": "#/components/schemas/VenueCreateInput"
             }
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "empty",
+              "locationOnly",
+              "nameOnly",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -560,7 +916,23 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/VenuePK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VenuePK"
+              },
+              {
+                "$ref": "#/components/schemas/Venue"
+              },
+              {
+                "$ref": "#/components/schemas/VenueEmpty"
+              },
+              {
+                "$ref": "#/components/schemas/VenueNameOnly"
+              },
+              {
+                "$ref": "#/components/schemas/VenueLocationOnly"
+              }
+            ]
           }
         }
       }
@@ -617,6 +989,52 @@
           "price"
         ]
       },
+      "VenueLocationOnlyNameOnly": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "latitude"
+        ]
+      },
+      "ConcertWithVenueDetails": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "venue": {
+            "$ref": "#/components/schemas/VenueLocationOnlyNameOnly"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "price": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "venue",
+          "published",
+          "price"
+        ]
+      },
       "Venue": {
         "type": "object",
         "properties": {
@@ -651,52 +1069,6 @@
           },
           "venue": {
             "$ref": "#/components/schemas/Venue"
-          },
-          "published": {
-            "type": "boolean"
-          },
-          "price": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "venue",
-          "published",
-          "price"
-        ]
-      },
-      "VenueLocationOnlyNameOnly": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          },
-          "name": {
-            "type": "string"
-          },
-          "latitude": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "latitude"
-        ]
-      },
-      "ConcertWithVenueDetails": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          },
-          "title": {
-            "type": "string"
-          },
-          "venue": {
-            "$ref": "#/components/schemas/VenueLocationOnlyNameOnly"
           },
           "published": {
             "type": "boolean"
@@ -982,6 +1354,9 @@
           }
         }
       },
+      "VenueEmpty": {
+        "type": "object"
+      },
       "VenueNameOnly": {
         "type": "object",
         "properties": {
@@ -1011,9 +1386,6 @@
           "id",
           "latitude"
         ]
-      },
-      "VenueEmpty": {
-        "type": "object"
       },
       "VenueRef": {
         "type": "object",

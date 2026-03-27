@@ -1,4 +1,6 @@
+# Test create with allowed fields and projections
 stages:
+  # Create with default projection (pk)
   - operation:
       type: rpc
       payload: |
@@ -15,4 +17,49 @@ stages:
     response: |
       {
         "result": {"id": 5}
+      }
+
+  # Create with basic projection — returns id, name, userId
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_customer",
+          "params": {
+            "data": {"name": "C6", "userId": 6},
+            "projection": "basic"
+          }
+        }
+    auth: |
+      {
+        "sub": 6
+      }
+    response: |
+      {
+        "result": {
+          "id": 6,
+          "name": "C6",
+          "userId": 6
+        }
+      }
+
+  # Verify both created
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_customer",
+          "params": {"id": 5}
+        }
+    auth: |
+      {
+        "sub": 5
+      }
+    response: |
+      {
+        "result": {
+          "id": 5,
+          "name": "C5",
+          "userId": 5
+        }
       }
