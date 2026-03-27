@@ -55,7 +55,7 @@ struct TransactionState {
     status: TransactionStatus,
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 enum TransactionStatus {
     /// No transaction started (queries run in autocommit mode)
     Idle,
@@ -222,7 +222,7 @@ mod tests {
     #[tokio::test]
     async fn test_transaction_holder_creation() {
         let holder = TransactionHolder::new();
-        assert!(holder.state.lock().await.status == TransactionStatus::Idle);
+        assert_eq!(holder.state.lock().await.status, TransactionStatus::Idle);
     }
 
     #[test]
@@ -241,11 +241,14 @@ mod tests {
         let mut holder = TransactionHolder::new();
 
         // Initially not finalized
-        assert!(holder.state.lock().await.status == TransactionStatus::Idle);
+        assert_eq!(holder.state.lock().await.status, TransactionStatus::Idle);
 
         // After finalize, should be finalized (even without actual DB operations)
         let _ = holder.finalize(true).await;
-        assert!(holder.state.lock().await.status == TransactionStatus::Finalized);
+        assert_eq!(
+            holder.state.lock().await.status,
+            TransactionStatus::Finalized
+        );
     }
 }
 
@@ -456,7 +459,7 @@ mod database_tests {
                 let mut state = holder.state.lock().await;
                 state.ensure_client(&mgr).await.unwrap();
                 // execute_work with needs_tx=false should NOT begin a transaction
-                assert!(state.status == TransactionStatus::Idle);
+                assert_eq!(state.status, TransactionStatus::Idle);
                 let client = state.client.as_ref().unwrap();
                 client
                     .execute(
