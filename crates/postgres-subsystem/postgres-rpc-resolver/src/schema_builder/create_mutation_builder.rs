@@ -8,7 +8,6 @@
 // by the Apache License, Version 2.0.
 
 use core_model::types::FieldType;
-use postgres_core_model::projection::PROJECTION_PK;
 use postgres_core_model::relation::{OneToManyRelation, PostgresRelation};
 use postgres_core_model::types::EntityType;
 use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
@@ -17,8 +16,9 @@ use rpc_introspection::schema::{
 };
 use std::collections::HashSet;
 
+use super::build_projection_param;
 use super::type_builder::{
-    build_field_type_schema, build_return_type_schema_with, ensure_ref_type_added,
+    build_field_type_schema, build_return_type_schema_for_entity, ensure_ref_type_added,
 };
 
 fn create_input_type_name(entity_name: &str) -> String {
@@ -35,13 +35,8 @@ pub(super) fn build_create_method<P>(
     added_types: &mut HashSet<String>,
 ) -> RpcMethod {
     let entity_type = op.return_type.typ(&subsystem.core_subsystem.entity_types);
-    let result_schema = build_return_type_schema_with(
-        &op.return_type,
-        PROJECTION_PK,
-        subsystem,
-        schema,
-        added_types,
-    );
+    let result_schema =
+        build_return_type_schema_for_entity(&op.return_type, subsystem, schema, added_types);
 
     let mut method = RpcMethod::new(op.name.clone(), result_schema);
     if let Some(doc) = &op.doc_comments {
@@ -58,6 +53,8 @@ pub(super) fn build_create_method<P>(
     let data_param = RpcParameter::new(data_param_name, data_schema)
         .with_description(format!("Data for creating {}", entity_type.name));
     method = method.with_param(data_param);
+
+    method = method.with_param(build_projection_param(entity_type));
 
     method
 }

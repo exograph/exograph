@@ -340,6 +340,18 @@
           "schema": {
             "$ref": "#/components/schemas/DocumentFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -347,7 +359,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/DocumentPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocumentPK"
+              },
+              {
+                "$ref": "#/components/schemas/Document"
+              }
+            ]
           }
         }
       }
@@ -363,6 +382,18 @@
           "schema": {
             "$ref": "#/components/schemas/PermissionFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -370,7 +401,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/PermissionPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PermissionPK"
+              },
+              {
+                "$ref": "#/components/schemas/Permission"
+              }
+            ]
           }
         }
       }
@@ -386,6 +424,18 @@
           "schema": {
             "$ref": "#/components/schemas/UserFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -393,7 +443,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/UserPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserPK"
+              },
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
           }
         }
       }
@@ -408,13 +465,32 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/DocumentPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/DocumentPK"
+            },
+            {
+              "$ref": "#/components/schemas/Document"
+            }
+          ]
         }
       }
     },
@@ -428,13 +504,32 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/PermissionPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/PermissionPK"
+            },
+            {
+              "$ref": "#/components/schemas/Permission"
+            }
+          ]
         }
       }
     },
@@ -448,13 +543,32 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/UserPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -477,6 +591,18 @@
           "schema": {
             "$ref": "#/components/schemas/DocumentUpdateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -484,7 +610,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/DocumentPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocumentPK"
+              },
+              {
+                "$ref": "#/components/schemas/Document"
+              }
+            ]
           }
         }
       }
@@ -508,6 +641,18 @@
           "schema": {
             "$ref": "#/components/schemas/PermissionUpdateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -515,7 +660,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/PermissionPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PermissionPK"
+              },
+              {
+                "$ref": "#/components/schemas/Permission"
+              }
+            ]
           }
         }
       }
@@ -539,6 +691,18 @@
           "schema": {
             "$ref": "#/components/schemas/UserUpdateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -546,7 +710,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/UserPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserPK"
+              },
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
           }
         }
       }
@@ -563,6 +734,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for Document",
           "required": true,
@@ -574,8 +757,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/DocumentPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/DocumentPK"
+            },
+            {
+              "$ref": "#/components/schemas/Document"
+            }
+          ]
         }
       }
     },
@@ -591,6 +781,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for Permission",
           "required": true,
@@ -602,8 +804,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/PermissionPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/PermissionPK"
+            },
+            {
+              "$ref": "#/components/schemas/Permission"
+            }
+          ]
         }
       }
     },
@@ -619,6 +828,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for User",
           "required": true,
@@ -630,8 +851,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/UserPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -646,12 +874,31 @@
           "schema": {
             "$ref": "#/components/schemas/DocumentCreateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/DocumentPK"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/DocumentPK"
+            },
+            {
+              "$ref": "#/components/schemas/Document"
+            }
+          ]
         }
       }
     },
@@ -666,12 +913,31 @@
           "schema": {
             "$ref": "#/components/schemas/PermissionCreateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/PermissionPK"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/PermissionPK"
+            },
+            {
+              "$ref": "#/components/schemas/Permission"
+            }
+          ]
         }
       }
     },
@@ -686,12 +952,31 @@
           "schema": {
             "$ref": "#/components/schemas/UserCreateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/UserPK"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -709,6 +994,18 @@
               "$ref": "#/components/schemas/DocumentCreateInput"
             }
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -716,7 +1013,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/DocumentPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocumentPK"
+              },
+              {
+                "$ref": "#/components/schemas/Document"
+              }
+            ]
           }
         }
       }
@@ -735,6 +1039,18 @@
               "$ref": "#/components/schemas/PermissionCreateInput"
             }
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -742,7 +1058,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/PermissionPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PermissionPK"
+              },
+              {
+                "$ref": "#/components/schemas/Permission"
+              }
+            ]
           }
         }
       }
@@ -761,6 +1084,18 @@
               "$ref": "#/components/schemas/UserCreateInput"
             }
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -768,7 +1103,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/UserPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserPK"
+              },
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
           }
         }
       }

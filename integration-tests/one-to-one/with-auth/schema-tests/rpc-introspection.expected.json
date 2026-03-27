@@ -271,6 +271,18 @@
           "schema": {
             "$ref": "#/components/schemas/UserFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -278,7 +290,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/UserPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserPK"
+              },
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
           }
         }
       }
@@ -294,6 +313,18 @@
           "schema": {
             "$ref": "#/components/schemas/MembershipFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -301,7 +332,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/MembershipPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MembershipPK"
+              },
+              {
+                "$ref": "#/components/schemas/Membership"
+              }
+            ]
           }
         }
       }
@@ -316,13 +354,32 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/UserPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -336,13 +393,32 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/MembershipPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/MembershipPK"
+            },
+            {
+              "$ref": "#/components/schemas/Membership"
+            }
+          ]
         }
       }
     },
@@ -356,13 +432,32 @@
           "schema": {
             "$ref": "#/components/schemas/UserUniqueFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/MembershipPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/MembershipPK"
+            },
+            {
+              "$ref": "#/components/schemas/Membership"
+            }
+          ]
         }
       }
     },
@@ -385,6 +480,18 @@
           "schema": {
             "$ref": "#/components/schemas/UserUpdateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -392,7 +499,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/UserPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserPK"
+              },
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
           }
         }
       }
@@ -416,6 +530,18 @@
           "schema": {
             "$ref": "#/components/schemas/MembershipUpdateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -423,7 +549,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/MembershipPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MembershipPK"
+              },
+              {
+                "$ref": "#/components/schemas/Membership"
+              }
+            ]
           }
         }
       }
@@ -440,6 +573,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for User",
           "required": true,
@@ -451,8 +596,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/UserPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -468,6 +620,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for Membership",
           "required": true,
@@ -479,8 +643,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/MembershipPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/MembershipPK"
+            },
+            {
+              "$ref": "#/components/schemas/Membership"
+            }
+          ]
         }
       }
     },
@@ -496,6 +667,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for Membership",
           "required": true,
@@ -507,8 +690,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/MembershipPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/MembershipPK"
+            },
+            {
+              "$ref": "#/components/schemas/Membership"
+            }
+          ]
         }
       }
     },
@@ -523,12 +713,31 @@
           "schema": {
             "$ref": "#/components/schemas/UserCreateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/UserPK"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -543,12 +752,31 @@
           "schema": {
             "$ref": "#/components/schemas/MembershipCreateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/MembershipPK"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/MembershipPK"
+            },
+            {
+              "$ref": "#/components/schemas/Membership"
+            }
+          ]
         }
       }
     },
@@ -566,6 +794,18 @@
               "$ref": "#/components/schemas/UserCreateInput"
             }
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -573,7 +813,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/UserPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserPK"
+              },
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
           }
         }
       }
@@ -592,6 +839,18 @@
               "$ref": "#/components/schemas/MembershipCreateInput"
             }
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -599,7 +858,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/MembershipPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MembershipPK"
+              },
+              {
+                "$ref": "#/components/schemas/Membership"
+              }
+            ]
           }
         }
       }

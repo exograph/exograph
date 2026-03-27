@@ -20,51 +20,6 @@ use rpc_introspection::schema::{
 };
 use std::collections::HashSet;
 
-/// Shared recursive return type schema builder.
-pub(crate) fn build_return_type_schema_with(
-    return_type: &OperationReturnType<EntityType>,
-    projection_name: &str,
-    subsystem: &PostgresRpcSubsystemWithRouter,
-    schema: &mut RpcSchema,
-    added_types: &mut HashSet<String>,
-) -> RpcTypeSchema {
-    match return_type {
-        OperationReturnType::Plain(base) => {
-            let entity_type = &subsystem.core_subsystem.entity_types[base.associated_type_id];
-
-            let projection = entity_type
-                .projection_by_name(projection_name)
-                .unwrap_or_else(|| {
-                    panic!(
-                        "Projection `{}` not found for type `{}`",
-                        projection_name, entity_type.name
-                    )
-                });
-
-            let type_name = projection_type_name(&entity_type.name, &projection.name);
-            ensure_projection_type_added(
-                &type_name,
-                entity_type,
-                projection,
-                subsystem,
-                schema,
-                added_types,
-            );
-            RpcTypeSchema::object(&type_name)
-        }
-        OperationReturnType::Optional(inner) => RpcTypeSchema::optional(
-            build_return_type_schema_with(inner, projection_name, subsystem, schema, added_types),
-        ),
-        OperationReturnType::List(inner) => RpcTypeSchema::array(build_return_type_schema_with(
-            inner,
-            projection_name,
-            subsystem,
-            schema,
-            added_types,
-        )),
-    }
-}
-
 /// Build a return type schema that includes all projections as a oneOf.
 /// Generates all projection types and wraps them in a oneOf at the innermost level,
 /// preserving the outer Optional/List wrapping.

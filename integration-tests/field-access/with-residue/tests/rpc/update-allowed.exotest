@@ -1,5 +1,6 @@
 # self.authId == AuthContext.id, so all fields are allowed
 stages:
+  # Update with default projection (pk)
   - operation:
       type: rpc
       payload: |
@@ -17,4 +18,52 @@ stages:
     response: |
       {
         "result": {"id": $.p1id}
+      }
+
+  # Update with basic projection — returns id, name, age, authId
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_person",
+          "params": {
+            "id": $.p1id,
+            "data": {"name": "P1-updated2"},
+            "projection": "basic"
+          }
+        }
+    auth: |
+      {
+        "sub": $.p1id
+      }
+    response: |
+      {
+        "result": {
+          "id": $.p1id,
+          "name": "P1-updated2",
+          "age": 11,
+          "authId": $.p1id
+        }
+      }
+
+  # Verify final state
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_person",
+          "params": {"id": $.p1id}
+        }
+    auth: |
+      {
+        "sub": $.p1id
+      }
+    response: |
+      {
+        "result": {
+          "id": $.p1id,
+          "name": "P1-updated2",
+          "age": 11,
+          "authId": $.p1id
+        }
       }

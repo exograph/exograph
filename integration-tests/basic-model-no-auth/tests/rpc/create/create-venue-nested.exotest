@@ -1,5 +1,6 @@
+# Test create venue with nested concerts and projections
 stages:
-  # Create a venue with nested concerts
+  # Create with default projection (pk)
   - operation:
       type: rpc
       payload: |
@@ -22,27 +23,33 @@ stages:
         "result": {"id": 3}
       }
 
-  # Verify the venue was created with its concerts
+  # Create with nameOnly projection — returns only id+name even with nested concerts
   - operation:
       type: rpc
       payload: |
         {
-          "method": "get_venue",
+          "method": "create_venue",
           "params": {
-            "id": 3
+            "data": {
+              "name": "Another Venue",
+              "published": false,
+              "latitude": 51.5074,
+              "concerts": [
+                {"title": "Concert C", "published": true, "price": "30.00"}
+              ]
+            },
+            "projection": "nameOnly"
           }
         }
     response: |
       {
         "result": {
-          "id": 3,
-          "name": "New Venue",
-          "published": true,
-          "latitude": 40.7128
+          "id": 4,
+          "name": "Another Venue"
         }
       }
 
-  # Verify concerts were created via collection query
+  # Verify concerts were created for venue 3
   - operation:
       type: rpc
       payload: |
@@ -55,7 +62,37 @@ stages:
     response: |
       {
         "result": [
-          {"id": 5, "title": "Concert A", "venue": {"id": 3}, "published": true, "price": "10.00"},
-          {"id": 6, "title": "Concert B", "venue": {"id": 3}, "published": false, "price": "25.50"}
+          {
+            "id": 5,
+            "title": "Concert A",
+            "venue": {"id": 3},
+            "published": true,
+            "price": "10.00"
+          },
+          {
+            "id": 6,
+            "title": "Concert B",
+            "venue": {"id": 3},
+            "published": false,
+            "price": "25.50"
+          }
+        ]
+      }
+
+  # Verify concert was created for venue 4
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "where": {"venue": {"id": {"eq": 4}}},
+            "projection": "summary"
+          }
+        }
+    response: |
+      {
+        "result": [
+          {"id": 7, "title": "Concert C"}
         ]
       }

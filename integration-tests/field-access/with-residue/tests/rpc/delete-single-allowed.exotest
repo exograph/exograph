@@ -1,12 +1,14 @@
 # self.authId == AuthContext.id, so delete is allowed
 stages:
+  # Delete with basic projection — returns id, name, age, authId of deleted row
   - operation:
       type: rpc
       payload: |
         {
           "method": "delete_person",
           "params": {
-            "id": $.p1id
+            "id": $.p1id,
+            "projection": "basic"
           }
         }
     auth: |
@@ -15,7 +17,12 @@ stages:
       }
     response: |
       {
-        "result": {"id": $.p1id}
+        "result": {
+          "id": $.p1id,
+          "name": "P1",
+          "age": 10,
+          "authId": $.p1id
+        }
       }
 
   # Verify deletion

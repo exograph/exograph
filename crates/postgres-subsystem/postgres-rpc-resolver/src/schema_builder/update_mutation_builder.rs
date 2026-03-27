@@ -7,7 +7,6 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use postgres_core_model::projection::PROJECTION_PK;
 use postgres_core_model::relation::{OneToManyRelation, PostgresRelation};
 use postgres_core_model::types::EntityType;
 use postgres_rpc_model::operation::{CollectionUpdate, HasPredicateParams};
@@ -19,10 +18,11 @@ use std::collections::HashSet;
 
 use super::create_mutation_builder::ensure_nested_create_input_type_added;
 use super::type_builder::{
-    build_field_type_schema, build_return_type_schema_with, ensure_ref_type_added,
+    build_field_type_schema, build_return_type_schema_for_entity, ensure_ref_type_added,
 };
 use super::{
     BuildRpcMethod, BuildRpcTypeSchema, HasMethodNameAndReturnType, build_predicate_params_method,
+    build_projection_param,
 };
 
 fn update_input_type_name(entity_name: &str) -> String {
@@ -37,13 +37,8 @@ impl BuildRpcMethod for CollectionUpdate {
         added_types: &mut HashSet<String>,
     ) -> RpcMethod {
         let entity_type = self.return_type.typ(&subsystem.core_subsystem.entity_types);
-        let result_schema = build_return_type_schema_with(
-            &self.return_type,
-            PROJECTION_PK,
-            subsystem,
-            schema,
-            added_types,
-        );
+        let result_schema =
+            build_return_type_schema_for_entity(&self.return_type, subsystem, schema, added_types);
 
         let mut method = RpcMethod::new(self.name.clone(), result_schema);
         if let Some(doc) = &self.doc_comments {
@@ -73,6 +68,8 @@ impl BuildRpcMethod for CollectionUpdate {
             added_types,
         );
 
+        method = method.with_param(build_projection_param(entity_type));
+
         method
     }
 }
@@ -88,10 +85,8 @@ pub(super) fn build_update_predicate_params_method<T>(
 where
     T: HasPredicateParams + HasMethodNameAndReturnType,
 {
-    let mut method =
-        build_predicate_params_method(op, PROJECTION_PK, subsystem, schema, added_types);
+    let mut method = build_predicate_params_method(op, subsystem, schema, added_types);
 
-    // Append `data` parameter
     let entity_type = op.return_type().typ(&subsystem.core_subsystem.entity_types);
     method = append_update_data_param(
         method,
@@ -102,6 +97,8 @@ where
         schema,
         added_types,
     );
+
+    method = method.with_param(build_projection_param(entity_type));
 
     method
 }

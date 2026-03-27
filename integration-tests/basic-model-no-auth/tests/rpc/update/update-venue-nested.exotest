@@ -1,6 +1,6 @@
-# Test update with nested create/update/delete operations on concerts
+# Test update with nested create/update/delete operations on concerts, with projections
 stages:
-  # Update venue and create a new concert, update an existing one, delete another
+  # Update venue with nested ops and nameOnly projection — returns only id+name of updated venue
   - operation:
       type: rpc
       payload: |
@@ -15,31 +15,15 @@ stages:
                 "update": [{"id": 1, "title": "C1-updated"}],
                 "delete": [{"id": 3}]
               }
-            }
-          }
-        }
-    response: |
-      {
-        "result": {"id": 1}
-      }
-
-  # Verify venue name was updated
-  - operation:
-      type: rpc
-      payload: |
-        {
-          "method": "get_venue",
-          "params": {
-            "id": 1
+            },
+            "projection": "nameOnly"
           }
         }
     response: |
       {
         "result": {
           "id": 1,
-          "name": "V1-updated",
-          "published": true,
-          "latitude": 37.7749
+          "name": "V1-updated"
         }
       }
 
@@ -92,7 +76,19 @@ stages:
     response: |
       {
         "result": [
-          {"id": 1, "title": "C1-updated", "venue": {"id": 1}, "published": true, "price": "20.50"},
-          {"id": 5, "title": "New Concert", "venue": {"id": 1}, "published": true, "price": "15.00"}
+          {
+            "id": 1,
+            "title": "C1-updated",
+            "venue": {"id": 1},
+            "published": true,
+            "price": "20.50"
+          },
+          {
+            "id": 5,
+            "title": "New Concert",
+            "venue": {"id": 1},
+            "published": true,
+            "price": "15.00"
+          }
         ]
       }

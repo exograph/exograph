@@ -1,6 +1,6 @@
-# Test single update by PK via RPC - returns PK only
+# Test single update by PK via RPC with projections
 stages:
-  # Update concert title by PK
+  # Update with default projection (pk)
   - operation:
       type: rpc
       payload: |
@@ -20,25 +20,117 @@ stages:
         }
       }
 
-  # Verify the update
+  # Update with basic projection — returns all scalars of updated row
   - operation:
       type: rpc
       payload: |
         {
-          "method": "get_concert",
+          "method": "update_concert",
           "params": {
-            "id": 1
+            "id": 1,
+            "data": {
+              "title": "Concert1-updated2"
+            },
+            "projection": "basic"
           }
         }
     response: |
       {
         "result": {
           "id": 1,
-          "title": "Concert1-updated",
+          "title": "Concert1-updated2",
           "published": true,
           "price": "20.50",
-          "venue": {
-            "id": 1
+          "venue": {"id": 1}
+        }
+      }
+
+  # Update with withVenue projection — venue expanded
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_concert",
+          "params": {
+            "id": 2,
+            "data": {
+              "title": "Concert2-updated"
+            },
+            "projection": "withVenue"
           }
         }
+    response: |
+      {
+        "result": {
+          "id": 2,
+          "title": "Concert2-updated",
+          "published": false,
+          "price": "12.50",
+          "venue": {
+            "id": 2,
+            "name": "Venue2",
+            "published": false,
+            "latitude": 35.6762
+          }
+        }
+      }
+
+  # Update with summary projection
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "update_concert",
+          "params": {
+            "id": 3,
+            "data": {
+              "title": "Concert3-updated"
+            },
+            "projection": "summary"
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 3,
+          "title": "Concert3-updated"
+        }
+      }
+
+  # Verify all updates were applied
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "where": {"id": {"lte": 3}},
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    response: |
+      {
+        "result": [
+          {
+            "id": 1,
+            "title": "Concert1-updated2",
+            "published": true,
+            "price": "20.50",
+            "venue": {"id": 1}
+          },
+          {
+            "id": 2,
+            "title": "Concert2-updated",
+            "published": false,
+            "price": "12.50",
+            "venue": {"id": 2}
+          },
+          {
+            "id": 3,
+            "title": "Concert3-updated",
+            "published": true,
+            "price": "30.50",
+            "venue": {"id": 1}
+          }
+        ]
       }

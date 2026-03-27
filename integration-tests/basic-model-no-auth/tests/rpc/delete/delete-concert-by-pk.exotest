@@ -1,6 +1,6 @@
-# Test single delete by PK via RPC - returns PK only
+# Test single delete by PK via RPC with projections
 stages:
-  # Delete concert by PK
+  # Delete with default projection (pk)
   - operation:
       type: rpc
       payload: |
@@ -15,17 +15,85 @@ stages:
         "result": {"id": 1}
       }
 
-  # Verify it's deleted - get returns null
+  # Delete with basic projection — returns all scalars of deleted row
   - operation:
       type: rpc
       payload: |
         {
-          "method": "get_concert",
+          "method": "delete_concert",
           "params": {
-            "id": 1
+            "id": 2,
+            "projection": "basic"
           }
         }
     response: |
       {
-        "result": null
+        "result": {
+          "id": 2,
+          "title": "Concert2",
+          "published": false,
+          "price": "12.50",
+          "venue": {"id": 2}
+        }
+      }
+
+  # Delete with withVenue projection — venue expanded on deleted row
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_concert",
+          "params": {
+            "id": 3,
+            "projection": "withVenue"
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 3,
+          "title": "Concert3",
+          "published": true,
+          "price": "30.50",
+          "venue": {
+            "id": 1,
+            "name": "Venue1",
+            "published": true,
+            "latitude": 37.7749
+          }
+        }
+      }
+
+  # Delete with summary projection
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "delete_concert",
+          "params": {
+            "id": 4,
+            "projection": "summary"
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 4,
+          "title": "Concert4"
+        }
+      }
+
+  # Verify all concerts were actually deleted
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_concerts",
+          "params": {
+            "orderBy": [{"id": "ASC"}]
+          }
+        }
+    response: |
+      {
+        "result": []
       }

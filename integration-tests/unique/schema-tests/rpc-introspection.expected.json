@@ -376,52 +376,6 @@
       }
     },
     {
-      "name": "get_user_by_secondary_email",
-      "description": "Get a single `User` by secondary email",
-      "params": [
-        {
-          "name": "secondaryEmailId",
-          "required": true,
-          "schema": {
-            "type": "string"
-          }
-        },
-        {
-          "name": "emailDomain",
-          "required": true,
-          "schema": {
-            "type": "string"
-          }
-        },
-        {
-          "name": "projection",
-          "description": "Response projection — controls which fields are returned",
-          "required": false,
-          "schema": {
-            "type": "string",
-            "enum": [
-              "basic",
-              "pk"
-            ]
-          }
-        }
-      ],
-      "result": {
-        "name": "result",
-        "schema": {
-          "nullable": true,
-          "oneOf": [
-            {
-              "$ref": "#/components/schemas/UserPK"
-            },
-            {
-              "$ref": "#/components/schemas/User"
-            }
-          ]
-        }
-      }
-    },
-    {
       "name": "get_user_by_username",
       "description": "Get a single `User` by username",
       "params": [
@@ -466,6 +420,52 @@
       "params": [
         {
           "name": "primaryEmailId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "emailDomain",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "get_user_by_secondary_email",
+      "description": "Get a single `User` by secondary email",
+      "params": [
+        {
+          "name": "secondaryEmailId",
           "required": true,
           "schema": {
             "type": "string"
@@ -563,6 +563,18 @@
           "schema": {
             "$ref": "#/components/schemas/RsvpFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -570,7 +582,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/RsvpPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RsvpPK"
+              },
+              {
+                "$ref": "#/components/schemas/Rsvp"
+              }
+            ]
           }
         }
       }
@@ -586,6 +605,18 @@
           "schema": {
             "$ref": "#/components/schemas/UserFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -593,7 +624,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/UserPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserPK"
+              },
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
           }
         }
       }
@@ -609,6 +647,18 @@
           "schema": {
             "$ref": "#/components/schemas/InternalRsvpFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -616,7 +666,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/InternalRsvpPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/InternalRsvpPK"
+              },
+              {
+                "$ref": "#/components/schemas/InternalRsvp"
+              }
+            ]
           }
         }
       }
@@ -631,13 +688,32 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/RsvpPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/RsvpPK"
+            },
+            {
+              "$ref": "#/components/schemas/Rsvp"
+            }
+          ]
         }
       }
     },
@@ -651,13 +727,32 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/UserPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -671,13 +766,32 @@
           "schema": {
             "type": "integer"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/InternalRsvpPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/InternalRsvpPK"
+            },
+            {
+              "$ref": "#/components/schemas/InternalRsvp"
+            }
+          ]
         }
       }
     },
@@ -698,60 +812,32 @@
           "schema": {
             "$ref": "#/components/schemas/UserUniqueFilter"
           }
-        }
-      ],
-      "result": {
-        "name": "result",
-        "schema": {
-          "$ref": "#/components/schemas/RsvpPK",
-          "nullable": true
-        }
-      }
-    },
-    {
-      "name": "delete_user_by_username",
-      "description": "Delete a single `User` by username",
-      "params": [
-        {
-          "name": "username",
-          "required": true,
-          "schema": {
-            "type": "string"
-          }
-        }
-      ],
-      "result": {
-        "name": "result",
-        "schema": {
-          "$ref": "#/components/schemas/UserPK",
-          "nullable": true
-        }
-      }
-    },
-    {
-      "name": "delete_user_by_primary_email",
-      "description": "Delete a single `User` by primary email",
-      "params": [
-        {
-          "name": "primaryEmailId",
-          "required": true,
-          "schema": {
-            "type": "string"
-          }
         },
         {
-          "name": "emailDomain",
-          "required": true,
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
           "schema": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
           }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/UserPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/RsvpPK"
+            },
+            {
+              "$ref": "#/components/schemas/Rsvp"
+            }
+          ]
         }
       }
     },
@@ -772,13 +858,117 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/UserPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_user_by_username",
+      "description": "Delete a single `User` by username",
+      "params": [
+        {
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "delete_user_by_primary_email",
+      "description": "Delete a single `User` by primary email",
+      "params": [
+        {
+          "name": "primaryEmailId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "emailDomain",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -799,13 +989,32 @@
           "schema": {
             "$ref": "#/components/schemas/UserUniqueFilter"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/InternalRsvpPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/InternalRsvpPK"
+            },
+            {
+              "$ref": "#/components/schemas/InternalRsvp"
+            }
+          ]
         }
       }
     },
@@ -828,6 +1037,18 @@
           "schema": {
             "$ref": "#/components/schemas/RsvpUpdateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -835,7 +1056,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/RsvpPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RsvpPK"
+              },
+              {
+                "$ref": "#/components/schemas/Rsvp"
+              }
+            ]
           }
         }
       }
@@ -859,6 +1087,18 @@
           "schema": {
             "$ref": "#/components/schemas/UserUpdateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -866,7 +1106,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/UserPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserPK"
+              },
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
           }
         }
       }
@@ -890,6 +1137,18 @@
           "schema": {
             "$ref": "#/components/schemas/InternalRsvpUpdateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -897,7 +1156,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/InternalRsvpPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/InternalRsvpPK"
+              },
+              {
+                "$ref": "#/components/schemas/InternalRsvp"
+              }
+            ]
           }
         }
       }
@@ -914,6 +1180,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for Rsvp",
           "required": true,
@@ -925,8 +1203,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/RsvpPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/RsvpPK"
+            },
+            {
+              "$ref": "#/components/schemas/Rsvp"
+            }
+          ]
         }
       }
     },
@@ -942,6 +1227,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for User",
           "required": true,
@@ -953,8 +1250,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/UserPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -970,6 +1274,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for InternalRsvp",
           "required": true,
@@ -981,8 +1297,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/InternalRsvpPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/InternalRsvpPK"
+            },
+            {
+              "$ref": "#/components/schemas/InternalRsvp"
+            }
+          ]
         }
       }
     },
@@ -1005,6 +1328,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for Rsvp",
           "required": true,
@@ -1016,8 +1351,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/RsvpPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/RsvpPK"
+            },
+            {
+              "$ref": "#/components/schemas/Rsvp"
+            }
+          ]
         }
       }
     },
@@ -1040,6 +1382,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for User",
           "required": true,
@@ -1051,8 +1405,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/UserPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -1068,6 +1429,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for User",
           "required": true,
@@ -1079,8 +1452,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/UserPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -1103,6 +1483,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for User",
           "required": true,
@@ -1114,8 +1506,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/UserPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -1138,6 +1537,18 @@
           }
         },
         {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
+        },
+        {
           "name": "data",
           "description": "Data to update for InternalRsvp",
           "required": true,
@@ -1149,8 +1560,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/InternalRsvpPK",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/InternalRsvpPK"
+            },
+            {
+              "$ref": "#/components/schemas/InternalRsvp"
+            }
+          ]
         }
       }
     },
@@ -1165,12 +1583,31 @@
           "schema": {
             "$ref": "#/components/schemas/RsvpCreateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/RsvpPK"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/RsvpPK"
+            },
+            {
+              "$ref": "#/components/schemas/Rsvp"
+            }
+          ]
         }
       }
     },
@@ -1185,12 +1622,31 @@
           "schema": {
             "$ref": "#/components/schemas/UserCreateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/UserPK"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -1205,12 +1661,31 @@
           "schema": {
             "$ref": "#/components/schemas/InternalRsvpCreateInput"
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/InternalRsvpPK"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/InternalRsvpPK"
+            },
+            {
+              "$ref": "#/components/schemas/InternalRsvp"
+            }
+          ]
         }
       }
     },
@@ -1228,6 +1703,18 @@
               "$ref": "#/components/schemas/RsvpCreateInput"
             }
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -1235,7 +1722,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/RsvpPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RsvpPK"
+              },
+              {
+                "$ref": "#/components/schemas/Rsvp"
+              }
+            ]
           }
         }
       }
@@ -1254,6 +1748,18 @@
               "$ref": "#/components/schemas/UserCreateInput"
             }
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -1261,7 +1767,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/UserPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserPK"
+              },
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
           }
         }
       }
@@ -1280,6 +1793,18 @@
               "$ref": "#/components/schemas/InternalRsvpCreateInput"
             }
           }
+        },
+        {
+          "name": "projection",
+          "description": "Response projection — controls which fields are returned",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "pk"
+            ]
+          }
         }
       ],
       "result": {
@@ -1287,7 +1812,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/InternalRsvpPK"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/InternalRsvpPK"
+              },
+              {
+                "$ref": "#/components/schemas/InternalRsvp"
+              }
+            ]
           }
         }
       }
