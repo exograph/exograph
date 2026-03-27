@@ -8,6 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use core_model::types::{FieldType, OperationReturnType, TypeValidation};
+use indexmap::IndexMap;
 use postgres_core_model::projection::{
     PROJECTION_BASIC, PROJECTION_PK, ProjectionElement, ResolvedProjection,
 };
@@ -272,7 +273,7 @@ fn merge_projections(entity_type: &EntityType, projection_names: &[String]) -> R
 
     let mut scalar_elements: Vec<ProjectionElement> = Vec::new();
     let mut seen_scalars: HashSet<String> = HashSet::new();
-    let mut relation_entries: Vec<(String, Vec<String>)> = Vec::new();
+    let mut relation_entries: IndexMap<String, HashSet<String>> = IndexMap::new();
 
     for proj_name in projection_names {
         let projection = entity_type
@@ -295,18 +296,10 @@ fn merge_projections(entity_type: &EntityType, projection_names: &[String]) -> R
                     relation_field_name,
                     projection_names: nested,
                 } => {
-                    if let Some((_, existing)) = relation_entries
-                        .iter_mut()
-                        .find(|(n, _)| n == relation_field_name)
-                    {
-                        for name in nested {
-                            if !existing.contains(name) {
-                                existing.push(name.clone());
-                            }
-                        }
-                    } else {
-                        relation_entries.push((relation_field_name.clone(), nested.clone()));
-                    }
+                    relation_entries
+                        .entry(relation_field_name.clone())
+                        .or_default()
+                        .extend(nested.iter().cloned());
                 }
             }
         }
@@ -316,7 +309,7 @@ fn merge_projections(entity_type: &EntityType, projection_names: &[String]) -> R
     for (relation_name, names) in relation_entries {
         merged_elements.push(ProjectionElement::RelationProjection {
             relation_field_name: relation_name,
-            projection_names: names,
+            projection_names: names.into_iter().collect(),
         });
     }
 
