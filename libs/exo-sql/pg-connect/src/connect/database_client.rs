@@ -39,68 +39,7 @@ impl DerefMut for DatabaseClient {
     }
 }
 
-/// Abstracts over the different transaction types that can be returned by the database client.
-pub enum TransactionWrapper<'a> {
-    #[cfg(feature = "pool")]
-    Pooled(deadpool_postgres::Transaction<'a>),
-    Direct(tokio_postgres::Transaction<'a>),
-}
-
-impl TransactionWrapper<'_> {
-    pub async fn commit(self) -> Result<(), tokio_postgres::Error> {
-        match self {
-            #[cfg(feature = "pool")]
-            TransactionWrapper::Pooled(tx) => tx.commit().await,
-            TransactionWrapper::Direct(tx) => tx.commit().await,
-        }
-    }
-
-    pub async fn rollback(self) -> Result<(), tokio_postgres::Error> {
-        match self {
-            #[cfg(feature = "pool")]
-            TransactionWrapper::Pooled(tx) => tx.rollback().await,
-            TransactionWrapper::Direct(tx) => tx.rollback().await,
-        }
-    }
-}
-
-impl<'a> Deref for TransactionWrapper<'a> {
-    type Target = tokio_postgres::Transaction<'a>;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            #[cfg(feature = "pool")]
-            TransactionWrapper::Pooled(tx) => tx,
-            TransactionWrapper::Direct(tx) => tx,
-        }
-    }
-}
-
-impl DerefMut for TransactionWrapper<'_> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        match self {
-            #[cfg(feature = "pool")]
-            TransactionWrapper::Pooled(tx) => tx,
-            TransactionWrapper::Direct(tx) => tx,
-        }
-    }
-}
-
 impl DatabaseClient {
-    pub async fn transaction(
-        &mut self,
-    ) -> Result<TransactionWrapper<'_>, tokio_postgres::error::Error> {
-        match self {
-            #[cfg(feature = "pool")]
-            DatabaseClient::Pooled(client) => {
-                client.transaction().await.map(TransactionWrapper::Pooled)
-            }
-            DatabaseClient::Direct(client) => {
-                client.transaction().await.map(TransactionWrapper::Direct)
-            }
-        }
-    }
-
     pub async fn query<T>(
         &self,
         query: &T,
