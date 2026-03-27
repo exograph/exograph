@@ -62,7 +62,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/User"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserPK"
+              },
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
           }
         }
       }
@@ -124,7 +131,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Document"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocumentPK"
+              },
+              {
+                "$ref": "#/components/schemas/Document"
+              }
+            ]
           }
         }
       }
@@ -156,8 +170,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/User",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -188,8 +209,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Document",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/DocumentPK"
+            },
+            {
+              "$ref": "#/components/schemas/Document"
+            }
+          ]
         }
       }
     },
@@ -492,6 +520,17 @@
   ],
   "components": {
     "schemas": {
+      "UserPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "User": {
         "type": "object",
         "properties": {
@@ -642,7 +681,7 @@
           }
         }
       },
-      "UserPK": {
+      "DocumentPK": {
         "type": "object",
         "properties": {
           "id": {
@@ -693,17 +732,6 @@
             "$ref": "#/components/schemas/UserOrdering"
           }
         }
-      },
-      "DocumentPK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ]
       },
       "DocumentCreateInputFromUser": {
         "type": "object",

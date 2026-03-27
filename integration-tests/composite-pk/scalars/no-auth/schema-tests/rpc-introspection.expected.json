@@ -62,7 +62,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Person"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PersonPK"
+              },
+              {
+                "$ref": "#/components/schemas/Person"
+              }
+            ]
           }
         }
       }
@@ -124,7 +131,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Address"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AddressPK"
+              },
+              {
+                "$ref": "#/components/schemas/Address"
+              }
+            ]
           }
         }
       }
@@ -163,8 +177,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Person",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/PersonPK"
+            },
+            {
+              "$ref": "#/components/schemas/Person"
+            }
+          ]
         }
       }
     },
@@ -216,8 +237,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Address",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/AddressPK"
+            },
+            {
+              "$ref": "#/components/schemas/Address"
+            }
+          ]
         }
       }
     },
@@ -576,6 +604,21 @@
   ],
   "components": {
     "schemas": {
+      "PersonPK": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName"
+        ]
+      },
       "AddressPK": {
         "type": "object",
         "properties": {
@@ -842,21 +885,6 @@
           "city",
           "state",
           "zip"
-        ]
-      },
-      "PersonPK": {
-        "type": "object",
-        "properties": {
-          "firstName": {
-            "type": "string"
-          },
-          "lastName": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "firstName",
-          "lastName"
         ]
       },
       "AddressRef": {

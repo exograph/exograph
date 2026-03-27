@@ -62,7 +62,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/ChessPiece"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ChessPiecePK"
+              },
+              {
+                "$ref": "#/components/schemas/ChessPiece"
+              }
+            ]
           }
         }
       }
@@ -94,8 +101,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/ChessPiece",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/ChessPiecePK"
+            },
+            {
+              "$ref": "#/components/schemas/ChessPiece"
+            }
+          ]
         }
       }
     },
@@ -250,6 +264,17 @@
   ],
   "components": {
     "schemas": {
+      "ChessPiecePK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "ChessPiece": {
         "type": "object",
         "properties": {
@@ -390,17 +415,6 @@
             ]
           }
         }
-      },
-      "ChessPiecePK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ]
       },
       "ChessPieceUpdateInput": {
         "type": "object",

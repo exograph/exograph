@@ -8459,6 +8459,7 @@ dependencies = [
  "exo-sql",
  "futures",
  "http 1.4.0",
+ "indexmap 2.13.0",
  "postgres-core-model",
  "postgres-core-resolver",
  "postgres-rpc-model",

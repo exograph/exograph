@@ -62,7 +62,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Document"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocumentPK"
+              },
+              {
+                "$ref": "#/components/schemas/Document"
+              }
+            ]
           }
         }
       }
@@ -124,7 +131,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Permission"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PermissionPK"
+              },
+              {
+                "$ref": "#/components/schemas/Permission"
+              }
+            ]
           }
         }
       }
@@ -186,7 +200,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/User"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserPK"
+              },
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
           }
         }
       }
@@ -218,8 +239,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Document",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/DocumentPK"
+            },
+            {
+              "$ref": "#/components/schemas/Document"
+            }
+          ]
         }
       }
     },
@@ -250,8 +278,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Permission",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/PermissionPK"
+            },
+            {
+              "$ref": "#/components/schemas/Permission"
+            }
+          ]
         }
       }
     },
@@ -282,8 +317,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/User",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -734,6 +776,17 @@
   ],
   "components": {
     "schemas": {
+      "DocumentPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "Document": {
         "type": "object",
         "properties": {
@@ -930,7 +983,7 @@
           }
         }
       },
-      "DocumentPK": {
+      "PermissionPK": {
         "type": "object",
         "properties": {
           "id": {
@@ -1043,17 +1096,6 @@
         "required": [
           "id",
           "name"
-        ]
-      },
-      "PermissionPK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
         ]
       },
       "UserRef": {

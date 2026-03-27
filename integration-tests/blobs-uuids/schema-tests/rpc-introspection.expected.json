@@ -62,7 +62,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Image"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ImagePK"
+              },
+              {
+                "$ref": "#/components/schemas/Image"
+              }
+            ]
           }
         }
       }
@@ -95,8 +102,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Image",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/ImagePK"
+            },
+            {
+              "$ref": "#/components/schemas/Image"
+            }
+          ]
         }
       }
     },
@@ -253,6 +267,18 @@
   ],
   "components": {
     "schemas": {
+      "ImagePK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "Image": {
         "type": "object",
         "properties": {
@@ -377,18 +403,6 @@
             ]
           }
         }
-      },
-      "ImagePK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "required": [
-          "id"
-        ]
       },
       "ImageUpdateInput": {
         "type": "object",

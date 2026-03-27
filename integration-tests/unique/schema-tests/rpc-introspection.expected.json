@@ -62,7 +62,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Rsvp"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RsvpPK"
+              },
+              {
+                "$ref": "#/components/schemas/Rsvp"
+              }
+            ]
           }
         }
       }
@@ -124,7 +131,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/User"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserPK"
+              },
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
           }
         }
       }
@@ -186,7 +200,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/InternalRsvp"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/InternalRsvpPK"
+              },
+              {
+                "$ref": "#/components/schemas/InternalRsvp"
+              }
+            ]
           }
         }
       }
@@ -218,8 +239,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Rsvp",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/RsvpPK"
+            },
+            {
+              "$ref": "#/components/schemas/Rsvp"
+            }
+          ]
         }
       }
     },
@@ -250,8 +278,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/User",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -282,8 +317,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/InternalRsvp",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/InternalRsvpPK"
+            },
+            {
+              "$ref": "#/components/schemas/InternalRsvp"
+            }
+          ]
         }
       }
     },
@@ -321,8 +363,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Rsvp",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/RsvpPK"
+            },
+            {
+              "$ref": "#/components/schemas/Rsvp"
+            }
+          ]
         }
       }
     },
@@ -360,8 +409,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/User",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -392,8 +448,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/User",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -431,8 +494,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/User",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -470,8 +540,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/InternalRsvp",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/InternalRsvpPK"
+            },
+            {
+              "$ref": "#/components/schemas/InternalRsvp"
+            }
+          ]
         }
       }
     },
@@ -652,11 +729,11 @@
       }
     },
     {
-      "name": "delete_user_by_secondary_email",
-      "description": "Delete a single `User` by secondary email",
+      "name": "delete_user_by_primary_email",
+      "description": "Delete a single `User` by primary email",
       "params": [
         {
-          "name": "secondaryEmailId",
+          "name": "primaryEmailId",
           "required": true,
           "schema": {
             "type": "string"
@@ -679,11 +756,11 @@
       }
     },
     {
-      "name": "delete_user_by_primary_email",
-      "description": "Delete a single `User` by primary email",
+      "name": "delete_user_by_secondary_email",
+      "description": "Delete a single `User` by secondary email",
       "params": [
         {
-          "name": "primaryEmailId",
+          "name": "secondaryEmailId",
           "required": true,
           "schema": {
             "type": "string"
@@ -945,6 +1022,41 @@
       }
     },
     {
+      "name": "update_user_by_secondary_email",
+      "description": "Update a single `User` by secondary email with the provided data. Any fields not provided will remain unchanged",
+      "params": [
+        {
+          "name": "secondaryEmailId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "emailDomain",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "data",
+          "description": "Data to update for User",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/UserUpdateInput"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/UserPK",
+          "nullable": true
+        }
+      }
+    },
+    {
       "name": "update_user_by_username",
       "description": "Update a single `User` by username with the provided data. Any fields not provided will remain unchanged",
       "params": [
@@ -978,41 +1090,6 @@
       "params": [
         {
           "name": "primaryEmailId",
-          "required": true,
-          "schema": {
-            "type": "string"
-          }
-        },
-        {
-          "name": "emailDomain",
-          "required": true,
-          "schema": {
-            "type": "string"
-          }
-        },
-        {
-          "name": "data",
-          "description": "Data to update for User",
-          "required": true,
-          "schema": {
-            "$ref": "#/components/schemas/UserUpdateInput"
-          }
-        }
-      ],
-      "result": {
-        "name": "result",
-        "schema": {
-          "$ref": "#/components/schemas/UserPK",
-          "nullable": true
-        }
-      }
-    },
-    {
-      "name": "update_user_by_secondary_email",
-      "description": "Update a single `User` by secondary email with the provided data. Any fields not provided will remain unchanged",
-      "params": [
-        {
-          "name": "secondaryEmailId",
           "required": true,
           "schema": {
             "type": "string"
@@ -1218,6 +1295,17 @@
   ],
   "components": {
     "schemas": {
+      "RsvpPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "UserPK": {
         "type": "object",
         "properties": {
@@ -1510,6 +1598,17 @@
           "emailDomain"
         ]
       },
+      "InternalRsvpPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "InternalRsvp": {
         "type": "object",
         "properties": {
@@ -1569,28 +1668,6 @@
             "type": "integer"
           }
         }
-      },
-      "RsvpPK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ]
-      },
-      "InternalRsvpPK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ]
       },
       "UserRef": {
         "type": "object",

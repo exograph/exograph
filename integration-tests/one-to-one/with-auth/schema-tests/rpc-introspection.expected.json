@@ -62,7 +62,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/User"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserPK"
+              },
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
           }
         }
       }
@@ -124,7 +131,14 @@
         "schema": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Membership"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MembershipPK"
+              },
+              {
+                "$ref": "#/components/schemas/Membership"
+              }
+            ]
           }
         }
       }
@@ -156,8 +170,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/User",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/UserPK"
+            },
+            {
+              "$ref": "#/components/schemas/User"
+            }
+          ]
         }
       }
     },
@@ -188,8 +209,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Membership",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/MembershipPK"
+            },
+            {
+              "$ref": "#/components/schemas/Membership"
+            }
+          ]
         }
       }
     },
@@ -220,8 +248,15 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "#/components/schemas/Membership",
-          "nullable": true
+          "nullable": true,
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/MembershipPK"
+            },
+            {
+              "$ref": "#/components/schemas/Membership"
+            }
+          ]
         }
       }
     },
@@ -572,6 +607,17 @@
   ],
   "components": {
     "schemas": {
+      "UserPK": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "User": {
         "type": "object",
         "properties": {
@@ -747,7 +793,7 @@
           }
         }
       },
-      "UserPK": {
+      "MembershipPK": {
         "type": "object",
         "properties": {
           "id": {
@@ -784,17 +830,6 @@
             "type": "integer"
           }
         }
-      },
-      "MembershipPK": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ]
       },
       "MembershipCreateInputFromUser": {
         "type": "object",

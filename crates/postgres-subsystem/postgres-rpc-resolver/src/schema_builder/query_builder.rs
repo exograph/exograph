@@ -11,7 +11,6 @@ use postgres_core_model::order::{
     OrderByParameter, OrderByParameterTypeKind, PRIMITIVE_ORDERING_OPTIONS,
 };
 use postgres_core_model::predicate::{PredicateParameter, PredicateParameterTypeKind};
-use postgres_core_model::projection::PROJECTION_BASIC;
 use postgres_rpc_model::operation::{CollectionQuery, CollectionQueryParam};
 use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
 use rpc_introspection::schema::{
@@ -19,7 +18,9 @@ use rpc_introspection::schema::{
 };
 use std::collections::HashSet;
 
-use super::type_builder::{build_return_type_schema_with, get_scalar_type_from_column_path_link};
+use super::type_builder::{
+    build_return_type_schema_for_entity, get_scalar_type_from_column_path_link,
+};
 use super::{BuildRpcMethod, BuildRpcTypeSchema, build_projection_param};
 
 impl BuildRpcMethod for CollectionQuery {
@@ -30,13 +31,9 @@ impl BuildRpcMethod for CollectionQuery {
         added_types: &mut HashSet<String>,
     ) -> RpcMethod {
         let entity_type = self.return_type.typ(&subsystem.core_subsystem.entity_types);
-        let result_schema = build_return_type_schema_with(
-            &self.return_type,
-            PROJECTION_BASIC,
-            subsystem,
-            schema,
-            added_types,
-        );
+
+        let result_schema =
+            build_return_type_schema_for_entity(&self.return_type, subsystem, schema, added_types);
 
         let mut method = RpcMethod::new(self.name.clone(), result_schema);
         if let Some(doc) = &self.doc_comments {
@@ -76,9 +73,7 @@ impl BuildRpcMethod for CollectionQuery {
             method = method.with_param(rpc_param);
         }
 
-        if !entity_type.projections.is_empty() {
-            method = method.with_param(build_projection_param(entity_type));
-        }
+        method = method.with_param(build_projection_param(entity_type));
 
         method
     }
