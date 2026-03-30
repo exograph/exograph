@@ -10,7 +10,7 @@ postcard.workspace = true
 thiserror.workspace = true
 bytes.workspace = true
 tracing.workspace = true
-sha2 = "0.10"
+sha2 = "0.11"
 base16ct = { version = "1.0.0", features = ["alloc"] }
 wildmatch = { workspace = true, features = ["serde"] }
 
