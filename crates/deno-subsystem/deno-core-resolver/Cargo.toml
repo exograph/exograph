@@ -1,25 +1,29 @@
 [package]
-name = "deno-graphql-resolver"
+name = "deno-core-resolver"
 version.workspace = true
 edition.workspace = true
 publish = false
 
 [dependencies]
-async-graphql-parser.workspace = true
+anyhow.workspace = true
 async-trait.workspace = true
+deno_core.workspace = true
+deno_error.workspace = true
 futures.workspace = true
-indexmap.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
 
 exo-deno = { path = "../../../libs/exo-deno" }
+exo-env = { path = "../../../libs/exo-env" }
 core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 core-resolver = { path = "../../core-subsystem/core-resolver" }
-core-model = { path = "../../core-subsystem/core-model" }
-deno-core-resolver = { path = "../deno-core-resolver" }
-deno-graphql-model = { path = "../deno-graphql-model" }
 common = { path = "../../common" }
-subsystem-model-util = { path = "../../subsystem-util/subsystem-model-util" }
-subsystem-resolver-util = { path = "../../subsystem-util/subsystem-resolver-util" }
+
+[dev-dependencies]
+test-log.workspace = true
+tokio.workspace = true
 
 [lib]
 crate-type = ["lib"]

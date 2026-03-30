@@ -1,0 +1,17 @@
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "divide",
+      "params": {
+        "x": 10,
+        "y": 0
+      }
+    }
+response: |
+  {
+    "error": {
+      "code": -32001,
+      "message": "Division by zero is not allowed"
+    }
+  }

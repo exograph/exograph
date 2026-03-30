@@ -16,6 +16,7 @@ use core_resolver::{
     plugin::subsystem_rpc_resolver::{
         JsonRpcId, JsonRpcRequest, SubsystemRpcError, SubsystemRpcResponse,
     },
+    system_resolver::GraphQLSystemResolver,
     system_rpc_resolver::SystemRpcResolver,
 };
 use exo_env::Environment;
@@ -27,6 +28,7 @@ const OPENRPC_API_VERSION: &str = "1.0.0";
 
 pub struct RpcRouter {
     system_resolver: SystemRpcResolver,
+    graphql_system_resolver: Arc<GraphQLSystemResolver>,
     api_path_prefix: String,
     discover_path: String,
     openrpc_document: OpenRpcDocument,
@@ -48,7 +50,11 @@ struct SingleRpcResult {
 }
 
 impl RpcRouter {
-    pub fn new(system_resolver: SystemRpcResolver, env: Arc<dyn Environment>) -> Self {
+    pub fn new(
+        system_resolver: SystemRpcResolver,
+        graphql_system_resolver: Arc<GraphQLSystemResolver>,
+        env: Arc<dyn Environment>,
+    ) -> Self {
         let api_path_prefix = get_rpc_http_path(env.as_ref()).clone();
         let discover_path = format!("{}/discover", api_path_prefix);
 
@@ -62,6 +68,7 @@ impl RpcRouter {
 
         Self {
             system_resolver,
+            graphql_system_resolver,
             api_path_prefix,
             discover_path,
             openrpc_document,
@@ -139,7 +146,12 @@ impl RpcRouter {
                     }
                 } else {
                     self.system_resolver
-                        .resolve(&request.method, &request.params, request_context)
+                        .resolve(
+                            &request.method,
+                            &request.params,
+                            request_context,
+                            &self.graphql_system_resolver,
+                        )
                         .await
                 };
 

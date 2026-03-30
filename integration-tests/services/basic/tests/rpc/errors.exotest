@@ -1,0 +1,14 @@
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "illegal_function",
+      "params": {}
+    }
+response: |
+  {
+    "error": {
+      "code": -32001,
+      "message": "Internal server error"
+    }
+  }

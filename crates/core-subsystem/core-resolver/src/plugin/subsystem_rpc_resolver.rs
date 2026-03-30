@@ -42,6 +42,7 @@ pub trait SubsystemRpcResolver: Sync {
         request_method: &str,
         request_params: &Option<serde_json::Value>,
         request_context: &'a RequestContext<'a>,
+        system_resolver: &'a crate::system_resolver::GraphQLSystemResolver,
     ) -> Result<Option<SubsystemRpcResponse>, SubsystemRpcError>;
 
     /// Return the RPC schema for this subsystem, used for introspection.

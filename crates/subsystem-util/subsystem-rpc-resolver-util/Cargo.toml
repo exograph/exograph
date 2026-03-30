@@ -1,0 +1,23 @@
+[package]
+name = "subsystem-rpc-resolver-util"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+async-trait.workspace = true
+heck.workspace = true
+http.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+thiserror.workspace = true
+tracing.workspace = true
+
+common = { path = "../../common" }
+core-model = { path = "../../core-subsystem/core-model" }
+core-resolver = { path = "../../core-subsystem/core-resolver" }
+rpc-introspection = { path = "../../rpc-introspection" }
+subsystem-model-util = { path = "../subsystem-model-util" }
+subsystem-resolver-util = { path = "../subsystem-resolver-util" }
+
+[lib]
+doctest = false

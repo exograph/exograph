@@ -13,7 +13,7 @@ use common::context::RequestContext;
 use common::value::Val;
 use core_resolver::{
     QueryResponse, QueryResponseBody,
-    access_solver::{AccessSolver, AccessSolverError},
+    access_solver::{AccessPredicate, AccessSolver, AccessSolverError},
     context_extractor::ContextExtractor,
     exograph_execute_query,
     system_resolver::{ExographExecuteQueryFn, GraphQLSystemResolver},
@@ -30,17 +30,18 @@ use exo_deno::{Arg, deno_executor_pool::DenoScriptDefn};
 use futures::StreamExt;
 
 use crate::{
-    DenoSubsystemResolver, deno_execution_error::DenoExecutionError,
-    exo_execution::ExoCallbackProcessor, module_access_predicate::ModuleAccessPredicate,
+    deno_execution_error::DenoExecutionError,
+    exo_execution::{ExoCallbackProcessor, ExographMethodResponse},
+    exograph_ops::InterceptedOperationInfo,
+    resolver::DenoSubsystemGraphQLResolver,
 };
-
 use std::collections::HashMap;
 
 pub struct DenoOperation<'a> {
     pub method: &'a ModuleMethod,
     pub field: &'a ValidatedField,
     pub request_context: &'a RequestContext<'a>,
-    pub subsystem_resolver: &'a DenoSubsystemResolver,
+    pub subsystem_resolver: &'a DenoSubsystemGraphQLResolver,
     pub system_resolver: &'a GraphQLSystemResolver,
 }
 
@@ -66,24 +67,24 @@ impl DenoOperation<'_> {
                     ModuleTypeKind::Composite(ModuleCompositeType { access, .. }) => subsystem
                         .solve(self.request_context, None, &access.value)
                         .await?
-                        .map(|r| matches!(r.0, ModuleAccessPredicate::True))
+                        .map(|r| r.is_true())
                         .resolve(),
                 };
 
                 let method_level_access = subsystem
                     .solve(self.request_context, None, &self.method.access.value)
                     .await?
-                    .map(|r| r.0)
+                    .map(|r| !r.is_false())
                     .resolve();
 
                 // deny if either access check fails
-                Ok(type_level_access
-                    && !matches!(method_level_access, ModuleAccessPredicate::False))
+                Ok(type_level_access && method_level_access)
             }
             ModuleOperationReturnType::Foreign(_) => {
-                // For foreign types, Deno doesn't impose its own access control The associated code
-                // may impose any required access control and in (typical) case of using
-                // Exograph.executeQuery(), that itself will apply the necessary access control
+                // For foreign types, Deno doesn't impose its own access control.
+                // The associated code may impose any required access control and in the
+                // typical case of using Exograph.executeQuery(), that itself will apply
+                // the necessary access control.
                 Ok(true)
             }
         }
@@ -105,6 +106,8 @@ impl DenoOperation<'_> {
 
         let deserialized: DenoScriptDefn = serde_json::from_slice(&script.script).unwrap();
 
+        let call_context: Option<InterceptedOperationInfo> = None;
+
         let (result, response) = self
             .subsystem_resolver
             .executor
@@ -113,7 +116,7 @@ impl DenoOperation<'_> {
                 deserialized,
                 &self.method.name,
                 arg_sequence,
-                None,
+                call_context,
                 callback_processor,
             )
             .await
@@ -121,7 +124,9 @@ impl DenoOperation<'_> {
 
         Ok(QueryResponse {
             body: QueryResponseBody::Json(result),
-            headers: response.map(|r| r.headers).unwrap_or_default(),
+            headers: response
+                .map(|r: ExographMethodResponse| r.headers)
+                .unwrap_or_default(),
         })
     }
 

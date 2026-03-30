@@ -20,7 +20,7 @@ use tokio::sync::mpsc::Sender;
 
 use crate::exo_execution::ExographMethodResponse;
 
-use super::exo_execution::{RequestFromDenoMessage, ResponseForDenoMessage};
+use crate::exo_execution::{RequestFromDenoMessage, ResponseForDenoMessage};
 
 #[derive(Debug)]
 pub struct InterceptedOperationInfo {

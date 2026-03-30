@@ -1,25 +1,24 @@
 [package]
-name = "deno-graphql-resolver"
+name = "deno-rpc-resolver"
 version.workspace = true
 edition.workspace = true
 publish = false
 
 [dependencies]
-async-graphql-parser.workspace = true
 async-trait.workspace = true
 futures.workspace = true
-indexmap.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
 
 exo-deno = { path = "../../../libs/exo-deno" }
+common = { path = "../../common" }
 core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 core-resolver = { path = "../../core-subsystem/core-resolver" }
-core-model = { path = "../../core-subsystem/core-model" }
 deno-core-resolver = { path = "../deno-core-resolver" }
-deno-graphql-model = { path = "../deno-graphql-model" }
-common = { path = "../../common" }
 subsystem-model-util = { path = "../../subsystem-util/subsystem-model-util" }
-subsystem-resolver-util = { path = "../../subsystem-util/subsystem-resolver-util" }
+subsystem-rpc-resolver-util = { path = "../../subsystem-util/subsystem-rpc-resolver-util" }
+
+[package.metadata.cargo-shear]
+ignored = ["core-plugin-shared"] # used by exograph_execute_query! macro expansion
 
 [lib]
 crate-type = ["lib"]

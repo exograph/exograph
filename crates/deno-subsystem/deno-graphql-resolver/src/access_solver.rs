@@ -7,103 +7,73 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-//! [`AccessSolver`] for the Deno subsystem.
+//! [`AccessSolver`] bridge for [`DenoSubsystem`].
+//!
+//! The shared access-checking logic lives in `subsystem-resolver-util`.
+//! This module provides the orphan-rule-required impl for `DenoSubsystem`,
+//! using a local newtype wrapper around the shared predicate.
 
 use async_trait::async_trait;
 
 use common::context::RequestContext;
-use common::value::Val;
 use core_model::access::AccessRelationalOp;
 use core_resolver::access_solver::{
-    AccessInput, AccessPredicate, AccessSolution, AccessSolver, AccessSolverError, eq_values,
-    gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
-    reduce_common_primitive_expression,
+    AccessInput, AccessPredicate, AccessSolution, AccessSolver, AccessSolverError,
 };
 
-use deno_graphql_model::{access::ModuleAccessPrimitiveExpression, subsystem::DenoSubsystem};
+use deno_graphql_model::subsystem::DenoSubsystem;
+use subsystem_model_util::access::ModuleAccessPrimitiveExpression;
+use subsystem_resolver_util::access::ModuleAccessPredicate;
 
-use crate::module_access_predicate::ModuleAccessPredicate;
-
-// Only to get around the orphan rule while implementing AccessSolver
+// Local newtype to satisfy the orphan rule: AccessSolver is in core-resolver,
+// ModuleAccessPredicate is in subsystem-resolver-util, and DenoSubsystem
+// is in deno-graphql-model — none are local.
 #[derive(Debug)]
-pub struct ModuleAccessPredicateWrapper(pub ModuleAccessPredicate);
+pub(crate) struct DenoAccessPredicate(pub(crate) ModuleAccessPredicate);
 
-impl std::ops::Not for ModuleAccessPredicateWrapper {
+impl std::ops::Not for DenoAccessPredicate {
     type Output = Self;
-
     fn not(self) -> Self::Output {
-        ModuleAccessPredicateWrapper(self.0.not())
+        DenoAccessPredicate(self.0.not())
     }
 }
 
-impl From<bool> for ModuleAccessPredicateWrapper {
+impl From<bool> for DenoAccessPredicate {
     fn from(value: bool) -> Self {
-        ModuleAccessPredicateWrapper(ModuleAccessPredicate::from(value))
+        DenoAccessPredicate(ModuleAccessPredicate::from(value))
     }
 }
 
-impl AccessPredicate for ModuleAccessPredicateWrapper {
+impl AccessPredicate for DenoAccessPredicate {
     fn and(self, other: Self) -> Self {
-        ModuleAccessPredicateWrapper((self.0.into() && other.0.into()).into())
+        DenoAccessPredicate(self.0.and(other.0))
     }
-
     fn or(self, other: Self) -> Self {
-        ModuleAccessPredicateWrapper((self.0.into() || other.0.into()).into())
+        DenoAccessPredicate(self.0.or(other.0))
     }
-
     fn is_true(&self) -> bool {
-        matches!(self.0, ModuleAccessPredicate::True)
+        self.0.is_true()
     }
-
     fn is_false(&self) -> bool {
-        matches!(self.0, ModuleAccessPredicate::False)
+        self.0.is_false()
     }
 }
 
 #[async_trait]
-impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicateWrapper>
-    for DenoSubsystem
-{
+impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, DenoAccessPredicate> for DenoSubsystem {
     async fn solve_relational_op(
         &self,
         request_context: &RequestContext<'a>,
         _input_value: Option<&AccessInput<'a>>,
         op: &AccessRelationalOp<ModuleAccessPrimitiveExpression>,
-    ) -> Result<AccessSolution<ModuleAccessPredicateWrapper>, AccessSolverError> {
-        async fn reduce_primitive_expression<'a>(
-            solver: &DenoSubsystem,
-            request_context: &'a RequestContext<'a>,
-            expr: &'a ModuleAccessPrimitiveExpression,
-        ) -> Result<Option<Val>, AccessSolverError> {
-            Ok(match expr {
-                ModuleAccessPrimitiveExpression::Common(common_expr) => {
-                    reduce_common_primitive_expression(solver, request_context, common_expr).await?
-                }
-            })
-        }
+    ) -> Result<AccessSolution<DenoAccessPredicate>, AccessSolverError> {
+        let result =
+            subsystem_resolver_util::access::solve_module_relational_op(self, request_context, op)
+                .await?;
 
-        let (left, right) = op.sides();
-        let left_value = reduce_primitive_expression(self, request_context, left).await?;
-        let right_value = reduce_primitive_expression(self, request_context, right).await?;
-
-        Ok(match (left_value, right_value) {
-            (None, _) | (_, None) => AccessSolution::Unsolvable(ModuleAccessPredicateWrapper(
-                ModuleAccessPredicate::False,
-            )),
-            (Some(ref left_value), Some(ref right_value)) => {
-                AccessSolution::Solved(ModuleAccessPredicateWrapper(
-                    match op {
-                        AccessRelationalOp::Eq(..) => eq_values(left_value, right_value),
-                        AccessRelationalOp::Neq(_, _) => neq_values(left_value, right_value),
-                        AccessRelationalOp::Lt(_, _) => lt_values(left_value, right_value),
-                        AccessRelationalOp::Lte(_, _) => lte_values(left_value, right_value),
-                        AccessRelationalOp::Gt(_, _) => gt_values(left_value, right_value),
-                        AccessRelationalOp::Gte(_, _) => gte_values(left_value, right_value),
-                        AccessRelationalOp::In(..) => in_values(left_value, right_value),
-                    }
-                    .into(),
-                ))
-            }
+        Ok(match result {
+            AccessSolution::Solved(p) => AccessSolution::Solved(DenoAccessPredicate(p)),
+            AccessSolution::Unsolvable(p) => AccessSolution::Unsolvable(DenoAccessPredicate(p)),
         })
     }
 }

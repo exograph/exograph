@@ -20,29 +20,19 @@ use core_resolver::{
     validation::field::ValidatedField,
 };
 use deno_graphql_model::{module::ModuleMethod, subsystem::DenoSubsystem};
-use exo_deno::DenoExecutorPool;
 
-use super::{
-    deno_execution_error::DenoExecutionError,
-    deno_operation::DenoOperation,
-    exo_execution::{ExographMethodResponse, RequestFromDenoMessage},
-    exograph_ops::InterceptedOperationInfo,
-};
+use super::deno_operation::DenoOperation;
+use crate::ExoDenoExecutorPool;
+use crate::deno_execution_error::DenoExecutionError;
 
-pub type ExoDenoExecutorPool = DenoExecutorPool<
-    Option<InterceptedOperationInfo>,
-    RequestFromDenoMessage,
-    ExographMethodResponse,
->;
-
-pub struct DenoSubsystemResolver {
+pub struct DenoSubsystemGraphQLResolver {
     pub id: &'static str,
     pub subsystem: DenoSubsystem,
-    pub executor: ExoDenoExecutorPool,
+    pub executor: std::sync::Arc<ExoDenoExecutorPool>,
 }
 
 #[async_trait]
-impl SubsystemGraphQLResolver for DenoSubsystemResolver {
+impl SubsystemGraphQLResolver for DenoSubsystemGraphQLResolver {
     fn id(&self) -> &'static str {
         self.id
     }
@@ -152,7 +142,7 @@ pub(crate) fn create_deno_operation<'a>(
     method_id: SerializableSlabIndex<ModuleMethod>,
     field: &'a ValidatedField,
     request_context: &'a RequestContext<'a>,
-    subsystem_resolver: &'a DenoSubsystemResolver,
+    subsystem_resolver: &'a DenoSubsystemGraphQLResolver,
     system_resolver: &'a GraphQLSystemResolver,
 ) -> Result<DenoOperation<'a>, DenoExecutionError> {
     let method = &system.methods[method_id];
@@ -164,22 +154,4 @@ pub(crate) fn create_deno_operation<'a>(
         subsystem_resolver,
         system_resolver,
     })
-}
-
-impl From<DenoExecutionError> for SubsystemResolutionError {
-    fn from(e: DenoExecutionError) -> Self {
-        match e {
-            DenoExecutionError::Authorization => SubsystemResolutionError::Authorization,
-            DenoExecutionError::ContextExtraction(e) => {
-                SubsystemResolutionError::ContextExtraction(e)
-            }
-            _ => {
-                tracing::error!("Error while resolving operation: {e}");
-                SubsystemResolutionError::UserDisplayError(
-                    e.user_error_message()
-                        .unwrap_or_else(|| "Internal server error".to_string()),
-                )
-            }
-        }
-    }
 }

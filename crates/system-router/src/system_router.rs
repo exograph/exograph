@@ -160,7 +160,7 @@ pub async fn create_system_router_from_system(
     let rest_router = RestRouter::new(rest_resolver, env.clone());
 
     let rpc_resolver = SystemRpcResolver::new(rpc_resolvers, env.clone());
-    let rpc_router = RpcRouter::new(rpc_resolver, env.clone());
+    let rpc_router = RpcRouter::new(rpc_resolver, graphql_router.resolver(), env.clone());
 
     #[cfg(not(target_family = "wasm"))]
     let mcp_router = create_mcp_router(

@@ -12,9 +12,12 @@ use async_graphql_parser::{
     types::{FieldDefinition, TypeDefinition},
 };
 use core_model::{
-    context_type::ContextType,
+    context_type::{ContextContainer, ContextType},
     mapped_arena::{MappedArena, SerializableSlab},
     type_normalization::{FieldDefinitionProvider, TypeDefinitionProvider, default_positioned},
+};
+use core_plugin_shared::system_serializer::{
+    ModelSerializationError, SystemSerializer, postcard_deserialize, postcard_serialize,
 };
 use serde::{Deserialize, Serialize};
 
@@ -64,5 +67,25 @@ impl ModuleSubsystem {
             .iter()
             .map(|typ| typ.1.type_definition(&self.module_types))
             .collect()
+    }
+}
+
+impl ContextContainer for ModuleSubsystem {
+    fn contexts(&self) -> &MappedArena<ContextType> {
+        &self.contexts
+    }
+}
+
+impl SystemSerializer for ModuleSubsystem {
+    type Underlying = Self;
+
+    fn serialize(&self) -> Result<Vec<u8>, ModelSerializationError> {
+        postcard_serialize(self)
+    }
+
+    fn deserialize_reader(
+        reader: impl std::io::Read,
+    ) -> Result<Self::Underlying, ModelSerializationError> {
+        postcard_deserialize(reader)
     }
 }

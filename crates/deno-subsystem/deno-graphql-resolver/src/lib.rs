@@ -7,14 +7,14 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-pub use exo_execution::exo_config;
-pub use resolver::DenoSubsystemResolver;
+// Re-export core Deno execution types from deno-core-resolver
+pub use deno_core_resolver::deno_execution_error;
+pub use deno_core_resolver::exo_execution;
+pub use deno_core_resolver::exograph_ops;
+pub use deno_core_resolver::{ExoDenoExecutorPool, exo_config};
+pub use resolver::DenoSubsystemGraphQLResolver;
 
 mod access_solver;
-mod deno_execution_error;
 mod deno_operation;
-mod exo_execution;
-mod exograph_ops;
 mod interceptor_execution;
-mod module_access_predicate;
-mod resolver;
+pub mod resolver;

@@ -7,4 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-pub mod system_builder;
+mod executor;
+
+pub use executor::DenoRpcExecutor;
+pub use subsystem_rpc_resolver_util::resolver::ModuleSubsystemRpcResolver;
+
+/// Type alias for the Deno RPC resolver.
+pub type DenoSubsystemRpcResolver = ModuleSubsystemRpcResolver<DenoRpcExecutor>;
