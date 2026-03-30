@@ -11,7 +11,8 @@ indexmap.workspace = true
 http.workspace = true
 serde_json.workspace = true
 
-exo-sql = { path = "../../../libs/exo-sql/facade" }
+exo-sql-pg = { path = "../../../libs/exo-sql/pg" }
+exo-sql-pg-connect = { path = "../../../libs/exo-sql/pg-connect" }
 
 core-model = { path = "../../core-subsystem/core-model" }
 core-resolver = { path = "../../core-subsystem/core-resolver" }

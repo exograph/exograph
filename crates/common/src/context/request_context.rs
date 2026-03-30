@@ -16,7 +16,7 @@ use exo_env::Environment;
 use crate::http::{RequestHead, RequestPayload, ResponsePayload};
 use crate::router::PlainRequestPayload;
 use crate::{router::Router, value::Val};
-use exo_sql::TransactionHolder;
+use exo_sql_pg_connect::TransactionHolder;
 
 use super::JwtAuthenticator;
 use super::{

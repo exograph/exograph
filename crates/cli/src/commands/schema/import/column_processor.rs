@@ -1,13 +1,13 @@
 use anyhow::Result;
 use std::io::Write;
 
-use exo_sql::column_default::{ColumnAutoincrement, ColumnDefault, UuidGenerationMethod};
-use exo_sql::schema::column_spec::ColumnSpec;
-use exo_sql::schema::table_spec::TableSpec;
-use exo_sql::{
+use exo_sql_pg::column_default::{ColumnAutoincrement, ColumnDefault, UuidGenerationMethod};
+use exo_sql_pg::{
     FloatBits, FloatColumnType, IntBits, IntColumnType, NumericColumnType, StringColumnType,
     TimeColumnType, TimestampColumnType, VectorColumnType,
 };
+use exo_sql_pg_schema::column_spec::ColumnSpec;
+use exo_sql_pg_schema::table_spec::TableSpec;
 
 /// Converts a ColumnDefault to Exograph model syntax (e.g., `generate_uuid()`, `autoIncrement()`)
 fn column_default_to_model(default: &ColumnDefault) -> Option<String> {
@@ -126,7 +126,7 @@ pub enum ColumnTypeName {
     ReferenceType(String),
 }
 
-fn type_annotation(physical_type: &dyn exo_sql::PhysicalColumnType) -> String {
+fn type_annotation(physical_type: &dyn exo_sql_pg::PhysicalColumnType) -> String {
     let inner_type = physical_type;
     if let Some(int_type) = inner_type.as_any().downcast_ref::<IntColumnType>() {
         match int_type.bits {

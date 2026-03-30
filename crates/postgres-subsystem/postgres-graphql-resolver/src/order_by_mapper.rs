@@ -14,7 +14,7 @@ use async_trait::async_trait;
 use crate::sql_mapper::SQLMapper;
 use common::context::RequestContext;
 use common::value::Val;
-use exo_sql::PgAbstractOrderBy;
+use exo_sql_pg::PgAbstractOrderBy;
 use postgres_core_model::order::OrderByParameter;
 use postgres_core_resolver::order_by_mapper::compute_order_by;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;

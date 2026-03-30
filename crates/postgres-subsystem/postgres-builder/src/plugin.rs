@@ -288,7 +288,7 @@ mod tests {
     use std::collections::HashSet;
 
     use core_plugin_shared::error::ModelSerializationError;
-    use exo_sql::{
+    use exo_sql_pg::{
         Database, FloatBits, FloatColumnType, IntBits, IntColumnType, NumericColumnType,
         PhysicalColumn, PhysicalColumnTypeExt, PhysicalTable, StringColumnType,
         TimestampColumnType,

@@ -11,7 +11,10 @@ use std::collections::HashMap;
 
 use exo_sql_core::DatabaseError;
 use exo_sql_core::SchemaStatement;
-use exo_sql_core::{ColumnAutoincrement, ColumnDefault, IdentityGeneration, UuidGenerationMethod};
+// Re-export core column default types so consumers don't need a separate exo-sql-core dep
+pub use exo_sql_core::column_default::{
+    ColumnAutoincrement, ColumnDefault, IdentityGeneration, UuidGenerationMethod,
+};
 use exo_sql_core::{Database, PhysicalColumn, SchemaObjectName};
 use exo_sql_pg::physical_column_type::{
     ArrayColumnType, BlobColumnType, BooleanColumnType, DateColumnType, EnumColumnType,

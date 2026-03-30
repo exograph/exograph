@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql::{ColumnPathLink, PhysicalColumnPath};
+use exo_sql_pg::{ColumnPathLink, PhysicalColumnPath};
 
 pub fn to_column_path(
     parent_column_path: &Option<PhysicalColumnPath>,

@@ -9,7 +9,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use exo_sql::PhysicalTable;
+use exo_sql_pg::PhysicalTable;
 
 use core_model::mapped_arena::SerializableSlabIndex;
 

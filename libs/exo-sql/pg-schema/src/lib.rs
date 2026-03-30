@@ -24,6 +24,9 @@ pub mod column_default_schema;
 pub mod column_type_schema;
 mod constraint;
 
+// Re-export from core so consumers don't need a separate exo-sql-core dep
+pub use exo_sql_core::statement::SchemaStatement;
+
 /// Trait for types that can print debug information to a writer
 pub trait DebugPrintTo {
     fn debug_print_to<W: std::io::Write>(

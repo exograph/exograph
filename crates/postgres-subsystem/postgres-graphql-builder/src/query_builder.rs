@@ -14,7 +14,7 @@ use core_model::{
     types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
 };
 
-use exo_sql::Database;
+use exo_sql_pg::Database;
 use postgres_graphql_model::{
     limit_offset::{LimitParameter, LimitParameterType, OffsetParameter, OffsetParameterType},
     query::{

@@ -10,7 +10,7 @@
 use crate::types::{EntityFieldId, EntityType};
 
 use core_model::mapped_arena::SerializableSlabIndex;
-use exo_sql::{ColumnId, ColumnPathLink, Database, ManyToOneId, OneToManyId};
+use exo_sql_pg::{ColumnId, ColumnPathLink, Database, ManyToOneId, OneToManyId};
 use serde::{Deserialize, Serialize};
 
 // We model one-to-one (more precisely one-to-one_or_zero and one_or_zero-to-one) relations as

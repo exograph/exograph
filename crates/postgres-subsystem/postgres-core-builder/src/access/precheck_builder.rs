@@ -26,7 +26,7 @@ use core_model_builder::{
     typechecker::Typed,
 };
 
-use exo_sql::{Database, PhysicalColumnPath};
+use exo_sql_pg::{Database, PhysicalColumnPath};
 use postgres_core_model::{
     access::{AccessPrimitiveExpressionPath, FieldPath, PrecheckAccessPrimitiveExpression},
     relation::PostgresRelation,

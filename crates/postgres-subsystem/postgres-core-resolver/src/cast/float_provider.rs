@@ -10,7 +10,7 @@
 use super::CastProvider;
 use crate::cast::CastError;
 use common::value::{Val, val::ValNumber};
-use exo_sql::{FloatBits, FloatColumnType, PhysicalColumnType, SQLParamContainer};
+use exo_sql_pg::{FloatBits, FloatColumnType, PhysicalColumnType, SQLParamContainer};
 
 pub struct FloatCastProvider;
 

@@ -1,6 +1,6 @@
 use std::vec;
 
-use exo_sql::{ColumnId, VectorDistanceFunction};
+use exo_sql_pg::{ColumnId, VectorDistanceFunction};
 use serde::{Deserialize, Serialize};
 
 use crate::access::Access;

@@ -17,7 +17,7 @@ use async_trait::async_trait;
 use common::context::RequestContext;
 use core_model::types::OperationReturnType;
 use core_resolver::validation::field::ValidatedField;
-use exo_sql::{
+use exo_sql_pg::{
     AbstractPredicate, PgAbstractSelect, PgAliasedSelectionElement, SelectionCardinality,
     SelectionElement,
 };
@@ -65,7 +65,7 @@ impl OperationSelectionResolver for AggregateQuery {
 
         Ok(PgAbstractSelect {
             table_id: root_physical_table_id,
-            selection: exo_sql::Selection::Json(content_object, SelectionCardinality::One),
+            selection: exo_sql_pg::Selection::Json(content_object, SelectionCardinality::One),
             predicate,
             order_by: None,
             offset: None,
@@ -115,7 +115,7 @@ async fn map_field<'content>(
                         let selection_elem = if subfield.name == "__typename" {
                             SelectionElement::Constant(model_field_agg_type.clone())
                         } else {
-                            SelectionElement::Function(exo_sql::Function::Named {
+                            SelectionElement::Function(exo_sql_pg::Function::Named {
                                 function_name: subfield.name.to_string(),
                                 column_id: *column_id,
                             })

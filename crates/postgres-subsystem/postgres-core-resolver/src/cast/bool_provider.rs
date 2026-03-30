@@ -10,7 +10,7 @@
 use super::CastProvider;
 use crate::cast::CastError;
 use common::value::Val;
-use exo_sql::{BooleanColumnType, PhysicalColumnType, SQLParamContainer};
+use exo_sql_pg::{BooleanColumnType, PhysicalColumnType, SQLParamContainer};
 
 pub struct BoolCastProvider;
 

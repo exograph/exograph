@@ -11,7 +11,7 @@ use super::CastProvider;
 use crate::cast::CastError;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use common::value::Val;
-use exo_sql::{PhysicalColumnType, SQLParamContainer, TimestampColumnType};
+use exo_sql_pg::{PhysicalColumnType, SQLParamContainer, TimestampColumnType};
 
 const NAIVE_DATE_FORMAT: &str = "%Y-%m-%d";
 const NAIVE_TIME_FORMAT: &str = "%H:%M:%S%.f";

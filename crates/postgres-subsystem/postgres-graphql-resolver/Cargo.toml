@@ -17,7 +17,8 @@ tokio.workspace = true
 http.workspace = true
 
 
-exo-sql = { path = "../../../libs/exo-sql/facade" }
+exo-sql-pg = { path = "../../../libs/exo-sql/pg" }
+exo-sql-pg-connect = { path = "../../../libs/exo-sql/pg-connect" }
 exo-env = { path = "../../../libs/exo-env" }
 core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 core-model = { path = "../../core-subsystem/core-model" }

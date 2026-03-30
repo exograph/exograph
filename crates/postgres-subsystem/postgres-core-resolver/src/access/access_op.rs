@@ -1,5 +1,5 @@
 use core_resolver::access_solver::AccessPredicate;
-use exo_sql::{AbstractPredicate, PgAbstractPredicate};
+use exo_sql_pg::{AbstractPredicate, PgAbstractPredicate};
 
 // Only to get around the orphan rule while implementing AccessSolver
 #[derive(Debug)]

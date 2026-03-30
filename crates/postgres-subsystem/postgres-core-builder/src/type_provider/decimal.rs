@@ -8,7 +8,7 @@ use core_model_builder::{
         annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParams},
     },
 };
-use exo_sql::{NumericColumnType, PhysicalColumnType};
+use exo_sql_pg::{NumericColumnType, PhysicalColumnType};
 use postgres_core_model::aggregate::ScalarAggregateFieldKind;
 use serde::{Deserialize, Serialize};
 

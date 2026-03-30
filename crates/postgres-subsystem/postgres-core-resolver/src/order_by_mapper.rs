@@ -14,7 +14,7 @@ use common::context::RequestContext;
 use common::value::Val;
 use core_model::mapped_arena::SerializableSlab;
 use core_resolver::access_solver::AccessSolver;
-use exo_sql::{
+use exo_sql_pg::{
     AbstractOrderBy, AbstractOrderByExpr, AbstractPredicate, ColumnPath, Ordering,
     PgAbstractOrderBy, PgAbstractOrderByExtension, PgAbstractPredicate, PhysicalColumnPath,
     SQLParamContainer, VectorDistanceFunction,

@@ -6,10 +6,10 @@ publish = false
 
 [features]
 network = [
-    "exo-sql/tls",
-    "exo-sql/postgres-url",
-    "exo-sql/testing",
-    "exo-sql/pool",
+    "exo-sql-pg-connect/tls",
+    "exo-sql-pg-connect/postgres-url",
+    "exo-sql-pg-connect/testing",
+    "exo-sql-pg-connect/pool",
     "postgres-core-resolver/network",
 ]
 bigdecimal = ["postgres-core-resolver/bigdecimal"]
@@ -20,7 +20,8 @@ async-trait.workspace = true
 postgres-graphql-resolver = { path = "../postgres-graphql-resolver" }
 postgres-rest-resolver = { path = "../postgres-rest-resolver" }
 postgres-rpc-resolver = { path = "../postgres-rpc-resolver" }
-exo-sql = { path = "../../../libs/exo-sql/facade" }
+exo-sql-pg = { path = "../../../libs/exo-sql/pg" }
+exo-sql-pg-connect = { path = "../../../libs/exo-sql/pg-connect" }
 exo-env = { path = "../../../libs/exo-env" }
 common = { path = "../../common" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }

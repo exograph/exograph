@@ -18,7 +18,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result, bail};
 use colored::Colorize;
 
-use exo_sql::testing::db::EphemeralDatabaseLauncher;
+use exo_sql_pg_connect::testing::db::EphemeralDatabaseLauncher;
 
 use model::TestSuite;
 

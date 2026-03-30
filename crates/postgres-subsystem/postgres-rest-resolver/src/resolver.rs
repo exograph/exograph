@@ -6,10 +6,11 @@ use common::context::RequestContext;
 use common::http::{Headers, RequestPayload, ResponseBody, ResponsePayload};
 
 use core_resolver::plugin::{SubsystemResolutionError, SubsystemRestResolver};
-use exo_sql::{
+use exo_sql_pg::{
     AbstractOperation, AbstractPredicate, DatabaseBackend, PgAbstractOperation, PgAbstractSelect,
-    PgBackend, SelectionCardinality,
+    SelectionCardinality,
 };
+use exo_sql_pg_connect::PgBackend;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_rest_model::{
     operation::PostgresOperation, subsystem::PostgresRestSubsystemWithRouter,
@@ -92,7 +93,7 @@ impl OperationResolver for PostgresOperation {
     ) -> Result<PgAbstractOperation, SubsystemResolutionError> {
         let select = PgAbstractSelect {
             table_id: self.table_id,
-            selection: exo_sql::Selection::Json(vec![], SelectionCardinality::Many),
+            selection: exo_sql_pg::Selection::Json(vec![], SelectionCardinality::Many),
             predicate: AbstractPredicate::True,
             order_by: None,
             offset: None,

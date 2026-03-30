@@ -1,6 +1,6 @@
 use common::env_const::{DATABASE_URL, EXO_POSTGRES_URL};
 use exo_env::Environment;
-use exo_sql::DatabaseClientManager;
+use exo_sql_pg_connect::DatabaseClientManager;
 
 use std::str::FromStr;
 use wasm_bindgen::JsValue;
@@ -82,7 +82,7 @@ impl WorkerPostgresConnect {
     }
 }
 
-impl exo_sql::Connect for WorkerPostgresConnect {
+impl exo_sql_pg_connect::Connect for WorkerPostgresConnect {
     fn connect(
         &self,
         _config: &tokio_postgres::Config,

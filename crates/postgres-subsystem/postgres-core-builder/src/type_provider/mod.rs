@@ -7,7 +7,7 @@ use core_model_builder::{
     ast::ast_types::AstField,
     typechecker::{Typed, annotation::AnnotationSpec},
 };
-use exo_sql::PhysicalColumnType;
+use exo_sql_pg::PhysicalColumnType;
 use postgres_core_model::aggregate::ScalarAggregateFieldKind;
 
 use crate::resolved_type::{ResolvedField, ResolvedTypeHint, SerializableTypeHint};

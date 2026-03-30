@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use codemap::Span;
-use exo_sql::SchemaObjectName;
+use exo_sql_pg::SchemaObjectName;
 use postgres_core_model::types::EntityRepresentation;
 use serde::{Deserialize, Serialize};
 

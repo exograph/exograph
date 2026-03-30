@@ -14,7 +14,7 @@ use common::context::RequestContext;
 use common::value::Val;
 use core_model::mapped_arena::SerializableSlab;
 use core_resolver::access_solver::AccessSolver;
-use exo_sql::{
+use exo_sql_pg::{
     AbstractPredicate, ArrayColumnType, ColumnPath, ColumnPathLink, Database, NumericComparator,
     PgAbstractPredicate, PgColumnPath, PgPredicateExtension, PhysicalColumnPath,
     PhysicalColumnType, PhysicalColumnTypeExt, Predicate, SQLParamContainer, StringColumnType,
@@ -210,8 +210,8 @@ fn map_predicate<'a, F: FieldAccessChecker>(
                                                 )),
                                             }?;
 
-                                            let float_type = exo_sql::FloatColumnType {
-                                                bits: exo_sql::FloatBits::_53,
+                                            let float_type = exo_sql_pg::FloatColumnType {
+                                                bits: exo_sql_pg::FloatBits::_53,
                                             };
                                             let threshold =
                                                 cast_value(threshold, &float_type, false)?.unwrap();

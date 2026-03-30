@@ -10,10 +10,9 @@
 use super::CastProvider;
 use crate::cast::CastError;
 use common::value::Val;
-use exo_sql::{NumericColumnType, PhysicalColumnType, SQLParamContainer};
-
 #[cfg(feature = "bigdecimal")]
-use exo_sql::BigDecimal;
+use exo_sql_pg::BigDecimal;
+use exo_sql_pg::{NumericColumnType, PhysicalColumnType, SQLParamContainer};
 #[cfg(feature = "bigdecimal")]
 use std::str::FromStr;
 

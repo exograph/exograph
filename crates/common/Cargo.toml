@@ -29,7 +29,7 @@ tokio-postgres.workspace = true
 colored.workspace = true
 
 exo-env = { path = "../../libs/exo-env" }
-exo-sql = { path = "../../libs/exo-sql/facade" }
+exo-sql-pg-connect = { path = "../../libs/exo-sql/pg-connect" }
 
 anyhow.workspace = true
 indicatif = "0.18.4"

@@ -24,7 +24,7 @@ pub enum PostgresExecutionError {
     Validation(String, String),
 
     #[error("{0}")]
-    Postgres(#[from] exo_sql::database_error::DatabaseError),
+    Postgres(#[from] exo_sql_pg::database_error::DatabaseError),
 
     #[error("Result has {0} entries; expected only zero or one")]
     NonUniqueResult(usize),

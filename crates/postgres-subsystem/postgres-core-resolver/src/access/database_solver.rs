@@ -25,7 +25,7 @@ use core_resolver::access_solver::{
     AccessInput, AccessSolution, AccessSolver, AccessSolverError, eq_values, neq_values,
     reduce_common_primitive_expression,
 };
-use exo_sql::{
+use exo_sql_pg::{
     AbstractPredicate, ColumnPath, PgAbstractPredicate, PgColumnPath, PhysicalColumnPath,
     SQLParamContainer,
 };

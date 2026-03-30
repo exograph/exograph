@@ -26,7 +26,7 @@ use common::context::RequestContext;
 use common::value::Val;
 use core_model::access::AccessPredicateExpression;
 use core_resolver::{access_solver::AccessSolver, validation::field::ValidatedField};
-use exo_sql::{AbstractPredicate, PgAbstractPredicate, Predicate};
+use exo_sql_pg::{AbstractPredicate, PgAbstractPredicate, Predicate};
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
 pub(crate) async fn check_access<'a>(

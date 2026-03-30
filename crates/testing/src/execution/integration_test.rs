@@ -17,8 +17,8 @@ use common::env_const::{
 use common::http::{MemoryRequestHead, MemoryRequestPayload, RequestPayload, ResponseBodyError};
 use common::operation_payload::OperationsPayload;
 use common::router::{PlainRequestPayload, Router};
-use exo_sql::DatabaseClientManager;
-use exo_sql::testing::db::EphemeralDatabaseServer;
+use exo_sql_pg_connect::DatabaseClientManager;
+use exo_sql_pg_connect::testing::db::EphemeralDatabaseServer;
 use futures::FutureExt;
 use futures::future::OptionFuture;
 use jsonwebtoken::{EncodingKey, Header, encode};
@@ -36,7 +36,7 @@ use std::time::Duration;
 use std::{collections::HashMap, time::SystemTime};
 
 use exo_env::MapEnvironment;
-use exo_sql::TransactionMode;
+use exo_sql_pg_connect::TransactionMode;
 
 use crate::execution::assertion::assert_using_deno;
 use crate::model::{

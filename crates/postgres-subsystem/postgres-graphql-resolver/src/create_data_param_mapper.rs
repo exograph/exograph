@@ -15,7 +15,7 @@ use common::context::RequestContext;
 use common::value::Val;
 use core_resolver::access_solver::AccessInput;
 use core_resolver::context_extractor::ContextExtractor;
-use exo_sql::{
+use exo_sql_pg::{
     AbstractInsert, ColumnId, ColumnValuePair, InsertionElement, InsertionRow, ManyToOne,
     NestedInsertion, PgAbstractInsert, PgAbstractPredicate, PgAbstractSelect, PgInsertionElement,
     PgInsertionRow,

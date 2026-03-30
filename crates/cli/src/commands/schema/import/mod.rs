@@ -12,10 +12,11 @@ use async_trait::async_trait;
 use clap::{Arg, Command};
 use colored::Colorize;
 use exo_env::Environment;
-use exo_sql::schema::database_spec::DatabaseSpec;
-use exo_sql::schema::issue::WithIssues;
-use exo_sql::schema::spec::{MigrationScope, MigrationScopeMatches};
-use exo_sql::{DatabaseClient, SchemaObjectName, TransactionMode};
+use exo_sql_pg::SchemaObjectName;
+use exo_sql_pg_connect::{DatabaseClient, TransactionMode};
+use exo_sql_pg_schema::database_spec::DatabaseSpec;
+use exo_sql_pg_schema::issue::WithIssues;
+use exo_sql_pg_schema::spec::{MigrationScope, MigrationScopeMatches};
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -211,9 +212,9 @@ mod tests {
     use std::io::BufWriter;
 
     use common::test_support::{assert_file_content, read_relative_file};
-    use exo_sql::{
-        Database, schema::migration::Migration, testing::test_support::with_init_script,
-    };
+    use exo_sql_pg::Database;
+    use exo_sql_pg_connect::testing::test_support::with_init_script;
+    use exo_sql_pg_schema::migration::Migration;
     use postgres_core_model::subsystem::PostgresCoreSubsystem;
 
     use crate::commands::build::build_system_with_static_builders;
