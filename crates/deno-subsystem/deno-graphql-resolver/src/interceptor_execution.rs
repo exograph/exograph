@@ -17,17 +17,17 @@ use exo_deno::{Arg, deno_executor_pool::DenoScriptDefn};
 use indexmap::IndexMap;
 use serde_json::Value;
 
-use crate::{DenoSubsystemResolver, deno_operation::construct_arg_sequence};
-
-use super::{
+use crate::{
     deno_execution_error::DenoExecutionError,
+    deno_operation::construct_arg_sequence,
     exo_execution::{ExoCallbackProcessor, ExographMethodResponse},
     exograph_ops::InterceptedOperationInfo,
+    resolver::DenoSubsystemGraphQLResolver,
 };
 
 pub async fn execute_interceptor<'a>(
     interceptor: &Interceptor,
-    subsystem_resolver: &'a DenoSubsystemResolver,
+    subsystem_resolver: &'a DenoSubsystemGraphQLResolver,
     request_context: &'a RequestContext<'a>,
     exograph_execute_query: &'a ExographExecuteQueryFn<'a>,
     intercepted_operation: &'a InterceptedOperation<'a>,

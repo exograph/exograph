@@ -93,6 +93,7 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
         request_method: &str,
         request_params: &Option<serde_json::Value>,
         request_context: &'a RequestContext<'a>,
+        _system_resolver: &'a core_resolver::system_resolver::GraphQLSystemResolver,
     ) -> Result<Option<SubsystemRpcResponse>, SubsystemRpcError> {
         // Check if we handle this method at all
         let Some(rpc_method) = self.rpc_schema.method(request_method) else {

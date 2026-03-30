@@ -12,16 +12,18 @@ use async_trait::async_trait;
 use core_model_builder::{
     builder::system_builder::BaseModelSystem,
     error::ModelBuildingError,
-    plugin::{BuildMode, CoreSubsystemBuild, GraphQLSubsystemBuild, Interception},
+    plugin::{
+        BuildMode, CoreSubsystemBuild, GraphQLSubsystemBuild, Interception, RpcSubsystemBuild,
+    },
     typechecker::{
         annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParams},
         typ::TypecheckedSystem,
     },
 };
-use core_plugin_interface::interface::{GraphQLSubsystemBuilder, SubsystemBuild, SubsystemBuilder};
+use core_plugin_interface::interface::{SubsystemBuild, SubsystemBuilder};
 use core_plugin_shared::{
     interception::InterceptorIndex,
-    serializable_system::{SerializableCoreBytes, SerializableGraphQLBytes},
+    serializable_system::{SerializableCoreBytes, SerializableGraphQLBytes, SerializableRpcBytes},
     system_serializer::SystemSerializer,
 };
 
@@ -63,16 +65,33 @@ impl SubsystemBuilder for DenoSubsystemBuilder {
         base_system: &BaseModelSystem,
         build_mode: BuildMode,
     ) -> Result<Option<SubsystemBuild>, ModelBuildingError> {
+        // Build the shared model (Deno-specific bundling, but protocol-agnostic)
+        let module_system =
+            deno_model_builder::system_builder::build(typechecked_system, base_system, build_mode)
+                .await?;
+
+        let Some(module_system) = module_system else {
+            return Ok(None);
+        };
+
+        // Serialize as ModuleSubsystem for RPC (no GraphQL dependency)
+        let rpc_bytes = module_system
+            .underlying
+            .serialize()
+            .map_err(ModelBuildingError::Serialize)?;
+
+        // Build the GraphQL wrapper from the shared model
         let graphql_subsystem = self
             .graphql_builder
-            .build(typechecked_system, base_system, build_mode)
-            .await?;
+            .build_from_module_system(module_system)?;
 
-        Ok(graphql_subsystem.map(|graphql_subsystem| SubsystemBuild {
+        Ok(Some(SubsystemBuild {
             id: self.id(),
             graphql: Some(graphql_subsystem),
             rest: None,
-            rpc: None,
+            rpc: Some(RpcSubsystemBuild {
+                serialized_subsystem: SerializableRpcBytes(rpc_bytes),
+            }),
             core: CoreSubsystemBuild {
                 serialized_subsystem: SerializableCoreBytes(vec![]),
             },
@@ -82,32 +101,15 @@ impl SubsystemBuilder for DenoSubsystemBuilder {
 
 struct DenoGraphQLSubsystemBuilder {}
 
-#[async_trait]
-impl GraphQLSubsystemBuilder for DenoGraphQLSubsystemBuilder {
-    fn id(&self) -> &'static str {
-        "deno"
-    }
-
-    async fn build(
+impl DenoGraphQLSubsystemBuilder {
+    fn build_from_module_system(
         &self,
-        typechecked_system: &TypecheckedSystem,
-        base_system: &BaseModelSystem,
-        build_mode: BuildMode,
-    ) -> Result<Option<GraphQLSubsystemBuild>, ModelBuildingError> {
-        let subsystem = deno_graphql_builder::system_builder::build(
-            typechecked_system,
-            base_system,
-            build_mode,
-        )
-        .await?;
-
-        let Some(ModelDenoSystemWithInterceptors {
+        module_system: subsystem_model_builder_util::ModuleSubsystemWithInterceptors,
+    ) -> Result<GraphQLSubsystemBuild, ModelBuildingError> {
+        let ModelDenoSystemWithInterceptors {
             underlying: subsystem,
             interceptors,
-        }) = subsystem
-        else {
-            return Ok(None);
-        };
+        } = deno_graphql_builder::system_builder::build_from_module_system(module_system);
 
         let serialized_subsystem = subsystem
             .serialize()
@@ -127,7 +129,7 @@ impl GraphQLSubsystemBuilder for DenoGraphQLSubsystemBuilder {
             })
             .collect();
 
-        Ok(Some(GraphQLSubsystemBuild {
+        Ok(GraphQLSubsystemBuild {
             id: "deno".to_string(),
             serialized_subsystem: SerializableGraphQLBytes(serialized_subsystem),
             query_names: subsystem
@@ -141,6 +143,6 @@ impl GraphQLSubsystemBuilder for DenoGraphQLSubsystemBuilder {
                 .map(|(_, q)| q.name.clone())
                 .collect(),
             interceptions,
-        }))
+        })
     }
 }

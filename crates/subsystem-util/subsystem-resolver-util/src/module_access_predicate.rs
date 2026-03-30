@@ -7,6 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use core_resolver::access_solver::AccessPredicate;
+
+/// Simple boolean access predicate for module-level access control.
 #[derive(Debug)]
 pub enum ModuleAccessPredicate {
     True,
@@ -40,5 +43,23 @@ impl std::ops::Not for ModuleAccessPredicate {
             ModuleAccessPredicate::True => ModuleAccessPredicate::False,
             ModuleAccessPredicate::False => ModuleAccessPredicate::True,
         }
+    }
+}
+
+impl AccessPredicate for ModuleAccessPredicate {
+    fn and(self, other: Self) -> Self {
+        (bool::from(self) && bool::from(other)).into()
+    }
+
+    fn or(self, other: Self) -> Self {
+        (bool::from(self) || bool::from(other)).into()
+    }
+
+    fn is_true(&self) -> bool {
+        matches!(self, ModuleAccessPredicate::True)
+    }
+
+    fn is_false(&self) -> bool {
+        matches!(self, ModuleAccessPredicate::False)
     }
 }

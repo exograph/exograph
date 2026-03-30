@@ -80,3 +80,21 @@ impl From<AccessSolverError> for DenoExecutionError {
         }
     }
 }
+
+impl From<DenoExecutionError> for SubsystemResolutionError {
+    fn from(e: DenoExecutionError) -> Self {
+        match e {
+            DenoExecutionError::Authorization => SubsystemResolutionError::Authorization,
+            DenoExecutionError::ContextExtraction(e) => {
+                SubsystemResolutionError::ContextExtraction(e)
+            }
+            _ => {
+                tracing::error!("Error while resolving operation: {e}");
+                SubsystemResolutionError::UserDisplayError(
+                    e.user_error_message()
+                        .unwrap_or_else(|| "Internal server error".to_string()),
+                )
+            }
+        }
+    }
+}

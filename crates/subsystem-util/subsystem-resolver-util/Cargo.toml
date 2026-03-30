@@ -1,0 +1,16 @@
+[package]
+name = "subsystem-resolver-util"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+async-trait.workspace = true
+
+common = { path = "../../common" }
+core-model = { path = "../../core-subsystem/core-model" }
+core-resolver = { path = "../../core-subsystem/core-resolver" }
+subsystem-model-util = { path = "../subsystem-model-util" }
+
+[lib]
+doctest = false

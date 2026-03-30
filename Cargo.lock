@@ -2414,25 +2414,39 @@ dependencies = [
  "core-plugin-interface",
  "core-plugin-shared",
  "deno-graphql-builder",
+ "deno-model-builder",
+ "subsystem-model-builder-util",
+]
+
+[[package]]
+name = "deno-core-resolver"
+version = "0.28.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "common",
+ "core-plugin-shared",
+ "core-resolver",
+ "deno_core",
+ "deno_error",
+ "exo-deno",
+ "exo-env",
+ "futures",
+ "serde_json",
+ "test-log",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
 name = "deno-graphql-builder"
 version = "0.28.0"
 dependencies = [
- "async-trait",
- "codemap",
- "common",
  "core-model",
  "core-model-builder",
  "deno-graphql-model",
- "deno_core",
- "exo-deno",
- "serde_json",
  "subsystem-model-builder-util",
- "tempfile",
- "tokio",
- "url",
 ]
 
 [[package]]
@@ -2450,25 +2464,38 @@ dependencies = [
 name = "deno-graphql-resolver"
 version = "0.28.0"
 dependencies = [
- "anyhow",
  "async-graphql-parser",
  "async-trait",
  "common",
  "core-model",
  "core-plugin-shared",
  "core-resolver",
+ "deno-core-resolver",
  "deno-graphql-model",
- "deno_core",
- "deno_error",
  "exo-deno",
- "exo-env",
  "futures",
  "indexmap 2.13.0",
  "serde_json",
- "test-log",
- "thiserror 2.0.18",
+ "subsystem-model-util",
+ "subsystem-resolver-util",
+]
+
+[[package]]
+name = "deno-model-builder"
+version = "0.28.0"
+dependencies = [
+ "async-trait",
+ "codemap",
+ "common",
+ "core-model",
+ "core-model-builder",
+ "deno_core",
+ "exo-deno",
+ "serde_json",
+ "subsystem-model-builder-util",
+ "tempfile",
  "tokio",
- "tracing",
+ "url",
 ]
 
 [[package]]
@@ -2479,10 +2506,29 @@ dependencies = [
  "core-plugin-interface",
  "core-plugin-shared",
  "core-resolver",
+ "deno-core-resolver",
  "deno-graphql-model",
  "deno-graphql-resolver",
+ "deno-rpc-resolver",
  "exo-deno",
  "exo-env",
+ "subsystem-model-util",
+]
+
+[[package]]
+name = "deno-rpc-resolver"
+version = "0.28.0"
+dependencies = [
+ "async-trait",
+ "common",
+ "core-plugin-shared",
+ "core-resolver",
+ "deno-core-resolver",
+ "exo-deno",
+ "futures",
+ "serde_json",
+ "subsystem-model-util",
+ "subsystem-rpc-resolver-util",
 ]
 
 [[package]]
@@ -10347,6 +10393,35 @@ dependencies = [
  "core-model",
  "core-plugin-shared",
  "serde",
+]
+
+[[package]]
+name = "subsystem-resolver-util"
+version = "0.28.0"
+dependencies = [
+ "async-trait",
+ "common",
+ "core-model",
+ "core-resolver",
+ "subsystem-model-util",
+]
+
+[[package]]
+name = "subsystem-rpc-resolver-util"
+version = "0.28.0"
+dependencies = [
+ "async-trait",
+ "common",
+ "core-model",
+ "core-resolver",
+ "heck",
+ "http 1.4.0",
+ "rpc-introspection",
+ "serde_json",
+ "subsystem-model-util",
+ "subsystem-resolver-util",
+ "thiserror 2.0.18",
+ "tracing",
 ]
 
 [[package]]

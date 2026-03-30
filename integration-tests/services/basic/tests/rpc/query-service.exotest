@@ -1,0 +1,93 @@
+stages:
+  # add with direct values
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "add",
+          "params": {
+            "x": 1,
+            "y": 2
+          }
+        }
+    response: |
+      {
+        "result": 3
+      }
+
+  # add with different values (mirrors addVariables)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "add",
+          "params": {
+            "x": 5,
+            "y": 6
+          }
+        }
+    response: |
+      {
+        "result": 11
+      }
+
+  # currentUnixEpoch
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "current_unix_epoch",
+          "params": {}
+        }
+    response: |
+      {
+        "result": ((t) => {
+          const currentTime = Math.floor(Date.now() / 1000);
+          return (currentTime - t) < 5;
+        })
+      }
+
+  # divide
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "divide",
+          "params": {
+            "x": 13,
+            "y": 2
+          }
+        }
+    response: |
+      {
+        "result": {
+          "quotient": 6,
+          "remainder": 1
+        }
+      }
+
+  # shimQuery — uses Exograph.executeQuery(), mirrors GraphQL test
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "shim_query",
+          "params": {}
+        }
+    response: |
+      {
+        "result": "The `foos` with `baz` = 4 have IDs of " + $.foo1_id + ", " + $.foo2_id + ", "
+      }
+
+  # testMutation — mutation with @inject exograph: Exograph (doesn't call executeQuery)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "test_mutation",
+          "params": {}
+        }
+    response: |
+      {
+        "result": 3.14
+      }

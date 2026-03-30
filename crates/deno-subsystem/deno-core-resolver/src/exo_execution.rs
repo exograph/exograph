@@ -28,7 +28,7 @@ use exo_deno::{
     deno_module::DenoModule,
 };
 
-use super::exograph_ops::InterceptedOperationInfo;
+use crate::exograph_ops::InterceptedOperationInfo;
 
 #[derive(Default, Debug)]
 pub struct ExographMethodResponse {
@@ -124,13 +124,13 @@ pub fn process_call_context(
 deno_core::extension!(
     exograph,
     ops = [
-        super::exograph_ops::op_exograph_execute_query,
-        super::exograph_ops::op_exograph_execute_query_priv,
-        super::exograph_ops::op_exograph_add_header,
-        super::exograph_ops::op_exograph_version,
-        super::exograph_ops::op_operation_name,
-        super::exograph_ops::op_operation_query,
-        super::exograph_ops::op_operation_proceed,
+        crate::exograph_ops::op_exograph_execute_query,
+        crate::exograph_ops::op_exograph_execute_query_priv,
+        crate::exograph_ops::op_exograph_add_header,
+        crate::exograph_ops::op_exograph_version,
+        crate::exograph_ops::op_operation_name,
+        crate::exograph_ops::op_operation_query,
+        crate::exograph_ops::op_operation_proceed,
     ],
     esm_entry_point = "ext:exograph/__init.js",
     esm = [

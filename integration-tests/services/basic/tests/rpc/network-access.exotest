@@ -1,0 +1,39 @@
+retries: 3
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "todo",
+          "params": {
+            "id": 1
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "userId": 1,
+          "title": "delectus aut autem",
+          "completed": false
+        }
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "todo",
+          "params": {
+            "id": 2
+          }
+        }
+    response: |
+      {
+        "result": {
+          "id": 2,
+          "userId": 1,
+          "title": "quis ut nam facilis et officia qui",
+          "completed": false
+        }
+      }

@@ -160,7 +160,7 @@ async fn create_deno_module(script: String) -> Result<DenoModule> {
         },
         vec![],
         vec![include_str!(
-            "../../../../deno-subsystem/deno-graphql-resolver/src/exograph_error.js"
+            "../../../../deno-subsystem/deno-core-resolver/src/exograph_error.js"
         )],
         vec![],
         Some("ExographError"),

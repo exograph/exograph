@@ -37,11 +37,14 @@ impl SystemRpcResolver {
             .collect()
     }
 
-    pub async fn resolve(
-        &self,
+    pub async fn resolve<'a>(
+        &'a self,
         request_method: &str,
         request_params: &Option<serde_json::Value>,
-        request_context: &RequestContext<'_>,
+        request_context: &'a RequestContext<'a>,
+        // TODO: Untangle this dependency on GraphQL once we have `@inject Exograph` version of RPC.
+        // Then ensure that this function signature mirrors that in GraphQL.
+        system_resolver: &'a crate::system_resolver::GraphQLSystemResolver,
     ) -> Result<Option<SubsystemRpcResponse>, SubsystemRpcError> {
         let resolver_stream = futures::stream::iter(self.subsystem_resolvers.iter());
 
@@ -50,7 +53,12 @@ impl SystemRpcResolver {
         let stream = resolver_stream.then(|resolver| async {
             let request_context = request_context_mutex.lock().await;
             resolver
-                .resolve(request_method, request_params, *request_context)
+                .resolve(
+                    request_method,
+                    request_params,
+                    *request_context,
+                    system_resolver,
+                )
                 .await
         });
 
