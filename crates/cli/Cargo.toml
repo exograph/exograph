@@ -59,6 +59,10 @@ exo-sql-pg-connect = { path = "../../libs/exo-sql/pg-connect", features = [
   "test-support",
   "pool",
 ] }
+exo-sql-pg-schema = { path = "../../libs/exo-sql/pg-schema", features = [
+  "interactive-migration",
+  "bigdecimal",
+] }
 common = { path = "../common", features = ["test-support"] }
 
 [target.'cfg(unix)'.dev-dependencies]
