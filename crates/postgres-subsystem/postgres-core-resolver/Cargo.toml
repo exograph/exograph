@@ -35,9 +35,7 @@ core-model = { path = "../../core-subsystem/core-model" }
 postgres-core-model = { path = "../postgres-core-model" }
 core-resolver = { path = "../../core-subsystem/core-resolver" }
 
-[dev-dependencies]
-wasm-bindgen-test.workspace = true
-
 [lib]
 crate-type = ["lib"]
 doctest = false
+test = false

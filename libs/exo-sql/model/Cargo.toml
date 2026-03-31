@@ -7,7 +7,7 @@ publish = false
 [dependencies]
 async-trait.workspace = true
 exo-sql-core = { path = "../core" }
-tracing.workspace = true
 
 [lib]
 doctest = false
+test = false

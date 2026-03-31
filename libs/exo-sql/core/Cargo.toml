@@ -10,9 +10,6 @@ serde.workspace = true
 thiserror.workspace = true
 typed-generational-arena.workspace = true
 
-[dev-dependencies]
-wasm-bindgen-test.workspace = true
-wasm-bindgen-test-macro.workspace = true
-
 [lib]
 doctest = false
+test = false

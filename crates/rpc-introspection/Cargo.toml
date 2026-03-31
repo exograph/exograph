@@ -13,7 +13,5 @@ thiserror.workspace = true
 common = { path = "../common" }
 core-model = { path = "../core-subsystem/core-model" }
 
-[dev-dependencies]
-
 [lib]
 doctest = false

@@ -21,3 +21,4 @@ subsystem-resolver-util = { path = "../subsystem-resolver-util" }
 
 [lib]
 doctest = false
+test = false

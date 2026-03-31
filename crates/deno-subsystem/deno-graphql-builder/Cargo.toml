@@ -10,8 +10,7 @@ core-model-builder = { path = "../../core-subsystem/core-model-builder" }
 deno-graphql-model = { path = "../deno-graphql-model" }
 subsystem-model-builder-util = { path = "../../subsystem-util/subsystem-model-builder-util" }
 
-[dev-dependencies]
-
 [lib]
 crate-type = ["lib"]
 doctest = false
+test = false

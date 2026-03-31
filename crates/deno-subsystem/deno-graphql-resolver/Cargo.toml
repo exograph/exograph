@@ -24,3 +24,4 @@ subsystem-resolver-util = { path = "../../subsystem-util/subsystem-resolver-util
 [lib]
 crate-type = ["lib"]
 doctest = false
+test = false

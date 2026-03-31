@@ -22,7 +22,6 @@ postgres-core-model = { path = "../postgres-core-model" }
 rpc-introspection = { path = "../../rpc-introspection" }
 common = { path = "../../common" }
 
-[dev-dependencies]
-
 [lib]
 doctest = false
+test = false

@@ -16,8 +16,6 @@ core-model = { path = "../../core-subsystem/core-model" }
 core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 common = { path = "../../common" }
 
-
-[dev-dependencies]
-
 [lib]
 doctest = false
+test = false

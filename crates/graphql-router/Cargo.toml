@@ -19,7 +19,6 @@ introspection-resolver = { path = "../introspection-subsystem/introspection-reso
 common = { path = "../common" }
 exo-env = { path = "../../libs/exo-env" }
 
-[dev-dependencies]
-
 [lib]
 doctest = false
+test = false

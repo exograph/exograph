@@ -51,6 +51,9 @@ winapi = { version = "0.3.9", features = ["std"] }
 [target.'cfg(windows)'.build-dependencies]
 winapi = { version = "0.3.9", features = ["std"] }
 
+[package.metadata.cargo-shear]
+ignored = ["winapi"]
+
 [dev-dependencies]
 ctor.workspace = true
 test-log.workspace = true

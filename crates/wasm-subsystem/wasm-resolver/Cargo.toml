@@ -15,9 +15,7 @@ core-resolver = { path = "../../core-subsystem/core-resolver" }
 wasm-graphql-model = { path = "../wasm-graphql-model" }
 wasm-graphql-resolver = { path = "../wasm-graphql-resolver" }
 
-
-[dev-dependencies]
-
 [lib]
 crate-type = ["lib"]
 doctest = false
+test = false

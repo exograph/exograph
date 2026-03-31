@@ -1009,7 +1009,6 @@ dependencies = [
  "tree-sitter-c2rust",
  "tree-sitter-generate",
  "wasm-bindgen-test",
- "wasm-bindgen-test-macro",
  "wildmatch",
 ]
 
@@ -1763,7 +1762,6 @@ dependencies = [
  "thiserror 2.0.18",
  "tracing",
  "wasm-bindgen-test",
- "wasm-bindgen-test-macro",
  "wildmatch",
 ]
 
@@ -1797,7 +1795,6 @@ dependencies = [
  "tokio-postgres",
  "tracing",
  "wasm-bindgen-test",
- "wasm-bindgen-test-macro",
 ]
 
 [[package]]
@@ -4534,8 +4531,6 @@ dependencies = [
  "serde",
  "thiserror 2.0.18",
  "typed-generational-arena",
- "wasm-bindgen-test",
- "wasm-bindgen-test-macro",
 ]
 
 [[package]]
@@ -4544,7 +4539,6 @@ version = "0.28.0"
 dependencies = [
  "async-trait",
  "exo-sql-core",
- "tracing",
 ]
 
 [[package]]
@@ -4568,7 +4562,6 @@ dependencies = [
  "tracing",
  "uuid",
  "wasm-bindgen-test",
- "wasm-bindgen-test-macro",
 ]
 
 [[package]]
@@ -8219,7 +8212,6 @@ dependencies = [
  "postgres-rpc-builder",
  "tokio",
  "wasm-bindgen-test",
- "wasm-bindgen-test-macro",
 ]
 
 [[package]]
@@ -8253,7 +8245,6 @@ dependencies = [
  "serde",
  "serde_json",
  "wasm-bindgen-test",
- "wasm-bindgen-test-macro",
 ]
 
 [[package]]
@@ -8299,7 +8290,6 @@ dependencies = [
  "tokio-postgres",
  "tracing",
  "uuid",
- "wasm-bindgen-test",
 ]
 
 [[package]]
@@ -8326,7 +8316,6 @@ dependencies = [
  "core-plugin-shared",
  "postgres-core-model",
  "serde",
- "wasm-bindgen-test",
 ]
 
 [[package]]
@@ -8394,7 +8383,6 @@ dependencies = [
  "postgres-graphql-resolver",
  "postgres-rpc-model",
  "postgres-rpc-resolver",
- "wasm-bindgen-test",
 ]
 
 [[package]]

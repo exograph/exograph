@@ -144,7 +144,6 @@ wasi-common = "43.0.0"
 wildmatch = "2.6.1"
 which = "8.0.2"
 wasm-bindgen-test = "0.3.65"
-wasm-bindgen-test-macro = "0.3.62"
 multiplatform_test = "0.6.0"
 pluralizer = "0.5.0"
 tracing-subscriber = "0.3"
@@ -162,6 +161,3 @@ strip = true
 
 [profile.release.package.server-cf-worker]
 opt-level = "s" # optimize for size in release builds
-
-[workspace.metadata.cargo-shear]
-ignored = ["wasm-bindgen-test", "wasm-bindgen-test-macro"]

@@ -11,9 +11,8 @@ core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 core-model-builder = { path = "../../core-subsystem/core-model-builder" }
 wasm-graphql-builder = { path = "../wasm-graphql-builder" }
 
-[dev-dependencies]
-
 
 [lib]
 crate-type = ["lib"]
 doctest = false
+test = false

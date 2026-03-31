@@ -11,8 +11,7 @@ postgres-resolver = { path = "../postgres-resolver", features = [
   "bigdecimal",
 ] }
 
-[dev-dependencies]
-
 [lib]
 crate-type = ["cdylib"]
 doctest = false
+test = false

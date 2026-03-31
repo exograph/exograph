@@ -31,9 +31,7 @@ postgres-core-resolver = { path = "../postgres-core-resolver" }
 postgres-graphql-model = { path = "../postgres-graphql-model" }
 postgres-rpc-model = { path = "../postgres-rpc-model" }
 
-[dev-dependencies]
-wasm-bindgen-test.workspace = true
-
 [lib]
 crate-type = ["lib"]
 doctest = false
+test = false

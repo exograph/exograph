@@ -45,3 +45,7 @@ default = [
 [[bin]]
 name = "bootstrap"
 path = "src/main.rs"
+
+[lib]
+test = false
+doctest = false

@@ -23,3 +23,4 @@ ignored = ["core-plugin-shared"] # used by exograph_execute_query! macro expansi
 [lib]
 crate-type = ["lib"]
 doctest = false
+test = false

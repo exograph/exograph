@@ -8,8 +8,7 @@ publish = false
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 postgres-builder = { path = "../postgres-builder" }
 
-[dev-dependencies]
-
 [lib]
 crate-type = ["cdylib"]
 doctest = false
+test = false

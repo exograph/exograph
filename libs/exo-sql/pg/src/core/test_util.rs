@@ -12,32 +12,32 @@
 /// Assert that the given parameters match the expected ones.
 ///
 /// # Usage:
-/// ```no_run
+/// ```ignore
 /// assert_params!(actual_params, expected_param1, expected_param2, ...);`
 /// ```
 ///
 /// # Example:
-/// ```
+/// ```ignore
 /// let actual_params = vec![Box::new(1), Box::new("hello")];
 /// assert_params!(actual_params, 1, "hello"); // will pass
 /// ```
 ///
-/// ```
+/// ```ignore
 /// let actual_params = vec![];
 /// assert_params!(actual_params); // will pass
 /// ```
 ///
-/// ```should_panic
+/// ```ignore
 /// let actual_params = vec![Box::new(1), Box::new("hello")];
 /// assert_params!(actual_params, 1, "world"); // will fail (parameter mismatch)
 /// ```
 ///
-/// ```should_panic
+/// ```ignore
 /// let actual_params = vec![Box::new(1), Box::new("hello")];
 /// assert_params!(actual_params, 1); // will fail (too few parameters)
 /// ```
 ///
-/// ```should_panic
+/// ```ignore
 /// let actual_params = vec![Box::new(1), Box::new("hello")];
 /// assert_params!(actual_params, 1, "hello", 2); // will fail (too many parameters)
 /// ```
