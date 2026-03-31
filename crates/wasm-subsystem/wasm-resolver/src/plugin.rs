@@ -50,6 +50,6 @@ impl SubsystemLoader for WasmSubsystemLoader {
             None => Ok(None),
         }?;
 
-        Ok(Box::new(SubsystemResolver::new(graphql, None, None)))
+        Ok(Box::new(SubsystemResolver::new(graphql, None)))
     }
 }
