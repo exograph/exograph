@@ -16,8 +16,10 @@ wildmatch = { workspace = true, features = ["serde"] }
 
 [dev-dependencies]
 wasm-bindgen-test.workspace = true
-wasm-bindgen-test-macro.workspace = true
 multiplatform_test.workspace = true
 
 [lib]
 doctest = false
+
+[package.metadata.cargo-shear]
+ignored = ["wasm-bindgen-test"]

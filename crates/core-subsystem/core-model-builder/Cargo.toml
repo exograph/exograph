@@ -13,7 +13,6 @@ thiserror.workspace = true
 core-model = { path = "../core-model" }
 core-plugin-shared = { path = "../core-plugin-shared" }
 
-[dev-dependencies]
-
 [lib]
 doctest = false
+test = false

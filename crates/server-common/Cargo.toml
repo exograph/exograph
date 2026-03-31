@@ -25,3 +25,4 @@ static-wasm-resolver = ["wasm-resolver"]
 
 [lib]
 doctest = false
+test = false

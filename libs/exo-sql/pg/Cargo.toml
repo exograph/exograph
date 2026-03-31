@@ -38,9 +38,11 @@ default-features = false
 [dev-dependencies]
 exo-sql-core = { path = "../core" }
 wasm-bindgen-test.workspace = true
-wasm-bindgen-test-macro.workspace = true
 multiplatform_test.workspace = true
 serde_json.workspace = true
 
 [lib]
 doctest = false
+
+[package.metadata.cargo-shear]
+ignored = ["wasm-bindgen-test"]

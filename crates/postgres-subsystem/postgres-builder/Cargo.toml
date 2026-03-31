@@ -17,7 +17,6 @@ core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 [dev-dependencies]
 tokio.workspace = true
 wasm-bindgen-test.workspace = true
-wasm-bindgen-test-macro.workspace = true
 
 builder = { path = "../../builder" }
 exo-sql-pg = { path = "../../../libs/exo-sql/pg" }

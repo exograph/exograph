@@ -25,3 +25,4 @@ mcp-router = { path = "../mcp-router" }
 
 [lib]
 doctest = false
+test = false

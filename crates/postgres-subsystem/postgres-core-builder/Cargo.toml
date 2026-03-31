@@ -23,7 +23,6 @@ exo-sql-pg-schema = { path = "../../../libs/exo-sql/pg-schema" }
 [dev-dependencies]
 insta.workspace = true
 wasm-bindgen-test.workspace = true
-wasm-bindgen-test-macro.workspace = true
 multiplatform_test.workspace = true
 builder = { path = "../../builder" }
 postgres-builder = { path = "../postgres-builder" }
@@ -35,3 +34,6 @@ deno-builder = { path = "../../deno-subsystem/deno-builder" }
 [lib]
 crate-type = ["lib"]
 doctest = false
+
+[package.metadata.cargo-shear]
+ignored = ["wasm-bindgen-test"]

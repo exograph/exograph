@@ -37,3 +37,7 @@ exo-env = { path = "../../libs/exo-env" }
 [[bin]]
 name = "exo-server"
 path = "src/main.rs"
+
+[lib]
+test = false
+doctest = false

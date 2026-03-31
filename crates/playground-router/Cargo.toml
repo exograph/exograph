@@ -15,10 +15,9 @@ serde_json.workspace = true
 common = { path = "../common" }
 exo-env = { path = "../../libs/exo-env" }
 
-[dev-dependencies]
-
 [build-dependencies]
 which.workspace = true
 
 [lib]
 doctest = false
+test = false

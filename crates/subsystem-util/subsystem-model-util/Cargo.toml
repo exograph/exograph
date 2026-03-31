@@ -11,8 +11,7 @@ async-graphql-parser.workspace = true
 core-model = { path = "../../core-subsystem/core-model" }
 core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 
-[dev-dependencies]
-
 
 [lib]
 doctest = false
+test = false

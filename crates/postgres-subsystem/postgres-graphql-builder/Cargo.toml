@@ -15,8 +15,7 @@ postgres-core-model = { path = "../postgres-core-model" }
 exo-sql-pg = { path = "../../../libs/exo-sql/pg" }
 postgres-core-builder = { path = "../postgres-core-builder" }
 
-[dev-dependencies]
-
 [lib]
 crate-type = ["lib"]
 doctest = false
+test = false

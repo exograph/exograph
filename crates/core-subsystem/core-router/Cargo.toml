@@ -19,3 +19,4 @@ core-plugin-interface = { path = "../core-plugin-interface" }
 
 [lib]
 doctest = false
+test = false

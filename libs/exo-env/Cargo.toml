@@ -10,3 +10,4 @@ dotenvy = "0.15"
 
 [lib]
 doctest = false
+test = false

@@ -17,8 +17,7 @@ exo-env = { path = "../../libs/exo-env" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 rpc-introspection = { path = "../rpc-introspection" }
 
-[dev-dependencies]
-
 
 [lib]
 doctest = false
+test = false

@@ -91,4 +91,4 @@ multiplatform_test.workspace = true
 doctest = false
 
 [package.metadata.cargo-shear]
-ignored = ["getrandom", "getrandom_04"]
+ignored = ["getrandom_04", "wasm-bindgen-test"]

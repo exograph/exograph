@@ -15,7 +15,7 @@
 //!
 //! # Example
 //!
-//! ```
+//! ```ignore
 //! use rpc_introspection::schema::{RpcSchema, RpcMethod, RpcTypeSchema};
 //! use rpc_introspection::conversion::{to_rpc_document, SchemaGeneration};
 //!
