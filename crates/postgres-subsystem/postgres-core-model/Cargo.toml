@@ -16,6 +16,9 @@ common = { path = "../../common" }
 [dev-dependencies]
 tokio.workspace = true
 wasm-bindgen-test.workspace = true
+sqlparser = "0.61.0"
+
+[target.'cfg(not(target_family = "wasm"))'.dev-dependencies]
 exo-sql-pg = { path = "../../../libs/exo-sql/pg", features = [
   "bigdecimal",
 ] }
@@ -25,8 +28,8 @@ exo-sql-pg-connect = { path = "../../../libs/exo-sql/pg-connect", features = [
 ] }
 exo-sql-pg-schema = { path = "../../../libs/exo-sql/pg-schema", features = [
   "interactive-migration",
+  "bigdecimal",
 ] }
-sqlparser = "0.61.0"
 colored.workspace = true
 
 common = { path = "../../common", features = ["test-support"] }
