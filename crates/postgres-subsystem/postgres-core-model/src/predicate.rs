@@ -15,7 +15,7 @@ use core_model::{
 
 use crate::{access::Access, types::EntityType};
 
-use exo_sql::{ColumnPathLink, VectorDistanceFunction};
+use exo_sql_pg::{ColumnPathLink, VectorDistanceFunction};
 use serde::{Deserialize, Serialize};
 
 pub const PREDICATE_PARAM_NAME: &str = "where";

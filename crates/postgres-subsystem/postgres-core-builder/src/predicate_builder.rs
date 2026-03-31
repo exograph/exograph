@@ -11,7 +11,7 @@ use core_model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
     types::{FieldType, Named},
 };
-use exo_sql::ColumnPathLink;
+use exo_sql_pg::ColumnPathLink;
 use postgres_core_model::types::{EntityType, PostgresField, PostgresPrimitiveType, TypeIndex};
 use postgres_core_model::{
     predicate::{

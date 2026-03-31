@@ -17,7 +17,8 @@ core-model = { path = "../../core-subsystem/core-model" }
 core-model-builder = { path = "../../core-subsystem/core-model-builder" }
 postgres-core-model = { path = "../postgres-core-model" }
 common = { path = "../../common" }
-exo-sql = { path = "../../../libs/exo-sql/facade" }
+exo-sql-pg = { path = "../../../libs/exo-sql/pg" }
+exo-sql-pg-schema = { path = "../../../libs/exo-sql/pg-schema" }
 
 [dev-dependencies]
 insta.workspace = true
@@ -25,8 +26,6 @@ wasm-bindgen-test.workspace = true
 wasm-bindgen-test-macro.workspace = true
 multiplatform_test.workspace = true
 builder = { path = "../../builder" }
-
-exo-sql = { path = "../../../libs/exo-sql/facade" }
 postgres-builder = { path = "../postgres-builder" }
 core-model-builder = { path = "../../core-subsystem/core-model-builder" }
 

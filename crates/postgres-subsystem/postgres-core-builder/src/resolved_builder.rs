@@ -48,7 +48,7 @@ use core_model_builder::{
         typ::{Module, Type, TypecheckedSystem},
     },
 };
-use exo_sql::SchemaObjectName;
+use exo_sql_pg::SchemaObjectName;
 
 use heck::ToSnakeCase;
 
@@ -71,7 +71,7 @@ pub enum ColumnMapping {
 pub fn build(
     typechecked_system: &TypecheckedSystem,
 ) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
-    exo_sql::ensure_registry_initialized();
+    exo_sql_pg::ensure_registry_initialized();
     let mut errors = Vec::new();
 
     let resolved_system = resolve(typechecked_system, &mut errors)?;

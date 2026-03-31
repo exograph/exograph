@@ -11,7 +11,7 @@ use super::CastProvider;
 use crate::cast::CastError;
 use base64::Engine;
 use common::value::Val;
-use exo_sql::{BlobColumnType, PhysicalColumnType, SQLParamContainer};
+use exo_sql_pg::{BlobColumnType, PhysicalColumnType, SQLParamContainer};
 
 pub struct BlobCastProvider;
 

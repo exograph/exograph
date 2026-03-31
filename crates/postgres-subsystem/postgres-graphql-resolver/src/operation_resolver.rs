@@ -10,7 +10,7 @@
 use async_trait::async_trait;
 use common::context::RequestContext;
 use core_resolver::validation::field::ValidatedField;
-use exo_sql::{AbstractOperation, PgAbstractOperation, PgAbstractSelect};
+use exo_sql_pg::{AbstractOperation, PgAbstractOperation, PgAbstractSelect};
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;

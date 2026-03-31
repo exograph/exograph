@@ -115,7 +115,7 @@ mod tests {
     use async_graphql_parser::parse_query;
     use core_model_builder::plugin::BuildMode;
     use exo_env::MapEnvironment;
-    use exo_sql::DatabaseClientManager;
+    use exo_sql_pg_connect::DatabaseClientManager;
 
     macro_rules! assert_debug {
         ($src:expr, $fn_name:expr) => {
@@ -877,7 +877,7 @@ mod tests {
             .unwrap();
 
         struct FakeConnect {}
-        impl exo_sql::Connect for FakeConnect {
+        impl exo_sql_pg_connect::Connect for FakeConnect {
             fn connect(
                 &self,
                 _pg_config: &tokio_postgres::Config,

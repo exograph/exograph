@@ -6,12 +6,12 @@ publish = false
 
 [features]
 network = [
-    "exo-sql/tls",
-    "exo-sql/postgres-url",
-    "exo-sql/testing",
-    "exo-sql/pool",
+    "exo-sql-pg-connect/tls",
+    "exo-sql-pg-connect/postgres-url",
+    "exo-sql-pg-connect/testing",
+    "exo-sql-pg-connect/pool",
 ]
-bigdecimal = ["exo-sql/bigdecimal"]
+bigdecimal = ["exo-sql-pg/bigdecimal"]
 
 [dependencies]
 async-trait.workspace = true
@@ -27,7 +27,8 @@ futures.workspace = true
 indexmap.workspace = true
 
 
-exo-sql = { path = "../../../libs/exo-sql/facade" }
+exo-sql-pg = { path = "../../../libs/exo-sql/pg" }
+exo-sql-pg-connect = { path = "../../../libs/exo-sql/pg-connect" }
 exo-env = { path = "../../../libs/exo-env" }
 common = { path = "../../common" }
 core-model = { path = "../../core-subsystem/core-model" }

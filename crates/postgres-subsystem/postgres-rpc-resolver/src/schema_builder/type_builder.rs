@@ -460,7 +460,7 @@ pub(super) fn get_scalar_type_from_column_path_link(
     param: &postgres_core_model::predicate::PredicateParameter,
     subsystem: &PostgresRpcSubsystemWithRouter,
 ) -> String {
-    use exo_sql::ColumnPathLink;
+    use exo_sql_pg::ColumnPathLink;
 
     // First try to get the type from the column path link
     if let Some(ColumnPathLink::Leaf(column_id)) = &param.column_path_link {

@@ -1,15 +1,13 @@
 use std::path::{Path, PathBuf};
 
 use crate::subsystem::PostgresCoreSubsystem;
-use exo_sql::{
-    schema::{
-        database_spec::DatabaseSpec,
-        migration::{
-            Migration, MigrationStatement, PredefinedMigrationInteraction, migrate_interactively,
-        },
-        spec::{MigrationScope, MigrationScopeMatches},
+use exo_sql_pg_connect::testing::test_support;
+use exo_sql_pg_schema::{
+    database_spec::DatabaseSpec,
+    migration::{
+        Migration, MigrationStatement, PredefinedMigrationInteraction, migrate_interactively,
     },
-    testing::test_support,
+    spec::{MigrationScope, MigrationScopeMatches},
 };
 use sqlparser::dialect::PostgreSqlDialect;
 use sqlparser::parser::Parser;

@@ -22,7 +22,7 @@ use core_resolver::access_solver::{
     AccessSolverError, eq_values, gt_values, gte_values, in_values, lt_values, lte_values,
     neq_values, reduce_common_primitive_expression,
 };
-use exo_sql::{
+use exo_sql_pg::{
     AbstractPredicate, BooleanColumnType, ColumnPath, ColumnPathLink, Database,
     PgAbstractPredicate, PgColumnPath, PhysicalColumnPath, PhysicalColumnType,
     PhysicalColumnTypeExt,

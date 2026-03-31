@@ -11,8 +11,7 @@ use async_trait::async_trait;
 
 use common::context::RequestContext;
 use common::value::Val;
-use exo_sql::AbstractPredicate;
-use exo_sql::PgAbstractPredicate;
+use exo_sql_pg::{AbstractPredicate, PgAbstractPredicate};
 
 use postgres_core_model::predicate::PredicateParameter;
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;

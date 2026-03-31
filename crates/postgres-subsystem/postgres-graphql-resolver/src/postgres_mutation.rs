@@ -23,7 +23,7 @@ use common::context::RequestContext;
 use core_model::types::OperationReturnType;
 use core_resolver::access_solver::AccessInput;
 use core_resolver::validation::field::ValidatedField;
-use exo_sql::{
+use exo_sql_pg::{
     AbstractOperation, AbstractPredicate, PgAbstractDelete, PgAbstractInsert, PgAbstractOperation,
     PgAbstractSelect, PgAbstractUpdate, Predicate,
 };

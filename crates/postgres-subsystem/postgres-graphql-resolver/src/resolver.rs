@@ -22,7 +22,7 @@ use core_resolver::{
     system_resolver::GraphQLSystemResolver,
     validation::field::ValidatedField,
 };
-use exo_sql::PgBackend;
+use exo_sql_pg_connect::PgBackend;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 

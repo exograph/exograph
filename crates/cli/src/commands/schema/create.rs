@@ -11,11 +11,11 @@ use anyhow::Result;
 use async_trait::async_trait;
 use clap::Command;
 use exo_env::Environment;
-use exo_sql::schema::migration::Migration;
+use exo_sql_pg_schema::migration::Migration;
 use std::sync::Arc;
 use std::{io::Write, path::PathBuf};
 
-use exo_sql::schema::database_spec::DatabaseSpec;
+use exo_sql_pg_schema::database_spec::DatabaseSpec;
 
 use crate::commands::command::{migration_scope_arg, migration_scope_value, yes_arg, yes_value};
 use crate::config::Config;

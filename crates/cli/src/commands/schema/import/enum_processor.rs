@@ -1,5 +1,5 @@
 use anyhow::Result;
-use exo_sql::schema::{database_spec::DatabaseSpec, enum_spec::EnumSpec};
+use exo_sql_pg_schema::{database_spec::DatabaseSpec, enum_spec::EnumSpec};
 use std::io::Write;
 
 use super::{

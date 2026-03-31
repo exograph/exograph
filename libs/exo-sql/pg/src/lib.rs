@@ -37,6 +37,13 @@ pub use core::pg_extension::{
 };
 pub use core::pg_schema_types::{HNWSParams, IndexKind, ensure_index_kind_registry_initialized};
 pub use core::physical_column_type::ensure_registry_initialized;
+pub use core::physical_column_type::{
+    ArrayColumnType, BlobColumnType, BooleanColumnType, DateColumnType, EnumColumnType, FloatBits,
+    FloatColumnType, IntBits, IntColumnType, JsonColumnType, NumericColumnType, PhysicalColumnType,
+    PhysicalColumnTypeExt, StringColumnType, TimeColumnType, TimestampColumnType, UuidColumnType,
+    VectorColumnType,
+};
+pub use core::sql_param_container::SQLParamContainer;
 pub use core::vector::{DEFAULT_VECTOR_SIZE, VectorDistanceFunction};
 pub use exo_sql_core::operation::{CaseSensitivity, NumericComparator, ParamEquality, Predicate};
 
@@ -68,6 +75,32 @@ pub use core::transaction::{TransactionScript, TransactionStepResult};
 pub use core::expression_builder::ExpressionBuilder;
 pub use core::sql_builder::SQLBuilder;
 pub use core::sql_operation::SQLOperation;
+
+// Re-exports from exo-sql-core so consumers can depend only on exo-sql-pg
+pub use exo_sql_core::{
+    ColumnId, ColumnPathLink, ColumnReference, Database, DatabaseError, Limit, ManyToOne,
+    ManyToOneId, Offset, OneToMany, OneToManyId, Ordering, PhysicalColumn, PhysicalColumnPath,
+    PhysicalEnum, PhysicalIndex, PhysicalTable, RelationColumnPair, RelationId, SchemaObjectName,
+    TableId,
+    physical_column::{get_mto_relation_for_columns, get_otm_relation_for_columns},
+};
+
+pub mod column_default {
+    pub use exo_sql_core::column_default::*;
+}
+
+pub mod database_error {
+    pub use exo_sql_core::database_error::*;
+}
+
+// Re-exports from exo-sql-model so consumers can depend only on exo-sql-pg
+pub use exo_sql_model::{
+    AbstractDelete, AbstractInsert, AbstractOperation, AbstractOrderBy, AbstractOrderByExpr,
+    AbstractPredicate, AbstractPredicateExt, AbstractSelect, AbstractUpdate,
+    AliasedSelectionElement, ColumnPath, ColumnValuePair, DatabaseBackend, InsertionElement,
+    InsertionRow, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractInsertSet,
+    NestedAbstractUpdate, NestedInsertion, Selection, SelectionCardinality, SelectionElement,
+};
 
 #[cfg(feature = "bigdecimal")]
 pub use pg_bigdecimal::BigDecimal;

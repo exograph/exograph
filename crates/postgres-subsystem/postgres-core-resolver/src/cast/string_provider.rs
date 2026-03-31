@@ -10,7 +10,7 @@
 use super::CastProvider;
 use crate::cast::CastError;
 use common::value::Val;
-use exo_sql::{JsonColumnType, PhysicalColumnType, SQLParamContainer, StringColumnType};
+use exo_sql_pg::{JsonColumnType, PhysicalColumnType, SQLParamContainer, StringColumnType};
 
 pub struct StringCastProvider;
 

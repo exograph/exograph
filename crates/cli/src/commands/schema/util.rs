@@ -17,8 +17,8 @@ use core_plugin_shared::{
     serializable_system::SerializableSystem, system_serializer::SystemSerializer,
 };
 use exo_env::Environment;
-use exo_sql::Database;
-use exo_sql::{DatabaseClientManager, TransactionMode, database_error::DatabaseError};
+use exo_sql_pg::{Database, database_error::DatabaseError};
+use exo_sql_pg_connect::{DatabaseClientManager, TransactionMode};
 use postgres_core_model::subsystem::PostgresCoreSubsystem;
 
 use crate::commands::build::build_system_with_static_builders;

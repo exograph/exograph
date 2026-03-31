@@ -21,7 +21,6 @@ tokio = { workspace = true, features = ["rt", "macros"] }
 http = { workspace = true }
 tracing.workspace = true
 
-exo-sql = { path = "../../../libs/exo-sql/facade" }
 exo-env = { path = "../../../libs/exo-env" }
 core-model = { path = "../core-model" }
 core-plugin-shared = { path = "../core-plugin-shared" }
@@ -29,6 +28,7 @@ rpc-introspection = { path = "../../rpc-introspection" }
 common = { path = "../../common" }
 
 [dev-dependencies]
+exo-sql-pg-connect = { path = "../../../libs/exo-sql/pg-connect" }
 insta.workspace = true
 postgres-builder = { path = "../../postgres-subsystem/postgres-builder" }
 core-model-builder = { path = "../core-model-builder" }

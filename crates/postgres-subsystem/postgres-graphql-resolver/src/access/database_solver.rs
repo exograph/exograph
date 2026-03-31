@@ -16,7 +16,7 @@ mod tests {
     };
 
     use exo_env::MapEnvironment;
-    use exo_sql::{
+    use exo_sql_pg::{
         AbstractPredicate, ColumnPath, PgAbstractPredicate, PgColumnPath, PhysicalColumnPath,
         SQLParamContainer, SchemaObjectName,
     };

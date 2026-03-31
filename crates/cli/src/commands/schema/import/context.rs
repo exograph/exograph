@@ -1,13 +1,13 @@
 use std::collections::{HashMap, HashSet};
 
-use exo_sql::{
+use exo_sql_pg::{
     ArrayColumnType, BlobColumnType, BooleanColumnType, DateColumnType, EnumColumnType,
     FloatColumnType, IntColumnType, JsonColumnType, NumericColumnType, SchemaObjectName,
     StringColumnType, TimeColumnType, TimestampColumnType, UuidColumnType, VectorColumnType,
-    schema::{
-        column_spec::{ColumnReferenceSpec, ColumnSpec},
-        database_spec::DatabaseSpec,
-    },
+};
+use exo_sql_pg_schema::{
+    column_spec::{ColumnReferenceSpec, ColumnSpec},
+    database_spec::DatabaseSpec,
 };
 
 use heck::{ToLowerCamelCase, ToSnakeCase, ToUpperCamelCase};
@@ -251,7 +251,7 @@ impl<'a> ImportContext<'a> {
     }
 
     pub(super) fn physical_type_name(
-        physical_type: &dyn exo_sql::PhysicalColumnType,
+        physical_type: &dyn exo_sql_pg::PhysicalColumnType,
     ) -> ColumnTypeName {
         let inner_type = physical_type;
         if inner_type.as_any().is::<IntColumnType>() {

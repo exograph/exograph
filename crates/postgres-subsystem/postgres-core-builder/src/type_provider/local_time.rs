@@ -1,7 +1,7 @@
 use codemap_diagnostic::Diagnostic;
 use core_model::primitive_type::{self, PrimitiveBaseType};
 use core_model_builder::{ast::ast_types::AstField, typechecker::Typed};
-use exo_sql::{PhysicalColumnType, TimeColumnType};
+use exo_sql_pg::{PhysicalColumnType, TimeColumnType};
 use postgres_core_model::aggregate::ScalarAggregateFieldKind;
 
 use super::{PrimitiveTypeProvider, instant::DateTimeTypeHint};

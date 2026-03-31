@@ -18,7 +18,7 @@ use clap::{Arg, ArgMatches, Command};
 use colored::Colorize;
 use common::env_processing::EnvProcessing;
 use exo_env::Environment;
-use exo_sql::TransactionMode;
+use exo_sql_pg_connect::TransactionMode;
 
 use super::command::{
     CommandDefinition, database_arg, get_required, migration_scope_arg, mutation_access_arg,

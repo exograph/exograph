@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use common::value::Val;
-use exo_sql::{PgAbstractPredicate, PgColumnPath};
+use exo_sql_pg::{AbstractPredicate, PgAbstractPredicate, PgColumnPath};
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
 use postgres_core_model::access::PrecheckAccessPrimitiveExpression;
@@ -21,7 +21,6 @@ use core_model::access::{
 };
 use core_resolver::access_solver::{AccessInput, AccessSolver};
 use exo_env::MapEnvironment;
-use exo_sql::AbstractPredicate;
 use serde_json::json;
 
 use crate::access::test_util::test_request_context;

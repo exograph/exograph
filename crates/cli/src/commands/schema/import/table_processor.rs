@@ -1,5 +1,5 @@
 use anyhow::Result;
-use exo_sql::schema::{
+use exo_sql_pg_schema::{
     column_spec::ColumnSpec, database_spec::DatabaseSpec, table_spec::TableSpec,
 };
 use std::collections::{HashMap, HashSet};
@@ -558,7 +558,7 @@ fn reference_mapping_annotation(
     field_name: &str,
     references: &Vec<(
         &ColumnSpec,
-        &exo_sql::schema::column_spec::ColumnReferenceSpec,
+        &exo_sql_pg_schema::column_spec::ColumnReferenceSpec,
     )>,
     database_spec: &DatabaseSpec,
     context: &ImportContext,

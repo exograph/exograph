@@ -17,7 +17,7 @@ use common::env_const::{
     EXO_POSTGRES_READ_WRITE,
 };
 use exo_env::{Environment, MapEnvironment};
-use exo_sql::schema::spec::{MigrationScope, MigrationScopeMatches, NameMatching};
+use exo_sql_pg_schema::spec::{MigrationScope, MigrationScopeMatches, NameMatching};
 use rand::RngExt;
 
 pub(super) fn generate_random_string() -> String {

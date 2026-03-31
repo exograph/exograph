@@ -32,13 +32,12 @@ use core_model_builder::{
     error::ModelBuildingError,
 };
 
-use exo_sql::schema::column_spec::{ColumnAutoincrement, ColumnDefault, UuidGenerationMethod};
-use exo_sql::{
-    ArrayColumnType, BooleanColumnType, ColumnId, EnumColumnType, JsonColumnType, ManyToOne,
-    PhysicalColumn, PhysicalColumnType, PhysicalIndex, PhysicalTable, TableId,
-    schema::index_spec::IndexKind,
+use exo_sql_pg::column_default::{ColumnAutoincrement, ColumnDefault, UuidGenerationMethod};
+use exo_sql_pg::{
+    ArrayColumnType, BooleanColumnType, ColumnId, ColumnReference, Database, EnumColumnType,
+    IndexKind, JsonColumnType, ManyToOne, PhysicalColumn, PhysicalColumnType, PhysicalEnum,
+    PhysicalIndex, PhysicalTable, RelationColumnPair, TableId,
 };
-use exo_sql::{ColumnReference, Database, PhysicalEnum, RelationColumnPair};
 
 use heck::ToSnakeCase;
 use postgres_core_model::types::EntityRepresentation;
@@ -635,7 +634,7 @@ fn determine_column_type<'a>(
     if let Some(hint) = &field.type_hint {
         let hint_ref = hint.0.as_ref() as &dyn std::any::Any;
         if let Some(explicit) = hint_ref.downcast_ref::<ExplicitTypeHint>() {
-            return exo_sql::schema::column_spec::physical_column_type_from_string(
+            return exo_sql_pg_schema::column_spec::physical_column_type_from_string(
                 &explicit.dbtype,
                 &vec![],
             )

@@ -10,7 +10,7 @@
 use super::{CastProvider, float_provider::cast_to_f32};
 use crate::cast::CastError;
 use common::value::Val;
-use exo_sql::{PhysicalColumnType, SQLParamContainer, VectorColumnType};
+use exo_sql_pg::{PhysicalColumnType, SQLParamContainer, VectorColumnType};
 
 pub struct VectorCastProvider;
 

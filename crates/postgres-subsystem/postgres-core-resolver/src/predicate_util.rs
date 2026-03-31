@@ -13,7 +13,7 @@ use common::value::Val;
 use common::value::val::ValNumber;
 use std::fmt::Debug;
 
-use exo_sql::{CaseSensitivity, ParamEquality, PgExtension, Predicate};
+use exo_sql_pg::{CaseSensitivity, ParamEquality, PgExtension, Predicate};
 
 use crate::postgres_execution_error::PostgresExecutionError;
 

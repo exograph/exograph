@@ -23,16 +23,16 @@ use core_resolver::access_solver::{AccessInput, AccessSolver};
 use core_resolver::plugin::SubsystemRpcResolver;
 use core_resolver::plugin::subsystem_rpc_resolver::{SubsystemRpcError, SubsystemRpcResponse};
 use core_resolver::{QueryResponse, QueryResponseBody};
-use exo_sql::{
+use exo_sql_pg::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractUpdate, Column, ColumnId,
     ColumnPath, ColumnValuePair, DatabaseBackend, InsertionElement, InsertionRow, Limit, ManyToOne,
     NestedAbstractDelete, NestedAbstractInsert, NestedAbstractInsertSet, NestedAbstractUpdate,
     NestedInsertion, Offset, OneToMany, PgAbstractOperation, PgAbstractOrderBy,
-    PgAbstractPredicate, PgAbstractSelect, PgAliasedSelectionElement, PgBackend,
-    PgInsertionElement, PgInsertionRow, PgNestedAbstractDelete, PgNestedAbstractInsertSet,
-    PgNestedAbstractUpdate, PhysicalColumnPath, RelationId, Selection, SelectionCardinality,
-    SelectionElement,
+    PgAbstractPredicate, PgAbstractSelect, PgAliasedSelectionElement, PgInsertionElement,
+    PgInsertionRow, PgNestedAbstractDelete, PgNestedAbstractInsertSet, PgNestedAbstractUpdate,
+    PhysicalColumnPath, RelationId, Selection, SelectionCardinality, SelectionElement,
 };
+use exo_sql_pg_connect::PgBackend;
 use postgres_core_model::access::{
     DatabaseAccessPrimitiveExpression, PrecheckAccessPrimitiveExpression,
 };
@@ -1870,9 +1870,9 @@ fn build_pk_predicate(
 fn from_postgres_error(e: PostgresExecutionError) -> SubsystemRpcError {
     match e {
         PostgresExecutionError::Authorization => SubsystemRpcError::Authorization,
-        PostgresExecutionError::Postgres(exo_sql::database_error::DatabaseError::Precheck(_)) => {
-            SubsystemRpcError::Authorization
-        }
+        PostgresExecutionError::Postgres(exo_sql_pg::database_error::DatabaseError::Precheck(
+            _,
+        )) => SubsystemRpcError::Authorization,
         _ => SubsystemRpcError::UserDisplayError(e.user_error_message()),
     }
 }

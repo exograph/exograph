@@ -8,7 +8,9 @@ use core_model_builder::{
         annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParams},
     },
 };
-use exo_sql::{DEFAULT_VECTOR_SIZE, PhysicalColumnType, VectorColumnType, VectorDistanceFunction};
+use exo_sql_pg::{
+    DEFAULT_VECTOR_SIZE, PhysicalColumnType, VectorColumnType, VectorDistanceFunction,
+};
 use postgres_core_model::aggregate::ScalarAggregateFieldKind;
 use serde::{Deserialize, Serialize};
 

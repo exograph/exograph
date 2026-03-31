@@ -10,7 +10,7 @@
 use super::CastProvider;
 use crate::cast::CastError;
 use common::value::Val;
-use exo_sql::{
+use exo_sql_pg::{
     ArrayColumnType, PgColumnTypeExt, PhysicalColumnType, SQLParamContainer,
     array_util::{self, ArrayEntry},
     database_error::DatabaseError,

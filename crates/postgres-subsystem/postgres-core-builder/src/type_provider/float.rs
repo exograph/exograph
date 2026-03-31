@@ -13,7 +13,7 @@ use core_model_builder::{
         },
     },
 };
-use exo_sql::{FloatBits, FloatColumnType, PhysicalColumnType};
+use exo_sql_pg::{FloatBits, FloatColumnType, PhysicalColumnType};
 use postgres_core_model::aggregate::ScalarAggregateFieldKind;
 use serde::{Deserialize, Serialize};
 

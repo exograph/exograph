@@ -27,7 +27,7 @@ use postgres_core_model::{
 
 use postgres_core_model::access::DatabaseAccessPrimitiveExpression;
 
-use exo_sql::Database;
+use exo_sql_pg::Database;
 
 use crate::{
     aggregate_type_builder, database_builder, order_by_builder, predicate_builder, type_builder,

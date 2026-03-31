@@ -9,7 +9,7 @@
 
 use base64::DecodeError;
 use common::value::Val;
-use exo_sql::{
+use exo_sql_pg::{
     Column, ColumnPath, PgColumnPath, PhysicalColumn, PhysicalColumnType, PhysicalColumnTypeExt,
     SQLParamContainer,
 };
@@ -67,7 +67,7 @@ pub enum CastError {
     BigDecimal(String),
 
     #[error("{0}")]
-    Postgres(#[from] exo_sql::database_error::DatabaseError),
+    Postgres(#[from] exo_sql_pg::database_error::DatabaseError),
 }
 
 pub fn literal_column(

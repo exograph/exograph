@@ -18,12 +18,11 @@ use async_trait::async_trait;
 use common::context::RequestContext;
 use core_model::types::OperationReturnType;
 use core_resolver::validation::field::ValidatedField;
-use exo_sql::{
-    AbstractPredicate, Limit, Offset, PgAbstractOrderBy, PgAbstractPredicate, PgAbstractSelect,
-    PgAliasedSelectionElement, PgFunctionExtension, PgSelectionElement, RelationId,
-    SelectionCardinality, SelectionElement,
+use exo_sql_pg::{
+    AbstractPredicate, Function, Limit, Offset, PgAbstractOrderBy, PgAbstractPredicate,
+    PgAbstractSelect, PgAliasedSelectionElement, PgFunctionExtension, PgSelectionElement,
+    RelationId, SQLParamContainer, SelectionCardinality, SelectionElement,
 };
-use exo_sql::{Function, SQLParamContainer};
 use futures::StreamExt;
 use postgres_core_model::order::OrderByParameter;
 use postgres_core_model::vector_distance::VectorDistanceField;
@@ -135,7 +134,7 @@ pub(super) async fn compute_select<'content>(
     };
     Ok(PgAbstractSelect {
         table_id: return_entity_type.table_id,
-        selection: exo_sql::Selection::Json(content_object, selection_cardinality),
+        selection: exo_sql_pg::Selection::Json(content_object, selection_cardinality),
         predicate,
         order_by,
         offset,

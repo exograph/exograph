@@ -41,7 +41,7 @@ use core_model_builder::{
     typechecker::Typed,
 };
 
-use exo_sql::{
+use exo_sql_pg::{
     ColumnId, DEFAULT_VECTOR_SIZE, VectorDistanceFunction, get_mto_relation_for_columns,
     get_otm_relation_for_columns,
 };

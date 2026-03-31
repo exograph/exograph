@@ -16,7 +16,7 @@ use core_model::{
 };
 use core_resolver::access_solver::AccessSolverError;
 
-use exo_sql::{ColumnPathLink, PhysicalColumnPath};
+use exo_sql_pg::{ColumnPathLink, PhysicalColumnPath};
 use serde::{Deserialize, Serialize};
 
 use crate::types::{EntityType, PostgresFieldDefaultValue};

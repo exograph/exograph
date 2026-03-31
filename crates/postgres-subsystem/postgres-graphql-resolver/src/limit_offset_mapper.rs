@@ -10,7 +10,7 @@
 use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
-use exo_sql::{Limit, Offset};
+use exo_sql_pg::{Limit, Offset};
 use postgres_graphql_model::{
     limit_offset::{LimitParameter, OffsetParameter},
     subsystem::PostgresGraphQLSubsystem,

@@ -15,7 +15,7 @@ use core_model::{
 
 use crate::access::Access;
 
-use exo_sql::{ColumnPathLink, VectorDistanceFunction};
+use exo_sql_pg::{ColumnPathLink, VectorDistanceFunction};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]

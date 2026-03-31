@@ -12,7 +12,7 @@ use core_model::{
     types::FieldType,
 };
 
-use exo_sql::{ColumnPathLink, Database};
+use exo_sql_pg::{ColumnPathLink, Database};
 use postgres_core_model::{
     access::Access,
     order::{

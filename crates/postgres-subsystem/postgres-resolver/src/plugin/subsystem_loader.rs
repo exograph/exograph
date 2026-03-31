@@ -23,7 +23,7 @@ use core_resolver::plugin::{
     SubsystemGraphQLResolver, SubsystemRestResolver, SubsystemRpcResolver,
 };
 use exo_env::Environment;
-use exo_sql::DatabaseClientManager;
+use exo_sql_pg_connect::DatabaseClientManager;
 use postgres_core_resolver::database_helper::create_database_executor;
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 use postgres_rest_model::subsystem::{PostgresRestSubsystem, PostgresRestSubsystemWithRouter};
@@ -46,7 +46,7 @@ impl SubsystemLoader for PostgresSubsystemLoader {
         subsystem: SerializableSubsystem,
         env: Arc<dyn Environment>,
     ) -> Result<Box<SubsystemResolver>, SubsystemLoadingError> {
-        exo_sql::ensure_registry_initialized();
+        exo_sql_pg::ensure_registry_initialized();
         let executor = Arc::new(
             create_database_executor(self.existing_client.take(), env.as_ref())
                 .await

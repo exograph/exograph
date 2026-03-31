@@ -1,5 +1,5 @@
 use exo_env::Environment;
-use exo_sql::{DatabaseClientManager, PgBackend, TransactionMode};
+use exo_sql_pg_connect::{DatabaseClientManager, PgBackend, TransactionMode};
 use thiserror::Error;
 
 pub async fn create_database_executor(

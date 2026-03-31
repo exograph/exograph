@@ -15,7 +15,7 @@ use common::value::Val;
 use core_model::types::OperationReturnType;
 use core_resolver::access_solver::AccessInput;
 use core_resolver::access_solver::AccessSolver;
-use exo_sql::{
+use exo_sql_pg::{
     AbstractDelete, AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate, Column,
     ColumnId, ColumnPath, ManyToOne, NestedAbstractDelete, NestedAbstractInsert,
     NestedAbstractInsertSet, NestedAbstractUpdate, OneToMany, PgAbstractPredicate,

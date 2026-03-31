@@ -15,7 +15,7 @@ use core_model::{
 use core_plugin_shared::system_serializer::{
     ModelSerializationError, SystemSerializer, postcard_deserialize, postcard_serialize,
 };
-use exo_sql::Database;
+use exo_sql_pg::Database;
 use serde::{Deserialize, Serialize};
 
 use crate::{
