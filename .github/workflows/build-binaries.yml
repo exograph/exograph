@@ -16,6 +16,7 @@ on:
     branches: ["main"]
     tags:
       - "*"
+  pull_request: # temp: to check that cargo shear changes didn't break release builds
 
 permissions:
   contents: write
