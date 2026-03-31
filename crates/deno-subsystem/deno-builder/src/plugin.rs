@@ -88,7 +88,6 @@ impl SubsystemBuilder for DenoSubsystemBuilder {
         Ok(Some(SubsystemBuild {
             id: self.id(),
             graphql: Some(graphql_subsystem),
-            rest: None,
             rpc: Some(RpcSubsystemBuild {
                 serialized_subsystem: SerializableRpcBytes(rpc_bytes),
             }),

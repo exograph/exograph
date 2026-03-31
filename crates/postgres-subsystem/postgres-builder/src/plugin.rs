@@ -20,12 +20,10 @@ use core_plugin_shared::{
 };
 use postgres_core_builder::resolved_type::ResolvedTypeEnv;
 use postgres_graphql_builder::PostgresGraphQLSubsystemBuilder;
-use postgres_rest_builder::PostgresRestSubsystemBuilder;
 use postgres_rpc_builder::PostgresRpcSubsystemBuilder;
 
 pub struct PostgresSubsystemBuilder {
     pub graphql_builder: Option<PostgresGraphQLSubsystemBuilder>,
-    pub rest_builder: Option<PostgresRestSubsystemBuilder>,
     pub rpc_builder: Option<PostgresRpcSubsystemBuilder>,
 }
 
@@ -33,7 +31,6 @@ impl Default for PostgresSubsystemBuilder {
     fn default() -> Self {
         Self {
             graphql_builder: Some(PostgresGraphQLSubsystemBuilder {}),
-            rest_builder: Some(PostgresRestSubsystemBuilder {}),
             rpc_builder: Some(PostgresRpcSubsystemBuilder {}),
         }
     }
@@ -240,15 +237,6 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
             None => Ok(None),
         }?;
 
-        let rest_subsystem = match self.rest_builder.as_ref() {
-            Some(builder) => {
-                builder
-                    .build(&resolved_env, core_subsystem_building.clone())
-                    .await
-            }
-            None => Ok(None),
-        }?;
-
         let rpc_subsystem = match self.rpc_builder.as_ref() {
             Some(builder) => {
                 builder
@@ -267,13 +255,12 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                 .map_err(ModelBuildingError::Serialize)?
         };
 
-        if graphql_subsystem.is_none() && rest_subsystem.is_none() {
+        if graphql_subsystem.is_none() && rpc_subsystem.is_none() {
             Ok(None)
         } else {
             Ok(Some(SubsystemBuild {
                 id: "postgres",
                 graphql: graphql_subsystem,
-                rest: rest_subsystem,
                 rpc: rpc_subsystem,
                 core: CoreSubsystemBuild {
                     serialized_subsystem: SerializableCoreBytes(serialized_core_subsystem),

@@ -80,6 +80,6 @@ impl SubsystemLoader for DenoSubsystemLoader {
             })
             .transpose()?;
 
-        Ok(Box::new(SubsystemResolver::new(graphql, None, rpc)))
+        Ok(Box::new(SubsystemResolver::new(graphql, rpc)))
     }
 }

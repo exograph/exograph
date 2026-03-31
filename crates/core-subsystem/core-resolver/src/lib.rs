@@ -13,7 +13,6 @@ pub mod introspection;
 pub mod operation_resolver;
 pub mod plugin;
 pub mod system_resolver;
-pub mod system_rest_resolver;
 pub mod system_rpc_resolver;
 pub mod validation;
 

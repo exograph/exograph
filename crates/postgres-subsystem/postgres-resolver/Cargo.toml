@@ -18,7 +18,6 @@ bigdecimal = ["postgres-core-resolver/bigdecimal"]
 async-trait.workspace = true
 
 postgres-graphql-resolver = { path = "../postgres-graphql-resolver" }
-postgres-rest-resolver = { path = "../postgres-rest-resolver" }
 postgres-rpc-resolver = { path = "../postgres-rpc-resolver" }
 exo-sql-pg = { path = "../../../libs/exo-sql/pg" }
 exo-sql-pg-connect = { path = "../../../libs/exo-sql/pg-connect" }
@@ -30,7 +29,6 @@ core-resolver = { path = "../../core-subsystem/core-resolver" }
 postgres-core-model = { path = "../postgres-core-model" }
 postgres-core-resolver = { path = "../postgres-core-resolver" }
 postgres-graphql-model = { path = "../postgres-graphql-model" }
-postgres-rest-model = { path = "../postgres-rest-model" }
 postgres-rpc-model = { path = "../postgres-rpc-model" }
 
 [dev-dependencies]

@@ -14,12 +14,9 @@ use common::introspection::{IntrospectionMode, introspection_mode};
 use common::router::PlainRequestPayload;
 use core_plugin_shared::profile::{SchemaProfile, SchemaProfiles};
 use core_resolver::introspection::definition::schema::Schema;
+use core_resolver::plugin::SubsystemGraphQLResolver;
 use core_resolver::plugin::SubsystemRpcResolver;
 use core_resolver::system_rpc_resolver::SystemRpcResolver;
-use core_resolver::{
-    plugin::{SubsystemGraphQLResolver, SubsystemRestResolver},
-    system_rest_resolver::SystemRestResolver,
-};
 
 #[cfg(not(target_family = "wasm"))]
 use mcp_router::McpRouter;
@@ -29,7 +26,7 @@ use tracing::debug;
 use common::context::{JwtAuthenticator, RequestContext};
 use common::{
     cors::{CorsConfig, CorsRouter},
-    env_const::{EXO_CORS_DOMAINS, EXO_GRAPHQL_ALLOW_MUTATIONS, EXO_UNSTABLE_ENABLE_REST_API},
+    env_const::{EXO_CORS_DOMAINS, EXO_GRAPHQL_ALLOW_MUTATIONS},
     http::ResponsePayload,
     router::{CompositeRouter, Router},
 };
@@ -46,8 +43,6 @@ use graphql_router::{GraphQLRouter, IntrospectionResolver};
 use playground_router::PlaygroundRouter;
 #[cfg(not(target_family = "wasm"))]
 use playground_router::PlaygroundRouterConfig;
-
-use rest_router::RestRouter;
 
 pub type StaticLoaders = Vec<Box<dyn SubsystemLoader>>;
 
@@ -93,18 +88,13 @@ pub async fn create_system_router_from_system(
     let declaration_doc_comments = Arc::new(declaration_doc_comments);
 
     let mut graphql_resolvers: Vec<Arc<dyn SubsystemGraphQLResolver + Send + Sync>> = vec![];
-    let mut rest_resolvers: Vec<Box<dyn SubsystemRestResolver + Send + Sync>> = vec![];
     let mut rpc_resolvers: Vec<Box<dyn SubsystemRpcResolver + Send + Sync>> = vec![];
 
     for resolver in subsystem_resolvers {
-        let SubsystemResolver { graphql, rest, rpc } = *resolver;
+        let SubsystemResolver { graphql, rpc } = *resolver;
 
         if let Some(graphql) = graphql {
             graphql_resolvers.push(graphql);
-        }
-
-        if let Some(rest) = rest {
-            rest_resolvers.push(rest);
         }
 
         if let Some(rpc) = rpc {
@@ -156,9 +146,6 @@ pub async fn create_system_router_from_system(
         )?
     };
 
-    let rest_resolver = SystemRestResolver::new(rest_resolvers, env.clone());
-    let rest_router = RestRouter::new(rest_resolver, env.clone());
-
     let rpc_resolver = SystemRpcResolver::new(rpc_resolvers, env.clone());
     let rpc_router = RpcRouter::new(rpc_resolver, graphql_router.resolver(), env.clone());
 
@@ -175,12 +162,12 @@ pub async fn create_system_router_from_system(
 
     #[cfg(not(target_family = "wasm"))]
     {
-        create_system_router(graphql_router, rest_router, rpc_router, mcp_router, env).await
+        create_system_router(graphql_router, rpc_router, mcp_router, env).await
     }
 
     #[cfg(target_family = "wasm")]
     {
-        create_system_router(graphql_router, rest_router, rpc_router, env).await
+        create_system_router(graphql_router, rpc_router, env).await
     }
 }
 
@@ -307,17 +294,12 @@ pub async fn create_system_resolvers(
 
 async fn create_system_router(
     graphql_router: GraphQLRouter,
-    rest_router: RestRouter,
     rpc_router: RpcRouter,
     #[cfg(not(target_family = "wasm"))] mcp_router: McpRouter,
     env: Arc<dyn Environment>,
 ) -> Result<SystemRouter, SystemLoadingError> {
     let mut routers: Vec<Box<dyn for<'a> Router<RequestContext<'a>> + Send + Sync>> =
         vec![Box::new(graphql_router)];
-
-    if env.enabled(EXO_UNSTABLE_ENABLE_REST_API, false)? {
-        routers.push(Box::new(rest_router));
-    }
 
     if env.enabled(EXO_UNSTABLE_ENABLE_RPC_API, false)? {
         routers.push(Box::new(rpc_router));

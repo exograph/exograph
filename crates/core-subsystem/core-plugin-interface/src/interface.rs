@@ -15,9 +15,7 @@ use std::{env::current_exe, path::Path};
 
 use async_trait::async_trait;
 
-use core_model_builder::plugin::{
-    BuildMode, CoreSubsystemBuild, RestSubsystemBuild, RpcSubsystemBuild,
-};
+use core_model_builder::plugin::{BuildMode, CoreSubsystemBuild, RpcSubsystemBuild};
 use core_model_builder::typechecker::typ::TypecheckedSystem;
 use core_model_builder::{
     builder::system_builder::BaseModelSystem, error::ModelBuildingError,
@@ -26,7 +24,7 @@ use core_model_builder::{
 use core_plugin_shared::error::ModelSerializationError;
 use core_plugin_shared::serializable_system::SerializableSubsystem;
 use core_resolver::plugin::SubsystemGraphQLResolver;
-use core_resolver::plugin::{SubsystemRestResolver, SubsystemRpcResolver};
+use core_resolver::plugin::SubsystemRpcResolver;
 use thiserror::Error;
 
 use crate::build_info::SubsystemCheckError;
@@ -35,7 +33,6 @@ use exo_env::Environment;
 pub struct SubsystemBuild {
     pub id: &'static str,
     pub graphql: Option<GraphQLSubsystemBuild>,
-    pub rest: Option<RestSubsystemBuild>,
     pub rpc: Option<RpcSubsystemBuild>,
     // Common subsystem that is shared by all API-specific subsystems. For example,
     // the Postgres subsystem may use this to keep database (tables, etc.) definitions.
@@ -121,17 +118,15 @@ pub trait GraphQLSubsystemBuilder {
 
 pub struct SubsystemResolver {
     pub graphql: Option<Arc<dyn SubsystemGraphQLResolver + Send + Sync>>,
-    pub rest: Option<Box<dyn SubsystemRestResolver + Send + Sync>>,
     pub rpc: Option<Box<dyn SubsystemRpcResolver + Send + Sync>>,
 }
 
 impl SubsystemResolver {
     pub fn new(
         graphql: Option<Arc<dyn SubsystemGraphQLResolver + Send + Sync>>,
-        rest: Option<Box<dyn SubsystemRestResolver + Send + Sync>>,
         rpc: Option<Box<dyn SubsystemRpcResolver + Send + Sync>>,
     ) -> Self {
-        Self { graphql, rest, rpc }
+        Self { graphql, rpc }
     }
 }
 

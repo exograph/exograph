@@ -8,8 +8,6 @@
 // by the Apache License, Version 2.0.
 
 pub mod subsystem_graphql_resolver;
-pub mod subsystem_rest_resolver;
 pub mod subsystem_rpc_resolver;
 pub use subsystem_graphql_resolver::{SubsystemGraphQLResolver, SubsystemResolutionError};
-pub use subsystem_rest_resolver::SubsystemRestResolver;
 pub use subsystem_rpc_resolver::SubsystemRpcResolver;

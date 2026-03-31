@@ -34,16 +34,12 @@ pub struct SerializableSubsystem {
     pub id: String,
     pub subsystem_index: usize,
     pub graphql: Option<SerializableGraphQLBytes>,
-    pub rest: Option<SerializableRestBytes>,
     pub rpc: Option<SerializableRpcBytes>,
     pub core: SerializableCoreBytes,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableGraphQLBytes(pub Vec<u8>);
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SerializableRestBytes(pub Vec<u8>);
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableRpcBytes(pub Vec<u8>);
@@ -57,11 +53,6 @@ pub struct SerializableGraphQLSystem {
     pub query_interception_map: InterceptionMap,
     pub mutation_interception_map: InterceptionMap,
     pub trusted_documents: TrustedDocuments,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SerializableRestSystem {
-    pub serialized_subsystems: Vec<(String, usize, SerializableRestBytes)>,
 }
 
 /// File header data for exo_ir files.
@@ -207,7 +198,6 @@ mod test {
                 id: "test".to_string(),
                 subsystem_index: 0,
                 graphql: Some(super::SerializableGraphQLBytes(vec![])),
-                rest: Some(super::SerializableRestBytes(vec![])),
                 rpc: Some(super::SerializableRpcBytes(vec![])),
                 core: super::SerializableCoreBytes(vec![]),
             }],
