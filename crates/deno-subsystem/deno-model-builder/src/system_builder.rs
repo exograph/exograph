@@ -32,7 +32,7 @@ use crate::module_skeleton_generator;
 
 // SYNC: update when deno_runtime/deno_core crate versions change in Cargo.toml.
 // Find the matching CLI version at https://github.com/denoland/deno/releases
-const DENO_VERSION: &str = "2.7.9";
+const DENO_VERSION: &str = "2.7.10";
 
 const DENO_BUNDLE_WARNING: &[u8] = b"is experimental and subject to changes";
 
