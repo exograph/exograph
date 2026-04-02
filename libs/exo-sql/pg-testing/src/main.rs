@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::process;
+use std::process::ExitCode;
 
 use clap::Parser;
 
@@ -19,11 +19,11 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> ExitCode {
     let cli = Cli::parse();
 
     match exo_sql_pg_testing::test_runner::run(&cli.dir, &cli.pattern, &cli.backend).await {
-        Ok(()) => {}
-        Err(_) => process::exit(1),
+        Ok(()) => ExitCode::SUCCESS,
+        Err(_) => ExitCode::FAILURE,
     }
 }
