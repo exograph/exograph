@@ -16,7 +16,7 @@ common = { path = "../../common" }
 [dev-dependencies]
 tokio.workspace = true
 wasm-bindgen-test.workspace = true
-sqlparser = "0.61.0"
+sqlparser.workspace = true
 
 [target.'cfg(not(target_family = "wasm"))'.dev-dependencies]
 exo-sql-pg = { path = "../../../libs/exo-sql/pg", features = [

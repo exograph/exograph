@@ -1,0 +1,8 @@
+[query]
+statement = "select concerts.id, json_object(concerts.venue_id.id, concerts.venue_id.name) as venue from concerts where concerts.id = $1"
+params = [1]
+
+[expect]
+result = [
+  { id = 1, venue = { id = 1, name = "Madison Square Garden" } },
+]

@@ -42,6 +42,7 @@ members = [
   "libs/exo-sql/pg",
   "libs/exo-sql/pg-connect",
   "libs/exo-sql/pg-schema",
+  "libs/exo-sql/pg-testing",
   "libs/exo-wasm",
   "libs/exo-env",
 ]
@@ -80,6 +81,7 @@ default-members = [
   "libs/exo-sql/pg",
   "libs/exo-sql/pg-connect",
   "libs/exo-sql/pg-schema",
+  "libs/exo-sql/pg-testing",
   "libs/exo-wasm",
   "libs/exo-env",
 ]
@@ -123,6 +125,7 @@ rand = "0.10.0"
 regex = "1"
 reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
+sqlparser = "0.61.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
 serde-saphyr = "0.0.22"

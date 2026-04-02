@@ -4621,6 +4621,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "exo-sql-pg-testing"
+version = "0.28.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "colored",
+ "exo-sql-model",
+ "exo-sql-pg",
+ "exo-sql-pg-connect",
+ "exo-sql-pg-schema",
+ "regex",
+ "rustls",
+ "serde",
+ "serde_json",
+ "sqlparser",
+ "tokio",
+ "tokio-postgres",
+ "toml 1.1.0+spec-1.1.0",
+ "wildmatch",
+]
+
+[[package]]
 name = "exo-wasm"
 version = "0.28.0"
 dependencies = [

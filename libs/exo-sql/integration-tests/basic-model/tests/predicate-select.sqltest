@@ -1,0 +1,10 @@
+[query]
+statement = "select concerts.id, concerts.name from concerts where concerts.id > $1"
+params = [1]
+
+[expect]
+unordered_paths = ["/"]
+result = [
+  { id = 2, name = "Concert2" },
+  { id = 3, name = "Concert3" },
+]
