@@ -155,4 +155,4 @@ jobs:
           --exclude server-common --exclude server-actix --exclude server-aws-lambda
           --exclude testing
           --exclude exo-deno --exclude exo-wasm --exclude mcp-router --exclude introspection-util
-          --exclude exo-sql-pg-connect --exclude exo-sql-pg-schema
+          --exclude exo-sql-pg-connect --exclude exo-sql-pg-schema --exclude exo-sql-pg-testing
