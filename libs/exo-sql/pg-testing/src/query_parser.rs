@@ -372,15 +372,7 @@ fn parse_column_path_expr(
             Ok(ColumnPath::Physical(path))
         }
         Expr::Value(ast::ValueWithSpan { value, .. }) => match value {
-            Value::Number(n, _) => {
-                if let Ok(i) = n.parse::<i32>() {
-                    Ok(ColumnPath::Param(SQLParamContainer::i32(i)))
-                } else if let Ok(f) = n.parse::<f64>() {
-                    Ok(ColumnPath::Param(SQLParamContainer::f64(f)))
-                } else {
-                    Err(format!("Unsupported number: {n}"))
-                }
-            }
+            Value::Number(n, _) => parse_number_param(n),
             Value::SingleQuotedString(s) | Value::DoubleQuotedString(s) => {
                 Ok(ColumnPath::Param(SQLParamContainer::string(s.clone())))
             }
@@ -408,16 +400,26 @@ fn parse_column_path_expr(
                 ..
             }) = expr.as_ref()
             {
-                if let Ok(i) = n.parse::<i32>() {
-                    Ok(ColumnPath::Param(SQLParamContainer::i32(-i)))
-                } else {
-                    Err(format!("Unsupported unary expression: -{expr}"))
-                }
+                parse_number_param(&format!("-{n}"))
             } else {
                 Err(format!("Unsupported unary expression: -{expr}"))
             }
         }
         other => Err(format!("Unsupported expression in predicate: {other}")),
+    }
+}
+
+fn parse_number_param(n: &str) -> Result<ColumnPath<PgExtension>, String> {
+    if let Ok(i) = n.parse::<i64>() {
+        if i >= i32::MIN as i64 && i <= i32::MAX as i64 {
+            Ok(ColumnPath::Param(SQLParamContainer::i32(i as i32)))
+        } else {
+            Ok(ColumnPath::Param(SQLParamContainer::i64(i)))
+        }
+    } else if let Ok(f) = n.parse::<f64>() {
+        Ok(ColumnPath::Param(SQLParamContainer::f64(f)))
+    } else {
+        Err(format!("Unsupported number: {n}"))
     }
 }
 
