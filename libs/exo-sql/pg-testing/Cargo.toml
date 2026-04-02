@@ -1,0 +1,33 @@
+[package]
+name = "exo-sql-pg-testing"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+exo-sql-model = { path = "../model" }
+exo-sql-pg = { path = "../pg", features = ["test-support"] }
+exo-sql-pg-connect = { path = "../pg-connect", features = ["test-support", "testing"] }
+exo-sql-pg-schema = { path = "../pg-schema" }
+rustls = { workspace = true, features = ["aws_lc_rs"] }
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlparser.workspace = true
+toml.workspace = true
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"] }
+tokio-postgres.workspace = true
+colored.workspace = true
+wildmatch.workspace = true
+clap = { workspace = true, features = ["derive"] }
+anyhow.workspace = true
+
+[lib]
+doctest = false
+
+[[bin]]
+name = "exo-sql-test"
+path = "src/main.rs"
+
+[package.metadata.cargo-shear]
+ignored = ["rustls"]

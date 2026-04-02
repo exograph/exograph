@@ -1,0 +1,10 @@
+[query]
+statement = "select concerts.id, concerts.name from concerts where concerts.venue_id.name = $1"
+params = ["Madison Square Garden"]
+
+[expect]
+unordered_paths = ["/"]
+result = [
+  { id = 1, name = "Concert1" },
+  { id = 3, name = "Concert3" },
+]

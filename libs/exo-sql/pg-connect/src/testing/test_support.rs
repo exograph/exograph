@@ -33,9 +33,11 @@ fn cleanup() {
         return;
     }
 
-    let database_server = DATABASE_SERVER.blocking_lock();
-
-    database_server.cleanup();
+    // Use try_lock to avoid panicking when the tokio runtime is already dropped
+    // (e.g., in binary targets using #[tokio::main]).
+    if let Ok(database_server) = DATABASE_SERVER.try_lock() {
+        database_server.cleanup();
+    }
 }
 
 pub async fn with_client<Fut, T>(f: impl FnOnce(DatabaseClient) -> Fut) -> T
