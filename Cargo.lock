@@ -1001,6 +1001,7 @@ dependencies = [
  "multiplatform_test",
  "postgres-builder",
  "regex",
+ "rpc-introspection",
  "serde",
  "serde_json",
  "tempfile",
@@ -1409,6 +1410,7 @@ dependencies = [
  "rand 0.10.0",
  "reqwest 0.13.2",
  "rexpect",
+ "rpc-introspection",
  "semver",
  "serde",
  "serde_json",
@@ -1742,6 +1744,7 @@ dependencies = [
  "codemap-diagnostic",
  "core-model",
  "core-plugin-shared",
+ "rpc-introspection",
  "serde",
  "thiserror 2.0.18",
 ]
@@ -1768,6 +1771,7 @@ dependencies = [
  "bytes",
  "multiplatform_test",
  "postcard",
+ "rpc-introspection",
  "serde",
  "sha2 0.11.0",
  "thiserror 2.0.18",
@@ -1798,7 +1802,6 @@ dependencies = [
  "insta",
  "postgres-builder",
  "postgres-resolver",
- "rpc-introspection",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -2422,6 +2425,7 @@ dependencies = [
  "deno-graphql-builder",
  "deno-model-builder",
  "subsystem-model-builder-util",
+ "subsystem-model-util",
 ]
 
 [[package]]
@@ -8256,6 +8260,8 @@ dependencies = [
  "postgres-graphql-builder",
  "postgres-graphql-model",
  "postgres-rpc-builder",
+ "postgres-rpc-model",
+ "postgres-rpc-resolver",
  "tokio",
  "wasm-bindgen-test",
 ]
@@ -8445,7 +8451,6 @@ version = "0.28.0"
 dependencies = [
  "core-model",
  "core-model-builder",
- "core-plugin-shared",
  "heck",
  "postgres-core-builder",
  "postgres-core-model",
@@ -10359,6 +10364,8 @@ dependencies = [
  "async-graphql-parser",
  "core-model",
  "core-plugin-shared",
+ "heck",
+ "rpc-introspection",
  "serde",
 ]
 
@@ -10379,9 +10386,7 @@ version = "0.28.0"
 dependencies = [
  "async-trait",
  "common",
- "core-model",
  "core-resolver",
- "heck",
  "http 1.4.0",
  "rpc-introspection",
  "serde_json",
@@ -10898,6 +10903,7 @@ dependencies = [
  "http 1.4.0",
  "mcp-router",
  "playground-router",
+ "rpc-introspection",
  "rpc-router",
  "tracing",
 ]

@@ -22,6 +22,7 @@ core-model = { path = "../core-subsystem/core-model" }
 core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 core-model-builder = { path = "../core-subsystem/core-model-builder" }
+rpc-introspection = { path = "../rpc-introspection" }
 
 [build-dependencies]
 cc = "*"

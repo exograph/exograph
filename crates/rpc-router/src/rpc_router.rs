@@ -53,16 +53,14 @@ impl RpcRouter {
     pub fn new(
         system_resolver: SystemRpcResolver,
         graphql_system_resolver: Arc<GraphQLSystemResolver>,
+        rpc_schema: Option<RpcSchema>,
         env: Arc<dyn Environment>,
     ) -> Self {
         let api_path_prefix = get_rpc_http_path(env.as_ref()).clone();
         let discover_path = format!("{}/discover", api_path_prefix);
 
-        let mut combined = RpcSchema::new();
-        for schema in system_resolver.rpc_schemas() {
-            combined.merge(schema.clone());
-        }
-        let rpc_document = to_rpc_document(&combined, SchemaGeneration::OpenRpc);
+        let rpc_document =
+            to_rpc_document(&rpc_schema.unwrap_or_default(), SchemaGeneration::OpenRpc);
         let openrpc_document = OpenRpcDocument::new(OPENRPC_API_TITLE, OPENRPC_API_VERSION)
             .with_document(rpc_document);
 

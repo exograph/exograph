@@ -19,7 +19,7 @@ use heck::ToSnakeCase;
 use rpc_introspection::schema::{
     RpcMethod, RpcObjectField, RpcObjectType, RpcParameter, RpcSchema, RpcTypeSchema,
 };
-use subsystem_model_util::{
+use crate::{
     module::ModuleMethod,
     subsystem::ModuleSubsystem,
     types::{

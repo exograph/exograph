@@ -13,6 +13,7 @@ tracing.workspace = true
 sha2 = "0.11"
 base16ct = { version = "1.0.0", features = ["alloc"] }
 wildmatch = { workspace = true, features = ["serde"] }
+rpc-introspection = { path = "../../rpc-introspection" }
 
 [dev-dependencies]
 wasm-bindgen-test.workspace = true

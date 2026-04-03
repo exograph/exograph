@@ -149,10 +149,6 @@ impl<E: ModuleRpcExecutor> SubsystemRpcResolver for ModuleSubsystemRpcResolver<E
             status_code: StatusCode::OK,
         }))
     }
-
-    fn rpc_schema(&self) -> Option<&RpcSchema> {
-        Some(&self.rpc_schema)
-    }
 }
 
 /// Build the argument sequence for a module method call from validated RPC params.

@@ -7,11 +7,14 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-pub mod access;
-pub mod argument;
-pub mod interceptor;
-pub mod module;
-pub mod operation;
-pub mod rpc_schema_builder;
-pub mod subsystem;
-pub mod types;
+use super::command::SubcommandDefinition;
+
+mod schema;
+
+pub fn command_definition() -> SubcommandDefinition {
+    SubcommandDefinition::new(
+        "rpc",
+        "Work with the RPC schema",
+        vec![Box::new(schema::SchemaCommandDefinition {})],
+    )
+}
