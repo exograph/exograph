@@ -12,7 +12,7 @@ use postgres_core_model::order::{
 };
 use postgres_core_model::predicate::{PredicateParameter, PredicateParameterTypeKind};
 use postgres_rpc_model::operation::{CollectionQuery, CollectionQueryParam};
-use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
+use postgres_rpc_model::subsystem::PostgresRpcSubsystem;
 use rpc_introspection::schema::{
     RpcMethod, RpcObjectField, RpcObjectType, RpcParameter, RpcSchema, RpcTypeSchema,
 };
@@ -26,7 +26,7 @@ use super::{BuildRpcMethod, BuildRpcTypeSchema, build_projection_param};
 impl BuildRpcMethod for CollectionQuery {
     fn build_rpc_method(
         &self,
-        subsystem: &PostgresRpcSubsystemWithRouter,
+        subsystem: &PostgresRpcSubsystem,
         schema: &mut RpcSchema,
         added_types: &mut HashSet<String>,
     ) -> RpcMethod {
@@ -82,7 +82,7 @@ impl BuildRpcMethod for CollectionQuery {
 impl BuildRpcTypeSchema for PredicateParameter {
     fn build_rpc_type_schema(
         &self,
-        subsystem: &PostgresRpcSubsystemWithRouter,
+        subsystem: &PostgresRpcSubsystem,
         schema: &mut RpcSchema,
         added_types: &mut HashSet<String>,
     ) -> RpcTypeSchema {
@@ -180,7 +180,7 @@ impl BuildRpcTypeSchema for PredicateParameter {
 impl BuildRpcTypeSchema for OrderByParameter {
     fn build_rpc_type_schema(
         &self,
-        subsystem: &PostgresRpcSubsystemWithRouter,
+        subsystem: &PostgresRpcSubsystem,
         schema: &mut RpcSchema,
         added_types: &mut HashSet<String>,
     ) -> RpcTypeSchema {

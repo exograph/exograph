@@ -51,13 +51,13 @@ use postgres_rpc_model::operation::{
     CollectionDelete, CollectionQuery, CollectionUpdate, Create, PkDelete, PkQuery, PkUpdate,
     UniqueDelete, UniqueQuery, UniqueUpdate,
 };
-use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
+use postgres_rpc_model::subsystem::PostgresRpcSubsystem;
 use rpc_introspection::RpcSchema;
 
 pub struct PostgresSubsystemRpcResolver {
     #[allow(dead_code)]
     pub id: &'static str,
-    pub subsystem: PostgresRpcSubsystemWithRouter,
+    pub subsystem: PostgresRpcSubsystem,
     pub executor: Arc<PgBackend>,
     #[allow(dead_code)]
     pub api_path_prefix: String,
@@ -67,7 +67,7 @@ pub struct PostgresSubsystemRpcResolver {
 impl PostgresSubsystemRpcResolver {
     pub fn new(
         id: &'static str,
-        subsystem: PostgresRpcSubsystemWithRouter,
+        subsystem: PostgresRpcSubsystem,
         executor: Arc<PgBackend>,
         api_path_prefix: String,
     ) -> Self {
@@ -223,7 +223,7 @@ trait OperationSelectionResolver {
         &'a self,
         validated_params: &mut HashMap<String, Val>,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresRpcSubsystemWithRouter,
+        subsystem: &'a PostgresRpcSubsystem,
     ) -> Result<PgAbstractSelect, SubsystemRpcError>;
 }
 
@@ -235,7 +235,7 @@ trait OperationResolver {
         &'a self,
         validated_params: &mut HashMap<String, Val>,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresRpcSubsystemWithRouter,
+        subsystem: &'a PostgresRpcSubsystem,
     ) -> Result<PgAbstractOperation, SubsystemRpcError>;
 }
 
@@ -246,7 +246,7 @@ impl<T: OperationSelectionResolver + Send + Sync> OperationResolver for T {
         &'a self,
         validated_params: &mut HashMap<String, Val>,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresRpcSubsystemWithRouter,
+        subsystem: &'a PostgresRpcSubsystem,
     ) -> Result<PgAbstractOperation, SubsystemRpcError> {
         self.resolve_select(validated_params, request_context, subsystem)
             .await
@@ -295,7 +295,7 @@ impl<'a> ComputeSelectOpts<'a> {
 async fn compute_select<'a>(
     opts: ComputeSelectOpts<'a>,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgAbstractSelect, SubsystemRpcError> {
     let ComputeSelectOpts {
         predicate,
@@ -345,7 +345,7 @@ async fn check_projection_access<'a>(
     entity_type: &'a EntityType,
     projection: &'a ResolvedProjection,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgAbstractPredicate, SubsystemRpcError> {
     let mut combined = PgAbstractPredicate::True;
 
@@ -396,7 +396,7 @@ fn compute_projection_elements<'a>(
     entity_type: &'a EntityType,
     projection: &'a ResolvedProjection,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> std::pin::Pin<
     Box<
         dyn std::future::Future<Output = Result<Vec<PgAliasedSelectionElement>, SubsystemRpcError>>
@@ -489,7 +489,7 @@ async fn compute_nested_select<'a>(
     cardinality: SelectionCardinality,
     projection_names: &[String],
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgAbstractSelect, SubsystemRpcError> {
     let foreign_entity = &subsystem.core_subsystem.entity_types[foreign_entity_id];
 
@@ -549,7 +549,7 @@ async fn compute_nested_select<'a>(
 async fn solve_access<'a>(
     access_expr: &AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgAbstractPredicate, SubsystemRpcError> {
     subsystem
         .core_subsystem
@@ -564,7 +564,7 @@ async fn solve_access_expression<'a>(
         AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
     >,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgAbstractPredicate, SubsystemRpcError> {
     let access_expr = &subsystem.core_subsystem.database_access_expressions[access_expr_index];
     solve_access(access_expr, request_context, subsystem).await
@@ -576,7 +576,7 @@ async fn compute_entity_access_predicate<'a>(
     entity_type: &EntityType,
     access_kind: AccessKind,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgAbstractPredicate, SubsystemRpcError> {
     let access_index = match access_kind {
         AccessKind::Read => entity_type.access.read,
@@ -603,7 +603,7 @@ async fn compute_create_access<'a>(
     entity_type: &EntityType,
     data_val: &'a Val,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgAbstractPredicate, SubsystemRpcError> {
     let access_input = AccessInput {
         value: data_val,
@@ -654,7 +654,7 @@ async fn compute_field_precheck<'a, F>(
     data_val: &'a Val,
     access_input: &AccessInput<'a>,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
     get_precheck_index: F,
 ) -> Result<PgAbstractPredicate, SubsystemRpcError>
 where
@@ -712,7 +712,7 @@ fn compute_create_columns<'a>(
     data_val: &'a Val,
     parent_entity: Option<&'a EntityType>,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> futures::future::BoxFuture<'a, Result<Vec<PgInsertionElement>, SubsystemRpcError>> {
     Box::pin(compute_create_columns_inner(
         entity_type,
@@ -727,7 +727,7 @@ fn compute_create_columns<'a>(
 fn is_back_reference(
     field: &PostgresField<EntityType>,
     parent_entity: Option<&EntityType>,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
 ) -> bool {
     if let (Some(parent), PostgresRelation::ManyToOne { relation, .. }) =
         (parent_entity, &field.relation)
@@ -744,7 +744,7 @@ async fn compute_create_columns_inner<'a>(
     data_val: &'a Val,
     parent_entity: Option<&'a EntityType>,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<Vec<PgInsertionElement>, SubsystemRpcError> {
     let mut elements = Vec::new();
 
@@ -853,7 +853,7 @@ fn build_nested_insertions<'a>(
     parent_entity: Option<&'a EntityType>,
     nested_val: &'a Val,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> futures::future::BoxFuture<'a, NestedInsertionsResult> {
     Box::pin(async move {
         let items = val_as_items(nested_val)?;
@@ -885,7 +885,7 @@ async fn build_single_insert<'a>(
     entity_type: &EntityType,
     data_val: Val,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<(PgInsertionRow, PgAbstractPredicate), SubsystemRpcError> {
     let precheck_predicate =
         compute_create_access(entity_type, &data_val, request_context, subsystem).await?;
@@ -903,7 +903,7 @@ async fn build_create_operation<'a>(
     data_val: Val,
     projection_name: &str,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgAbstractOperation, SubsystemRpcError> {
     let selection = compute_select(
         ComputeSelectOpts::for_mutation(entity_type, return_type, projection_name),
@@ -942,7 +942,7 @@ impl OperationResolver for Create {
         &'a self,
         validated_params: &mut HashMap<String, Val>,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresRpcSubsystemWithRouter,
+        subsystem: &'a PostgresRpcSubsystem,
     ) -> Result<PgAbstractOperation, SubsystemRpcError> {
         let entity_type = self.return_type.typ(&subsystem.core_subsystem.entity_types);
         let data_param_name = &self.parameters.data_param.name;
@@ -975,7 +975,7 @@ async fn resolve_delete_predicate_params<'a>(
     projection_name: &str,
     validated_params: &mut HashMap<String, Val>,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgAbstractOperation, SubsystemRpcError> {
     let entity_type = return_type.typ(&subsystem.core_subsystem.entity_types);
 
@@ -1020,7 +1020,7 @@ macro_rules! impl_delete_resolver {
                 &'a self,
                 validated_params: &mut HashMap<String, Val>,
                 request_context: &'a RequestContext<'a>,
-                subsystem: &'a PostgresRpcSubsystemWithRouter,
+                subsystem: &'a PostgresRpcSubsystem,
             ) -> Result<PgAbstractOperation, SubsystemRpcError> {
                 let projection_name = extract_projection_name(validated_params, PROJECTION_PK);
                 resolve_delete_predicate_params(
@@ -1045,7 +1045,7 @@ impl OperationResolver for CollectionDelete {
         &'a self,
         validated_params: &mut HashMap<String, Val>,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresRpcSubsystemWithRouter,
+        subsystem: &'a PostgresRpcSubsystem,
     ) -> Result<PgAbstractOperation, SubsystemRpcError> {
         let entity_type = self.return_type.typ(&subsystem.core_subsystem.entity_types);
         let projection_name = extract_projection_name(validated_params, PROJECTION_PK);
@@ -1090,7 +1090,7 @@ async fn compute_update_access<'a>(
     entity_type: &EntityType,
     data_val: &'a Val,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<(PgAbstractPredicate, PgAbstractPredicate), SubsystemRpcError> {
     let access_input = AccessInput {
         value: data_val,
@@ -1159,7 +1159,7 @@ async fn build_update_operation<'a>(
     query_predicate: PgAbstractPredicate,
     projection_name: &str,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgAbstractOperation, SubsystemRpcError> {
     let (precheck_predicate, access_predicate) =
         compute_update_access(entity_type, &data_val, request_context, subsystem).await?;
@@ -1197,7 +1197,7 @@ async fn resolve_update_predicate_params<'a>(
     projection_name: &str,
     validated_params: &mut HashMap<String, Val>,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgAbstractOperation, SubsystemRpcError> {
     let entity_type = return_type.typ(&subsystem.core_subsystem.entity_types);
 
@@ -1229,7 +1229,7 @@ async fn resolve_update_predicate_params<'a>(
 fn compute_update_columns(
     entity_type: &EntityType,
     data_val: &Val,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
 ) -> Result<Vec<(ColumnId, Column)>, SubsystemRpcError> {
     let mut column_values = Vec::new();
 
@@ -1310,7 +1310,7 @@ macro_rules! impl_update_resolver {
                 &'a self,
                 validated_params: &mut HashMap<String, Val>,
                 request_context: &'a RequestContext<'a>,
-                subsystem: &'a PostgresRpcSubsystemWithRouter,
+                subsystem: &'a PostgresRpcSubsystem,
             ) -> Result<PgAbstractOperation, SubsystemRpcError> {
                 let projection_name = extract_projection_name(validated_params, PROJECTION_PK);
                 resolve_update_predicate_params(
@@ -1336,7 +1336,7 @@ impl OperationResolver for CollectionUpdate {
         &'a self,
         validated_params: &mut HashMap<String, Val>,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresRpcSubsystemWithRouter,
+        subsystem: &'a PostgresRpcSubsystem,
     ) -> Result<PgAbstractOperation, SubsystemRpcError> {
         let entity_type = self.return_type.typ(&subsystem.core_subsystem.entity_types);
         let data_param_name = &self.parameters.data_param.name;
@@ -1377,7 +1377,7 @@ impl OperationSelectionResolver for CollectionQuery {
         &'a self,
         validated_params: &mut HashMap<String, Val>,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresRpcSubsystemWithRouter,
+        subsystem: &'a PostgresRpcSubsystem,
     ) -> Result<PgAbstractSelect, SubsystemRpcError> {
         let entity_type = self.return_type.typ(&subsystem.core_subsystem.entity_types);
 
@@ -1447,7 +1447,7 @@ async fn resolve_optional_predicate_param<'a>(
     param: &postgres_core_model::predicate::PredicateParameter,
     validated_params: &mut HashMap<String, Val>,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgAbstractPredicate, SubsystemRpcError> {
     match validated_params.remove(&param.name) {
         Some(val) => compute_predicate(param, &val, &subsystem.core_subsystem, request_context)
@@ -1463,7 +1463,7 @@ async fn resolve_predicate_param_list<'a>(
     predicate_params: &[postgres_core_model::predicate::PredicateParameter],
     validated_params: &mut HashMap<String, Val>,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgAbstractPredicate, SubsystemRpcError> {
     let mut predicates = Vec::new();
     for predicate_param in predicate_params {
@@ -1500,7 +1500,7 @@ async fn resolve_query_predicate_params<'a>(
     return_type: &OperationReturnType<EntityType>,
     validated_params: &mut HashMap<String, Val>,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgAbstractSelect, SubsystemRpcError> {
     let entity_type = return_type.typ(&subsystem.core_subsystem.entity_types);
 
@@ -1544,7 +1544,7 @@ macro_rules! impl_query_selection_resolver {
                 &'a self,
                 validated_params: &mut HashMap<String, Val>,
                 request_context: &'a RequestContext<'a>,
-                subsystem: &'a PostgresRpcSubsystemWithRouter,
+                subsystem: &'a PostgresRpcSubsystem,
             ) -> Result<PgAbstractSelect, SubsystemRpcError> {
                 resolve_query_predicate_params(
                     &self.parameters.predicate_params,
@@ -1566,7 +1566,7 @@ async fn compute_nested_update_ops<'a>(
     entity_type: &EntityType,
     data_val: &'a Val,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<
     (
         Vec<PgNestedAbstractUpdate>,
@@ -1650,7 +1650,7 @@ async fn compute_nested_create_for_update<'a>(
     create_arg: &'a Val,
     nesting_relation: &OneToMany,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgNestedAbstractInsertSet, SubsystemRpcError> {
     let items = val_as_items(create_arg)?;
 
@@ -1713,7 +1713,7 @@ async fn compute_nested_update_items<'a>(
     update_arg: &'a Val,
     nesting_relation: &OneToMany,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<Vec<PgNestedAbstractUpdate>, SubsystemRpcError> {
     let items = val_as_items(update_arg)?;
 
@@ -1761,7 +1761,7 @@ async fn compute_nested_delete_items<'a>(
     delete_arg: &'a Val,
     nesting_relation: &OneToMany,
     request_context: &'a RequestContext<'a>,
-    subsystem: &'a PostgresRpcSubsystemWithRouter,
+    subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<Vec<PgNestedAbstractDelete>, SubsystemRpcError> {
     let items = val_as_items(delete_arg)?;
 
@@ -1817,7 +1817,7 @@ fn val_as_items(val: &Val) -> Result<Vec<&Val>, SubsystemRpcError> {
 fn build_pk_predicate(
     entity_type: &EntityType,
     data_val: &Val,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
 ) -> Result<PgAbstractPredicate, SubsystemRpcError> {
     let mut predicate = PgAbstractPredicate::True;
 

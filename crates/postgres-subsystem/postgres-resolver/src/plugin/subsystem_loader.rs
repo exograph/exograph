@@ -24,7 +24,7 @@ use exo_env::Environment;
 use exo_sql_pg_connect::DatabaseClientManager;
 use postgres_core_resolver::database_helper::create_database_executor;
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
-use postgres_rpc_model::subsystem::{PostgresRpcSubsystem, PostgresRpcSubsystemWithRouter};
+use postgres_rpc_model::subsystem::PostgresRpcSubsystem;
 use postgres_rpc_resolver::PostgresSubsystemRpcResolver;
 
 pub struct PostgresSubsystemLoader {
@@ -71,8 +71,7 @@ impl SubsystemLoader for PostgresSubsystemLoader {
 
         let rpc_system = rpc
             .map(|rpc| {
-                let subsystem = PostgresRpcSubsystem::deserialize(rpc.0)?;
-                let mut subsystem = PostgresRpcSubsystemWithRouter::new(subsystem)?;
+                let mut subsystem = PostgresRpcSubsystem::deserialize(rpc.0)?;
                 subsystem.core_subsystem = core_subsystem.clone();
                 let api_path_prefix = get_rpc_http_path(env.as_ref()).to_string();
                 Ok::<_, SubsystemLoadingError>(Box::new(PostgresSubsystemRpcResolver::new(

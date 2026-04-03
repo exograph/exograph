@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use postgres_rpc_model::operation::CollectionDelete;
-use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
+use postgres_rpc_model::subsystem::PostgresRpcSubsystem;
 use rpc_introspection::schema::{RpcMethod, RpcParameter, RpcSchema, RpcTypeSchema};
 use std::collections::HashSet;
 
@@ -18,7 +18,7 @@ use super::{BuildRpcMethod, BuildRpcTypeSchema, build_projection_param};
 impl BuildRpcMethod for CollectionDelete {
     fn build_rpc_method(
         &self,
-        subsystem: &PostgresRpcSubsystemWithRouter,
+        subsystem: &PostgresRpcSubsystem,
         schema: &mut RpcSchema,
         added_types: &mut HashSet<String>,
     ) -> RpcMethod {

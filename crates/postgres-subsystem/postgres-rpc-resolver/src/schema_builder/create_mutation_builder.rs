@@ -10,7 +10,7 @@
 use core_model::types::FieldType;
 use postgres_core_model::relation::{OneToManyRelation, PostgresRelation};
 use postgres_core_model::types::EntityType;
-use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
+use postgres_rpc_model::subsystem::PostgresRpcSubsystem;
 use rpc_introspection::schema::{
     RpcMethod, RpcObjectField, RpcObjectType, RpcParameter, RpcSchema, RpcTypeSchema,
 };
@@ -30,7 +30,7 @@ pub(super) fn build_create_method<P>(
     op: &postgres_rpc_model::operation::PostgresOperation<P>,
     data_param_name: &str,
     is_collection: bool,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) -> RpcMethod {
@@ -64,7 +64,7 @@ pub(super) fn build_create_method<P>(
 /// Non-PK fields are required unless they have a default value (then optional).
 fn ensure_create_input_type_added(
     entity_type: &EntityType,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) {
@@ -154,7 +154,7 @@ fn ensure_create_input_type_added(
 pub(super) fn ensure_nested_create_input_type_added(
     parent_entity: &EntityType,
     one_to_many_relation: &OneToManyRelation,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) -> String {
