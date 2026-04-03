@@ -8260,7 +8260,6 @@ dependencies = [
  "postgres-graphql-builder",
  "postgres-graphql-model",
  "postgres-rpc-builder",
- "postgres-rpc-model",
  "postgres-rpc-resolver",
  "tokio",
  "wasm-bindgen-test",
@@ -8462,7 +8461,6 @@ name = "postgres-rpc-model"
 version = "0.28.0"
 dependencies = [
  "core-model",
- "core-plugin-interface",
  "core-plugin-shared",
  "postgres-core-model",
  "serde",

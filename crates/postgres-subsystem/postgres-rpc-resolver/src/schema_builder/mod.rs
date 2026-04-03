@@ -9,7 +9,7 @@
 
 //! Schema builder for RPC introspection.
 //!
-//! Builds an RpcSchema from PostgresRpcSubsystemWithRouter by iterating
+//! Builds an RpcSchema from PostgresRpcSubsystem by iterating
 //! through all collection queries, pk queries, and unique constraint queries.
 //!
 //! Uses two traits to keep schema building generic:
@@ -25,7 +25,7 @@ mod update_mutation_builder;
 use core_model::types::OperationReturnType;
 use postgres_core_model::types::EntityType;
 use postgres_rpc_model::operation::HasPredicateParams;
-use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
+use postgres_rpc_model::subsystem::PostgresRpcSubsystem;
 use rpc_introspection::schema::{RpcMethod, RpcParameter, RpcSchema, RpcTypeSchema};
 use std::collections::HashSet;
 
@@ -37,7 +37,7 @@ use update_mutation_builder::build_update_predicate_params_method;
 pub(crate) trait BuildRpcMethod {
     fn build_rpc_method(
         &self,
-        subsystem: &PostgresRpcSubsystemWithRouter,
+        subsystem: &PostgresRpcSubsystem,
         schema: &mut RpcSchema,
         added_types: &mut HashSet<String>,
     ) -> RpcMethod;
@@ -47,7 +47,7 @@ pub(crate) trait BuildRpcMethod {
 pub(crate) trait BuildRpcTypeSchema {
     fn build_rpc_type_schema(
         &self,
-        subsystem: &PostgresRpcSubsystemWithRouter,
+        subsystem: &PostgresRpcSubsystem,
         schema: &mut RpcSchema,
         added_types: &mut HashSet<String>,
     ) -> RpcTypeSchema;
@@ -74,8 +74,8 @@ impl<P> HasMethodNameAndReturnType for postgres_rpc_model::operation::PostgresOp
     }
 }
 
-/// Build an RpcSchema from a PostgresRpcSubsystemWithRouter.
-pub fn build_rpc_schema(subsystem: &PostgresRpcSubsystemWithRouter) -> RpcSchema {
+/// Build an RpcSchema from a PostgresRpcSubsystem.
+pub fn build_rpc_schema(subsystem: &PostgresRpcSubsystem) -> RpcSchema {
     let mut schema = RpcSchema::new();
     let mut added_types: HashSet<String> = HashSet::new();
 
@@ -203,7 +203,7 @@ pub(crate) fn build_projection_param(entity_type: &EntityType) -> RpcParameter {
 /// Build a query method, augmenting with projection support if the entity has projections.
 fn build_query_with_projections<T>(
     query: &T,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) where
@@ -237,7 +237,7 @@ fn build_query_with_projections<T>(
 /// Callers should append the projection param after any additional params (e.g. `data`).
 pub(crate) fn build_predicate_params_method<T>(
     op: &T,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) -> RpcMethod

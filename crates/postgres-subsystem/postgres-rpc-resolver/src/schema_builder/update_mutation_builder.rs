@@ -10,7 +10,7 @@
 use postgres_core_model::relation::{OneToManyRelation, PostgresRelation};
 use postgres_core_model::types::EntityType;
 use postgres_rpc_model::operation::{CollectionUpdate, HasPredicateParams};
-use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
+use postgres_rpc_model::subsystem::PostgresRpcSubsystem;
 use rpc_introspection::schema::{
     RpcMethod, RpcObjectField, RpcObjectType, RpcParameter, RpcSchema, RpcTypeSchema,
 };
@@ -32,7 +32,7 @@ fn update_input_type_name(entity_name: &str) -> String {
 impl BuildRpcMethod for CollectionUpdate {
     fn build_rpc_method(
         &self,
-        subsystem: &PostgresRpcSubsystemWithRouter,
+        subsystem: &PostgresRpcSubsystem,
         schema: &mut RpcSchema,
         added_types: &mut HashSet<String>,
     ) -> RpcMethod {
@@ -78,7 +78,7 @@ impl BuildRpcMethod for CollectionUpdate {
 pub(super) fn build_update_predicate_params_method<T>(
     op: &T,
     data_param_name: &str,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) -> RpcMethod
@@ -109,7 +109,7 @@ fn append_update_data_param(
     data_param_name: &str,
     entity_type: &EntityType,
     description: &str,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) -> RpcMethod {
@@ -126,7 +126,7 @@ fn append_update_data_param(
 /// All non-PK scalar fields are optional.
 fn ensure_update_input_type_added(
     entity_type: &EntityType,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) {
@@ -193,7 +193,7 @@ fn ensure_update_input_type_added(
 fn ensure_update_ops_type_added(
     parent_entity: &EntityType,
     one_to_many_relation: &OneToManyRelation,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) -> String {
@@ -256,7 +256,7 @@ fn ensure_update_ops_type_added(
 fn ensure_nested_update_input_type_added(
     parent_entity: &EntityType,
     one_to_many_relation: &OneToManyRelation,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) -> String {

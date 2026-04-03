@@ -14,7 +14,7 @@ use postgres_core_model::projection::{
 };
 use postgres_core_model::relation::PostgresRelation;
 use postgres_core_model::types::{EntityType, PostgresFieldType, PostgresPrimitiveTypeKind};
-use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
+use postgres_rpc_model::subsystem::PostgresRpcSubsystem;
 use rpc_introspection::schema::{
     OneOfVariant, RpcObjectField, RpcObjectType, RpcSchema, RpcTypeSchema,
 };
@@ -25,7 +25,7 @@ use std::collections::HashSet;
 /// preserving the outer Optional/List wrapping.
 pub(crate) fn build_return_type_schema_all_projections(
     return_type: &OperationReturnType<EntityType>,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) -> RpcTypeSchema {
@@ -65,7 +65,7 @@ pub(crate) fn build_return_type_schema_all_projections(
 /// Every entity has at least `pk` and `basic` projections.
 pub(crate) fn build_return_type_schema_for_entity(
     return_type: &OperationReturnType<EntityType>,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) -> RpcTypeSchema {
@@ -78,7 +78,7 @@ fn pk_type_name(entity_name: &str) -> String {
 
 pub(crate) fn ensure_entity_type_added(
     entity_type: &EntityType,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) {
@@ -140,7 +140,7 @@ pub(crate) fn ensure_entity_type_added(
 /// Ensure a PK-only reference type (e.g., "VenueRef") is added to the schema.
 pub(crate) fn ensure_ref_type_added(
     foreign_entity: &EntityType,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) -> String {
@@ -279,7 +279,7 @@ fn ensure_projection_type_added(
     type_name: &str,
     entity_type: &EntityType,
     projection: &ResolvedProjection,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) {
@@ -382,7 +382,7 @@ fn ensure_projection_type_added(
 pub(crate) fn build_field_type_schema(
     field_type: &FieldType<PostgresFieldType<EntityType>>,
     type_validation: Option<&TypeValidation>,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) -> RpcTypeSchema {
@@ -414,7 +414,7 @@ pub(crate) fn build_field_type_schema(
 fn build_postgres_field_type_schema(
     postgres_field_type: &PostgresFieldType<EntityType>,
     type_validation: Option<&TypeValidation>,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) -> RpcTypeSchema {
@@ -458,7 +458,7 @@ fn build_postgres_field_type_schema(
 /// Falls back to the parameter type wrapper's name (for operator parameters like eq, neq, etc.).
 pub(super) fn get_scalar_type_from_column_path_link(
     param: &postgres_core_model::predicate::PredicateParameter,
-    subsystem: &PostgresRpcSubsystemWithRouter,
+    subsystem: &PostgresRpcSubsystem,
 ) -> String {
     use exo_sql_pg::ColumnPathLink;
 
