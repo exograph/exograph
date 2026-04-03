@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use core_model_builder::{
     builder::system_builder::BaseModelSystem,
     error::ModelBuildingError,
-    plugin::{BuildMode, CoreSubsystemBuild},
+    plugin::{BuildMode, CoreSubsystemBuild, RpcSubsystemBuild},
     typechecker::{
         annotation::{
             AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec, MappedAnnotationParams,
@@ -16,11 +16,13 @@ use core_model_builder::{
 use core_plugin_interface::interface::{SubsystemBuild, SubsystemBuilder};
 
 use core_plugin_shared::{
-    serializable_system::SerializableCoreBytes, system_serializer::SystemSerializer,
+    serializable_system::{SerializableCoreBytes, SerializableRpcBytes},
+    system_serializer::SystemSerializer,
 };
 use postgres_core_builder::resolved_type::ResolvedTypeEnv;
 use postgres_graphql_builder::PostgresGraphQLSubsystemBuilder;
 use postgres_rpc_builder::PostgresRpcSubsystemBuilder;
+use postgres_rpc_model::subsystem::PostgresRpcSubsystemWithRouter;
 
 pub struct PostgresSubsystemBuilder {
     pub graphql_builder: Option<PostgresGraphQLSubsystemBuilder>,
@@ -246,22 +248,42 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
             None => Ok(None),
         }?;
 
-        let serialized_core_subsystem = {
-            let core_subsystem = Arc::into_inner(core_subsystem_building)
-                .unwrap()
-                .into_core_subsystem(base_system);
-            core_subsystem
-                .serialize()
-                .map_err(ModelBuildingError::Serialize)?
-        };
+        let core_subsystem = Arc::into_inner(core_subsystem_building)
+            .unwrap()
+            .into_core_subsystem(base_system);
 
-        if graphql_subsystem.is_none() && rpc_subsystem.is_none() {
+        let serialized_core_subsystem = core_subsystem
+            .serialize()
+            .map_err(ModelBuildingError::Serialize)?;
+
+        // Build the RPC schema at build time via PostgresRpcSubsystemWithRouter
+        // (which needs the core subsystem for type resolution).
+        let core_subsystem = Arc::new(core_subsystem);
+        let rpc_build = rpc_subsystem
+            .map(|rpc_subsystem| {
+                let serialized_subsystem = rpc_subsystem
+                    .serialize()
+                    .map_err(ModelBuildingError::Serialize)?;
+
+                let mut rpc_with_router = PostgresRpcSubsystemWithRouter::new(rpc_subsystem)
+                    .map_err(|e| ModelBuildingError::Generic(e.to_string()))?;
+                rpc_with_router.core_subsystem = core_subsystem;
+                let schema = postgres_rpc_resolver::build_rpc_schema(&rpc_with_router);
+
+                Ok::<_, ModelBuildingError>(RpcSubsystemBuild {
+                    serialized_subsystem: SerializableRpcBytes(serialized_subsystem),
+                    schema,
+                })
+            })
+            .transpose()?;
+
+        if graphql_subsystem.is_none() && rpc_build.is_none() {
             Ok(None)
         } else {
             Ok(Some(SubsystemBuild {
                 id: "postgres",
                 graphql: graphql_subsystem,
-                rpc: rpc_subsystem,
+                rpc: rpc_build,
                 core: CoreSubsystemBuild {
                     serialized_subsystem: SerializableCoreBytes(serialized_core_subsystem),
                 },

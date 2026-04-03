@@ -11,6 +11,13 @@
 
 use std::collections::{HashMap, HashSet};
 
+use crate::{
+    module::ModuleMethod,
+    subsystem::ModuleSubsystem,
+    types::{
+        ModuleCompositeType, ModuleFieldType, ModuleOperationReturnType, ModuleType, ModuleTypeKind,
+    },
+};
 use core_model::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
     types::{BaseOperationReturnType, FieldType, OperationReturnType},
@@ -18,13 +25,6 @@ use core_model::{
 use heck::ToSnakeCase;
 use rpc_introspection::schema::{
     RpcMethod, RpcObjectField, RpcObjectType, RpcParameter, RpcSchema, RpcTypeSchema,
-};
-use subsystem_model_util::{
-    module::ModuleMethod,
-    subsystem::ModuleSubsystem,
-    types::{
-        ModuleCompositeType, ModuleFieldType, ModuleOperationReturnType, ModuleType, ModuleTypeKind,
-    },
 };
 
 /// Result of building the RPC schema, including the method name mapping.

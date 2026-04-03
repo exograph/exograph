@@ -39,6 +39,9 @@ pub struct PostgresRpcSubsystem {
     pub core_subsystem: Arc<PostgresCoreSubsystem>,
 }
 
+// TODO: Rename to something like `ResolvedPostgresRpcSubsystem` — this isn't
+// adding a "router"; it's the runtime variant with the core subsystem attached
+// after deserialization (82 occurrences across 3 crates, mechanical rename).
 #[derive(Debug)]
 pub struct PostgresRpcSubsystemWithRouter {
     pub pk_queries: MappedArena<PkQuery>,

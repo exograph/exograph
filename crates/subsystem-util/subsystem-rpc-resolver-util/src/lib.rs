@@ -9,4 +9,4 @@
 
 pub mod executor;
 pub mod resolver;
-pub mod rpc_schema_builder;
+pub use subsystem_model_util::rpc_schema_builder;

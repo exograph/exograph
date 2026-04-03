@@ -24,7 +24,6 @@ tracing.workspace = true
 exo-env = { path = "../../../libs/exo-env" }
 core-model = { path = "../core-model" }
 core-plugin-shared = { path = "../core-plugin-shared" }
-rpc-introspection = { path = "../../rpc-introspection" }
 common = { path = "../../common" }
 
 [dev-dependencies]

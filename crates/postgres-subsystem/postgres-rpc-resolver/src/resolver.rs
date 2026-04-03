@@ -213,11 +213,6 @@ impl SubsystemRpcResolver for PostgresSubsystemRpcResolver {
 
         Ok(None)
     }
-
-    fn rpc_schema(&self) -> Option<&RpcSchema> {
-        // TODO: We could just return &RpcSchema when all resolvers support schema
-        Some(&self.rpc_schema)
-    }
 }
 
 /// Trait for resolving operations to a PgAbstractSelect.

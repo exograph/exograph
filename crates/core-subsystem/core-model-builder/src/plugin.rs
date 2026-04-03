@@ -12,6 +12,7 @@ use core_plugin_shared::interception::{InterceptorIndex, InterceptorKind};
 use core_plugin_shared::serializable_system::{
     SerializableCoreBytes, SerializableGraphQLBytes, SerializableRpcBytes,
 };
+use rpc_introspection::RpcSchema;
 
 pub struct GraphQLSubsystemBuild {
     pub id: String,
@@ -30,6 +31,7 @@ pub struct Interception {
 
 pub struct RpcSubsystemBuild {
     pub serialized_subsystem: SerializableRpcBytes,
+    pub schema: RpcSchema,
 }
 
 pub struct CoreSubsystemBuild {

@@ -13,6 +13,7 @@ core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 deno-graphql-builder = { path = "../deno-graphql-builder" }
 deno-model-builder = { path = "../deno-model-builder" }
 subsystem-model-builder-util = { path = "../../subsystem-util/subsystem-model-builder-util" }
+subsystem-model-util = { path = "../../subsystem-util/subsystem-model-util" }
 
 [lib]
 crate-type = ["lib"]

@@ -9,11 +9,9 @@
 
 use std::sync::Arc;
 
-use core_model_builder::{error::ModelBuildingError, plugin::RpcSubsystemBuild};
-use core_plugin_shared::{
-    serializable_system::SerializableRpcBytes, system_serializer::SystemSerializer,
-};
+use core_model_builder::error::ModelBuildingError;
 use postgres_core_builder::resolved_type::ResolvedTypeEnv;
+use postgres_rpc_model::subsystem::PostgresRpcSubsystem;
 
 pub struct PostgresRpcSubsystemBuilder {}
 
@@ -22,18 +20,7 @@ impl PostgresRpcSubsystemBuilder {
         &self,
         resolved_env: &ResolvedTypeEnv<'_>,
         core_subsystem_building: Arc<postgres_core_builder::SystemContextBuilding>,
-    ) -> Result<Option<RpcSubsystemBuild>, ModelBuildingError> {
-        let subsystem = crate::system_builder::build(resolved_env, core_subsystem_building)?;
-        let Some(subsystem) = subsystem else {
-            return Ok(None);
-        };
-
-        let serialized_subsystem = subsystem
-            .serialize()
-            .map_err(ModelBuildingError::Serialize)?;
-
-        Ok(Some(RpcSubsystemBuild {
-            serialized_subsystem: SerializableRpcBytes(serialized_subsystem),
-        }))
+    ) -> Result<Option<PostgresRpcSubsystem>, ModelBuildingError> {
+        crate::system_builder::build(resolved_env, core_subsystem_building)
     }
 }

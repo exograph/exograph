@@ -18,6 +18,7 @@ use core_plugin_shared::serializable_system::SerializableCoreBytes;
 use core_plugin_shared::serializable_system::SerializableSubsystem;
 use core_plugin_shared::serializable_system::SerializableSystem;
 use core_plugin_shared::trusted_documents::TrustedDocuments;
+use rpc_introspection::RpcSchema;
 
 /// Build a [ModelSystem] given an [AstSystem].
 ///
@@ -48,6 +49,7 @@ pub async fn build(
     let mut subsystem_interceptions = vec![];
     let mut query_names = vec![];
     let mut mutation_names = vec![];
+    let mut combined_rpc_schema = RpcSchema::new();
 
     // We must enumerate() over the result of running each builder, since that will filter out any
     // subsystem that don't need serialization (empty subsystems). This will ensure that we assign
@@ -87,6 +89,7 @@ pub async fn build(
 
         if let Some(rpc) = rpc {
             serialized_rpc_subsystem = Some(rpc.serialized_subsystem);
+            combined_rpc_schema.merge(rpc.schema);
         }
 
         SerializableSubsystem {
@@ -108,6 +111,12 @@ pub async fn build(
         OperationKind::Mutation,
     );
 
+    let rpc_schema = if combined_rpc_schema.methods.is_empty() {
+        None
+    } else {
+        Some(combined_rpc_schema)
+    };
+
     Ok(SerializableSystem {
         subsystems,
         query_interception_map,
@@ -115,5 +124,6 @@ pub async fn build(
         trusted_documents,
         declaration_doc_comments: typechecked_system.declaration_doc_comments,
         schema_profiles,
+        rpc_schema,
     })
 }

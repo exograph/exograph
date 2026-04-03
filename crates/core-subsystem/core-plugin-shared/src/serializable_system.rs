@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use rpc_introspection::RpcSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{profile::SchemaProfiles, trusted_documents::TrustedDocuments};
@@ -21,12 +22,13 @@ const PREFIX_TAG_LEN: usize = PREFIX_TAG.len();
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableSystem {
-    pub subsystems: Vec<SerializableSubsystem>, // [Postgres, Deno, ...] each with graphql and/or rest
+    pub subsystems: Vec<SerializableSubsystem>, // [Postgres, Deno, ...] each with graphql and/or rpc
     pub query_interception_map: InterceptionMap,
     pub mutation_interception_map: InterceptionMap,
     pub trusted_documents: TrustedDocuments,
     pub declaration_doc_comments: Option<String>,
     pub schema_profiles: Option<SchemaProfiles>,
+    pub rpc_schema: Option<RpcSchema>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -203,6 +205,7 @@ mod test {
             }],
             declaration_doc_comments: None,
             schema_profiles: None,
+            rpc_schema: None,
         }
     }
 

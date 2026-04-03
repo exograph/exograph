@@ -17,6 +17,7 @@ core-router = { path = "../core-subsystem/core-router" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
+rpc-introspection = { path = "../rpc-introspection" }
 exo-env = { path = "../../libs/exo-env" }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]

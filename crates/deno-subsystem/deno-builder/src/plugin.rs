@@ -74,6 +74,10 @@ impl SubsystemBuilder for DenoSubsystemBuilder {
             return Ok(None);
         };
 
+        // Build the RPC schema from the module system before serializing
+        let rpc_schema_with_mapping =
+            subsystem_model_util::rpc_schema_builder::build_rpc_schema(&module_system.underlying);
+
         // Serialize as ModuleSubsystem for RPC (no GraphQL dependency)
         let rpc_bytes = module_system
             .underlying
@@ -90,6 +94,7 @@ impl SubsystemBuilder for DenoSubsystemBuilder {
             graphql: Some(graphql_subsystem),
             rpc: Some(RpcSubsystemBuild {
                 serialized_subsystem: SerializableRpcBytes(rpc_bytes),
+                schema: rpc_schema_with_mapping.schema,
             }),
             core: CoreSubsystemBuild {
                 serialized_subsystem: SerializableCoreBytes(vec![]),

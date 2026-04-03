@@ -17,6 +17,7 @@ use core_resolver::introspection::definition::schema::Schema;
 use core_resolver::plugin::SubsystemGraphQLResolver;
 use core_resolver::plugin::SubsystemRpcResolver;
 use core_resolver::system_rpc_resolver::SystemRpcResolver;
+use rpc_introspection::RpcSchema;
 
 #[cfg(not(target_family = "wasm"))]
 use mcp_router::McpRouter;
@@ -80,6 +81,7 @@ pub async fn create_system_router_from_system(
         trusted_documents,
         declaration_doc_comments,
         schema_profiles,
+        rpc_schema,
     ) = create_system_resolvers(system, static_loaders, env.clone()).await?;
 
     let query_interception_map = Arc::new(query_interception_map);
@@ -147,7 +149,12 @@ pub async fn create_system_router_from_system(
     };
 
     let rpc_resolver = SystemRpcResolver::new(rpc_resolvers, env.clone());
-    let rpc_router = RpcRouter::new(rpc_resolver, graphql_router.resolver(), env.clone());
+    let rpc_router = RpcRouter::new(
+        rpc_resolver,
+        graphql_router.resolver(),
+        rpc_schema,
+        env.clone(),
+    );
 
     #[cfg(not(target_family = "wasm"))]
     let mcp_router = create_mcp_router(
@@ -221,6 +228,7 @@ pub async fn create_system_resolvers(
         TrustedDocuments,
         Option<String>,
         Option<SchemaProfiles>,
+        Option<RpcSchema>,
     ),
     SystemLoadingError,
 > {
@@ -269,6 +277,7 @@ pub async fn create_system_resolvers(
         trusted_documents,
         declaration_doc_comments,
         schema_profiles,
+        rpc_schema,
     } = system;
 
     for subsystem in subsystems {
@@ -289,6 +298,7 @@ pub async fn create_system_resolvers(
         trusted_documents,
         declaration_doc_comments,
         schema_profiles,
+        rpc_schema,
     ))
 }
 
