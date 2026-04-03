@@ -62,8 +62,15 @@ impl CommandDefinition for SchemaCommandDefinition {
         let openrpc_document = OpenRpcDocument::new(OPENRPC_API_TITLE, OPENRPC_API_VERSION)
             .with_document(rpc_document);
 
-        let output: PathBuf = match get(matches, "output") {
-            Some(output) => output,
+        let output: PathBuf = match get::<PathBuf>(matches, "output") {
+            Some(output) => {
+                if let Some(parent) = output.parent()
+                    && !parent.as_os_str().is_empty()
+                {
+                    fs::create_dir_all(parent)?;
+                }
+                output
+            }
             None => {
                 fs::create_dir_all("generated")?;
                 Path::new("generated/rpc-schema.json").to_path_buf()
