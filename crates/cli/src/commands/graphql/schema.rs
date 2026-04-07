@@ -12,15 +12,10 @@ use async_trait::async_trait;
 use clap::{Arg, Command, ValueEnum, builder::PossibleValue};
 use exo_env::Environment;
 
-use std::{
-    fs::{self, File},
-    io::Write,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{fs::File, io::Write, path::PathBuf, sync::Arc};
 
 use crate::commands::{
-    command::{CommandDefinition, default_model_file, get, output_arg},
+    command::{CommandDefinition, default_model_file, get, output_arg, resolve_output_path},
     schema::util::create_system,
     util::use_ir_arg,
 };
@@ -67,31 +62,18 @@ impl CommandDefinition for SchemaCommandDefinition {
             None => SchemaFormat::Graphql,
         };
 
+        let default_filename = match format {
+            SchemaFormat::Json => "schema.json",
+            SchemaFormat::Graphql => "schema.graphql",
+        };
+        let output = resolve_output_path(matches, default_filename)?;
+
         match format {
             SchemaFormat::Json => {
-                let output: PathBuf = match get(matches, "output") {
-                    Some(output) => output,
-                    None => {
-                        fs::create_dir_all("generated")?;
-
-                        Path::new("generated/schema.json").to_path_buf()
-                    }
-                };
-
                 serde_json::to_writer_pretty(&mut File::create(output)?, &introspection_result)?;
             }
             SchemaFormat::Graphql => {
-                let output: PathBuf = match get(matches, "output") {
-                    Some(output) => output,
-                    None => {
-                        fs::create_dir_all("generated")?;
-
-                        Path::new("generated/schema.graphql").to_path_buf()
-                    }
-                };
-
                 let schema_string = introspection_util::schema_sdl(introspection_result).await?;
-
                 File::create(output)?.write_all(schema_string.as_bytes())?;
             }
         }

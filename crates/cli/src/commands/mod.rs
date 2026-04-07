@@ -16,6 +16,7 @@ pub(crate) mod dev;
 pub(crate) mod graphql;
 pub(crate) mod new;
 pub(crate) mod playground;
+pub(crate) mod reflect;
 pub(crate) mod rpc;
 pub(crate) mod schema;
 pub(crate) mod test;

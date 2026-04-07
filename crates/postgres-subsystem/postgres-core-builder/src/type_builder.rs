@@ -49,7 +49,9 @@ use exo_sql_pg::{
 use postgres_core_model::{
     access::{Access, DatabaseAccessPrimitiveExpression, UpdateAccessExpression},
     aggregate::{AggregateField, AggregateFieldType},
-    projection::{PROJECTION_BASIC, PROJECTION_PK, ProjectionElement, ResolvedProjection},
+    projection::{
+        PROJECTION_BASIC, PROJECTION_PK, ProjectionElement, ResolvedProjection, merge_element,
+    },
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
     types::{EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType, TypeIndex},
     vector_distance::{VectorDistanceField, VectorDistanceType},
@@ -1042,10 +1044,12 @@ fn expand_type_projections(
                 Ok(elements) => {
                     if let Some(existing) = projections.iter_mut().find(|p| p.name == *name) {
                         existing.elements = elements;
+                        existing.resolved_elements = vec![]; // recomputed below
                     } else {
                         projections.push(ResolvedProjection {
                             name: name.clone(),
                             elements,
+                            resolved_elements: vec![], // computed below
                         });
                     }
                     false // resolved — remove from remaining
@@ -1064,6 +1068,16 @@ fn expand_type_projections(
         }
     }
 
+    // Precompute resolved_elements for all projections that have SelfProjection refs.
+    // Built-in projections (pk, basic) already have resolved_elements == elements.
+    for i in 0..projections.len() {
+        if projections[i].resolved_elements.is_empty() {
+            let resolved =
+                ResolvedProjection::resolve_elements(&projections[i].elements, &projections);
+            projections[i].resolved_elements = resolved;
+        }
+    }
+
     let existing_type = &mut building.entity_types[existing_type_id];
     existing_type.projections = projections;
 
@@ -1072,22 +1086,24 @@ fn expand_type_projections(
 
 /// Built-in `pk` projection: all `@pk` scalar fields.
 fn compute_pk_projection(entity_type: &EntityType) -> ResolvedProjection {
-    let elements = entity_type
+    let elements: Vec<ProjectionElement> = entity_type
         .fields
         .iter()
         .filter(|f| f.relation.is_pk())
         .map(|f| ProjectionElement::ScalarField(f.name.clone()))
         .collect();
 
+    // pk and basic have no SelfProjection refs, so resolved_elements == elements
     ResolvedProjection {
         name: PROJECTION_PK.to_string(),
+        resolved_elements: elements.clone(),
         elements,
     }
 }
 
 /// Built-in `basic` projection: all scalar fields + ManyToOne relations as `/pk`.
 fn compute_basic_projection(entity_type: &EntityType) -> ResolvedProjection {
-    let elements = entity_type
+    let elements: Vec<ProjectionElement> = entity_type
         .fields
         .iter()
         .filter_map(|f| match &f.relation {
@@ -1103,6 +1119,7 @@ fn compute_basic_projection(entity_type: &EntityType) -> ResolvedProjection {
 
     ResolvedProjection {
         name: PROJECTION_BASIC.to_string(),
+        resolved_elements: elements.clone(),
         elements,
     }
 }
@@ -1125,14 +1142,14 @@ fn resolve_projection_expr(
             Ok(vec![ProjectionElement::ScalarField(name.clone())])
         }
         AstProjectionExpr::SelfProjection(name, _) => {
-            // Look up the named projection on this type
-            let projection = known_projections.iter().find(|p| p.name == *name).ok_or(
-                ModelBuildingError::Generic(format!(
+            // Validate the referenced projection exists
+            if !known_projections.iter().any(|p| p.name == *name) {
+                return Err(ModelBuildingError::Generic(format!(
                     "Unknown projection `/{name}` for type `{}`",
                     entity_type.name
-                )),
-            )?;
-            Ok(projection.elements.clone())
+                )));
+            }
+            Ok(vec![ProjectionElement::SelfProjection(name.clone())])
         }
         AstProjectionExpr::RelationProjection(relation_name, projection_name, _) => {
             // Validate relation field exists
@@ -1152,38 +1169,8 @@ fn resolve_projection_expr(
 
             for elem_expr in elements {
                 let resolved = resolve_projection_expr(elem_expr, known_projections, entity_type)?;
-
                 for element in resolved {
-                    match &element {
-                        ProjectionElement::ScalarField(name) => {
-                            if !all_elements.iter().any(
-                                |e| matches!(e, ProjectionElement::ScalarField(n) if n == name),
-                            ) {
-                                all_elements.push(element);
-                            }
-                        }
-                        ProjectionElement::RelationProjection {
-                            relation_field_name,
-                            projection_names: new_names,
-                        } => {
-                            // Merge projection names for the same relation
-                            // e.g., /basic (includes venue/pk) + venue/basic → venue with [pk, basic]
-                            if let Some(ProjectionElement::RelationProjection {
-                                projection_names: existing_names,
-                                ..
-                            }) = all_elements.iter_mut().find(|e| {
-                                matches!(e, ProjectionElement::RelationProjection { relation_field_name: n, .. } if n == relation_field_name)
-                            }) {
-                                for name in new_names {
-                                    if !existing_names.contains(name) {
-                                        existing_names.push(name.clone());
-                                    }
-                                }
-                            } else {
-                                all_elements.push(element);
-                            }
-                        }
-                    }
+                    merge_element(&mut all_elements, element);
                 }
             }
 

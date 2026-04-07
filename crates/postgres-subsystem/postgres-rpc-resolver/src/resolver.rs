@@ -36,9 +36,7 @@ use exo_sql_pg_connect::PgBackend;
 use postgres_core_model::access::{
     DatabaseAccessPrimitiveExpression, PrecheckAccessPrimitiveExpression,
 };
-use postgres_core_model::projection::{
-    PROJECTION_BASIC, PROJECTION_PK, ProjectionElement, ResolvedProjection,
-};
+use postgres_core_model::projection::{PROJECTION_BASIC, PROJECTION_PK, ProjectionElement};
 use postgres_core_model::relation::PostgresRelation;
 use postgres_core_model::relation::{ManyToOneRelation, OneToManyRelation, RelationCardinality};
 use postgres_core_model::types::{EntityType, PostgresField};
@@ -320,11 +318,21 @@ async fn compute_select<'a>(
         ))
     })?;
 
-    let field_access_predicate =
-        check_projection_access(entity_type, projection, request_context, subsystem).await?;
+    let field_access_predicate = check_projection_access(
+        entity_type,
+        &projection.resolved_elements,
+        request_context,
+        subsystem,
+    )
+    .await?;
 
-    let elements =
-        compute_projection_elements(entity_type, projection, request_context, subsystem).await?;
+    let elements = compute_projection_elements(
+        entity_type,
+        &projection.resolved_elements,
+        request_context,
+        subsystem,
+    )
+    .await?;
 
     let selection = Selection::Json(elements, selection_cardinality);
 
@@ -343,19 +351,20 @@ async fn compute_select<'a>(
 /// Returns a combined access predicate from relation fields to be ANDed into the parent WHERE clause.
 async fn check_projection_access<'a>(
     entity_type: &'a EntityType,
-    projection: &'a ResolvedProjection,
+    resolved_elements: &'a [ProjectionElement],
     request_context: &'a RequestContext<'a>,
     subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgAbstractPredicate, SubsystemRpcError> {
     let mut combined = PgAbstractPredicate::True;
 
-    for element in &projection.elements {
+    for element in resolved_elements {
         let field_name = match element {
             ProjectionElement::ScalarField(name) => name,
             ProjectionElement::RelationProjection {
                 relation_field_name,
                 ..
             } => relation_field_name,
+            ProjectionElement::SelfProjection(_) => continue,
         };
 
         let Some(field) = entity_type.field_by_name(field_name) else {
@@ -384,6 +393,7 @@ async fn check_projection_access<'a>(
                 }
                 combined = PgAbstractPredicate::and(combined, field_access_predicate);
             }
+            ProjectionElement::SelfProjection(_) => {}
         }
     }
 
@@ -394,7 +404,7 @@ async fn check_projection_access<'a>(
 /// Access control must be checked separately via `check_projection_access`.
 fn compute_projection_elements<'a>(
     entity_type: &'a EntityType,
-    projection: &'a ResolvedProjection,
+    resolved_elements: &'a [ProjectionElement],
     request_context: &'a RequestContext<'a>,
     subsystem: &'a PostgresRpcSubsystem,
 ) -> std::pin::Pin<
@@ -407,7 +417,7 @@ fn compute_projection_elements<'a>(
     Box::pin(async move {
         let mut elements = Vec::new();
 
-        for element in &projection.elements {
+        for element in resolved_elements {
             match element {
                 ProjectionElement::ScalarField(field_name) => {
                     let Some(field) = entity_type.field_by_name(field_name) else {
@@ -474,6 +484,7 @@ fn compute_projection_elements<'a>(
                         _ => {}
                     }
                 }
+                ProjectionElement::SelfProjection(_) => {}
             }
         }
 
@@ -514,13 +525,22 @@ async fn compute_nested_select<'a>(
                 ))
             })?;
 
-        let field_access =
-            check_projection_access(foreign_entity, projection, request_context, subsystem).await?;
+        let field_access = check_projection_access(
+            foreign_entity,
+            &projection.resolved_elements,
+            request_context,
+            subsystem,
+        )
+        .await?;
         combined_field_access = PgAbstractPredicate::and(combined_field_access, field_access);
 
-        let elements =
-            compute_projection_elements(foreign_entity, projection, request_context, subsystem)
-                .await?;
+        let elements = compute_projection_elements(
+            foreign_entity,
+            &projection.resolved_elements,
+            request_context,
+            subsystem,
+        )
+        .await?;
 
         // Deduplicate: only add elements not already present (by alias name)
         for elem in elements {

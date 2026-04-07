@@ -240,7 +240,7 @@ fn merge_projections(entity_type: &EntityType, projection_names: &[String]) -> R
                 )
             });
 
-        for element in &projection.elements {
+        for element in &projection.resolved_elements {
             match element {
                 ProjectionElement::ScalarField(name) => {
                     if seen_scalars.insert(name.clone()) {
@@ -256,6 +256,7 @@ fn merge_projections(entity_type: &EntityType, projection_names: &[String]) -> R
                         .or_default()
                         .extend(nested.iter().cloned());
                 }
+                ProjectionElement::SelfProjection(_) => {}
             }
         }
     }
@@ -270,6 +271,7 @@ fn merge_projections(entity_type: &EntityType, projection_names: &[String]) -> R
 
     ResolvedProjection {
         name: projection_names.join("_"),
+        resolved_elements: merged_elements.clone(),
         elements: merged_elements,
     }
 }
@@ -294,7 +296,7 @@ fn ensure_projection_type_added(
         obj_type = obj_type.with_description(doc);
     }
 
-    for element in &projection.elements {
+    for element in &projection.resolved_elements {
         match element {
             ProjectionElement::ScalarField(field_name) => {
                 if let Some(field) = entity_type.field_by_name(field_name) {
@@ -373,6 +375,7 @@ fn ensure_projection_type_added(
                     }
                 }
             }
+            ProjectionElement::SelfProjection(_) => {}
         }
     }
 
