@@ -14,7 +14,12 @@ const config: Config = {
   projectName: 'exograph', // Usually your repo name.
 
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
+
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+    },
+  },
 
   staticDirectories: ['docs/static', 'static'],
 
