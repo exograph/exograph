@@ -1044,6 +1044,7 @@ fn expand_type_projections(
                 Ok(elements) => {
                     if let Some(existing) = projections.iter_mut().find(|p| p.name == *name) {
                         existing.elements = elements;
+                        existing.resolved_elements = vec![]; // recomputed below
                     } else {
                         projections.push(ResolvedProjection {
                             name: name.clone(),
