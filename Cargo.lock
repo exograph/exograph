@@ -1389,6 +1389,7 @@ dependencies = [
  "clap",
  "colored",
  "common",
+ "core-model",
  "core-model-builder",
  "core-plugin-interface",
  "core-plugin-shared",

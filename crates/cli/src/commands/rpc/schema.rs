@@ -12,16 +12,12 @@ use async_trait::async_trait;
 use clap::Command;
 use exo_env::Environment;
 
-use std::{
-    fs::{self, File},
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{fs::File, path::PathBuf, sync::Arc};
 
 use rpc_introspection::{OpenRpcDocument, SchemaGeneration, to_rpc_document};
 
 use crate::commands::{
-    command::{CommandDefinition, default_model_file, get, output_arg},
+    command::{CommandDefinition, default_model_file, output_arg, resolve_output_path},
     schema::util::create_system,
     util::use_ir_arg,
 };
@@ -62,20 +58,7 @@ impl CommandDefinition for SchemaCommandDefinition {
         let openrpc_document = OpenRpcDocument::new(OPENRPC_API_TITLE, OPENRPC_API_VERSION)
             .with_document(rpc_document);
 
-        let output: PathBuf = match get::<PathBuf>(matches, "output") {
-            Some(output) => {
-                if let Some(parent) = output.parent()
-                    && !parent.as_os_str().is_empty()
-                {
-                    fs::create_dir_all(parent)?;
-                }
-                output
-            }
-            None => {
-                fs::create_dir_all("generated")?;
-                Path::new("generated/rpc-schema.json").to_path_buf()
-            }
-        };
+        let output = resolve_output_path(matches, "rpc-schema.json")?;
 
         serde_json::to_writer_pretty(&mut File::create(&output)?, &openrpc_document)?;
 

@@ -208,6 +208,25 @@ pub fn output_arg() -> Arg {
         .num_args(1)
 }
 
+/// Resolve the output file path from `--output` or use a default under `generated/`.
+/// Creates parent directories as needed.
+pub fn resolve_output_path(matches: &ArgMatches, default_filename: &str) -> Result<PathBuf> {
+    match get::<PathBuf>(matches, "output") {
+        Some(path) => {
+            if let Some(parent) = path.parent()
+                && !parent.as_os_str().is_empty()
+            {
+                std::fs::create_dir_all(parent)?;
+            }
+            Ok(path)
+        }
+        None => {
+            std::fs::create_dir_all("generated")?;
+            Ok(Path::new("generated").join(default_filename))
+        }
+    }
+}
+
 pub fn migration_scope_arg() -> Arg {
     Arg::new("scope")
         .help("The migration/import scope")

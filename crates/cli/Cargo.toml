@@ -46,6 +46,7 @@ builder = { path = "../builder" }
 testing = { path = "../testing" }
 common = { path = "../common" }
 introspection-util = { path = "../introspection-util" }
+core-model = { path = "../core-subsystem/core-model" }
 core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
 postgres-core-model = { path = "../postgres-subsystem/postgres-core-model" }
 postgres-core-builder = { path = "../postgres-subsystem/postgres-core-builder" }
