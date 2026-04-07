@@ -46,8 +46,8 @@
     "@types/node": "25.3.5",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@typescript-eslint/eslint-plugin": "8.57.2",
-    "@typescript-eslint/parser": "8.57.2",
+    "@typescript-eslint/eslint-plugin": "^8.58.0",
+    "@typescript-eslint/parser": "^8.58.0",
     "autoprefixer": "^10.4.27",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
@@ -58,7 +58,7 @@
     "postcss": "^8.5.8",
     "postcss-cli": "^11.0.1",
     "tailwindcss": "^4.2.1",
-    "typescript": "5.9.3",
+    "typescript": "^6.0.2",
     "vite-plugin-monaco-editor": "^1.1.0"
   }
 }

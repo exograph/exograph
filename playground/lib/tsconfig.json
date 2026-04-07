@@ -4,6 +4,7 @@
     "module": "ESNext", 
     "incremental": true,
     "declaration": true,
+    "rootDir": "src",
     "outDir": "dist",
     "esModuleInterop": true, 
     "skipLibCheck": true,
