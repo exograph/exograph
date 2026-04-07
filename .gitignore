@@ -8,3 +8,4 @@ Session.vim*
 tags
 *.swp
 .playwright-mcp
+*.tsbuildinfo
