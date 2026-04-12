@@ -121,7 +121,7 @@ indexmap = "2"
 insta = { version = "1.47.2", features = ["redactions", "yaml"] }
 jsonwebtoken = "10.3.0"
 maybe-owned = "0.3.4"
-rand = "0.10.0"
+rand = "0.10.1"
 regex = "1"
 reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
