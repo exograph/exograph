@@ -542,39 +542,37 @@ fn resolve_module_types(
             Type::Primitive(pt) => {
                 resolved_module_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
             }
-            Type::Composite(ct) if is_relevant(typ) => {
-                if ct.kind == AstModelKind::Type {
-                    let access = build_access(ct.annotations.get("access"));
+            Type::Composite(ct) if ct.kind == AstModelKind::Type && is_relevant(typ) => {
+                let access = build_access(ct.annotations.get("access"));
 
-                    let fragment_fields = compute_fragment_fields(ct, errors, typechecked_system);
+                let fragment_fields = compute_fragment_fields(ct, errors, typechecked_system);
 
-                    let resolved_fields = ct
-                        .fields
-                        .iter()
-                        .chain(fragment_fields.iter().cloned())
-                        .map(|field| ResolvedField {
-                            name: field.name.clone(),
-                            typ: resolve_field_type(
-                                &field.typ.to_typ(&typechecked_system.types),
-                                field.typ.module_name(),
-                                &typechecked_system.types,
-                            ),
-                            default_value: None,
-                            doc_comments: field.doc_comments.clone(),
-                        })
-                        .collect();
+                let resolved_fields = ct
+                    .fields
+                    .iter()
+                    .chain(fragment_fields.iter().cloned())
+                    .map(|field| ResolvedField {
+                        name: field.name.clone(),
+                        typ: resolve_field_type(
+                            &field.typ.to_typ(&typechecked_system.types),
+                            field.typ.module_name(),
+                            &typechecked_system.types,
+                        ),
+                        default_value: None,
+                        doc_comments: field.doc_comments.clone(),
+                    })
+                    .collect();
 
-                    resolved_module_types.add(
-                        &ct.name,
-                        ResolvedType::Composite(ResolvedCompositeType {
-                            name: ct.name.clone(),
-                            fields: resolved_fields,
-                            is_input: input_types.contains(&ct.name),
-                            access,
-                            doc_comments: ct.doc_comments.clone(),
-                        }),
-                    );
-                }
+                resolved_module_types.add(
+                    &ct.name,
+                    ResolvedType::Composite(ResolvedCompositeType {
+                        name: ct.name.clone(),
+                        fields: resolved_fields,
+                        is_input: input_types.contains(&ct.name),
+                        access,
+                        doc_comments: ct.doc_comments.clone(),
+                    }),
+                );
             }
             _ => {}
         }

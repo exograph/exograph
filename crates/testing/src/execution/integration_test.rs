@@ -437,7 +437,7 @@ async fn assert_invariant_results(
         ));
     }
 
-    for (pre_result, post_result) in pre_results.into_iter().zip(post_results.into_iter()) {
+    for (pre_result, post_result) in pre_results.into_iter().zip(post_results) {
         if pre_result.get("errors").is_some() || post_result.get("errors").is_some() {
             println!("pre_result: {:?}", pre_result);
             println!("post_result: {:?}", post_result);
