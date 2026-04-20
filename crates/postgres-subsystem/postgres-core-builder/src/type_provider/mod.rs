@@ -164,7 +164,7 @@ pub fn validate_hint_annotations(
 /// Collects all hint annotations from all registered type hint providers
 pub fn collect_all_hint_annotations() -> Vec<(&'static str, AnnotationSpec)> {
     PRIMITIVE_TYPE_PROVIDER_REGISTRY
-        .iter()
-        .flat_map(|(_, provider)| provider.applicable_hint_annotations())
+        .values()
+        .flat_map(|provider| provider.applicable_hint_annotations())
         .collect()
 }

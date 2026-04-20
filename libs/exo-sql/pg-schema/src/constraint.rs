@@ -139,7 +139,7 @@ impl Constraints {
                     constraint_name: conname.to_string(),
                     column_pairs: self_columns
                         .into_iter()
-                        .zip(foreign_columns.into_iter())
+                        .zip(foreign_columns)
                         .map(
                             |(self_column, foreign_column)| ForeignKeyConstraintColumnPair {
                                 self_column,
