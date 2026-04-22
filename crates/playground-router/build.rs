@@ -43,7 +43,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             if !std::process::Command::new(npm.clone())
                 .arg("ci")
-                .arg("--legacy-peer-deps")
                 .current_dir(sub_folder)
                 .spawn()?
                 .wait()?

@@ -57,5 +57,12 @@
     "tailwindcss": "^4.2.1",
     "typescript": "^6.0.2",
     "vite-plugin-monaco-editor": "^1.1.0"
+  },
+  "overrides": {
+    "graphiql-explorer": {
+      "react": "$react",
+      "react-dom": "$react-dom",
+      "graphql": "$graphql"
+    }
   }
 }
