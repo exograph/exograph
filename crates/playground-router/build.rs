@@ -53,6 +53,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             if !std::process::Command::new(npm.clone())
                 .arg("run")
+                .arg("lint")
+                .current_dir(sub_folder)
+                .spawn()?
+                .wait()?
+                .success()
+            {
+                panic!("Failed to lint playground");
+            }
+
+            if !std::process::Command::new(npm.clone())
+                .arg("run")
                 .arg("build")
                 .current_dir(sub_folder)
                 .spawn()?

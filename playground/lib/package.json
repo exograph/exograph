@@ -38,8 +38,8 @@
     "remark-gfm": "^4.0.1"
   },
   "peerDependencies": {
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react": "19.2.5",
+    "react-dom": "19.2.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",
