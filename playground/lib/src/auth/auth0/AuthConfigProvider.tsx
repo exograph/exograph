@@ -1,7 +1,7 @@
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
-import { AuthContext } from "../AuthContext";
+import { useAuthContext } from "../AuthContext";
 import { Auth0Config } from "./Auth0Config";
 
 type AuthConfig = {
@@ -49,7 +49,7 @@ export function AuthConfigProvider(props: { children: React.ReactNode }) {
 function ContextInitializer(props: { children: React.ReactNode }) {
   const { isAuthenticated, getAccessTokenSilently, user, logout } = useAuth0();
   const { setTokenFn, setIsSignedIn, setUserInfo, setSignOutFn } =
-    useContext(AuthContext);
+    useAuthContext();
 
   const signOutFn = useCallback(async () => {
     logout({ openUrl: false });
@@ -72,11 +72,10 @@ function ContextInitializer(props: { children: React.ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    setTokenFn &&
-      setTokenFn(isAuthenticated ? () => getAccessTokenSilently() : undefined);
-    setIsSignedIn && setIsSignedIn(isAuthenticated);
-    setUserInfo && setUserInfo(getUserInfo());
-    setSignOutFn && setSignOutFn(() => signOutFn());
+    setTokenFn(isAuthenticated ? () => getAccessTokenSilently() : undefined);
+    setIsSignedIn(isAuthenticated);
+    setUserInfo(getUserInfo());
+    setSignOutFn(() => signOutFn());
   }, [
     isAuthenticated,
     setIsSignedIn,

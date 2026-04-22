@@ -107,6 +107,9 @@ export function ModelProvider({ children }: ModelProviderProps) {
 
   const availableModels = useMemo((): ModelOption[] => {
     return modelAPI.getAvailableModels(getApiKey);
+    // updateCounter is intentional: it forces re-evaluation whenever
+    // modelAPI's internal state changes.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [modelAPI, getApiKey, updateCounter]);
 
   const value: ModelContextValue = useMemo(

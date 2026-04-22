@@ -1,4 +1,4 @@
-import React, { useCallback, useState, createContext } from "react";
+import React, { useCallback, useContext, useState, createContext } from "react";
 import { ClerkAuthPlugin } from "./clerk";
 import { SecretAuthPlugin } from "./secret";
 import { Auth0AuthPlugin } from "./auth0";
@@ -19,21 +19,29 @@ type AuthContextType<C> = {
   plugin: AuthPlugin<C>;
 
   getTokenFn?: GetToken;
-  setTokenFn?: (getToken: GetToken | undefined) => void;
+  setTokenFn: (getToken: GetToken | undefined) => void;
 
   getSignOutFn?: () => Promise<void>;
-  setSignOutFn?: (signOut: () => Promise<void>) => void;
+  setSignOutFn: (signOut: () => Promise<void>) => void;
 
   isSignedIn?: boolean;
-  setIsSignedIn?: (isSignedIn?: boolean) => void;
+  setIsSignedIn: (isSignedIn?: boolean) => void;
 
   userInfo?: string;
-  setUserInfo?: (userInfo?: string) => void;
+  setUserInfo: (userInfo?: string) => void;
 };
 
-export const AuthContext = createContext<AuthContextType<any>>(
-  null as any as AuthContextType<any>
+export const AuthContext = createContext<AuthContextType<unknown> | undefined>(
+  undefined
 );
+
+export function useAuthContext(): AuthContextType<unknown> {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error("useAuthContext must be used within AuthContextProvider");
+  }
+  return ctx;
+}
 
 export function AuthContextProvider({
   oidcUrl,
@@ -57,7 +65,7 @@ export function AuthContextProvider({
         ? "clerk"
         : "secret";
 
-  const plugin: AuthPlugin<any> =
+  const plugin: AuthPlugin<unknown> =
     authenticatorType === "clerk"
       ? new ClerkAuthPlugin()
       : authenticatorType === "auth0"

@@ -1,10 +1,10 @@
-import { forwardRef, useContext, useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 
-import { AuthContext } from "./AuthContext";
+import { useAuthContext } from "./AuthContext";
 
 export function AuthToolbarButton() {
   const [showAuthPanel, setShowAuthPanel] = useState(false);
-  const { plugin, isSignedIn, userInfo } = useContext(AuthContext);
+  const { plugin, isSignedIn, userInfo } = useAuthContext();
   const AuthConfigProvider = plugin.getAuthConfigProvider();
 
   const getUserIcon = () => {
@@ -61,18 +61,19 @@ export function AuthPanel(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { isSignedIn } = useContext(AuthContext);
-  const signoutRef = { current: null as HTMLButtonElement | null };
+  const { isSignedIn } = useAuthContext();
+  const signoutRef = useRef<HTMLButtonElement | null>(null);
 
+  const { onOpenChange } = props;
   useEffect(() => {
     const handleMouseDown = (e: MouseEvent) => {
       if (e.target && signoutRef.current && e.target !== signoutRef.current) {
-        props.onOpenChange(false);
+        onOpenChange(false);
       }
     };
     document.addEventListener("mousedown", handleMouseDown);
     return () => document.removeEventListener("mousedown", handleMouseDown);
-  }, [props, signoutRef]);
+  }, [onOpenChange]);
 
   if (!props.open) {
     return null;
@@ -94,7 +95,7 @@ function SignInModal(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { plugin } = useContext(AuthContext);
+  const { plugin } = useAuthContext();
   const SignInPanel = plugin.getSignInPanel();
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -157,18 +158,18 @@ function SignInModal(props: {
 
 const SignOutButton = forwardRef<HTMLButtonElement, { onSignOut: () => void }>(
   (props, ref) => {
-    const { getSignOutFn } = useContext(AuthContext);
+    const { getSignOutFn } = useAuthContext();
 
     return (
       <button
         ref={ref}
         className="absolute right-0 top-10 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors z-50 shadow-lg border border-blue-700"
         onClick={() => {
-          getSignOutFn && getSignOutFn().then(props.onSignOut);
+          getSignOutFn?.().then(props.onSignOut);
         }}
       >
         Sign Out
       </button>
     );
-  }
+  },
 );

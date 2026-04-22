@@ -6,9 +6,7 @@ import { AuthConfigProvider } from "./AuthConfigProvider";
 import { JwtSecret } from "./SecretConfig";
 
 export class SecretAuthPlugin implements AuthPlugin<JwtSecret | undefined> {
-  constructor(readonly config: JwtSecret | undefined) {
-    this.config = config;
-  }
+  constructor(readonly config: JwtSecret | undefined) {}
 
   getAuthConfigProvider(): React.ComponentType<{ children: ReactNode }> {
     return AuthConfigProvider;

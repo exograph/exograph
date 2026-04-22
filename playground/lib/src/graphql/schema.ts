@@ -21,24 +21,16 @@ export async function fetchSchema(
 
     if (fetcherResult?.data && "__schema" in fetcherResult.data) {
       return buildClientSchema(fetcherResult.data as IntrospectionQuery);
-    } else {
-      if (typeof fetcherResult === "string") {
-        return "InvalidSchema";
-      } else {
-        // When we have no queries (which GraphQL spec doesn't allow, but can happen in an Exograph model), we get this error message.
-        // We use this to print an informative message to the user.
-        const noQueryMessage = (fetcherResult as any).errors?.find((error: any) => {
-          return error.message === "No such operation 'Query'";
-        });
-
-        if (noQueryMessage) {
-          return "EmptySchema";
-        } else {
-          return "InvalidSchema"
-        }
-      }
     }
-  } catch (e) {
+    if (typeof fetcherResult === "string") {
+      return "InvalidSchema";
+    }
+    // When we have no queries (which GraphQL spec doesn't allow, but can happen in an Exograph model), we get this error message.
+    const noQueryMessage = fetcherResult.errors?.find(
+      (error: { message: string }) => error.message === "No such operation 'Query'"
+    );
+    return noQueryMessage ? "EmptySchema" : "InvalidSchema";
+  } catch {
     return "NetworkError";
   }
 }

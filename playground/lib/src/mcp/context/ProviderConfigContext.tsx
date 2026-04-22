@@ -59,6 +59,9 @@ export function ProviderConfigProvider({
       isStoringInLocalStorage: (provider) =>
         providerAPI.isStoringInLocalStorage(provider),
     }),
+    // updateCounter is intentional: it forces a new context value whenever
+    // providerAPI's internal state changes, so consumers re-read via the closures.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
     [providerAPI, updateCounter]
   );
 
