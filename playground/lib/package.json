@@ -55,7 +55,7 @@
     "postcss": "^8.5.10",
     "postcss-cli": "^11.0.1",
     "tailwindcss": "^4.2.1",
-    "typescript": "^6.0.2",
+    "typescript": "^6.0.3",
     "vite-plugin-monaco-editor": "^1.1.0"
   }
 }
