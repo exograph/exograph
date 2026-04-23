@@ -53,9 +53,6 @@ updates:
           - "react-dom"
           - "@types/react"
           - "@types/react-dom"
-      typescript-eslint:
-        patterns:
-          - "@typescript-eslint/*"
       css-tooling:
         patterns:
           - "tailwindcss"

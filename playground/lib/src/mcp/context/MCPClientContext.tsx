@@ -14,7 +14,7 @@ import {
   useState,
   ReactNode,
 } from "react";
-import { AuthContext } from "../../auth/AuthContext";
+import { useAuthContext } from "../../auth/AuthContext";
 import { JWTSource } from "../../auth/types";
 import {
   MCPConnectionManager,
@@ -34,7 +34,7 @@ export function MCPClientProvider({
   endpoint,
   auth,
 }: MCPClientProviderProps) {
-  const { getTokenFn } = useContext(AuthContext);
+  const { getTokenFn } = useAuthContext();
   const [connectionManager] = useState(() => new MCPConnectionManager());
   const [state, setState] = useState<MCPConnectionState>({
     type: "disconnected",

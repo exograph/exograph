@@ -60,7 +60,7 @@ export class ExographTransport implements Transport {
             }
 
             this.onmessage?.(responseData);
-          } catch (error) {
+          } catch {
             const parseError = new Error(
               `Failed to parse JSON response: ${result.text.substring(0, 100)}${result.text.length > 100 ? '...' : ''
               }`
@@ -90,7 +90,7 @@ export class ExographTransport implements Transport {
         if (isRequest) {
           // Preserve ToolError information by attaching it to the thrown error
           if (result.toolError) {
-            (result.error as any).toolError = result.toolError;
+            Object.assign(result.error, { toolError: result.toolError });
           }
           throw result.error;
         }

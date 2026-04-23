@@ -1,16 +1,18 @@
-// Make sure this file matches the PlaygroundConfig config in the playground-router crate
+// Make sure this shape matches the PlaygroundConfig in the playground-router crate
 
-export type PlaygroundConfig = {
-  playgroundHttpPath: string;
-  graphqlHttpPath: string;
-  mcpHttpPath?: string;
+interface Window {
+  exoConfig: {
+    playgroundHttpPath: string;
+    graphqlHttpPath: string;
+    mcpHttpPath?: string;
 
-  enableSchemaLiveUpdate: boolean;
+    enableSchemaLiveUpdate: boolean;
 
-  upstreamGraphQLEndpoint?: string;
+    upstreamGraphQLEndpoint?: string;
 
-  oidcUrl?: string;
+    oidcUrl?: string;
 
-  jwtSourceHeader?: string;
-  jwtSourceCookie?: string;
-};
+    jwtSourceHeader?: string;
+    jwtSourceCookie?: string;
+  };
+}

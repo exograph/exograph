@@ -15,8 +15,7 @@ import {
   Fetcher,
   createGraphiQLFetcher,
 } from "exograph-playground-lib";
-import { PlaygroundConfig } from "./config";
-let playgroundConfig = (window as any).exoConfig as PlaygroundConfig;
+let playgroundConfig = window.exoConfig;
 
 const urlFetcher: Fetcher = createGraphiQLFetcher({
   url: playgroundConfig.graphqlHttpPath,

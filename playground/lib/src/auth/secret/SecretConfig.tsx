@@ -4,10 +4,10 @@ const defaultClaims = `{
 }`;
 
 export class JwtSecret {
-  constructor(readonly value: string, readonly readOnly: boolean) {
-    this.value = value;
-    this.readOnly = readOnly;
-  }
+  constructor(
+    readonly value: string,
+    readonly readOnly: boolean,
+  ) {}
 
   static default(): JwtSecret {
     return new JwtSecret("", false);
@@ -15,10 +15,10 @@ export class JwtSecret {
 }
 
 export class SecretConfig {
-  constructor(readonly secret: JwtSecret, readonly claims: string) {
-    this.secret = secret;
-    this.claims = claims;
-  }
+  constructor(
+    readonly secret: JwtSecret,
+    readonly claims: string,
+  ) {}
 
   updated(value: string, claims: string): SecretConfig {
     return new SecretConfig(new JwtSecret(value, this.secret.readOnly), claims);
@@ -28,7 +28,7 @@ export class SecretConfig {
     return !!this.secret && !!this.claims;
   }
 
-  static loadConfig(secret: JwtSecret): SecretConfig {
+  static loadConfig(secret: JwtSecret | undefined): SecretConfig {
     return new SecretConfig(secret || JwtSecret.default(), defaultClaims);
   }
 }

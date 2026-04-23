@@ -3,7 +3,7 @@ import React, { useCallback, useContext, useEffect, useState } from "react";
 import { ClerkProvider, useAuth, useUser } from "@clerk/clerk-react";
 import { dark } from "@clerk/themes";
 
-import { AuthContext } from "../AuthContext";
+import { useAuthContext } from "../AuthContext";
 import { useTheme } from "../../util/theme";
 import { ClerkConfig } from "./ClerkConfig";
 
@@ -47,7 +47,7 @@ function ContextInitializer(props: { children: React.ReactNode }) {
   const { isSignedIn, user } = useUser();
   const { getToken, signOut } = useAuth();
   const { setTokenFn, setIsSignedIn, setUserInfo, setSignOutFn } =
-    useContext(AuthContext);
+    useAuthContext();
   const { config } = useContext(AuthConfigContext);
 
   const signOutFn = useCallback(async () => {
@@ -73,11 +73,10 @@ function ContextInitializer(props: { children: React.ReactNode }) {
   useEffect(() => {
     let templateId = config.templateId;
     const getTokenOptions = templateId ? { template: templateId } : undefined;
-    setTokenFn &&
-      setTokenFn(isSignedIn ? () => getToken(getTokenOptions) : undefined);
-    setIsSignedIn && setIsSignedIn(isSignedIn);
-    setUserInfo && setUserInfo(getUserInfo());
-    setSignOutFn && setSignOutFn(() => signOutFn());
+    setTokenFn(isSignedIn ? () => getToken(getTokenOptions) : undefined);
+    setIsSignedIn(isSignedIn);
+    setUserInfo(getUserInfo());
+    setSignOutFn(() => signOutFn());
   }, [
     config,
     getToken,

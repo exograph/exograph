@@ -43,12 +43,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             if !std::process::Command::new(npm.clone())
                 .arg("ci")
+                .arg("--legacy-peer-deps")
                 .current_dir(sub_folder)
                 .spawn()?
                 .wait()?
                 .success()
             {
                 panic!("Failed to install playground dependencies");
+            }
+
+            if !std::process::Command::new(npm.clone())
+                .arg("run")
+                .arg("lint")
+                .current_dir(sub_folder)
+                .spawn()?
+                .wait()?
+                .success()
+            {
+                panic!("Failed to lint playground");
             }
 
             if !std::process::Command::new(npm.clone())

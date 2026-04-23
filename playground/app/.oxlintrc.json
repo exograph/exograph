@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript"],
+  "ignorePatterns": ["dist/", "node_modules/"],
+  "options": {
+    "reportUnusedDisableDirectives": "error",
+    "maxWarnings": 0
+  },
+  "rules": {
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn",
+    "typescript/no-unused-vars": "warn",
+    "typescript/no-explicit-any": "warn"
+  }
+}

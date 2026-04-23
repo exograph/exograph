@@ -10,7 +10,6 @@
 import React, {
   useState,
   useRef,
-  useContext,
   useEffect,
   useCallback,
   useMemo,
@@ -24,7 +23,7 @@ import {
 } from "@graphiql/toolkit";
 import { GraphQLSchema } from "graphql";
 import { fetchSchema, SchemaError } from "./schema";
-import { AuthContext } from "../auth/AuthContext";
+import { useAuthContext } from "../auth/AuthContext";
 import { explorerPlugin } from "@graphiql/plugin-explorer";
 import { PlaygroundGraphQLProps as GraphiQLProps } from "./types";
 import { BasePlaygroundComponentProps } from "../util/component-types";
@@ -39,14 +38,14 @@ export interface GraphiQLPlaygroundProps extends BasePlaygroundComponentProps<Gr
 
 export function GraphiQLPlayground({ tab: graphql, auth }: GraphiQLPlaygroundProps) {
   const { fetcher } = graphql;
-  const { getTokenFn } = useContext(AuthContext);
+  const { getTokenFn } = useAuthContext();
 
   const dataFetcher: Fetcher = async (
     graphQLParams: FetcherParams,
     opts?: FetcherOpts
   ) => {
     // Add a special header (`_exo_playground`) to the request to indicate that it's coming from the playground
-    let additionalHeaders: Record<string, any> = {
+    let additionalHeaders: Record<string, string> = {
       _exo_playground: "true",
     };
 
@@ -71,7 +70,7 @@ export function GraphiQLPlayground({ tab: graphql, auth }: GraphiQLPlaygroundPro
     graphQLParams: FetcherParams,
     opts?: FetcherOpts
   ) => {
-    const additionalHeaders: Record<string, any> = {
+    const additionalHeaders: Record<string, string> = {
       _exo_operation_kind: "schema_query",
     };
 
@@ -118,7 +117,7 @@ function SchemaFetchingCore(
     } else {
       setSchema(fetchedSchema);
     }
-  }, [schema, setSchema, schemaFetcher, enableSchemaLiveUpdate]);
+  }, [setSchema, schemaFetcher, enableSchemaLiveUpdate]);
 
   const unrecoverableNetworkError =
     schema === "NetworkError" &&
@@ -151,7 +150,7 @@ function SchemaFetchingCore(
     }
     const intervalId = setInterval(fetchAndSetSchema, 2000);
     return () => clearInterval(intervalId);
-  }, [enableSchemaLiveUpdate, schema, fetchAndSetSchema]);
+  }, [enableSchemaLiveUpdate, unrecoverableNetworkError, fetchAndSetSchema]);
 
   let errorMessage = null;
 
