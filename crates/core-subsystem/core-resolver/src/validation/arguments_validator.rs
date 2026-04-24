@@ -131,13 +131,9 @@ impl<'a> ArgumentValidator<'a> {
                 Value::Variable(name) => {
                     let resolved_variable = self.variables.get(name);
                     match resolved_variable {
-                        Some(resolved_variable) => self.validate_argument(
-                            argument_definition,
-                            Some(&Positioned::new(
-                                resolved_variable.clone().into_value(),
-                                value.pos,
-                            )),
-                        ),
+                        Some(resolved_variable) => {
+                            self.validate_const(argument_definition, resolved_variable, value.pos)
+                        }
                         // Absent nullable variables are filtered out upstream
                         // and missing non-nullable variables are already
                         // rejected, so treat a miss here as an omitted
@@ -166,17 +162,34 @@ impl<'a> ArgumentValidator<'a> {
                     Some(self.validate_object_argument(argument_definition, object, value.pos))
                 }
             },
-            None => {
-                if argument_definition.ty.node.nullable {
-                    None
-                } else {
-                    Some(Err(ValidationError::RequiredArgumentNotFound(
-                        argument_definition.name.node.to_string(),
-                        self.field.pos,
-                    )))
+            // Per GraphQL spec 6.4.1: if no value is provided, use the
+            // argument's default value (if any); otherwise treat it as absent
+            // (nullable) or reject (non-nullable).
+            None => match &argument_definition.default_value {
+                Some(default_value) => {
+                    self.validate_const(argument_definition, &default_value.node, default_value.pos)
                 }
-            }
+                None if argument_definition.ty.node.nullable => None,
+                None => Some(Err(ValidationError::RequiredArgumentNotFound(
+                    argument_definition.name.node.to_string(),
+                    self.field.pos,
+                ))),
+            },
         }
+    }
+
+    /// Re-enter argument validation with a pre-resolved `ConstValue` (from a
+    /// variable binding or a default value).
+    fn validate_const(
+        &self,
+        argument_definition: &InputValueDefinition,
+        value: &ConstValue,
+        pos: Pos,
+    ) -> Option<Result<Val, ValidationError>> {
+        self.validate_argument(
+            argument_definition,
+            Some(&Positioned::new(value.clone().into_value(), pos)),
+        )
     }
 
     fn validate_null_argument(
