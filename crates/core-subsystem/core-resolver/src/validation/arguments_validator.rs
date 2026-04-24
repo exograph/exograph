@@ -138,10 +138,11 @@ impl<'a> ArgumentValidator<'a> {
                                 value.pos,
                             )),
                         ),
-                        None => Some(Err(ValidationError::VariableNotFound(
-                            name.to_string(),
-                            self.field.pos,
-                        ))),
+                        // Absent nullable variables are filtered out upstream
+                        // and missing non-nullable variables are already
+                        // rejected, so treat a miss here as an omitted
+                        // argument (spec 6.4.1).
+                        None => self.validate_argument(argument_definition, None),
                     }
                 }
                 Value::Null => Some(self.validate_null_argument(argument_definition, value.pos)),

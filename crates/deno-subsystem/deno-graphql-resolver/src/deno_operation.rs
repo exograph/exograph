@@ -195,7 +195,15 @@ pub async fn construct_arg_sequence<'a>(
                 // regular argument
                 Ok(Arg::Serde(val.clone()))
             } else {
-                Err(DenoExecutionError::InvalidArgument(arg.name.clone()))
+                // Per GraphQL spec 6.4.1 (Coercing Field Arguments), if a
+                // nullable argument with no provided value and no default is
+                // simply absent from the coerced argument values, it is not
+                // a field error. The argument validator already rejects
+                // missing non-nullable args, so anything missing here is
+                // optional. Since the Deno resolver is invoked with
+                // positional arguments, pass `null` to keep the argument
+                // positions aligned with the function signature.
+                Ok(Arg::Serde(serde_json::Value::Null))
             }
         })
         .collect::<Vec<Result<_, _>>>()

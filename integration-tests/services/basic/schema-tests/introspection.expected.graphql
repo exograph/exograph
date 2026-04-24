@@ -106,6 +106,7 @@ type Query {
   """
   foosAgg(where: FooFilter): FooAgg!
   getEnv(key: String!): String
+  greet(name: String): String!
   shimQuery: Int!
   todo(id: Int!): Todo!
   todos: Todos!

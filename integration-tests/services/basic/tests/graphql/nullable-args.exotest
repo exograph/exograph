@@ -1,0 +1,66 @@
+stages:
+    # Query: nullable argument provided
+    - operation: |
+        query {
+            greet(name: "Alice")
+        }
+      response: |
+        {
+            "data": {
+                "greet": "Hello, Alice!"
+            }
+        }
+
+    # Query: nullable argument provided via variable
+    - operation: |
+        query ($name: String) {
+            greet(name: $name)
+        }
+      variable: |
+        {
+            "name": "Alice"
+        }
+      response: |
+        {
+            "data": {
+                "greet": "Hello, Alice!"
+            }
+        }
+
+    # Query: nullable argument omitted (per GraphQL spec 6.4.1)
+    - operation: |
+        query {
+            greet
+        }
+      response: |
+        {
+            "data": {
+                "greet": "Hello, stranger!"
+            }
+        }
+
+    # Query: nullable argument explicitly null
+    - operation: |
+        query {
+            greet(name: null)
+        }
+      response: |
+        {
+            "data": {
+                "greet": "Hello, stranger!"
+            }
+        }
+
+    # Query: nullable argument omitted via variable
+    - operation: |
+        query ($name: String) {
+            greet(name: $name)
+        }
+      variable: |
+        {}
+      response: |
+        {
+            "data": {
+                "greet": "Hello, stranger!"
+            }
+        }

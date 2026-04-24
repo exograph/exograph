@@ -157,25 +157,48 @@ impl<'a> OperationValidator<'a> {
     ) -> Result<HashMap<Name, ConstValue>, ValidationError> {
         variable_definitions
             .into_iter()
-            .map(|variable_definition| {
-                let variable_name = variable_definition.node.name;
-                let variable_value = self.var_value(&variable_name)?;
-                Ok((variable_name.node, variable_value))
+            .filter_map(|vd| {
+                self.var_value(&vd.node)
+                    .map(|value| value.map(|v| (vd.node.name.node, v)))
+                    .transpose()
             })
             .collect()
     }
 
-    fn var_value(&self, name: &Positioned<Name>) -> Result<ConstValue, ValidationError> {
-        let resolved = self
+    /// Resolve a variable to its value.
+    ///
+    /// Per the GraphQL spec (October 2021, section 5.8.5), a nullable variable
+    /// that is not provided is treated as absent rather than as a validation
+    /// error. Returning `Ok(None)` here lets callers (such as the arguments
+    /// validator) apply the same "absent nullable" behavior as for omitted
+    /// arguments.
+    fn var_value(
+        &self,
+        variable_definition: &VariableDefinition,
+    ) -> Result<Option<ConstValue>, ValidationError> {
+        let name = &variable_definition.name;
+        let name_str = name.node.as_str();
+
+        let provided = self
             .variables
             .as_ref()
-            .and_then(|variables| variables.get(name.node.as_str()))
-            .ok_or_else(|| {
-                ValidationError::VariableNotFound(name.node.as_str().to_string(), name.pos)
-            })?;
+            .and_then(|variables| variables.get(name_str));
 
-        ConstValue::from_json(resolved.to_owned()).map_err(|e| {
-            ValidationError::MalformedVariable(name.node.as_str().to_string(), name.pos, e)
-        })
+        match provided {
+            Some(value) => ConstValue::from_json(value.to_owned())
+                .map(Some)
+                .map_err(|e| ValidationError::MalformedVariable(name_str.to_string(), name.pos, e)),
+            None => match (
+                &variable_definition.default_value,
+                variable_definition.var_type.node.nullable,
+            ) {
+                (Some(default_value), _) => Ok(Some(default_value.node.clone())),
+                (None, true) => Ok(None),
+                (None, false) => Err(ValidationError::VariableNotFound(
+                    name_str.to_string(),
+                    name.pos,
+                )),
+            },
+        }
     }
 }
