@@ -53,11 +53,17 @@ module TodoModule {
     @access(true) export query todo(id: Int): Todo
     @access(true) export query todos(): Todos
 
-    // An example of using a type from a Postgrs module
+    // An example of using a type from a Postgres module
     @access(true) export mutation publishFoo(): FooDatabase.Foo
 }
 
 @deno("env.ts")
 module EnvModule {
     @access(true) query getEnv(key: String): String?
+}
+
+@deno("greet.ts")
+module GreetModule {
+    @access(true) query greet(name: String?): String
+    @access(true) query greetFormal(title: String?, name: String, suffix: String?): String
 }

@@ -1,0 +1,182 @@
+stages:
+    # Query: nullable argument provided
+    - operation: |
+        query {
+            greet(name: "Alice")
+        }
+      response: |
+        {
+            "data": {
+                "greet": "Hello, Alice!"
+            }
+        }
+
+    # Query: nullable argument provided via variable
+    - operation: |
+        query ($name: String) {
+            greet(name: $name)
+        }
+      variable: |
+        {
+            "name": "Alice"
+        }
+      response: |
+        {
+            "data": {
+                "greet": "Hello, Alice!"
+            }
+        }
+
+    # Query: nullable argument omitted (per GraphQL spec 6.4.1)
+    - operation: |
+        query {
+            greet
+        }
+      response: |
+        {
+            "data": {
+                "greet": "Hello, stranger!"
+            }
+        }
+
+    # Query: nullable argument explicitly null
+    - operation: |
+        query {
+            greet(name: null)
+        }
+      response: |
+        {
+            "data": {
+                "greet": "Hello, stranger!"
+            }
+        }
+
+    # Query: nullable argument omitted via variable
+    - operation: |
+        query ($name: String) {
+            greet(name: $name)
+        }
+      variable: |
+        {}
+      response: |
+        {
+            "data": {
+                "greet": "Hello, stranger!"
+            }
+        }
+
+    # Positional alignment: all args provided
+    - operation: |
+        query {
+            greetFormal(title: "Dr.", name: "Alice", suffix: "PhD")
+        }
+      response: |
+        {
+            "data": {
+                "greetFormal": "Hello, Dr. Alice PhD!"
+            }
+        }
+
+    # Positional alignment: leading nullable omitted — `name` must still land in position 2
+    - operation: |
+        query {
+            greetFormal(name: "Alice", suffix: "PhD")
+        }
+      response: |
+        {
+            "data": {
+                "greetFormal": "Hello, Alice PhD!"
+            }
+        }
+
+    # Positional alignment: trailing nullable omitted
+    - operation: |
+        query {
+            greetFormal(title: "Dr.", name: "Alice")
+        }
+      response: |
+        {
+            "data": {
+                "greetFormal": "Hello, Dr. Alice!"
+            }
+        }
+
+    # Positional alignment: both nullables omitted
+    - operation: |
+        query {
+            greetFormal(name: "Alice")
+        }
+      response: |
+        {
+            "data": {
+                "greetFormal": "Hello, Alice!"
+            }
+        }
+
+    # Positional alignment via variables: all args provided
+    - operation: |
+        query ($title: String, $name: String!, $suffix: String) {
+            greetFormal(title: $title, name: $name, suffix: $suffix)
+        }
+      variable: |
+        {
+            "title": "Dr.",
+            "name": "Alice",
+            "suffix": "PhD"
+        }
+      response: |
+        {
+            "data": {
+                "greetFormal": "Hello, Dr. Alice PhD!"
+            }
+        }
+
+    # Positional alignment via variables: leading nullable omitted
+    - operation: |
+        query ($title: String, $name: String!, $suffix: String) {
+            greetFormal(title: $title, name: $name, suffix: $suffix)
+        }
+      variable: |
+        {
+            "name": "Alice",
+            "suffix": "PhD"
+        }
+      response: |
+        {
+            "data": {
+                "greetFormal": "Hello, Alice PhD!"
+            }
+        }
+
+    # Positional alignment via variables: trailing nullable omitted
+    - operation: |
+        query ($title: String, $name: String!, $suffix: String) {
+            greetFormal(title: $title, name: $name, suffix: $suffix)
+        }
+      variable: |
+        {
+            "title": "Dr.",
+            "name": "Alice"
+        }
+      response: |
+        {
+            "data": {
+                "greetFormal": "Hello, Dr. Alice!"
+            }
+        }
+
+    # Positional alignment via variables: both nullables omitted
+    - operation: |
+        query ($title: String, $name: String!, $suffix: String) {
+            greetFormal(title: $title, name: $name, suffix: $suffix)
+        }
+      variable: |
+        {
+            "name": "Alice"
+        }
+      response: |
+        {
+            "data": {
+                "greetFormal": "Hello, Alice!"
+            }
+        }
