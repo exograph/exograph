@@ -65,4 +65,5 @@ module EnvModule {
 @deno("greet.ts")
 module GreetModule {
     @access(true) query greet(name: String?): String
+    @access(true) query greetFormal(title: String?, name: String, suffix: String?): String
 }
