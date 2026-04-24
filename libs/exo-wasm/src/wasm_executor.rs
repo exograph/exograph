@@ -43,8 +43,7 @@ impl WasmExecutor {
         linker.module(&mut store, "", &self.module)?;
 
         let func = linker
-            .get(&mut store, "", method_name)
-            .ok_or_else(|| WasmError::MethodNotFound(method_name.to_string()))?
+            .get(&mut store, "", method_name)?
             .into_func()
             .ok_or_else(|| WasmError::InvalidMethod(method_name.to_string()))?;
 
