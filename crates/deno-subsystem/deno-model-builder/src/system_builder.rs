@@ -30,9 +30,8 @@ use url::Url;
 
 use crate::module_skeleton_generator;
 
-// SYNC: update when deno_runtime/deno_core crate versions change in Cargo.toml.
 // Find the matching CLI version at https://github.com/denoland/deno/releases
-const DENO_VERSION: &str = "2.7.10";
+const DENO_BUNDLER_VERSION: &str = "2.7.13";
 
 const DENO_BUNDLE_WARNING: &[u8] = b"is experimental and subject to changes";
 
@@ -106,7 +105,7 @@ async fn download_deno_if_needed() -> Result<PathBuf, ModelBuildingError> {
             ModelBuildingError::Generic(format!("Failed to determine cache root directory: {}", e))
         })?
         .join("deno")
-        .join(DENO_VERSION)
+        .join(DENO_BUNDLER_VERSION)
         .join(deno_executable);
 
     let target_os = env::consts::OS;
@@ -130,10 +129,10 @@ async fn download_deno_if_needed() -> Result<PathBuf, ModelBuildingError> {
 
     download_dir_if_needed(
         &format!(
-            "https://github.com/denoland/deno/releases/download/v{DENO_VERSION}/deno-{platform}.zip"
+            "https://github.com/denoland/deno/releases/download/v{DENO_BUNDLER_VERSION}/deno-{platform}.zip"
         ),
         "Deno",
-        &format!("deno/{DENO_VERSION}"),
+        &format!("deno/{DENO_BUNDLER_VERSION}"),
     )
     .await
     .map_err(|e| ModelBuildingError::Generic(format!("Failed to download Deno: {}", e)))?;
