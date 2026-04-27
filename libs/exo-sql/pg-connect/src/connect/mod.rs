@@ -7,8 +7,12 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-pub mod creation;
-pub mod database_client;
-pub mod database_client_manager;
-pub mod database_pool;
-pub mod ssl_config;
+mod creation;
+mod database_client;
+mod database_client_manager;
+mod database_pool;
+mod ssl_config;
+
+pub use creation::{Connect, TransactionMode};
+pub use database_client::DatabaseClient;
+pub use database_client_manager::DatabaseClientManager;

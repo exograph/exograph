@@ -1,5 +1,7 @@
-pub(crate) mod assertion;
-pub(crate) mod column_path_resolver;
-pub(crate) mod query_parser;
-pub(crate) mod test_file;
-pub mod test_runner;
+mod assertion;
+mod column_path_resolver;
+mod query_parser;
+mod test_file;
+mod test_runner;
+
+pub use test_runner::run;

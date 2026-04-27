@@ -18,6 +18,7 @@ use crate::{
 };
 
 // Re-export from pg where the canonical definitions now live
+#[allow(unused_imports)]
 pub use exo_sql_pg::{HNWSParams, IndexKind};
 
 #[derive(Debug, Clone)]

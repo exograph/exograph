@@ -22,7 +22,7 @@ struct Cli {
 async fn main() -> ExitCode {
     let cli = Cli::parse();
 
-    match exo_sql_pg_testing::test_runner::run(&cli.dir, &cli.pattern, &cli.backend).await {
+    match exo_sql_pg_testing::run(&cli.dir, &cli.pattern, &cli.backend).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(_) => ExitCode::FAILURE,
     }

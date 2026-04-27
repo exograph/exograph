@@ -13,20 +13,21 @@
 //! - `transform`: abstract-to-concrete SQL transformation
 
 #[macro_use]
-pub mod core;
-pub mod transform;
+mod core;
+mod transform;
 
 pub use core::array_util;
-pub use core::column;
 pub use core::physical_column_type;
-pub use core::sql_param_container;
 pub use core::transaction;
+pub use transform::Postgres;
+
+// Internal-only re-exports used by sibling modules
+pub(crate) use core::column;
+pub(crate) use core::sql_param_container;
+pub(crate) use transform as pg;
 
 #[cfg(any(test, feature = "test-support"))]
 pub use core::test_database_builder;
-
-// Re-export transform module as `pg` (used by pg-connect and internal transform code)
-pub use transform as pg;
 
 // Re-export commonly used types
 pub use core::PgColumnTypeExt;

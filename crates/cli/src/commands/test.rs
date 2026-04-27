@@ -15,7 +15,7 @@ use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 use common::env_const::EXO_ENV;
 use exo_env::Environment;
-use exo_sql_pg_connect::testing::db::EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE;
+use exo_sql_pg_connect::testing::EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE;
 
 use crate::config::Config;
 

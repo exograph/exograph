@@ -5,10 +5,7 @@ use exo_sql_pg::{
     FloatColumnType, IntColumnType, JsonColumnType, NumericColumnType, SchemaObjectName,
     StringColumnType, TimeColumnType, TimestampColumnType, UuidColumnType, VectorColumnType,
 };
-use exo_sql_pg_schema::{
-    column_spec::{ColumnReferenceSpec, ColumnSpec},
-    database_spec::DatabaseSpec,
-};
+use exo_sql_pg_schema::{ColumnReferenceSpec, ColumnSpec, DatabaseSpec};
 
 use heck::{ToLowerCamelCase, ToSnakeCase, ToUpperCamelCase};
 

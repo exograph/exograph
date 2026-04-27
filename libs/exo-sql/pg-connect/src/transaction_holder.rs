@@ -18,7 +18,7 @@ use exo_sql_core::{Database, database_error::DatabaseError};
 use exo_sql_pg::transaction::{TransactionScript, TransactionStepResult};
 
 use crate::{
-    connect::{database_client::DatabaseClient, database_client_manager::DatabaseClientManager},
+    connect::{DatabaseClient, DatabaseClientManager},
     execution::execute_transaction_script,
 };
 
@@ -260,8 +260,8 @@ mod tests {
 #[cfg(all(test, feature = "test-support"))]
 mod database_tests {
     use crate::TransactionMode;
-    use crate::connect::database_client_manager::DatabaseClientManager;
-    use crate::testing::test_support;
+    use crate::connect::DatabaseClientManager;
+    use crate::testing::with_db_url;
 
     use super::*;
 
@@ -295,7 +295,7 @@ mod database_tests {
 
     #[tokio::test]
     async fn test_commit_persists_data() {
-        test_support::with_db_url(|url| async move {
+        with_db_url(|url| async move {
             let mgr = setup_schema(&url).await;
 
             // Use TransactionHolder to insert within a transaction
@@ -322,7 +322,7 @@ mod database_tests {
 
     #[tokio::test]
     async fn test_rollback_discards_data() {
-        test_support::with_db_url(|url| async move {
+        with_db_url(|url| async move {
             let mgr = setup_schema(&url).await;
 
             let mut holder = TransactionHolder::new();
@@ -353,7 +353,7 @@ mod database_tests {
     /// (via PostgreSQL's implicit rollback on connection close).
     #[tokio::test]
     async fn test_drop_without_finalize_rolls_back() {
-        test_support::with_db_url(|url| async move {
+        with_db_url(|url| async move {
             let mgr = setup_schema(&url).await;
 
             // Scope the holder so it drops without finalize
@@ -378,7 +378,7 @@ mod database_tests {
     /// Calling finalize twice is safe (second call is a no-op).
     #[tokio::test]
     async fn test_double_finalize_is_safe() {
-        test_support::with_db_url(|url| async move {
+        with_db_url(|url| async move {
             let mgr = setup_schema(&url).await;
 
             let mut holder = TransactionHolder::new();
@@ -407,7 +407,7 @@ mod database_tests {
     /// After a query error inside a transaction, ROLLBACK recovers the connection.
     #[tokio::test]
     async fn test_error_in_transaction_then_rollback() {
-        test_support::with_db_url(|url| async move {
+        with_db_url(|url| async move {
             let mgr = setup_schema(&url).await;
 
             let mut holder = TransactionHolder::new();
@@ -449,7 +449,7 @@ mod database_tests {
     /// Without ensure_transaction, operations run without a transaction (autocommit).
     #[tokio::test]
     async fn test_autocommits() {
-        test_support::with_db_url(|url| async move {
+        with_db_url(|url| async move {
             let mgr = setup_schema(&url).await;
 
             let holder = TransactionHolder::new();
@@ -479,7 +479,7 @@ mod database_tests {
     /// with_tx after finalize returns an error.
     #[tokio::test]
     async fn test_with_tx_after_finalize_errors() {
-        test_support::with_db_url(|url| async move {
+        with_db_url(|url| async move {
             let _mgr = setup_schema(&url).await;
 
             let mut holder = TransactionHolder::new();

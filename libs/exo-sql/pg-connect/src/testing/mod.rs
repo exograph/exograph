@@ -7,11 +7,17 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-pub mod db;
-pub mod error;
+mod db;
+mod error;
 
 mod docker;
 mod existing;
 mod local;
 
-pub mod test_support;
+mod test_support;
+
+pub use db::{
+    EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE, EphemeralDatabase, EphemeralDatabaseLauncher,
+    EphemeralDatabaseServer,
+};
+pub use test_support::{with_client, with_db_url, with_init_script};

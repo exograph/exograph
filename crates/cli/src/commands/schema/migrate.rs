@@ -15,12 +15,12 @@ use colored::Colorize;
 use exo_env::{Environment, SystemEnvironment};
 use exo_sql_pg::{Database, SchemaObjectName};
 use exo_sql_pg_connect::{DatabaseClient, TransactionMode};
-use exo_sql_pg_schema::database_spec::DatabaseSpec;
-use exo_sql_pg_schema::migration::{
+use exo_sql_pg_schema::DatabaseSpec;
+use exo_sql_pg_schema::MigrationScope;
+use exo_sql_pg_schema::{
     InteractionError, Migration, MigrationError, MigrationInteraction,
     PredefinedMigrationInteraction, TableAction, migrate_interactively,
 };
-use exo_sql_pg_schema::spec::MigrationScope;
 
 use crate::commands::command::{
     database_value, migration_scope_arg, migration_scope_value, yes_arg, yes_value,
