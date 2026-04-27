@@ -1,7 +1,5 @@
 use anyhow::Result;
-use exo_sql_pg_schema::{
-    column_spec::ColumnSpec, database_spec::DatabaseSpec, table_spec::TableSpec,
-};
+use exo_sql_pg_schema::{ColumnSpec, DatabaseSpec, TableSpec};
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
 
@@ -556,10 +554,7 @@ fn compute_relation_name(column_name: &str) -> String {
 
 fn reference_mapping_annotation(
     field_name: &str,
-    references: &Vec<(
-        &ColumnSpec,
-        &exo_sql_pg_schema::column_spec::ColumnReferenceSpec,
-    )>,
+    references: &Vec<(&ColumnSpec, &exo_sql_pg_schema::ColumnReferenceSpec)>,
     database_spec: &DatabaseSpec,
     context: &ImportContext,
 ) -> Option<String> {

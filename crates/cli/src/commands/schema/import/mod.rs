@@ -14,9 +14,9 @@ use colored::Colorize;
 use exo_env::Environment;
 use exo_sql_pg::SchemaObjectName;
 use exo_sql_pg_connect::{DatabaseClient, TransactionMode};
-use exo_sql_pg_schema::database_spec::DatabaseSpec;
-use exo_sql_pg_schema::issue::WithIssues;
-use exo_sql_pg_schema::spec::{MigrationScope, MigrationScopeMatches};
+use exo_sql_pg_schema::DatabaseSpec;
+use exo_sql_pg_schema::WithIssues;
+use exo_sql_pg_schema::{MigrationScope, MigrationScopeMatches};
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -213,8 +213,8 @@ mod tests {
 
     use common::test_support::{assert_file_content, read_relative_file};
     use exo_sql_pg::Database;
-    use exo_sql_pg_connect::testing::test_support::with_init_script;
-    use exo_sql_pg_schema::migration::Migration;
+    use exo_sql_pg_connect::testing::with_init_script;
+    use exo_sql_pg_schema::Migration;
     use postgres_core_model::subsystem::PostgresCoreSubsystem;
 
     use crate::commands::build::build_system_with_static_builders;

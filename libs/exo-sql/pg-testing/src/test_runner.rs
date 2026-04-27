@@ -5,11 +5,11 @@ use std::time::Instant;
 use anyhow::{Context, Result, bail};
 use colored::Colorize;
 use exo_sql_model::transformer::SelectTransformer;
-use exo_sql_pg::pg::Postgres;
+use exo_sql_pg::Postgres;
 use exo_sql_pg::{Database, ExpressionBuilder};
-use exo_sql_pg_schema::database_spec::DatabaseSpec;
-use exo_sql_pg_schema::issue::WithIssues;
-use exo_sql_pg_schema::spec::MigrationScopeMatches;
+use exo_sql_pg_schema::DatabaseSpec;
+use exo_sql_pg_schema::MigrationScopeMatches;
+use exo_sql_pg_schema::WithIssues;
 use regex::Regex;
 use wildmatch::WildMatch;
 
@@ -157,7 +157,7 @@ async fn run_fixture(
 }
 
 async fn introspect_schema(init_script: &str) -> Database {
-    exo_sql_pg_connect::testing::test_support::with_init_script(init_script, |client| async move {
+    exo_sql_pg_connect::testing::with_init_script(init_script, |client| async move {
         let WithIssues {
             value: database_spec,
             ..
@@ -192,23 +192,20 @@ async fn run_single_test(
         let params_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> =
             params.iter().map(|p| p.param.as_pg()).collect();
 
-        exo_sql_pg_connect::testing::test_support::with_init_script(
-            init_script,
-            |client| async move {
-                let rows = client
-                    .query(&sql, &params_refs)
-                    .await
-                    .with_context(|| format!("[{test_name}] Query execution failed\nSQL: {sql}"))?;
+        exo_sql_pg_connect::testing::with_init_script(init_script, |client| async move {
+            let rows = client
+                .query(&sql, &params_refs)
+                .await
+                .with_context(|| format!("[{test_name}] Query execution failed\nSQL: {sql}"))?;
 
-                compare_results(
-                    test_name,
-                    &rows,
-                    &test_file.expect.result,
-                    &test_file.expect.unordered_paths,
-                    json_aggregate,
-                )
-            },
-        )
+            compare_results(
+                test_name,
+                &rows,
+                &test_file.expect.result,
+                &test_file.expect.unordered_paths,
+                json_aggregate,
+            )
+        })
         .await
     }
     .await;

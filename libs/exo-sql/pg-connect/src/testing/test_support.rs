@@ -8,7 +8,7 @@ use tokio::sync::Mutex;
 
 use crate::DatabaseClientManager;
 use crate::TransactionMode;
-use crate::connect::database_client::DatabaseClient;
+use crate::connect::DatabaseClient;
 use crate::testing::db::{
     EphemeralDatabaseLauncher, EphemeralDatabaseServer, generate_random_string,
 };

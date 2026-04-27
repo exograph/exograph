@@ -12,7 +12,7 @@ use async_trait::async_trait;
 use clap::Command;
 use exo_env::Environment;
 use exo_sql_pg_connect::TransactionMode;
-use exo_sql_pg_schema::migration::{Migration, VerificationErrors};
+use exo_sql_pg_schema::{Migration, VerificationErrors};
 use std::path::PathBuf;
 use std::sync::Arc;
 

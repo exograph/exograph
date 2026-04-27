@@ -16,7 +16,7 @@ use common::env_const::{DATABASE_URL, EXO_POSTGRES_READ_WRITE};
 use common::env_processing::EnvProcessing;
 use exo_env::{Environment, MapEnvironment};
 use exo_sql_pg_connect::TransactionMode;
-use exo_sql_pg_schema::migration::Migration;
+use exo_sql_pg_schema::Migration;
 use std::{
     path::PathBuf,
     sync::{Arc, atomic::Ordering},
@@ -34,8 +34,8 @@ use super::command::{
     get, port_arg, seed_arg, setup_trusted_documents_enforcement,
 };
 use common::env_const::EXO_OIDC_URL;
-use exo_sql_pg_connect::testing::db::{EphemeralDatabase, EphemeralDatabaseLauncher};
-use exo_sql_pg_schema::spec::MigrationScope;
+use exo_sql_pg_connect::testing::{EphemeralDatabase, EphemeralDatabaseLauncher};
+use exo_sql_pg_schema::MigrationScope;
 use futures::FutureExt;
 
 #[derive(Clone)]
@@ -203,7 +203,7 @@ async fn setup_database(
                 println!("Continuing with old incompatible schema...");
             }
             REBUILD => {
-                exo_sql_pg_schema::migration::wipe_database(&mut db_client).await?;
+                exo_sql_pg_schema::wipe_database(&mut db_client).await?;
                 setup_database(model, jwt_secret, db, None, env_vars.clone()).await?;
             }
             PAUSE => {

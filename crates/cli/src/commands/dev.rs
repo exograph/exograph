@@ -15,7 +15,7 @@ use common::env_const::EXO_POSTGRES_READ_WRITE;
 use common::env_processing::EnvProcessing;
 use exo_env::{Environment, MapEnvironment};
 use exo_sql_pg_connect::{DatabaseClient, TransactionMode};
-use exo_sql_pg_schema::migration::{Migration, VerificationErrors};
+use exo_sql_pg_schema::{Migration, VerificationErrors};
 use futures::FutureExt;
 use std::{path::PathBuf, sync::Arc};
 

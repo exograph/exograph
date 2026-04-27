@@ -10,7 +10,7 @@ use std::{
     time::Duration,
 };
 
-use exo_sql_pg_connect::testing::db::EphemeralDatabaseServer;
+use exo_sql_pg_connect::testing::EphemeralDatabaseServer;
 
 use super::introspection_tests::run_introspection_test;
 use crate::model::TestSuite;

@@ -1,13 +1,10 @@
 use std::path::{Path, PathBuf};
 
 use crate::subsystem::PostgresCoreSubsystem;
-use exo_sql_pg_connect::testing::test_support;
+use exo_sql_pg_connect::testing::with_client;
 use exo_sql_pg_schema::{
-    database_spec::DatabaseSpec,
-    migration::{
-        Migration, MigrationStatement, PredefinedMigrationInteraction, migrate_interactively,
-    },
-    spec::{MigrationScope, MigrationScopeMatches},
+    DatabaseSpec, Migration, MigrationScope, MigrationScopeMatches, MigrationStatement,
+    PredefinedMigrationInteraction, migrate_interactively,
 };
 use sqlparser::dialect::PostgreSqlDialect;
 use sqlparser::parser::Parser;
@@ -245,7 +242,7 @@ async fn assert_migration_with_live_db(
     migration_scope: &MigrationScope,
     migration: &Migration,
 ) -> Result<DatabaseSpec, String> {
-    test_support::with_client(move |mut client| async move {
+    with_client(move |mut client| async move {
         let creation = Migration::from_schemas(
             &DatabaseSpec::new(vec![], vec![], vec![]),
             old_system,

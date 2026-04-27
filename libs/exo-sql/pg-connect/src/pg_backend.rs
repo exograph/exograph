@@ -10,9 +10,9 @@
 use async_trait::async_trait;
 use exo_sql_core::{Database, DatabaseError};
 use exo_sql_model::{AbstractOperation, DatabaseBackend};
-use exo_sql_pg::{PgExtension, pg::Postgres};
+use exo_sql_pg::{PgExtension, Postgres};
 
-use crate::{TransactionHolder, connect::database_client_manager::DatabaseClientManager};
+use crate::{TransactionHolder, connect::DatabaseClientManager};
 
 /// Postgres implementation of `DatabaseBackend`.
 ///

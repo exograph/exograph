@@ -6,8 +6,8 @@ use exo_sql_pg::{
     FloatBits, FloatColumnType, IntBits, IntColumnType, NumericColumnType, StringColumnType,
     TimeColumnType, TimestampColumnType, VectorColumnType,
 };
-use exo_sql_pg_schema::column_spec::ColumnSpec;
-use exo_sql_pg_schema::table_spec::TableSpec;
+use exo_sql_pg_schema::ColumnSpec;
+use exo_sql_pg_schema::TableSpec;
 
 /// Converts a ColumnDefault to Exograph model syntax (e.g., `generate_uuid()`, `autoIncrement()`)
 fn column_default_to_model(default: &ColumnDefault) -> Option<String> {

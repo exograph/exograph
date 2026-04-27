@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::io::Write;
 
-use exo_sql_pg_schema::database_spec::DatabaseSpec;
+use exo_sql_pg_schema::DatabaseSpec;
 use heck::ToUpperCamelCase;
 
 use super::{

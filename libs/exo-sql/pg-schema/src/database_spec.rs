@@ -544,7 +544,7 @@ mod tests {
     use exo_sql_pg::physical_column_type::{
         BooleanColumnType, IntBits, IntColumnType, NumericColumnType, StringColumnType,
     };
-    use exo_sql_pg_connect::testing::test_support::*;
+    use exo_sql_pg_connect::testing::with_init_script;
 
     use crate::column_spec::ColumnSpec;
     use crate::function_spec::FunctionSpec;

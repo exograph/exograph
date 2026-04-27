@@ -18,7 +18,7 @@ use common::http::{MemoryRequestHead, MemoryRequestPayload, RequestPayload, Resp
 use common::operation_payload::OperationsPayload;
 use common::router::{PlainRequestPayload, Router};
 use exo_sql_pg_connect::DatabaseClientManager;
-use exo_sql_pg_connect::testing::db::EphemeralDatabaseServer;
+use exo_sql_pg_connect::testing::EphemeralDatabaseServer;
 use futures::FutureExt;
 use futures::future::OptionFuture;
 use jsonwebtoken::{EncodingKey, Header, encode};

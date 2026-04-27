@@ -7,28 +7,37 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-pub mod column_spec;
-pub mod database_spec;
-pub mod enum_spec;
-pub mod function_spec;
-pub mod index_spec;
-pub mod issue;
-pub mod migration;
-pub mod op;
-pub mod spec;
-pub mod table_spec;
-pub mod test_helper;
-pub mod trigger_spec;
+mod column_spec;
+mod database_spec;
+mod enum_spec;
+mod function_spec;
+mod index_spec;
+mod issue;
+mod migration;
+mod op;
+mod spec;
+mod table_spec;
+mod trigger_spec;
 
-pub mod column_default_schema;
-pub mod column_type_schema;
+mod column_default_schema;
+mod column_type_schema;
 mod constraint;
 
-// Re-export from core so consumers don't need a separate exo-sql-core dep
-pub use exo_sql_core::statement::SchemaStatement;
+pub use column_spec::{ColumnReferenceSpec, ColumnSpec, physical_column_type_from_string};
+pub use database_spec::DatabaseSpec;
+pub use enum_spec::EnumSpec;
+pub use issue::WithIssues;
+pub use migration::{
+    InteractionError, Migration, MigrationError, MigrationInteraction, MigrationStatement,
+    PredefinedMigrationInteraction, TableAction, VerificationErrors, migrate_interactively,
+    wipe_database,
+};
+pub use spec::{MigrationScope, MigrationScopeMatches, NameMatching};
+pub use table_spec::TableSpec;
 
 /// Trait for types that can print debug information to a writer
-pub trait DebugPrintTo {
+#[allow(dead_code)]
+pub(crate) trait DebugPrintTo {
     fn debug_print_to<W: std::io::Write>(
         &self,
         writer: &mut W,

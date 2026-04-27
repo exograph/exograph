@@ -7,17 +7,15 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-pub mod connect;
-pub mod execution;
-pub mod pg_backend;
-pub mod transaction_holder;
+mod connect;
+mod execution;
+mod pg_backend;
+mod transaction_holder;
 
 #[cfg(feature = "test-support")]
 pub mod testing;
 
 // Re-export key types
-pub use connect::creation::{Connect, TransactionMode};
-pub use connect::database_client::DatabaseClient;
-pub use connect::database_client_manager::DatabaseClientManager;
+pub use connect::{Connect, DatabaseClient, DatabaseClientManager, TransactionMode};
 pub use pg_backend::PgBackend;
 pub use transaction_holder::TransactionHolder;
