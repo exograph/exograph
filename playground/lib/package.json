@@ -32,7 +32,7 @@
     "ai": "^6.0.168",
     "graphiql": "5.2.2",
     "graphql": "^16.10.0",
-    "jose": "6.2.2",
+    "jose": "6.2.3",
     "lucide-react": "^1.11.0",
     "monaco-editor": "^0.52.2",
     "react-markdown": "^10.1.0",
