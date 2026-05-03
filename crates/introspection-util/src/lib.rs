@@ -20,6 +20,6 @@ use ctor::ctor;
 #[cfg(test)]
 #[ctor]
 // Make sure deno runtime is initialized in the main thread in test executables.
-fn initialize_for_tests() {
+unsafe fn initialize_for_tests() {
     exo_deno::initialize();
 }

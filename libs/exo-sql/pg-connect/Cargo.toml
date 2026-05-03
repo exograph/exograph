@@ -16,7 +16,7 @@ tls = [
 postgres-url = ["tokio-postgres/runtime"]
 testing = ["which", "tempfile"]
 pool = ["deadpool-postgres"]
-test-support = ["ctor", "postgres-url", "tls"]
+test-support = ["dtor", "postgres-url", "tls"]
 
 [dependencies]
 async-trait.workspace = true
@@ -44,7 +44,7 @@ urlencoding = "2.1.3"
 which = { workspace = true, optional = true }
 rand.workspace = true
 tempfile = { workspace = true, optional = true }
-ctor = { workspace = true, optional = true }
+dtor = { workspace = true, optional = true }
 
 [target.'cfg(target_family = "wasm")'.dependencies.tokio-postgres]
 workspace = true
