@@ -7063,9 +7063,9 @@ dependencies = [
 
 [[package]]
 name = "multiplatform_test"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cc83bf338143fca58c108ca16c568864991e0f17c30e732020a8449cd87357f"
+checksum = "8610f1c25a955801b867e2f4818eb1c696ba05be72c964c3b1963bb1c386700a"
 dependencies = [
  "proc-macro2",
  "quote",
