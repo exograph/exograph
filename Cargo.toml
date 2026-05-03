@@ -147,7 +147,7 @@ wasi-common = "44.0.0"
 wildmatch = "2.6.1"
 which = "8.0.2"
 wasm-bindgen-test = "0.3.65"
-multiplatform_test = "0.6.0"
+multiplatform_test = "0.7.0"
 pluralizer = "0.5.0"
 tracing-subscriber = "0.3"
 toml = { version = "1.1.2", features = ["parse"] }
