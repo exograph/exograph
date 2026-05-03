@@ -27,8 +27,8 @@ static DATABASE_SERVER: LazyLock<Mutex<Box<dyn EphemeralDatabaseServer + Send + 
         )
     });
 
-#[ctor::dtor]
-fn cleanup() {
+#[dtor::dtor]
+unsafe fn cleanup() {
     if !DATABASE_SERVER_INITIALIZED.load(Ordering::Relaxed) {
         return;
     }

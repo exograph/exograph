@@ -4181,6 +4181,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dtor"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66261f2a6a4976b45407e398e63bc50a25fccf464d417f7d20f2e2b0974b9888"
+dependencies = [
+ "linktime-proc-macro",
+]
+
+[[package]]
 name = "dunce"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4550,8 +4559,8 @@ name = "exo-sql-pg-connect"
 version = "0.29.1"
 dependencies = [
  "async-trait",
- "ctor",
  "deadpool-postgres",
+ "dtor",
  "exo-sql-core",
  "exo-sql-model",
  "exo-sql-pg",

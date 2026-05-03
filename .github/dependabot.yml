@@ -36,6 +36,10 @@ updates:
         patterns:
           - "*postgres*"
           - "pg_bigdecimal"
+      ctor:
+        patterns:
+          - "ctor"
+          - "dtor"
     commit-message:
       prefix: chore
       include: scope
