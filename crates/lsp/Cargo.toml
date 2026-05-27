@@ -15,7 +15,7 @@ tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 codemap-diagnostic.workspace = true
 futures.workspace = true
 
-dashmap = "6.1.0"
+dashmap = "6.2.1"
 url.workspace = true
 
 tokio = { workspace = true, features = ["macros", "rt"] }
