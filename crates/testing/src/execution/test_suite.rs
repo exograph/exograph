@@ -33,8 +33,11 @@ impl TestSuite {
         tasks
             .send(Box::new(move || match self.build_exo_ir_file() {
                 Ok(()) => {
-                    let runtime = tokio::runtime::Builder::new_multi_thread()
-                        .worker_threads(2)
+                    // Deno's `#[op2] async` ops dispatch via `deno_unsync::spawn`, which
+                    // requires a current-thread tokio runtime. The introspection tests and
+                    // assertion scripts run Deno directly on this runtime, so it must be
+                    // current-thread.
+                    let runtime = tokio::runtime::Builder::new_current_thread()
                         .enable_all()
                         .build()
                         .unwrap();

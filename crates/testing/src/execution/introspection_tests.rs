@@ -116,7 +116,16 @@ pub async fn get_introspection_result(serialized_system: SerializableSystem) -> 
 
     tokio::task::spawn_blocking({
         move || {
-            tokio::runtime::Handle::current().block_on(async move {
+            // Deno's `#[op2] async` ops dispatch via `deno_unsync::spawn`, which
+            // requires a current-thread tokio runtime. `run_query` may route
+            // into Deno modules, so build a dedicated current-thread runtime
+            // here rather than reusing the CLI's multi-threaded one.
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("Could not start tokio runtime for introspection result");
+            let local = tokio::task::LocalSet::new();
+            local.block_on(&runtime, async move {
                 let router = {
                     let static_loaders = server_common::create_static_loaders();
 

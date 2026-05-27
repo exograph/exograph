@@ -1,8 +1,8 @@
 {
   "version": "5",
   "specifiers": {
-    "npm:@commitlint/cli@^20.4.2": "20.5.0_@types+node@25.5.0_typescript@6.0.2",
-    "npm:@commitlint/config-conventional@^20.4.2": "20.5.0",
+    "npm:@commitlint/cli@^20.5.0": "20.5.0_@types+node@25.5.0_typescript@6.0.2",
+    "npm:@commitlint/config-conventional@^20.5.0": "20.5.0",
     "npm:color@*": "5.0.3",
     "npm:resend@2": "2.1.0",
     "npm:tinycolor2@*": "1.6.0"
@@ -848,8 +848,8 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
-        "npm:@commitlint/cli@^20.4.2",
-        "npm:@commitlint/config-conventional@^20.4.2"
+        "npm:@commitlint/cli@^20.5.0",
+        "npm:@commitlint/config-conventional@^20.5.0"
       ]
     }
   }

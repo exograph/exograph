@@ -12,11 +12,7 @@ default = []
 typescript-loader = ["dep:deno_ast"]
 
 [build-dependencies]
-deno_runtime = { workspace = true, features = [
-  "include_js_files_for_snapshotting",
-  "only_snapshotted_js_sources",
-  "snapshot",
-] }
+deno_runtime = { workspace = true, features = ["snapshot"] }
 
 [dependencies]
 thiserror.workspace = true

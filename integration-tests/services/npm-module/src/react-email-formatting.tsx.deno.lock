@@ -1,8 +1,8 @@
 {
   "version": "5",
   "specifiers": {
-    "npm:@commitlint/cli@^20.4.2": "20.5.0_@types+node@25.5.0_typescript@6.0.2",
-    "npm:@commitlint/config-conventional@^20.4.2": "20.5.0",
+    "npm:@commitlint/cli@^20.5.0": "20.5.0_@types+node@25.5.0_typescript@6.0.2",
+    "npm:@commitlint/config-conventional@^20.5.0": "20.5.0",
     "npm:@react-email/components@*": "1.0.10_react@19.2.4_react-dom@19.2.4__react@19.2.4",
     "npm:@react-email/render@*": "2.0.4_react@19.2.4_react-dom@19.2.4__react@19.2.4",
     "npm:react@*": "19.2.4"
@@ -752,8 +752,8 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
-        "npm:@commitlint/cli@^20.4.2",
-        "npm:@commitlint/config-conventional@^20.4.2"
+        "npm:@commitlint/cli@^20.5.0",
+        "npm:@commitlint/config-conventional@^20.5.0"
       ]
     }
   }
