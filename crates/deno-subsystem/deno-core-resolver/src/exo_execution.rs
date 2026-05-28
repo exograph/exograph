@@ -120,7 +120,16 @@ pub fn process_call_context(
         .unwrap_or_else(|_| panic!("Failed to setup interceptor"));
 }
 
-// We provide a set of Exograph functionality accessible via this Deno extension
+// We provide a set of Exograph functionality accessible via this Deno extension.
+//
+// The `esm` files are attached via the customizer with `ExtensionFileSource::new`
+// (which marks them `IncludedInBinary`) rather than the macro's `esm = [...]`
+// field. As of deno_core 0.402 the `esm = [...]` form classifies entries as
+// `LoadedFromFsDuringSnapshot`, meaning the runtime reads them off disk at
+// startup. That works on the build machine but ships an unresolvable path in
+// distributed `exo` binaries; embedding the source keeps the JS reachable from
+// the binary alone. The `check_extension_esm_is_embedded` test below enforces
+// this.
 deno_core::extension!(
     exograph,
     ops = [
@@ -133,11 +142,22 @@ deno_core::extension!(
         crate::exograph_ops::op_operation_proceed,
     ],
     esm_entry_point = "ext:exograph/__init.js",
-    esm = [
-        dir "extension",
-        "__init.js",
-         "exograph:ops.js" = "exograph.js",
-    ]
+    customizer = |ext: &mut deno_core::Extension| {
+        use deno_core::{ExtensionFileSource, ascii_str_include};
+        ext.esm_files.to_mut().extend([
+            ExtensionFileSource::new(
+                "ext:exograph/__init.js",
+                ascii_str_include!(concat!(env!("CARGO_MANIFEST_DIR"), "/extension/__init.js")),
+            ),
+            ExtensionFileSource::new(
+                "exograph:ops.js",
+                ascii_str_include!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/extension/exograph.js"
+                )),
+            ),
+        ]);
+    }
 );
 
 pub fn exo_config(

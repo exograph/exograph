@@ -1,7 +1,8 @@
-error: [0m[1m[31merror[0m: Expected '}', got '<eof>' at src/todo.ts:2:4
-
-  	5
-    ~
+error: [0m[1m[31merror[0m: SyntaxError: Expected '}', got '<eof>'
+  |
+2 | 	5
+  |   ~
+    at src/todo.ts:2:4
 [0m[1m[31merror[0m: bundling failed
 
 

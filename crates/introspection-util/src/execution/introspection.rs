@@ -98,7 +98,16 @@ pub async fn execute_introspection_deno_function(
 
     tokio::task::spawn_blocking({
         move || {
-            tokio::runtime::Handle::current().block_on(async move {
+            // Deno's `#[op2] async` ops dispatch via `deno_unsync::spawn`, which
+            // requires a current-thread tokio runtime. The test harness's outer
+            // runtime is multi-threaded, so build a dedicated current-thread
+            // runtime + LocalSet here just like exo-deno's DenoActor.
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("Could not start tokio runtime for introspection Deno module");
+            let local = tokio::task::LocalSet::new();
+            local.block_on(&runtime, async move {
                 let mut deno_module = create_introspection_deno_module().await?;
                 deno_module
                     .execute_function(&function_name, args)

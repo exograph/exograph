@@ -1,18 +1,7 @@
-fn main() {
-    use deno_runtime::ops::bootstrap::SnapshotOptions;
-    use std::path::PathBuf;
-
-    let snapshot_options = SnapshotOptions {
-        ts_version: "5.9.2".to_owned(), // Match https://github.com/denoland/deno/blob/main/cli/lib/version.rs#L17
-        v8_version: deno_runtime::deno_core::v8::VERSION_STRING,
-        target: std::env::var("TARGET").unwrap(),
-    };
-
-    let o = PathBuf::from(std::env::var_os("OUT_DIR").unwrap());
-    let snapshot_path = o.join("RUNTIME_SNAPSHOT.bin");
-
-    deno_runtime::snapshot::create_runtime_snapshot(snapshot_path, snapshot_options, vec![]);
-
-    println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-env-changed=TARGET");
-}
+// Stub build script with no work of its own. Exists so that cargo activates
+// this crate's `[target.'cfg(windows)'.build-dependencies]`, which in turn
+// forces `winapi/std` into the host-tree feature graph. Without that,
+// `deno_snapshots`'s build script (which transitively depends on `deno_io`)
+// compiles a `winapi` whose `ctypes::c_void` is a distinct type from
+// `core::ffi::c_void`, breaking the Windows build.
+fn main() {}
