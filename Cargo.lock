@@ -3610,6 +3610,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "deno_snapshots"
+version = "0.64.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9850ea253e7a68c0b0fa013eb5c27439f6e5dbb4cdf26a7eb4d0cf2337837bb"
+dependencies = [
+ "deno_runtime",
+]
+
+[[package]]
 name = "deno_subprocess_windows"
 version = "0.44.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4508,6 +4517,7 @@ dependencies = [
  "deno_fs",
  "deno_resolver",
  "deno_runtime",
+ "deno_snapshots",
  "exo-env",
  "futures",
  "include_dir",

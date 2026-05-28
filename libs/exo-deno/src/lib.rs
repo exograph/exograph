@@ -29,11 +29,19 @@ mod typescript_module_loader;
 
 pub use deno_core;
 
-static RUNTIME_SNAPSHOT: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/RUNTIME_SNAPSHOT.bin"));
-
+// `deno_snapshots` bakes two artifacts at build time: a V8 snapshot (a
+// serialized heap with deno_runtime's default extensions pre-evaluated, so the
+// JS runtime is warm on deserialize instead of re-parsing bootstrap JS every
+// startup), and residual `lazy_loaded_*` tables for extension files that
+// weren't touched during snapshot creation and so need to be evaluated on
+// demand at runtime. To bake custom extensions into the snapshot we'd drop
+// this crate and reinstate a local `build.rs` that calls
+// `create_runtime_snapshot` with them.
 pub(crate) fn deno_snapshot() -> &'static [u8] {
-    RUNTIME_SNAPSHOT
+    deno_snapshots::CLI_SNAPSHOT.expect("deno_snapshots built with `disable` feature")
 }
+
+pub(crate) use deno_snapshots::{RESIDUAL_LAZY_ESM, RESIDUAL_LAZY_JS};
 
 #[cfg(test)]
 use ctor::ctor;

@@ -217,6 +217,8 @@ impl DenoModule {
 
         let worker_options = WorkerOptions {
             startup_snapshot: Some(crate::deno_snapshot()),
+            residual_lazy_js_sources: crate::RESIDUAL_LAZY_JS,
+            residual_lazy_esm_sources: crate::RESIDUAL_LAZY_ESM,
             extensions,
             origin_storage_dir: Some(origin_storage_dir.path().to_path_buf()),
             ..Default::default()

@@ -11,9 +11,6 @@ doctest = false
 default = []
 typescript-loader = ["dep:deno_ast"]
 
-[build-dependencies]
-deno_runtime = { workspace = true, features = ["snapshot"] }
-
 [dependencies]
 thiserror.workspace = true
 async-trait.workspace = true
@@ -23,6 +20,7 @@ deno_error.workspace = true
 deno_fs.workspace = true
 deno_resolver.workspace = true
 node_resolver.workspace = true
+deno_snapshots.workspace = true
 sys_traits.workspace = true
 deno_ast = { workspace = true, features = ["transpiling"], optional = true }
 tokio.workspace = true
@@ -39,12 +37,8 @@ exo-env = { path = "../exo-env" }
 
 # deno_io uses winapi without the "std" feature, causing winapi::ctypes::c_void to be a
 # different type from core::ffi::c_void on Windows. Adding winapi with "std" forces feature
-# unification, making them the same type and fixing the Windows build. Needed in both
-# [dependencies] and [build-dependencies] since deno_runtime (build-dep) also pulls in deno_io.
+# unification, making them the same type and fixing the Windows build.
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3.9", features = ["std"] }
-
-[target.'cfg(windows)'.build-dependencies]
 winapi = { version = "0.3.9", features = ["std"] }
 
 [package.metadata.cargo-shear]
