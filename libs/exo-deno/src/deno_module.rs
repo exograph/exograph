@@ -76,6 +76,13 @@ impl deno_runtime::deno_node::NodeRequireLoader for BasicNodeRequireLoader {
     fn is_maybe_cjs(&self, _specifier: &deno_core::url::Url) -> Result<bool, PackageJsonLoadError> {
         Ok(false)
     }
+
+    fn is_maybe_cjs_from_require(
+        &self,
+        _specifier: &deno_core::url::Url,
+    ) -> Result<bool, PackageJsonLoadError> {
+        Ok(false)
+    }
 }
 
 #[derive(Debug)]
