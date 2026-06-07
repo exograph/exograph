@@ -145,7 +145,7 @@ typed-generational-arena = { version = "0.2.9", features = ["serde"] }
 uuid = "1"
 url = "2.5.8"
 wasmtime = "45.0.0"
-wasi-common = "45.0.0"
+wasi-common = "45.0.1"
 wildmatch = "2.6.1"
 which = "8.0.2"
 wasm-bindgen-test = "0.3.65"
