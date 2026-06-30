@@ -4,8 +4,8 @@
   "description": "Exograph development dependencies",
   "private": true,
   "devDependencies": {
-    "@commitlint/cli": "^20.5.0",
-    "@commitlint/config-conventional": "^20.5.0"
+    "@commitlint/cli": "^21.2.0",
+    "@commitlint/config-conventional": "^21.2.0"
   },
   "scripts": {
     "commitlint": "commitlint"
