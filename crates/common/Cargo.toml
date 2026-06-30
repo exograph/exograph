@@ -37,14 +37,14 @@ sha2 = "0.10"
 
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["registry", "env-filter"] }
-tracing-opentelemetry = "0.32"
-opentelemetry = { version = "0.31", default-features = false, features = [
+tracing-opentelemetry = "0.33"
+opentelemetry = { version = "0.32", default-features = false, features = [
   "trace",
 ] }
-opentelemetry_sdk = { version = "0.31", features = [
+opentelemetry_sdk = { version = "0.32", features = [
   "rt-tokio",
 ], optional = true }
-opentelemetry-otlp = { version = "0.31", features = [
+opentelemetry-otlp = { version = "0.32", features = [
   "grpc-tonic",
   "reqwest-client",
   "reqwest-rustls",
