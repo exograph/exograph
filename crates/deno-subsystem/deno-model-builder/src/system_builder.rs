@@ -31,7 +31,7 @@ use url::Url;
 use crate::module_skeleton_generator;
 
 // Find the matching CLI version at https://github.com/denoland/deno/releases
-const DENO_BUNDLER_VERSION: &str = "2.8.2";
+const DENO_BUNDLER_VERSION: &str = "2.9.0";
 
 const DENO_BUNDLE_WARNING: &[u8] = b"is experimental and subject to changes";
 
