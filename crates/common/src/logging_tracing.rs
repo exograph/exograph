@@ -41,10 +41,7 @@ use http::Uri;
 use thiserror::Error;
 
 use opentelemetry_otlp::{ExporterBuildError, SpanExporter, WithTonicConfig};
-use opentelemetry_sdk::{
-    Resource,
-    trace::{SdkTracerProvider, TraceError},
-};
+use opentelemetry_sdk::{Resource, trace::SdkTracerProvider};
 use std::str::FromStr;
 use tonic::transport::{ClientTlsConfig, Endpoint};
 use tracing_subscriber::{EnvFilter, filter::LevelFilter, prelude::*};
@@ -199,9 +196,6 @@ fn parse_otlp_headers_from_env(env: &dyn Environment) -> Vec<(String, String)> {
 
 #[derive(Error, Debug)]
 pub enum OtelError {
-    #[error(transparent)]
-    TraceError(#[from] TraceError),
-
     #[error(transparent)]
     ExporterBuildError(#[from] ExporterBuildError),
 
