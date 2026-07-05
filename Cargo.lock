@@ -1380,7 +1380,7 @@ dependencies = [
  "postgres-builder",
  "postgres-core-builder",
  "postgres-core-model",
- "rand 0.10.1",
+ "rand 0.10.2",
  "reqwest",
  "rexpect",
  "rpc-introspection",
@@ -4606,7 +4606,7 @@ dependencies = [
  "exo-sql-model",
  "exo-sql-pg",
  "futures",
- "rand 0.10.1",
+ "rand 0.10.2",
  "rustls",
  "rustls-native-certs 0.8.4",
  "rustls-pki-types",
@@ -8373,7 +8373,7 @@ dependencies = [
  "hmac 0.13.0",
  "md-5 0.11.0",
  "memchr",
- "rand 0.10.1",
+ "rand 0.10.2",
  "sha2 0.11.0",
  "stringprep",
 ]
@@ -8780,9 +8780,9 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2e8e8bcc7961af1fdac401278c6a831614941f6164ee3bf4ce61b7edb162207"
+checksum = "c7f5fa3a058cd35567ef9bfa5e75732bee0f9e4c55fa90477bef2dfcdbc4be80"
 dependencies = [
  "chacha20",
  "getrandom 0.4.2",
@@ -10944,7 +10944,7 @@ dependencies = [
  "jsonwebtoken",
  "md5",
  "num_cpus",
- "rand 0.10.1",
+ "rand 0.10.2",
  "regex",
  "serde",
  "serde-saphyr",
@@ -11187,7 +11187,7 @@ dependencies = [
  "pin-project-lite",
  "postgres-protocol",
  "postgres-types",
- "rand 0.10.1",
+ "rand 0.10.2",
  "socket2 0.6.3",
  "tokio",
  "tokio-util",
@@ -12001,7 +12001,7 @@ dependencies = [
  "io-extras",
  "io-lifetimes",
  "log",
- "rand 0.10.1",
+ "rand 0.10.2",
  "rustix 1.1.4",
  "system-interface",
  "thiserror 2.0.18",
