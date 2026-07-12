@@ -15,10 +15,10 @@
     "watch": "concurrently \"tsc --watch --p ./tsconfig.json\" \"postcss \"src/**/*.css\" --base src --dir dist/ --watch\""
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^4.0.8",
-    "@ai-sdk/google": "^4.0.8",
-    "@ai-sdk/mcp": "^2.0.7",
-    "@ai-sdk/openai": "^4.0.7",
+    "@ai-sdk/anthropic": "^4.0.12",
+    "@ai-sdk/google": "^4.0.12",
+    "@ai-sdk/mcp": "^2.0.10",
+    "@ai-sdk/openai": "^4.0.11",
     "@assistant-ui/react": "^0.14.26",
     "@assistant-ui/react-markdown": "^0.14.5",
     "@auth0/auth0-react": "^2.20.0",
@@ -29,7 +29,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@monaco-editor/react": "^4.7.0",
     "@tailwindcss/typography": "^0.5.20",
-    "ai": "^7.0.15",
+    "ai": "^7.0.22",
     "graphiql": "5.2.4",
     "graphql": "^16.14.2",
     "jose": "6.2.3",
