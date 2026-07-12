@@ -21,7 +21,7 @@
     "@ai-sdk/openai": "^4.0.7",
     "@assistant-ui/react": "^0.14.26",
     "@assistant-ui/react-markdown": "^0.14.5",
-    "@auth0/auth0-react": "^2.20.0",
+    "@auth0/auth0-react": "^2.21.0",
     "@clerk/clerk-react": "5.61.8",
     "@clerk/themes": "2.4.62",
     "@graphiql/plugin-explorer": "5.1.3",
