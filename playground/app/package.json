@@ -12,8 +12,8 @@
   "dependencies": {
     "@tailwindcss/typography": "^0.5.20",
     "exograph-playground-lib": "file:../lib",
-    "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.2",
