@@ -12,8 +12,7 @@ import {
   ThreadPrimitive,
   ComposerPrimitive,
   MessagePrimitive,
-  useMessage,
-  useThread,
+  useAuiState,
 } from "@assistant-ui/react";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import remarkGfm from "remark-gfm";
@@ -62,7 +61,7 @@ function UserMessage() {
 const NullComponent = () => null;
 
 function AssistantMessage() {
-  const message = useMessage();
+  const message = useAuiState((state) => state.message);
   const hasText = message.content.some(p => p.type === 'text' && p.text);
   const hasToolCalls = message.content.some(p => p.type === 'tool-call');
   const isError = message.status?.type === 'incomplete' && 'reason' in message.status && message.status.reason === 'error';
@@ -130,8 +129,8 @@ function AssistantTextPart(_props: { text: string; status: unknown }) {
 }
 
 function ThinkingIndicator() {
-  const thread = useThread();
-  if (!thread.isRunning) return null;
+  const isRunning = useAuiState((state) => state.thread.isRunning);
+  if (!isRunning) return null;
 
   return (
     <div className="flex justify-start mb-6" role="status" aria-label="AI is thinking">
@@ -167,8 +166,7 @@ function ThreadScrollToBottom() {
 function Composer() {
   const { isConfigValid, currentModel } = useCurrentModel();
   const { getApiKey } = useProviderConfig();
-  const thread = useThread();
-  const isRunning = thread.isRunning;
+  const isRunning = useAuiState((state) => state.thread.isRunning);
 
   const placeholder = (() => {
     if (!isConfigValid) {

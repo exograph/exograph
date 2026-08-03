@@ -7,12 +7,12 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-import { useRef, useMemo, useEffect, type ReactNode } from "react";
+import { useRef, useMemo, type ReactNode } from "react";
 import {
   AssistantRuntimeProvider,
   useLocalRuntime,
-  useThreadRuntime,
-  useThreadListItemRuntime,
+  useAui,
+  useAuiEvent,
 } from "@assistant-ui/react";
 import { createExographAdapter, type ExographAdapterDeps } from "../api/chat/ExographChatAdapter";
 import { useProviderConfig } from "./ProviderConfigContext";
@@ -26,28 +26,25 @@ import { DefaultToolUI } from "../components/chat/tools/DefaultToolUI";
  * Must be rendered inside AssistantRuntimeProvider.
  */
 function ThreadTitleGenerator() {
-  const threadRuntime = useThreadRuntime();
-  const threadListItemRuntime = useThreadListItemRuntime();
+  const aui = useAui();
 
-  useEffect(() => {
-    return threadRuntime.unstable_on("runEnd", () => {
-      const { title } = threadListItemRuntime.getState();
-      if (title) return; // Already has a title
+  useAuiEvent("thread.runEnd", () => {
+    const { title } = aui.threadListItem.getState();
+    if (title) return; // Already has a title
 
-      const messages = threadRuntime.getState().messages;
-      const firstUserMsg = messages.find(m => m.role === "user");
-      if (!firstUserMsg) return;
+    const messages = aui.thread.getState().messages;
+    const firstUserMsg = messages.find(m => m.role === "user");
+    if (!firstUserMsg) return;
 
-      const textPart = firstUserMsg.content.find(p => p.type === "text");
-      if (!textPart || !("text" in textPart)) return;
+    const textPart = firstUserMsg.content.find(p => p.type === "text");
+    if (!textPart || !("text" in textPart)) return;
 
-      const newTitle = textPart.text.length > 60
-        ? textPart.text.slice(0, 57) + "..."
-        : textPart.text;
+    const newTitle = textPart.text.length > 60
+      ? textPart.text.slice(0, 57) + "..."
+      : textPart.text;
 
-      threadListItemRuntime.rename(newTitle);
-    });
-  }, [threadRuntime, threadListItemRuntime]);
+    aui.threadListItem.rename(newTitle);
+  });
 
   return null;
 }
