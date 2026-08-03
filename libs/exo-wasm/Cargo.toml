@@ -8,7 +8,7 @@ publish = false
 anyhow.workspace = true
 thiserror.workspace = true
 wasmtime.workspace = true
-wasi-common.workspace = true
+wasmtime-wasi.workspace = true
 serde_json.workspace = true
 
 [lib]
