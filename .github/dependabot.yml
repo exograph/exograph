@@ -23,8 +23,7 @@ updates:
           - "sys_traits"
       wasmtime:
         patterns:
-          - "wasmtime"
-          - "wasi-common"
+          - "wasmtime*"
       async-graphql:
         patterns:
           - "async-graphql-*"

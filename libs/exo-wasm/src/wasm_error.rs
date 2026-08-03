@@ -24,9 +24,6 @@ pub enum WasmError {
     #[error("Unsupported WASM type '{0}'")]
     UnsupportedType(String),
 
-    #[error("{0}")]
-    StringArrayError(#[from] wasi_common::StringArrayError),
-
     #[error("Failed to locate method '{0}'")]
     MethodNotFound(String),
 
