@@ -35,6 +35,9 @@ tempfile.workspace = true
 
 exo-env = { path = "../exo-env" }
 
+[build-dependencies]
+deno_core = { workspace = true, features = ["v8"] }
+
 # deno_io uses winapi without the "std" feature, causing winapi::ctypes::c_void to be a
 # different type from core::ffi::c_void on Windows. Adding winapi with "std" forces feature
 # unification, making them the same type and fixing the Windows build. Needed in both
