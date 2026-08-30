@@ -51,7 +51,7 @@
     "autoprefixer": "^10.5.4",
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
-    "esbuild": "0.28.1",
+    "esbuild": "0.28.2",
     "oxlint": "^1.72.0",
     "postcss": "^8.5.26",
     "postcss-cli": "^11.0.1",
