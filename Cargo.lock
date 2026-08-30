@@ -1548,7 +1548,7 @@ dependencies = [
  "http 1.5.0",
  "hyper-util",
  "indicatif",
- "jsonwebtoken",
+ "jsonwebtoken 11.0.0",
  "multiplatform_test",
  "oidc-jwt-validator",
  "opentelemetry",
@@ -6417,12 +6417,27 @@ dependencies = [
  "js-sys",
  "p256",
  "p384",
- "pem",
  "rand 0.8.5",
  "rsa",
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "signature 2.2.0",
+ "zeroize",
+]
+
+[[package]]
+name = "jsonwebtoken"
+version = "11.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "881733cbc631fc9e472e24447ce32a64bedf2da498d6d8570b08edc87de71f65"
+dependencies = [
+ "base64 0.22.1",
+ "getrandom 0.2.17",
+ "js-sys",
+ "pem",
+ "serde",
+ "serde_json",
  "signature 2.2.0",
  "simple_asn1",
  "zeroize",
@@ -7551,7 +7566,7 @@ version = "0.3.0"
 source = "git+https://github.com/exograph/oidc_jwt_validator?branch=exograph#b24bffc31d9e6a75ec01007066c7cf3220c89b8e"
 dependencies = [
  "base64 0.22.1",
- "jsonwebtoken",
+ "jsonwebtoken 10.4.0",
  "log",
  "reqwest",
  "serde",
@@ -10969,7 +10984,7 @@ dependencies = [
  "http 1.5.0",
  "insta",
  "introspection-util",
- "jsonwebtoken",
+ "jsonwebtoken 11.0.0",
  "md5",
  "num_cpus",
  "rand 0.10.2",
