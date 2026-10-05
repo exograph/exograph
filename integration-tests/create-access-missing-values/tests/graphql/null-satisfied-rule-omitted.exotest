@@ -1,0 +1,86 @@
+# Rule: `self.approvedBy == null || AuthContext.role == "ADMIN"`. A value missing from a create's
+# input is stored as null, which satisfies the rule
+stages:
+  # An explicit null satisfies the rule
+  - operation: |
+      mutation {
+        createNullCheckDoc(data: {content: "explicit null", approvedBy: null}) {
+          content
+          approvedBy
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "data": {
+          "createNullCheckDoc": {
+            "content": "explicit null",
+            "approvedBy": null
+          }
+        }
+      }
+  # So does an omitted value (stored as null)
+  - operation: |
+      mutation {
+        createNullCheckDoc(data: {content: "omitted approvedBy"}) {
+          content
+          approvedBy
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "data": {
+          "createNullCheckDoc": {
+            "content": "omitted approvedBy",
+            "approvedBy": null
+          }
+        }
+      }
+  # A non-null value doesn't
+  - operation: |
+      mutation {
+        createNullCheckDoc(data: {content: "approvedBy set by a non-admin", approvedBy: 1}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # But an admin may set it
+  - operation: |
+      mutation {
+        createNullCheckDoc(data: {content: "approvedBy set by an admin", approvedBy: 1}) {
+          content
+          approvedBy
+        }
+      }
+    auth: |
+      {
+        "sub": 1,
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "data": {
+          "createNullCheckDoc": {
+            "content": "approvedBy set by an admin",
+            "approvedBy": 1
+          }
+        }
+      }

@@ -81,9 +81,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
         let (left, right) = match (left, right) {
             (AccessSolution::Solved(left), AccessSolution::Solved(right)) => (left, right),
             _ => {
-                return Ok(AccessSolution::Unsolvable(AbstractPredicateWrapper(
-                    AbstractPredicate::True,
-                )));
+                return Ok(AccessSolution::skipped());
             } // If either side is None, we can't produce a predicate
         };
 
@@ -95,9 +93,11 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
          -> Result<AccessSolution<PgAbstractPredicate>, AccessSolverError> {
             match (left, right) {
                 (SolvedPrimitiveExpression::Common(None), _)
-                | (_, SolvedPrimitiveExpression::Common(None)) => {
-                    Ok(AccessSolution::Unsolvable(AbstractPredicate::False))
-                }
+                // Unknown (see `AccessSolution`)
+                | (_, SolvedPrimitiveExpression::Common(None)) => Ok(AccessSolution::Unsolvable {
+                    true_when: AbstractPredicate::False,
+                    false_when: AbstractPredicate::False,
+                }),
 
                 (
                     SolvedPrimitiveExpression::Column(left_col),

@@ -1,0 +1,176 @@
+# RPC counterpart of ../graphql/relation-generated-pk-omitted.exotest
+stages:
+  # self.owner.id == AuthContext.id || AuthContext.role == "ADMIN": an omitted owner is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_project",
+          "params": {
+            "data": {
+              "title": "omitted owner"
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # self.owner.id == AuthContext.id || AuthContext.role == "ADMIN": an owner without its id is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_project",
+          "params": {
+            "data": {
+              "title": "owner without its id",
+              "owner": {}
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # !(self.owner.id != AuthContext.id && AuthContext.role != "ADMIN"): an omitted owner is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_de_morgan_doc",
+          "params": {
+            "data": {
+              "content": "omitted owner"
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # !(self.owner.id != AuthContext.id && AuthContext.role != "ADMIN"): an owner without its id is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_de_morgan_doc",
+          "params": {
+            "data": {
+              "content": "owner without its id",
+              "owner": {}
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # !(self.owner.id != AuthContext.id) || !(AuthContext.role != "ADMIN"): an omitted owner is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_de_morgan_expanded_doc",
+          "params": {
+            "data": {
+              "content": "omitted owner"
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # !(self.owner.id != AuthContext.id) || !(AuthContext.role != "ADMIN"): an owner without its id is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_de_morgan_expanded_doc",
+          "params": {
+            "data": {
+              "content": "owner without its id",
+              "owner": {}
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_projects",
+          "params": {}
+        }
+    response: |
+      {
+        "result": []
+      }
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_de_morgan_docs",
+          "params": {}
+        }
+    response: |
+      {
+        "result": []
+      }
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_de_morgan_expanded_docs",
+          "params": {}
+        }
+    response: |
+      {
+        "result": []
+      }

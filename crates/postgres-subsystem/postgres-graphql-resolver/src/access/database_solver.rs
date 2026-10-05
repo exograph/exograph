@@ -1136,4 +1136,58 @@ mod tests {
             }
         }
     }
+
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
+    async fn missing_context_expressions_under_negation() {
+        let test_system = test_system().await;
+        let TestSystem {
+            system,
+            published_column_path,
+            owner_id_column_path,
+            test_system_router,
+            ..
+        } = &test_system;
+
+        let test_system_router = test_system_router.as_ref();
+        let env = &MapEnvironment::from(HashMap::new());
+        let context = test_request_context(Value::Null, test_system_router, env); // undefined context
+
+        // AuthContext.user_id == self.owner_id, which is unknown with the missing context
+        let owner_check = || {
+            Box::new(AccessPredicateExpression::RelationalOp(
+                AccessRelationalOp::Eq(
+                    context_selection_expr("AccessContext", "user_id"),
+                    Box::new(DatabaseAccessPrimitiveExpression::Column(
+                        owner_id_column_path.clone(),
+                        None,
+                    )),
+                ),
+            ))
+        };
+        let published_check = || Box::new(boolean_column_selection(published_column_path.clone()));
+        let not = |expr| AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Not(expr));
+
+        // !(self.published && <unknown>): the `&&` is false for unpublished rows (and unknown for
+        // the rest), so its negation allows only unpublished rows (not every row)
+        let test_ae = not(Box::new(AccessPredicateExpression::LogicalOp(
+            AccessLogicalExpression::And(published_check(), owner_check()),
+        )));
+        let solved_predicate = solve_access(&test_ae, &context, system).await;
+        assert_eq!(
+            solved_predicate,
+            AbstractPredicate::Neq(
+                test_system.published_column(),
+                ColumnPath::Param(SQLParamContainer::bool(true))
+            )
+        );
+
+        // !(self.published || <unknown>): the `||` is true for published rows (and unknown for
+        // the rest), so its negation allows no rows (not the published rows)
+        let test_ae = not(Box::new(AccessPredicateExpression::LogicalOp(
+            AccessLogicalExpression::Or(published_check(), owner_check()),
+        )));
+        let solved_predicate = solve_access(&test_ae, &context, system).await;
+        assert_eq!(solved_predicate, AbstractPredicate::False);
+    }
 }
