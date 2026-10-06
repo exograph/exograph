@@ -27,7 +27,7 @@ jobs:
   # Create draft release with custom-formatted notes (only for tags)
   create-release:
     if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -196,7 +196,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-aws-lambda:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container: amazonlinux:2023
     env:
       ARCH: aws-lambda-linux-2023-x86_64
@@ -256,7 +256,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-cf-worker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - name: Clear up some disk space from the runner
