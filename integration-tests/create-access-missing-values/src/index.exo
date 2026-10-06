@@ -1,0 +1,81 @@
+// Create mutations access evaluation access rules that refer to values missing from the input 
+// (https://github.com/exograph/exograph/issues/2320). Such a value is stored as null, so
+// a rule must match the SQL semantics for null.
+context AuthContext {
+  @jwt("sub") id: Int?
+  @jwt role: String?
+}
+
+@postgres
+module CreateAccessDatabase {
+  @access(true)
+  type User {
+    @pk id: Int = autoIncrement()
+    name: String
+    projects: Set<Project>?
+    deMorganDocs: Set<DeMorganDoc>?
+    deMorganExpandedDocs: Set<DeMorganExpandedDoc>?
+  }
+
+  // Allow creation by non-admins only if the set owner is set to the authenticated user
+  // Relation whose target has a generated pk (`User.id` is `autoIncrement()`)
+  @access(query=true, mutation=true, create=self.owner.id == AuthContext.id || AuthContext.role == "ADMIN")
+  type Project {
+    @pk id: Int = autoIncrement()
+    title: String
+    owner: User?
+  }
+
+  // De Morgan version of the above
+  @access(query=true, mutation=true, create=!(self.owner.id != AuthContext.id && AuthContext.role != "ADMIN"))
+  type DeMorganDoc {
+    @pk id: Int = autoIncrement()
+    content: String
+    owner: User?
+  }
+
+  // The De Morgan expansion of the above (`!(a && b)` is `!a || !b`), which must behave the same
+  @access(query=true, mutation=true, create=!(self.owner.id != AuthContext.id) || !(AuthContext.role != "ADMIN"))
+  type DeMorganExpandedDoc {
+    @pk id: Int = autoIncrement()
+    content: String
+    owner: User?
+  }
+
+  // Access control that a null value must not satisfy, even though the negation or inequality
+  @access(query=true, mutation=true, create=!(self.ownerId != AuthContext.id))
+  type NegatedInequalityDoc {
+    @pk id: Int = autoIncrement()
+    content: String
+    ownerId: Int?
+  }
+
+  @access(query=true, mutation=true, create=!(self.locked == false))
+  type NegatedEqualityDoc {
+    @pk id: Int = autoIncrement()
+    content: String
+    locked: Boolean?
+  }
+
+  @access(query=true, mutation=true, create=self.rating != 5)
+  type InequalityDoc {
+    @pk id: Int = autoIncrement()
+    content: String
+    rating: Int?
+  }
+
+  @access(query=true, mutation=true, create=!(self.level < 10))
+  type NegatedComparisonDoc {
+    @pk id: Int = autoIncrement()
+    content: String
+    level: Int?
+  }
+
+  // Allow checking against null
+  @access(query=true, mutation=true, create=self.approvedBy == null || AuthContext.role == "ADMIN")
+  type NullCheckDoc {
+    @pk id: Int = autoIncrement()
+    content: String
+    approvedBy: Int?
+  }
+}

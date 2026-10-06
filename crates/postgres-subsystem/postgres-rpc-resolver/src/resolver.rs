@@ -19,7 +19,7 @@ use crate::schema_builder::PROJECTION_PARAM_NAME;
 use core_model::access::AccessPredicateExpression;
 use core_model::mapped_arena::SerializableSlabIndex;
 use core_model::types::OperationReturnType;
-use core_resolver::access_solver::{AccessInput, AccessSolver};
+use core_resolver::access_solver::{AccessInput, AccessSolver, MissingValuePolicy};
 use core_resolver::plugin::SubsystemRpcResolver;
 use core_resolver::plugin::subsystem_rpc_resolver::{SubsystemRpcError, SubsystemRpcResponse};
 use core_resolver::{QueryResponse, QueryResponseBody};
@@ -619,15 +619,17 @@ enum AccessKind {
 
 /// Compute create access predicates (entity-level and field-level precheck).
 /// Returns the precheck predicate for the insert operation.
+/// `parent_reference` is the field referring to the parent when this is a nested create.
 async fn compute_create_access<'a>(
     entity_type: &EntityType,
     data_val: &'a Val,
+    parent_reference: Option<&'a str>,
     request_context: &'a RequestContext<'a>,
     subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgAbstractPredicate, SubsystemRpcError> {
     let access_input = AccessInput {
         value: data_val,
-        ignore_missing_value: true,
+        missing_value_policy: MissingValuePolicy::Create { parent_reference },
         aliases: HashMap::new(),
     };
 
@@ -690,13 +692,13 @@ where
 
     let mut combined = PgAbstractPredicate::True;
 
-    // For field-level access checks, use ignore_missing_value: false to match GraphQL behavior.
-    // The entity-level precheck uses true (update data may omit fields), but field-level checks
+    // For field-level access checks, use MissingValuePolicy::Evaluate to match GraphQL behavior.
+    // The entity-level precheck uses Ignore (update data may omit fields), but field-level checks
     // must not ignore missing values — otherwise expressions like `self.authId == AuthContext.id`
     // would resolve to True when `authId` is absent from the input, bypassing the check.
     let field_access_input = AccessInput {
         value: access_input.value,
-        ignore_missing_value: false,
+        missing_value_policy: MissingValuePolicy::Evaluate,
         aliases: access_input.aliases.clone(),
     };
 
@@ -842,9 +844,13 @@ async fn compute_create_columns_inner<'a>(
                 if let Some(nested_val) = get_argument_field(data_val, &field.name) {
                     let foreign_entity = &subsystem.core_subsystem.entity_types
                         [one_to_many_relation.foreign_entity_id];
+                    let parent_reference = one_to_many_relation
+                        .foreign_field(&subsystem.core_subsystem.entity_types)
+                        .map(|foreign_field| foreign_field.name.as_str());
                     let (insertions, precheck_predicates) = build_nested_insertions(
                         foreign_entity,
                         Some(entity_type),
+                        parent_reference,
                         nested_val,
                         request_context,
                         subsystem,
@@ -871,6 +877,7 @@ type NestedInsertionsResult =
 fn build_nested_insertions<'a>(
     foreign_entity: &'a EntityType,
     parent_entity: Option<&'a EntityType>,
+    parent_reference: Option<&'a str>,
     nested_val: &'a Val,
     request_context: &'a RequestContext<'a>,
     subsystem: &'a PostgresRpcSubsystem,
@@ -882,8 +889,14 @@ fn build_nested_insertions<'a>(
         let mut precheck_predicates = Vec::new();
 
         for item in items {
-            let precheck =
-                compute_create_access(foreign_entity, item, request_context, subsystem).await?;
+            let precheck = compute_create_access(
+                foreign_entity,
+                item,
+                parent_reference,
+                request_context,
+                subsystem,
+            )
+            .await?;
             let elements = compute_create_columns(
                 foreign_entity,
                 item,
@@ -908,7 +921,7 @@ async fn build_single_insert<'a>(
     subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<(PgInsertionRow, PgAbstractPredicate), SubsystemRpcError> {
     let precheck_predicate =
-        compute_create_access(entity_type, &data_val, request_context, subsystem).await?;
+        compute_create_access(entity_type, &data_val, None, request_context, subsystem).await?;
 
     let elements =
         compute_create_columns(entity_type, &data_val, None, request_context, subsystem).await?;
@@ -1114,7 +1127,7 @@ async fn compute_update_access<'a>(
 ) -> Result<(PgAbstractPredicate, PgAbstractPredicate), SubsystemRpcError> {
     let access_input = AccessInput {
         value: data_val,
-        ignore_missing_value: true,
+        missing_value_policy: MissingValuePolicy::Ignore,
         aliases: HashMap::new(),
     };
 
@@ -1600,11 +1613,13 @@ async fn compute_nested_update_ops<'a>(
     let mut nested_deletes = Vec::new();
 
     for field in &entity_type.fields {
-        let PostgresRelation::OneToMany(OneToManyRelation {
-            relation_id,
-            foreign_entity_id,
-            ..
-        }) = &field.relation
+        let PostgresRelation::OneToMany(
+            one_to_many_relation @ OneToManyRelation {
+                relation_id,
+                foreign_entity_id,
+                ..
+            },
+        ) = &field.relation
         else {
             continue;
         };
@@ -1615,6 +1630,9 @@ async fn compute_nested_update_ops<'a>(
 
         let foreign_entity = &subsystem.core_subsystem.entity_types[*foreign_entity_id];
         let nesting_relation = relation_id.deref(&subsystem.core_subsystem.database);
+        let parent_reference = one_to_many_relation
+            .foreign_field(&subsystem.core_subsystem.entity_types)
+            .map(|foreign_field| foreign_field.name.as_str());
 
         // Handle "create" sub-field
         if let Some(create_arg) = get_argument_field(ops_val, "create") {
@@ -1624,6 +1642,7 @@ async fn compute_nested_update_ops<'a>(
                     entity_type,
                     create_arg,
                     &nesting_relation,
+                    parent_reference,
                     request_context,
                     subsystem,
                 )
@@ -1669,6 +1688,7 @@ async fn compute_nested_create_for_update<'a>(
     parent_entity: &EntityType,
     create_arg: &'a Val,
     nesting_relation: &OneToMany,
+    parent_reference: Option<&'a str>,
     request_context: &'a RequestContext<'a>,
     subsystem: &'a PostgresRpcSubsystem,
 ) -> Result<PgNestedAbstractInsertSet, SubsystemRpcError> {
@@ -1683,8 +1703,14 @@ async fn compute_nested_create_for_update<'a>(
     let mut inserts = Vec::new();
 
     for item in items {
-        let precheck =
-            compute_create_access(foreign_entity, item, request_context, subsystem).await?;
+        let precheck = compute_create_access(
+            foreign_entity,
+            item,
+            parent_reference,
+            request_context,
+            subsystem,
+        )
+        .await?;
         let elements = compute_create_columns(
             foreign_entity,
             item,

@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 
 use core_model::mapped_arena::SerializableSlabIndex;
-use core_resolver::access_solver::AccessInput;
+use core_resolver::access_solver::{AccessInput, MissingValuePolicy};
 use futures::stream::TryStreamExt;
 use postgres_core_model::access::{
     CreationAccessExpression, DatabaseAccessPrimitiveExpression, PrecheckAccessPrimitiveExpression,
@@ -314,7 +314,7 @@ async fn check_input_access<'a>(
                             Some(postgres_field) => {
                                 let access_input = AccessInput {
                                     value: &Val::Object(elems.clone()),
-                                    ignore_missing_value: false,
+                                    missing_value_policy: MissingValuePolicy::Evaluate,
                                     aliases: HashMap::new(),
                                 };
 

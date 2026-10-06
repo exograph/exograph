@@ -1,0 +1,138 @@
+# RPC counterpart of ../graphql/negated-rule-omitted.exotest
+stages:
+  # !(self.ownerId != AuthContext.id): an omitted value is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_negated_inequality_doc",
+          "params": {
+            "data": {
+              "content": "omitted ownerId"
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # !(self.locked == false): an omitted value is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_negated_equality_doc",
+          "params": {
+            "data": {
+              "content": "omitted locked"
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # self.rating != 5: an omitted value is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_inequality_doc",
+          "params": {
+            "data": {
+              "content": "omitted rating"
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # !(self.level < 10): an omitted value is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_negated_comparison_doc",
+          "params": {
+            "data": {
+              "content": "omitted level"
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_negated_inequality_docs",
+          "params": {}
+        }
+    response: |
+      {
+        "result": []
+      }
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_negated_equality_docs",
+          "params": {}
+        }
+    response: |
+      {
+        "result": []
+      }
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_inequality_docs",
+          "params": {}
+        }
+    response: |
+      {
+        "result": []
+      }
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_negated_comparison_docs",
+          "params": {}
+        }
+    response: |
+      {
+        "result": []
+      }

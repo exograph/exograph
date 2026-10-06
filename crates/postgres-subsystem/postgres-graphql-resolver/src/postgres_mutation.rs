@@ -21,7 +21,7 @@ use crate::{
 use async_trait::async_trait;
 use common::context::RequestContext;
 use core_model::types::OperationReturnType;
-use core_resolver::access_solver::AccessInput;
+use core_resolver::access_solver::{AccessInput, MissingValuePolicy};
 use core_resolver::validation::field::ValidatedField;
 use exo_sql_pg::{
     AbstractOperation, AbstractPredicate, PgAbstractDelete, PgAbstractInsert, PgAbstractOperation,
@@ -170,7 +170,7 @@ async fn update_operation<'content>(
     let data_arg = find_arg(&field.arguments, &data_param.name);
     let input_value = data_arg.map(|arg| AccessInput {
         value: arg,
-        ignore_missing_value: true,
+        missing_value_policy: MissingValuePolicy::Ignore,
         aliases: HashMap::new(),
     });
     let (precheck_predicate, entity_predicate) = check_access(

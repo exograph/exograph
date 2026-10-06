@@ -53,7 +53,7 @@ pub async fn solve_module_relational_op<'a>(
     let right_value = reduce_primitive_expression(solver, request_context, right).await?;
 
     Ok(match (left_value, right_value) {
-        (None, _) | (_, None) => AccessSolution::Unsolvable(ModuleAccessPredicate::False),
+        (None, _) | (_, None) => AccessSolution::unknown(),
         (Some(ref left_value), Some(ref right_value)) => AccessSolution::Solved(
             match op {
                 AccessRelationalOp::Eq(..) => eq_values(left_value, right_value),

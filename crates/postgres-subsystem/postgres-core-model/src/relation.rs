@@ -7,9 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::types::{EntityFieldId, EntityType};
+use crate::types::{EntityFieldId, EntityType, PostgresField};
 
-use core_model::mapped_arena::SerializableSlabIndex;
+use core_model::mapped_arena::{SerializableSlab, SerializableSlabIndex};
 use exo_sql_pg::{ColumnId, ColumnPathLink, Database, ManyToOneId, OneToManyId};
 use serde::{Deserialize, Serialize};
 
@@ -83,6 +83,24 @@ impl OneToManyRelation {
     pub fn column_path_link(&self, database: &Database) -> ColumnPathLink {
         let relation = self.relation_id.deref(database);
         relation.column_path_link()
+    }
+
+    /// The field in the foreign entity that refers back to this relation's entity (for
+    /// `Venue.concerts`, it is `Concert.venue`)
+    pub fn foreign_field<'a>(
+        &self,
+        entity_types: &'a SerializableSlab<EntityType>,
+    ) -> Option<&'a PostgresField<EntityType>> {
+        entity_types[self.foreign_entity_id]
+            .fields
+            .iter()
+            .find(|field| {
+                matches!(
+                    &field.relation,
+                    PostgresRelation::ManyToOne { relation, .. }
+                        if relation.relation_id == self.relation_id.0
+                )
+            })
     }
 }
 

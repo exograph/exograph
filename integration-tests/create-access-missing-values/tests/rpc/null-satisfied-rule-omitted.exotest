@@ -1,0 +1,24 @@
+# RPC counterpart of ../graphql/null-satisfied-rule-omitted.exotest
+stages:
+  # An omitted value (stored as null) satisfies the rule
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_null_check_doc",
+          "params": {
+            "data": {
+              "content": "omitted approvedBy"
+            }
+          }
+        }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "result": {
+          "id": 1
+        }
+      }
