@@ -463,13 +463,70 @@ fn parse_order_by(
         let (_, physical_path) =
             resolve_expr_to_physical_path(&expr.expr, root_table_id, database)?;
 
-        let ordering = match expr.options.asc {
-            Some(true) | None => Ordering::Asc,
-            Some(false) => Ordering::Desc,
+        let ordering = match &expr.options.sort {
+            Some(ast::OrderBySort::Asc) | None => Ordering::Asc,
+            Some(ast::OrderBySort::Desc) => Ordering::Desc,
+            Some(ast::OrderBySort::Using(_)) => {
+                return Err("ORDER BY USING not supported".to_string());
+            }
         };
 
         elements.push((AbstractOrderByExpr::Column(physical_path), ordering));
     }
 
     Ok(exo_sql_pg::AbstractOrderBy(elements))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use exo_sql_pg::test_database_builder::{DatabaseBuilder, pk};
+
+    #[test]
+    fn test_order_by_direction() {
+        let database = DatabaseBuilder::new()
+            .table("concerts", vec![pk("id")])
+            .build();
+
+        for (sql, expected) in [
+            ("SELECT id FROM concerts ORDER BY id", Ordering::Asc),
+            ("SELECT id FROM concerts ORDER BY id ASC", Ordering::Asc),
+            ("SELECT id FROM concerts ORDER BY id DESC", Ordering::Desc),
+        ] {
+            let query = parse_query(sql, &[], &database).unwrap();
+            let order_by = query.order_by.unwrap();
+
+            assert_eq!(order_by.0.len(), 1, "{sql}");
+            assert_eq!(order_by.0[0].1, expected, "{sql}");
+            assert_eq!(
+                order_by.column_paths()[0]
+                    .leaf_column()
+                    .get_column(&database)
+                    .name,
+                "id",
+                "{sql}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_order_by_using_is_unsupported() {
+        let database = DatabaseBuilder::new()
+            .table("concerts", vec![pk("id")])
+            .build();
+
+        // Use PostgreSQL parsing to reach the adapter's unsupported sort branch.
+        let mut statements = Parser::parse_sql(
+            &sqlparser::dialect::PostgreSqlDialect {},
+            "SELECT id FROM concerts ORDER BY id USING >",
+        )
+        .unwrap();
+        let Statement::Query(query) = statements.remove(0) else {
+            panic!("Expected SELECT query");
+        };
+
+        let error = parse_select_query(*query, &[], &database).unwrap_err();
+
+        assert!(error.contains("ORDER BY USING"), "{error}");
+    }
 }
