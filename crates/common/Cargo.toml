@@ -68,13 +68,13 @@ zip.workspace = true
 tempfile.workspace = true
 home = "0.5.12"
 # Use aws_lc_rs for native targets
-oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", version = "0.3.0", branch = "exograph", features = [
+oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", version = "0.3.0", rev = "9b4d624c849f6939758015f785b07e44464a4f26", features = [
   "aws_lc_rs",
 ] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # Use rust_crypto for wasm targets (aws_lc_rs doesn't support wasm)
-oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", version = "0.3.0", branch = "exograph", features = [
+oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", version = "0.3.0", rev = "9b4d624c849f6939758015f785b07e44464a4f26", features = [
   "rust_crypto",
 ] }
 # getrandom 0.2.x (pulled in by jsonwebtoken) uses "js" feature for wasm support
