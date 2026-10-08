@@ -463,9 +463,12 @@ fn parse_order_by(
         let (_, physical_path) =
             resolve_expr_to_physical_path(&expr.expr, root_table_id, database)?;
 
-        let ordering = match expr.options.asc {
-            Some(true) | None => Ordering::Asc,
-            Some(false) => Ordering::Desc,
+        let ordering = match &expr.options.sort {
+            Some(ast::OrderBySort::Asc) | None => Ordering::Asc,
+            Some(ast::OrderBySort::Desc) => Ordering::Desc,
+            Some(ast::OrderBySort::Using(_)) => {
+                return Err("ORDER BY USING not supported".to_string());
+            }
         };
 
         elements.push((AbstractOrderByExpr::Column(physical_path), ordering));
