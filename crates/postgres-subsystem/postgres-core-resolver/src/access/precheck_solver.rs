@@ -19,8 +19,8 @@ use core_model::access::{
 };
 use core_resolver::access_solver::{
     AccessInput, AccessInputPath, AccessInputPathElement, AccessSolution, AccessSolver,
-    AccessSolverError, eq_values, gt_values, gte_values, in_values, lt_values, lte_values,
-    neq_values, reduce_common_primitive_expression,
+    AccessSolverError, MissingValuePolicy, eq_values, gt_values, gte_values, in_values, lt_values,
+    lte_values, neq_values, reduce_common_primitive_expression,
 };
 use exo_sql_pg::{
     AbstractPredicate, BooleanColumnType, ColumnPath, ColumnPathLink, Database,
@@ -38,11 +38,31 @@ use postgres_core_model::{
 use super::access_op::AbstractPredicateWrapper;
 use super::database_solver::to_column_path;
 
+/// A primitive expression reduced for a precheck.
+///
+/// A value is compared in one of three ways:
+/// - `Common(Some(value))`: a known value (a literal, a context value, or a value from the input).
+///   Comparing it is definite: `null == 5` is false, and `null == null` is true.
+/// - `Common(None)`: a missing context value. Comparing it is unknown (see [`AccessSolution`]),
+///   even with null.
+/// - `NullColumn`: a column of the row being created that will be stored as null (the input
+///   supplies null, or omits it and the field has no default). As in SQL, comparing it with a
+///   non-null value is unknown. However, comparing it with null is definite, since `== null` means
+///   SQL's `IS NULL` (see `null_column_relation`).
+///
+/// A null column must be distinct from both. As `Common(Some(Val::Null))`, `self.rating != 5` with
+/// an omitted `rating` would be true, allowing a create whose row SQL wouldn't allow for the same
+/// rule. As `Common(None)`, `self.approvedBy == null` with an omitted `approvedBy` would be
+/// unknown, denying a create that the rule allows.
 #[derive(Debug)]
 enum SolvedPrecheckPrimitiveExpression {
     Common(Option<Val>),
     Path(AccessPrimitiveExpressionPath, Option<String>),
     Predicate(Box<PgAbstractPredicate>),
+    /// A column of the row being created whose value will be null (see above)
+    /// TODO: Merge in `Common` (probably naming it `Value`) and designating the value source.
+    /// Leaving the merge to its own PR (mostly a mechanical change, but affects many files)
+    NullColumn,
 }
 
 type ColumnPredicateFn = fn(PgColumnPath, PgColumnPath) -> PgAbstractPredicate;
@@ -65,16 +85,18 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
         let (left, right) = match (left, right) {
             (AccessSolution::Solved(left), AccessSolution::Solved(right)) => (left, right),
             _ => {
-                return Ok(AccessSolution::Unsolvable(AbstractPredicateWrapper(
-                    AbstractPredicate::True,
-                )));
+                return Ok(AccessSolution::skipped());
             } // If either side is None, we can't produce a predicate
         };
 
-        let ignore_missing_value = input_value
-            .as_ref()
-            .map(|ctx| ctx.ignore_missing_value)
-            .unwrap_or(false);
+        let ignore_missing_value = ignores_missing_value(input_value);
+
+        // How a null column compares with a null value (see `null_column_relation`)
+        let null_comparison = match op {
+            AccessRelationalOp::Eq(..) => Some(true),
+            AccessRelationalOp::Neq(..) => Some(false),
+            _ => None,
+        };
 
         let helper = |column_predicate: ColumnPredicateFn, value_predicate: ValuePredicateFn| {
             evaluate_relation(
@@ -85,6 +107,7 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
                 input_value,
                 &self.database,
                 ignore_missing_value,
+                null_comparison,
                 column_predicate,
                 value_predicate,
             )
@@ -162,8 +185,8 @@ async fn reduce_primitive_expression<'a>(
                 }
                 None => vec![],
             };
-            let field_path_strings = match &path.field_path {
-                FieldPath::Normal(field_path, _) => field_path,
+            let (field_path_strings, default) = match &path.field_path {
+                FieldPath::Normal(field_path, default) => (field_path, default),
                 FieldPath::Pk { .. } => {
                     return Ok(AccessSolution::Solved(
                         SolvedPrecheckPrimitiveExpression::Path(
@@ -183,13 +206,83 @@ async fn reduce_primitive_expression<'a>(
 
             let value = value.transpose()?.flatten();
 
-            match value {
-                Some(value) => Ok(AccessSolution::Solved(
+            let create_parent_reference = match input_value.map(|ctx| ctx.missing_value_policy) {
+                Some(MissingValuePolicy::Create { parent_reference }) => Some(parent_reference),
+                _ => None,
+            };
+
+            match (value, create_parent_reference) {
+                (Some(value), None) => Ok(AccessSolution::Solved(
                     SolvedPrecheckPrimitiveExpression::Common(Some(value.clone())),
                 )),
-                None => Ok(AccessSolution::Solved(
+                (None, None) => Ok(AccessSolution::Solved(
                     SolvedPrecheckPrimitiveExpression::Path(path.clone(), parameter_name.clone()),
                 )),
+                // A create
+                (Some(Val::Null), Some(_)) => Ok(AccessSolution::Solved(
+                    SolvedPrecheckPrimitiveExpression::NullColumn,
+                )),
+                (Some(value), Some(_)) => Ok(AccessSolution::Solved(
+                    SolvedPrecheckPrimitiveExpression::Common(Some(value.clone())),
+                )),
+                (None, Some(_)) if parameter_name.is_some() => Ok(AccessSolution::Solved(
+                    SolvedPrecheckPrimitiveExpression::Path(path.clone(), parameter_name.clone()),
+                )),
+                // A create stores an absent value as the field's default or, without one, as null
+                (None, Some(parent_reference)) => {
+                    // An explicit null along the path (such as `owner: null` for `self.owner.id`)
+                    // is stored as null too (a default applies only to an absent value)
+                    let explicit_null_on_path = input_value.is_some_and(|ctx| {
+                        (1..field_path_strings.len()).any(|prefix_len| {
+                            let prefix = field_path_strings[..prefix_len]
+                                .iter()
+                                .map(|s| AccessInputPathElement::Property(s.as_str()))
+                                .collect();
+                            matches!(ctx.resolve(AccessInputPath(prefix)), Ok(Some(Val::Null)))
+                        })
+                    });
+
+                    if explicit_null_on_path {
+                        return Ok(AccessSolution::Solved(
+                            SolvedPrecheckPrimitiveExpression::NullColumn,
+                        ));
+                    }
+
+                    let stored_value = resolve_value(
+                        solver,
+                        input_value,
+                        field_path_strings,
+                        default,
+                        request_context,
+                    )
+                    .await?;
+
+                    match stored_value {
+                        Some(stored_value) => {
+                            Ok(AccessSolution::Solved(match stored_value.as_ref() {
+                                Val::Null => SolvedPrecheckPrimitiveExpression::NullColumn,
+                                stored_value => SolvedPrecheckPrimitiveExpression::Common(Some(
+                                    stored_value.clone(),
+                                )),
+                            }))
+                        }
+                        // Unknown until the insert (see `is_unknown_until_insert`), so leave the
+                        // path to be skipped, as for an update, when the comparison is evaluated
+                        None if is_unknown_until_insert(
+                            parent_reference,
+                            field_path_strings,
+                            default,
+                        ) =>
+                        {
+                            Ok(AccessSolution::Solved(
+                                SolvedPrecheckPrimitiveExpression::Path(path.clone(), None),
+                            ))
+                        }
+                        None => Ok(AccessSolution::Solved(
+                            SolvedPrecheckPrimitiveExpression::NullColumn,
+                        )),
+                    }
+                }
             }
         }
         PrecheckAccessPrimitiveExpression::Function(lead, func_call) => {
@@ -226,10 +319,7 @@ async fn reduce_primitive_expression<'a>(
                     // If the lead value itself is unknown, return the value of `ignore_missing_value`.
                     // See the `upspecifiable_field_with_hof` test for more details
 
-                    let ignore_missing_value = input_value
-                        .as_ref()
-                        .map(|ctx| ctx.ignore_missing_value)
-                        .unwrap_or(false);
+                    let ignore_missing_value = ignores_missing_value(input_value);
 
                     if lead_value.is_none() {
                         return Ok(AccessSolution::Solved(
@@ -262,7 +352,7 @@ async fn reduce_primitive_expression<'a>(
 
                     let new_input_value = input_value.map(|ctx| AccessInput {
                         value: ctx.value,
-                        ignore_missing_value: ctx.ignore_missing_value,
+                        missing_value_policy: ctx.missing_value_policy,
                         aliases: {
                             if matches!(lead.field_path, FieldPath::Pk { .. }) {
                                 ctx.aliases.clone()
@@ -288,7 +378,7 @@ async fn reduce_primitive_expression<'a>(
 
                     return Ok(solved_expr.map(|solved_expr| {
                         SolvedPrecheckPrimitiveExpression::Predicate(Box::new(
-                            AbstractPredicate::and(solved_expr.0, relational_predicate),
+                            AbstractPredicate::and(solved_expr.0, relational_predicate.clone()),
                         ))
                     }));
                 }
@@ -322,7 +412,7 @@ async fn reduce_primitive_expression<'a>(
 
                         let new_input_value = input_value.map(|ctx| AccessInput {
                             value: ctx.value,
-                            ignore_missing_value: ctx.ignore_missing_value,
+                            missing_value_policy: ctx.missing_value_policy,
                             aliases: HashMap::from([(parameter_name.as_str(), item_input_path)]),
                         });
 
@@ -341,10 +431,8 @@ async fn reduce_primitive_expression<'a>(
                     Ok(AccessSolution::Solved(result))
                 }
                 _ => {
-                    let ignore_missing_value = input_value
-                        .as_ref()
-                        .map(|ctx| ctx.ignore_missing_value)
-                        .unwrap_or(true);
+                    let ignore_missing_value =
+                        input_value.is_none() || ignores_missing_value(input_value);
 
                     if ignore_missing_value {
                         Ok(AccessSolution::Solved(
@@ -370,14 +458,25 @@ async fn evaluate_relation(
     input_value: Option<&AccessInput<'_>>,
     database: &Database,
     ignore_missing_value: bool,
+    null_comparison: Option<bool>,
     column_predicate: ColumnPredicateFn,
     value_predicate: ValuePredicateFn,
 ) -> Result<AccessSolution<AbstractPredicateWrapper>, AccessSolverError> {
     match (left, right) {
         (SolvedPrecheckPrimitiveExpression::Common(None), _)
-        | (_, SolvedPrecheckPrimitiveExpression::Common(None)) => Ok(AccessSolution::Unsolvable(
-            AbstractPredicateWrapper(AbstractPredicate::False),
-        )),
+        | (_, SolvedPrecheckPrimitiveExpression::Common(None)) => Ok(AccessSolution::unknown()),
+
+        (
+            SolvedPrecheckPrimitiveExpression::NullColumn,
+            SolvedPrecheckPrimitiveExpression::Common(Some(value)),
+        )
+        | (
+            SolvedPrecheckPrimitiveExpression::Common(Some(value)),
+            SolvedPrecheckPrimitiveExpression::NullColumn,
+        ) => Ok(null_column_relation(&value, null_comparison)),
+        // Compared with another column, a null column is SQL's UNKNOWN
+        (SolvedPrecheckPrimitiveExpression::NullColumn, _)
+        | (_, SolvedPrecheckPrimitiveExpression::NullColumn) => Ok(AccessSolution::unknown()),
 
         (
             SolvedPrecheckPrimitiveExpression::Path(left_path, _),
@@ -523,10 +622,7 @@ async fn process_path_common_expr(
     column_predicate: impl Fn(PgColumnPath, PgColumnPath) -> PgAbstractPredicate,
     value_predicate: impl Fn(&Val, &Val) -> bool,
 ) -> Result<AccessSolution<AbstractPredicateWrapper>, AccessSolverError> {
-    let ignore_missing_value = input_value
-        .as_ref()
-        .map(|ctx| ctx.ignore_missing_value)
-        .unwrap_or(false);
+    let ignore_missing_value = ignores_missing_value(input_value);
 
     match &left_path.field_path {
         FieldPath::Normal(field_path, default) => {
@@ -555,9 +651,7 @@ async fn process_path_common_expr(
                             ),
                         )))
                     } else if ignore_missing_value {
-                        Ok(AccessSolution::Unsolvable(AbstractPredicateWrapper(
-                            AbstractPredicate::True,
-                        )))
+                        Ok(AccessSolution::skipped())
                     } else {
                         Ok(AccessSolution::Solved(AbstractPredicateWrapper(
                             column_predicate(
@@ -704,7 +798,7 @@ async fn compute_relational_predicate(
                                 solver,
                                 Some(&AccessInput {
                                     value: lead_value,
-                                    ignore_missing_value: false,
+                                    missing_value_policy: MissingValuePolicy::Evaluate,
                                     aliases: input_value
                                         .map(|ctx| ctx.aliases.clone())
                                         .unwrap_or_default(),
@@ -750,6 +844,49 @@ async fn compute_relational_predicate(
         ColumnPathLink::Leaf(column_id) => Err(AccessSolverError::Generic(
             format!("Invalid column path: {:?}", column_id).into(),
         )),
+    }
+}
+
+/// Whether a missing value that can't be resolved otherwise (such as a relation's lead or a list
+/// for `some`) passes the check. It does for an update (where the value stays unchanged), and, as
+/// before, for a create.
+fn ignores_missing_value(input_value: Option<&AccessInput<'_>>) -> bool {
+    input_value.is_some_and(|ctx| ctx.missing_value_policy != MissingValuePolicy::Evaluate)
+}
+
+/// Whether a value missing from a create's input at `path` (relative to `self`), whose field has the
+/// `field_default` value, is unknown until the insert, so a comparison with it is skipped.
+/// That is the case for a nested create's reference to its parent (supplied by the parent) and for
+/// a value generated by the database (such as `autoIncrement()` or `now()`).
+fn is_unknown_until_insert(
+    parent_reference: Option<&str>,
+    path: &[String],
+    field_default: &Option<PostgresFieldDefaultValue>,
+) -> bool {
+    let supplied_by_parent =
+        parent_reference.is_some() && path.first().map(String::as_str) == parent_reference;
+
+    // Only a field of this row is generated for it. A longer path such as `self.owner.id` carries
+    // the target's default (`User.id`'s `autoIncrement()`, see `effective_default_value` in the
+    // precheck builder), which says nothing about whether this row has an `owner`.
+    let generated = path.len() == 1
+        && field_default
+            .as_ref()
+            .is_some_and(PostgresFieldDefaultValue::is_generated);
+
+    supplied_by_parent || generated
+}
+
+/// Compares a null column with `other`, the way SQL does. Comparing with a null value (a null
+/// literal or context value) has a definite result, `null_comparison`, only for equality and
+/// inequality (SQL's `IS [NOT] NULL`). Everything else is unknown (see [`AccessSolution`]).
+fn null_column_relation(
+    other: &Val,
+    null_comparison: Option<bool>,
+) -> AccessSolution<AbstractPredicateWrapper> {
+    match (other, null_comparison) {
+        (Val::Null, Some(result)) => AccessSolution::Solved(result.into()),
+        _ => AccessSolution::unknown(),
     }
 }
 

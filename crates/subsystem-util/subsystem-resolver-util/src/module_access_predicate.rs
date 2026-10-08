@@ -10,7 +10,7 @@
 use core_resolver::access_solver::AccessPredicate;
 
 /// Simple boolean access predicate for module-level access control.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ModuleAccessPredicate {
     True,
     False,

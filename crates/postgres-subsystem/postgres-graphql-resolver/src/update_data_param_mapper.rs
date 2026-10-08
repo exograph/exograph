@@ -13,8 +13,8 @@ use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
 use core_model::types::OperationReturnType;
-use core_resolver::access_solver::AccessInput;
 use core_resolver::access_solver::AccessSolver;
+use core_resolver::access_solver::{AccessInput, MissingValuePolicy};
 use exo_sql_pg::{
     AbstractDelete, AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate, Column,
     ColumnId, ColumnPath, ManyToOne, NestedAbstractDelete, NestedAbstractInsert,
@@ -175,9 +175,14 @@ async fn compute_nested_ops<'a>(
     let mut nested_deletes = vec![];
 
     for field in arg_type.fields.iter() {
-        if let PostgresRelation::OneToMany(OneToManyRelation { relation_id, .. }) = &field.relation
+        if let PostgresRelation::OneToMany(
+            one_to_many_relation @ OneToManyRelation { relation_id, .. },
+        ) = &field.relation
         {
             let nested_relation = &relation_id.deref(&subsystem.core_subsystem.database);
+            let parent_reference = one_to_many_relation
+                .foreign_field(&subsystem.core_subsystem.entity_types)
+                .map(|foreign_field| foreign_field.name.as_str());
 
             let arg_type = match field.typ.innermost().type_id {
                 TypeIndex::Primitive(_) => {
@@ -204,6 +209,7 @@ async fn compute_nested_ops<'a>(
                         arg_type,
                         argument,
                         nested_relation,
+                        parent_reference,
                         subsystem,
                         request_context,
                     )
@@ -283,7 +289,7 @@ async fn compute_nested_update_object_arg<'a>(
 
     let input_value = Some(AccessInput {
         value: argument,
-        ignore_missing_value: true,
+        missing_value_policy: MissingValuePolicy::Ignore,
         aliases: HashMap::new(),
     });
 
@@ -354,6 +360,7 @@ async fn compute_nested_inserts<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
     nesting_relation: &OneToMany,
+    parent_reference: Option<&'a str>,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<PgNestedAbstractInsertSet, PostgresExecutionError> {
@@ -361,6 +368,7 @@ async fn compute_nested_inserts<'a>(
         field_entity_type: &'a MutationType,
         argument: &'a Val,
         nesting_relation: &OneToMany,
+        parent_reference: Option<&'a str>,
         subsystem: &'a PostgresGraphQLSubsystem,
         request_context: &'a RequestContext<'a>,
     ) -> Result<PgNestedAbstractInsert, PostgresExecutionError> {
@@ -369,6 +377,7 @@ async fn compute_nested_inserts<'a>(
         let (rows, precheck_predicates) = super::create_data_param_mapper::map_argument(
             field_entity_type,
             argument,
+            parent_reference,
             subsystem,
             request_context,
         )
@@ -406,6 +415,7 @@ async fn compute_nested_inserts<'a>(
                     field_entity_type,
                     create_arg,
                     nesting_relation,
+                    parent_reference,
                     subsystem,
                     request_context,
                 )
@@ -417,6 +427,7 @@ async fn compute_nested_inserts<'a>(
                         field_entity_type,
                         arg,
                         nesting_relation,
+                        parent_reference,
                         subsystem,
                         request_context,
                     )
@@ -512,7 +523,7 @@ async fn compute_nested_delete_object_arg<'a>(
 
     let input_value = Some(AccessInput {
         value: argument,
-        ignore_missing_value: false,
+        missing_value_policy: MissingValuePolicy::Evaluate,
         aliases: HashMap::new(),
     });
 

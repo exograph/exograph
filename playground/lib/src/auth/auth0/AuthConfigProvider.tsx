@@ -72,7 +72,11 @@ function ContextInitializer(props: { children: React.ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    setTokenFn(isAuthenticated ? () => getAccessTokenSilently() : undefined);
+    setTokenFn(
+      isAuthenticated
+        ? async () => (await getAccessTokenSilently()) ?? null
+        : undefined,
+    );
     setIsSignedIn(isAuthenticated);
     setUserInfo(getUserInfo());
     setSignOutFn(() => signOutFn());

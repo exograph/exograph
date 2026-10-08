@@ -1,0 +1,356 @@
+# Each type's rule requires the owner (`owner: User?`, where `User.id` is `autoIncrement()`) to be
+# the user, unless the user is an admin. `DeMorganDoc` and `DeMorganExpandedDoc` state `Project`'s
+# rule in De Morgan forms. A row without an owner violates the rule (the generated `User.id` says
+# nothing about whether the row has an owner)
+stages:
+  # self.owner.id == AuthContext.id || AuthContext.role == "ADMIN": the user as the owner is allowed
+  - operation: |
+      mutation {
+        createProject(data: {title: "owned by the user", owner: {id: 1}}) {
+          title
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "data": {
+          "createProject": {
+            "title": "owned by the user"
+          }
+        }
+      }
+  # self.owner.id == AuthContext.id || AuthContext.role == "ADMIN": another user as the owner is rejected
+  - operation: |
+      mutation {
+        createProject(data: {title: "owned by another user", owner: {id: 2}}) {
+          title
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # self.owner.id == AuthContext.id || AuthContext.role == "ADMIN": an omitted owner is rejected
+  - operation: |
+      mutation {
+        createProject(data: {title: "omitted owner"}) {
+          title
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # self.owner.id == AuthContext.id || AuthContext.role == "ADMIN": a null owner is rejected
+  - operation: |
+      mutation {
+        createProject(data: {title: "null owner", owner: null}) {
+          title
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # self.owner.id == AuthContext.id || AuthContext.role == "ADMIN": an admin may omit the owner
+  - operation: |
+      mutation {
+        createProject(data: {title: "omitted owner by an admin"}) {
+          title
+        }
+      }
+    auth: |
+      {
+        "sub": 1,
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "data": {
+          "createProject": {
+            "title": "omitted owner by an admin"
+          }
+        }
+      }
+  # !(self.owner.id != AuthContext.id && AuthContext.role != "ADMIN"): the user as the owner is allowed
+  - operation: |
+      mutation {
+        createDeMorganDoc(data: {content: "owned by the user", owner: {id: 1}}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "data": {
+          "createDeMorganDoc": {
+            "content": "owned by the user"
+          }
+        }
+      }
+  # !(self.owner.id != AuthContext.id && AuthContext.role != "ADMIN"): another user as the owner is rejected
+  - operation: |
+      mutation {
+        createDeMorganDoc(data: {content: "owned by another user", owner: {id: 2}}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # !(self.owner.id != AuthContext.id && AuthContext.role != "ADMIN"): an omitted owner is rejected
+  - operation: |
+      mutation {
+        createDeMorganDoc(data: {content: "omitted owner"}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # !(self.owner.id != AuthContext.id && AuthContext.role != "ADMIN"): a null owner is rejected
+  - operation: |
+      mutation {
+        createDeMorganDoc(data: {content: "null owner", owner: null}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # !(self.owner.id != AuthContext.id && AuthContext.role != "ADMIN"): an admin may omit the owner
+  - operation: |
+      mutation {
+        createDeMorganDoc(data: {content: "omitted owner by an admin"}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1,
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "data": {
+          "createDeMorganDoc": {
+            "content": "omitted owner by an admin"
+          }
+        }
+      }
+  # !(self.owner.id != AuthContext.id) || !(AuthContext.role != "ADMIN"): the user as the owner is allowed
+  - operation: |
+      mutation {
+        createDeMorganExpandedDoc(data: {content: "owned by the user", owner: {id: 1}}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "data": {
+          "createDeMorganExpandedDoc": {
+            "content": "owned by the user"
+          }
+        }
+      }
+  # !(self.owner.id != AuthContext.id) || !(AuthContext.role != "ADMIN"): another user as the owner is rejected
+  - operation: |
+      mutation {
+        createDeMorganExpandedDoc(data: {content: "owned by another user", owner: {id: 2}}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # !(self.owner.id != AuthContext.id) || !(AuthContext.role != "ADMIN"): an omitted owner is rejected
+  - operation: |
+      mutation {
+        createDeMorganExpandedDoc(data: {content: "omitted owner"}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # !(self.owner.id != AuthContext.id) || !(AuthContext.role != "ADMIN"): a null owner is rejected
+  - operation: |
+      mutation {
+        createDeMorganExpandedDoc(data: {content: "null owner", owner: null}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # !(self.owner.id != AuthContext.id) || !(AuthContext.role != "ADMIN"): an admin may omit the owner
+  - operation: |
+      mutation {
+        createDeMorganExpandedDoc(data: {content: "omitted owner by an admin"}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1,
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "data": {
+          "createDeMorganExpandedDoc": {
+            "content": "omitted owner by an admin"
+          }
+        }
+      }
+  # Only the allowed rows are stored
+  - operation: |
+      query {
+        projects @unordered {
+          title
+          owner {
+            id
+          }
+        }
+        deMorganDocs @unordered {
+          content
+          owner {
+            id
+          }
+        }
+        deMorganExpandedDocs @unordered {
+          content
+          owner {
+            id
+          }
+        }
+      }
+    response: |
+      {
+        "data": {
+          "projects": [
+            {
+              "title": "owned by the user",
+              "owner": {
+                "id": 1
+              }
+            },
+            {
+              "title": "omitted owner by an admin",
+              "owner": null
+            }
+          ],
+          "deMorganDocs": [
+            {
+              "content": "owned by the user",
+              "owner": {
+                "id": 1
+              }
+            },
+            {
+              "content": "omitted owner by an admin",
+              "owner": null
+            }
+          ],
+          "deMorganExpandedDocs": [
+            {
+              "content": "owned by the user",
+              "owner": {
+                "id": 1
+              }
+            },
+            {
+              "content": "omitted owner by an admin",
+              "owner": null
+            }
+          ]
+        }
+      }

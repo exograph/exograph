@@ -108,13 +108,13 @@ clap = "4"
 
 deno_ast = "0.53.3"
 deno_error = "0.7.1"
-deno_runtime = "0.266.0"
-deno_core = { version = "0.411.0", features = ["v8"] }
-deno_fs = "0.168.0"
-deno_resolver = "0.89.0"
-node_resolver = "0.96.0"
+deno_runtime = "0.267.0"
+deno_core = { version = "0.412.0", features = ["v8"] }
+deno_fs = "0.169.0"
+deno_resolver = "0.90.0"
+node_resolver = "0.97.0"
 sys_traits = "0.1.28"
-deno_snapshots = "0.73.0"
+deno_snapshots = "0.74.0"
 
 futures = "0.3.32"
 heck = "0.5.0"
@@ -144,8 +144,8 @@ tree-sitter-generate = { git = "https://github.com/exograph/tree-sitter-c2rust.g
 typed-generational-arena = { version = "0.2.9", features = ["serde"] }
 uuid = "1"
 url = "2.5.8"
-wasmtime = "48.0.1"
-wasmtime-wasi = "48.0.1"
+wasmtime = "49.0.2"
+wasmtime-wasi = "49.0.2"
 wildmatch = "2.6.1"
 which = "8.0.2"
 wasm-bindgen-test = "0.3.65"

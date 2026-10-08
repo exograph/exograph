@@ -28,7 +28,7 @@ use subsystem_resolver_util::access::ModuleAccessPredicate;
 // Local newtype to satisfy the orphan rule: AccessSolver is in core-resolver,
 // ModuleAccessPredicate is in subsystem-resolver-util, and DenoSubsystem
 // is in deno-graphql-model — none are local.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct DenoAccessPredicate(pub(crate) ModuleAccessPredicate);
 
 impl std::ops::Not for DenoAccessPredicate {
@@ -71,9 +71,6 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, DenoAccessPredicate> 
             subsystem_resolver_util::access::solve_module_relational_op(self, request_context, op)
                 .await?;
 
-        Ok(match result {
-            AccessSolution::Solved(p) => AccessSolution::Solved(DenoAccessPredicate(p)),
-            AccessSolution::Unsolvable(p) => AccessSolution::Unsolvable(DenoAccessPredicate(p)),
-        })
+        Ok(result.map(DenoAccessPredicate))
     }
 }

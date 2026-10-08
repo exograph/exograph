@@ -1,0 +1,5 @@
+operation: |
+  mutation {
+    u1: createUser(data: {name: "u1"}) { id }
+    u2: createUser(data: {name: "u2"}) { id }
+  }

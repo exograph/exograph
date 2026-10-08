@@ -1,0 +1,78 @@
+# Creating an `ExternalDoc` requires `self.externalId == AuthContext.externalId` (or ADMIN). 
+# Omitting the nullable `externalId` from the input would store a null `externalId`, which 
+# violates the rule, so the create must be rejected.
+stages:
+  # Control: a supplied, non-matching externalId is rejected
+  - operation: |
+      mutation {
+        createExternalDoc(data: {content: "non matching external id", externalId: 999}) {
+          id
+        }
+      }
+    auth: |
+      {
+        "externalId": 5
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # Control: a supplied, matching externalId is allowed
+  - operation: |
+      mutation {
+        createExternalDoc(data: {content: "matching external id", externalId: 5}) {
+          externalId
+        }
+      }
+    auth: |
+      {
+        "externalId": 5
+      }
+    response: |
+      {
+        "data": {
+          "createExternalDoc": {
+            "externalId": 5
+          }
+        }
+      }
+  # Omitting externalId is rejected (the row would have externalId = null != 5)
+  - operation: |
+      mutation {
+        createExternalDoc(data: {content: "omitted external id"}) {
+          id
+        }
+      }
+    auth: |
+      {
+        "externalId": 5
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # No row violating the rule should exist
+  - operation: |
+      query {
+        externalDocs(where: {externalId: {eq: null}}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "roles": ["ADMIN"]
+      }
+    response: |
+      {
+        "data": {
+          "externalDocs": []
+        }
+      }
