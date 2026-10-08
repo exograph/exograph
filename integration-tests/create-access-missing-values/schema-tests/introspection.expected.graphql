@@ -1,0 +1,875 @@
+type BooleanAgg {
+  count: Int
+}
+
+input BooleanFilter {
+  eq: Boolean
+  neq: Boolean
+}
+
+type DeMorganDoc {
+  id: Int!
+  content: String!
+  owner: User
+}
+
+"""An aggregate for the `DeMorganDoc` type."""
+type DeMorganDocAgg {
+  id: IntAgg
+  content: StringAgg
+}
+
+input DeMorganDocCreationInput {
+  content: String!
+  owner: UserReferenceInput
+}
+
+input DeMorganDocCreationInputFromUser {
+  content: String!
+}
+
+"""
+Predicate for the `DeMorganDoc` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input DeMorganDocFilter {
+  id: IntFilter
+  content: StringFilter
+  owner: UserFilter
+  and: [DeMorganDocFilter!]
+  or: [DeMorganDocFilter!]
+  not: DeMorganDocFilter
+}
+
+input DeMorganDocOrdering {
+  id: Ordering
+  content: Ordering
+  owner: [UserOrdering!]
+}
+
+input DeMorganDocReferenceInput {
+  id: Int!
+}
+
+input DeMorganDocUpdateInput {
+  id: Int
+  content: String
+  owner: UserReferenceInput
+}
+
+input DeMorganDocUpdateInputFromUser {
+  create: [DeMorganDocCreationInputFromUser!]
+  update: [DeMorganDocUpdateInputFromUserNested!]
+  delete: [DeMorganDocReferenceInput!]
+}
+
+input DeMorganDocUpdateInputFromUserNested {
+  id: Int!
+  content: String
+}
+
+type DeMorganExpandedDoc {
+  id: Int!
+  content: String!
+  owner: User
+}
+
+"""An aggregate for the `DeMorganExpandedDoc` type."""
+type DeMorganExpandedDocAgg {
+  id: IntAgg
+  content: StringAgg
+}
+
+input DeMorganExpandedDocCreationInput {
+  content: String!
+  owner: UserReferenceInput
+}
+
+input DeMorganExpandedDocCreationInputFromUser {
+  content: String!
+}
+
+"""
+Predicate for the `DeMorganExpandedDoc` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input DeMorganExpandedDocFilter {
+  id: IntFilter
+  content: StringFilter
+  owner: UserFilter
+  and: [DeMorganExpandedDocFilter!]
+  or: [DeMorganExpandedDocFilter!]
+  not: DeMorganExpandedDocFilter
+}
+
+input DeMorganExpandedDocOrdering {
+  id: Ordering
+  content: Ordering
+  owner: [UserOrdering!]
+}
+
+input DeMorganExpandedDocReferenceInput {
+  id: Int!
+}
+
+input DeMorganExpandedDocUpdateInput {
+  id: Int
+  content: String
+  owner: UserReferenceInput
+}
+
+input DeMorganExpandedDocUpdateInputFromUser {
+  create: [DeMorganExpandedDocCreationInputFromUser!]
+  update: [DeMorganExpandedDocUpdateInputFromUserNested!]
+  delete: [DeMorganExpandedDocReferenceInput!]
+}
+
+input DeMorganExpandedDocUpdateInputFromUserNested {
+  id: Int!
+  content: String
+}
+
+type InequalityDoc {
+  id: Int!
+  content: String!
+  rating: Int
+}
+
+"""An aggregate for the `InequalityDoc` type."""
+type InequalityDocAgg {
+  id: IntAgg
+  content: StringAgg
+  rating: IntAgg
+}
+
+input InequalityDocCreationInput {
+  content: String!
+  rating: Int
+}
+
+"""
+Predicate for the `InequalityDoc` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input InequalityDocFilter {
+  id: IntFilter
+  content: StringFilter
+  rating: IntFilter
+  and: [InequalityDocFilter!]
+  or: [InequalityDocFilter!]
+  not: InequalityDocFilter
+}
+
+input InequalityDocOrdering {
+  id: Ordering
+  content: Ordering
+  rating: Ordering
+}
+
+input InequalityDocUpdateInput {
+  id: Int
+  content: String
+  rating: Int
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+type NegatedComparisonDoc {
+  id: Int!
+  content: String!
+  level: Int
+}
+
+"""An aggregate for the `NegatedComparisonDoc` type."""
+type NegatedComparisonDocAgg {
+  id: IntAgg
+  content: StringAgg
+  level: IntAgg
+}
+
+input NegatedComparisonDocCreationInput {
+  content: String!
+  level: Int
+}
+
+"""
+Predicate for the `NegatedComparisonDoc` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input NegatedComparisonDocFilter {
+  id: IntFilter
+  content: StringFilter
+  level: IntFilter
+  and: [NegatedComparisonDocFilter!]
+  or: [NegatedComparisonDocFilter!]
+  not: NegatedComparisonDocFilter
+}
+
+input NegatedComparisonDocOrdering {
+  id: Ordering
+  content: Ordering
+  level: Ordering
+}
+
+input NegatedComparisonDocUpdateInput {
+  id: Int
+  content: String
+  level: Int
+}
+
+type NegatedEqualityDoc {
+  id: Int!
+  content: String!
+  locked: Boolean
+}
+
+"""An aggregate for the `NegatedEqualityDoc` type."""
+type NegatedEqualityDocAgg {
+  id: IntAgg
+  content: StringAgg
+  locked: BooleanAgg
+}
+
+input NegatedEqualityDocCreationInput {
+  content: String!
+  locked: Boolean
+}
+
+"""
+Predicate for the `NegatedEqualityDoc` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input NegatedEqualityDocFilter {
+  id: IntFilter
+  content: StringFilter
+  locked: BooleanFilter
+  and: [NegatedEqualityDocFilter!]
+  or: [NegatedEqualityDocFilter!]
+  not: NegatedEqualityDocFilter
+}
+
+input NegatedEqualityDocOrdering {
+  id: Ordering
+  content: Ordering
+  locked: Ordering
+}
+
+input NegatedEqualityDocUpdateInput {
+  id: Int
+  content: String
+  locked: Boolean
+}
+
+type NegatedInequalityDoc {
+  id: Int!
+  content: String!
+  ownerId: Int
+}
+
+"""An aggregate for the `NegatedInequalityDoc` type."""
+type NegatedInequalityDocAgg {
+  id: IntAgg
+  content: StringAgg
+  ownerId: IntAgg
+}
+
+input NegatedInequalityDocCreationInput {
+  content: String!
+  ownerId: Int
+}
+
+"""
+Predicate for the `NegatedInequalityDoc` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input NegatedInequalityDocFilter {
+  id: IntFilter
+  content: StringFilter
+  ownerId: IntFilter
+  and: [NegatedInequalityDocFilter!]
+  or: [NegatedInequalityDocFilter!]
+  not: NegatedInequalityDocFilter
+}
+
+input NegatedInequalityDocOrdering {
+  id: Ordering
+  content: Ordering
+  ownerId: Ordering
+}
+
+input NegatedInequalityDocUpdateInput {
+  id: Int
+  content: String
+  ownerId: Int
+}
+
+type NullCheckDoc {
+  id: Int!
+  content: String!
+  approvedBy: Int
+}
+
+"""An aggregate for the `NullCheckDoc` type."""
+type NullCheckDocAgg {
+  id: IntAgg
+  content: StringAgg
+  approvedBy: IntAgg
+}
+
+input NullCheckDocCreationInput {
+  content: String!
+  approvedBy: Int
+}
+
+"""
+Predicate for the `NullCheckDoc` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input NullCheckDocFilter {
+  id: IntFilter
+  content: StringFilter
+  approvedBy: IntFilter
+  and: [NullCheckDocFilter!]
+  or: [NullCheckDocFilter!]
+  not: NullCheckDocFilter
+}
+
+input NullCheckDocOrdering {
+  id: Ordering
+  content: Ordering
+  approvedBy: Ordering
+}
+
+input NullCheckDocUpdateInput {
+  id: Int
+  content: String
+  approvedBy: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type Project {
+  id: Int!
+  title: String!
+  owner: User
+}
+
+"""An aggregate for the `Project` type."""
+type ProjectAgg {
+  id: IntAgg
+  title: StringAgg
+}
+
+input ProjectCreationInput {
+  title: String!
+  owner: UserReferenceInput
+}
+
+input ProjectCreationInputFromUser {
+  title: String!
+}
+
+"""
+Predicate for the `Project` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input ProjectFilter {
+  id: IntFilter
+  title: StringFilter
+  owner: UserFilter
+  and: [ProjectFilter!]
+  or: [ProjectFilter!]
+  not: ProjectFilter
+}
+
+input ProjectOrdering {
+  id: Ordering
+  title: Ordering
+  owner: [UserOrdering!]
+}
+
+input ProjectReferenceInput {
+  id: Int!
+}
+
+input ProjectUpdateInput {
+  id: Int
+  title: String
+  owner: UserReferenceInput
+}
+
+input ProjectUpdateInputFromUser {
+  create: [ProjectCreationInputFromUser!]
+  update: [ProjectUpdateInputFromUserNested!]
+  delete: [ProjectReferenceInput!]
+}
+
+input ProjectUpdateInputFromUserNested {
+  id: Int!
+  title: String
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type User {
+  id: Int!
+  name: String!
+  projects(where: ProjectFilter, orderBy: [ProjectOrdering!], limit: Int, offset: Int): [Project!]
+  deMorganDocs(where: DeMorganDocFilter, orderBy: [DeMorganDocOrdering!], limit: Int, offset: Int): [DeMorganDoc!]
+  deMorganExpandedDocs(where: DeMorganExpandedDocFilter, orderBy: [DeMorganExpandedDocOrdering!], limit: Int, offset: Int): [DeMorganExpandedDoc!]
+  projectsAgg(where: ProjectFilter): ProjectAgg
+  deMorganDocsAgg(where: DeMorganDocFilter): DeMorganDocAgg
+  deMorganExpandedDocsAgg(where: DeMorganExpandedDocFilter): DeMorganExpandedDocAgg
+}
+
+"""An aggregate for the `User` type."""
+type UserAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input UserCreationInput {
+  name: String!
+  projects: [ProjectCreationInputFromUser!]
+  deMorganDocs: [DeMorganDocCreationInputFromUser!]
+  deMorganExpandedDocs: [DeMorganExpandedDocCreationInputFromUser!]
+}
+
+"""
+Predicate for the `User` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input UserFilter {
+  id: IntFilter
+  name: StringFilter
+  projects: ProjectFilter
+  deMorganDocs: DeMorganDocFilter
+  deMorganExpandedDocs: DeMorganExpandedDocFilter
+  and: [UserFilter!]
+  or: [UserFilter!]
+  not: UserFilter
+}
+
+input UserOrdering {
+  id: Ordering
+  name: Ordering
+}
+
+input UserReferenceInput {
+  id: Int!
+}
+
+input UserUpdateInput {
+  id: Int
+  name: String
+  projects: ProjectUpdateInputFromUser
+  deMorganDocs: DeMorganDocUpdateInputFromUser
+  deMorganExpandedDocs: DeMorganExpandedDocUpdateInputFromUser
+}
+
+type Query {
+  """Get a single `DeMorganDoc` by primary key"""
+  deMorganDoc(id: Int!): DeMorganDoc
+
+  """
+  Get multiple `DeMorganDoc`s given the provided `where` filter, order by, limit, and offset
+  """
+  deMorganDocs(where: DeMorganDocFilter, orderBy: [DeMorganDocOrdering!], limit: Int, offset: Int): [DeMorganDoc!]!
+
+  """
+  Get the aggregate value of the selected fields over all `DeMorganDoc`s given the provided `where` filter
+  """
+  deMorganDocsAgg(where: DeMorganDocFilter): DeMorganDocAgg!
+
+  """Get a single `DeMorganExpandedDoc` by primary key"""
+  deMorganExpandedDoc(id: Int!): DeMorganExpandedDoc
+
+  """
+  Get multiple `DeMorganExpandedDoc`s given the provided `where` filter, order by, limit, and offset
+  """
+  deMorganExpandedDocs(where: DeMorganExpandedDocFilter, orderBy: [DeMorganExpandedDocOrdering!], limit: Int, offset: Int): [DeMorganExpandedDoc!]!
+
+  """
+  Get the aggregate value of the selected fields over all `DeMorganExpandedDoc`s given the provided `where` filter
+  """
+  deMorganExpandedDocsAgg(where: DeMorganExpandedDocFilter): DeMorganExpandedDocAgg!
+
+  """Get a single `InequalityDoc` by primary key"""
+  inequalityDoc(id: Int!): InequalityDoc
+
+  """
+  Get multiple `InequalityDoc`s given the provided `where` filter, order by, limit, and offset
+  """
+  inequalityDocs(where: InequalityDocFilter, orderBy: [InequalityDocOrdering!], limit: Int, offset: Int): [InequalityDoc!]!
+
+  """
+  Get the aggregate value of the selected fields over all `InequalityDoc`s given the provided `where` filter
+  """
+  inequalityDocsAgg(where: InequalityDocFilter): InequalityDocAgg!
+
+  """Get a single `NegatedComparisonDoc` by primary key"""
+  negatedComparisonDoc(id: Int!): NegatedComparisonDoc
+
+  """
+  Get multiple `NegatedComparisonDoc`s given the provided `where` filter, order by, limit, and offset
+  """
+  negatedComparisonDocs(where: NegatedComparisonDocFilter, orderBy: [NegatedComparisonDocOrdering!], limit: Int, offset: Int): [NegatedComparisonDoc!]!
+
+  """
+  Get the aggregate value of the selected fields over all `NegatedComparisonDoc`s given the provided `where` filter
+  """
+  negatedComparisonDocsAgg(where: NegatedComparisonDocFilter): NegatedComparisonDocAgg!
+
+  """Get a single `NegatedEqualityDoc` by primary key"""
+  negatedEqualityDoc(id: Int!): NegatedEqualityDoc
+
+  """
+  Get multiple `NegatedEqualityDoc`s given the provided `where` filter, order by, limit, and offset
+  """
+  negatedEqualityDocs(where: NegatedEqualityDocFilter, orderBy: [NegatedEqualityDocOrdering!], limit: Int, offset: Int): [NegatedEqualityDoc!]!
+
+  """
+  Get the aggregate value of the selected fields over all `NegatedEqualityDoc`s given the provided `where` filter
+  """
+  negatedEqualityDocsAgg(where: NegatedEqualityDocFilter): NegatedEqualityDocAgg!
+
+  """Get a single `NegatedInequalityDoc` by primary key"""
+  negatedInequalityDoc(id: Int!): NegatedInequalityDoc
+
+  """
+  Get multiple `NegatedInequalityDoc`s given the provided `where` filter, order by, limit, and offset
+  """
+  negatedInequalityDocs(where: NegatedInequalityDocFilter, orderBy: [NegatedInequalityDocOrdering!], limit: Int, offset: Int): [NegatedInequalityDoc!]!
+
+  """
+  Get the aggregate value of the selected fields over all `NegatedInequalityDoc`s given the provided `where` filter
+  """
+  negatedInequalityDocsAgg(where: NegatedInequalityDocFilter): NegatedInequalityDocAgg!
+
+  """Get a single `NullCheckDoc` by primary key"""
+  nullCheckDoc(id: Int!): NullCheckDoc
+
+  """
+  Get multiple `NullCheckDoc`s given the provided `where` filter, order by, limit, and offset
+  """
+  nullCheckDocs(where: NullCheckDocFilter, orderBy: [NullCheckDocOrdering!], limit: Int, offset: Int): [NullCheckDoc!]!
+
+  """
+  Get the aggregate value of the selected fields over all `NullCheckDoc`s given the provided `where` filter
+  """
+  nullCheckDocsAgg(where: NullCheckDocFilter): NullCheckDocAgg!
+
+  """Get a single `Project` by primary key"""
+  project(id: Int!): Project
+
+  """
+  Get multiple `Project`s given the provided `where` filter, order by, limit, and offset
+  """
+  projects(where: ProjectFilter, orderBy: [ProjectOrdering!], limit: Int, offset: Int): [Project!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Project`s given the provided `where` filter
+  """
+  projectsAgg(where: ProjectFilter): ProjectAgg!
+
+  """Get a single `User` by primary key"""
+  user(id: Int!): User
+
+  """
+  Get multiple `User`s given the provided `where` filter, order by, limit, and offset
+  """
+  users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+
+  """
+  Get the aggregate value of the selected fields over all `User`s given the provided `where` filter
+  """
+  usersAgg(where: UserFilter): UserAgg!
+}
+
+type Mutation {
+  """
+  Create a new DeMorganDoc. Check the `DeMorganDocCreationInput` type for the expected shape of the data.
+  """
+  createDeMorganDoc(data: DeMorganDocCreationInput!): DeMorganDoc!
+
+  """
+  Create multiple DeMorganDocs. Check the `DeMorganDocCreationInput` type for the expected shape of the data.
+  """
+  createDeMorganDocs(data: [DeMorganDocCreationInput!]!): [DeMorganDoc!]!
+
+  """
+  Create a new DeMorganExpandedDoc. Check the `DeMorganExpandedDocCreationInput` type for the expected shape of the data.
+  """
+  createDeMorganExpandedDoc(data: DeMorganExpandedDocCreationInput!): DeMorganExpandedDoc!
+
+  """
+  Create multiple DeMorganExpandedDocs. Check the `DeMorganExpandedDocCreationInput` type for the expected shape of the data.
+  """
+  createDeMorganExpandedDocs(data: [DeMorganExpandedDocCreationInput!]!): [DeMorganExpandedDoc!]!
+
+  """
+  Create a new InequalityDoc. Check the `InequalityDocCreationInput` type for the expected shape of the data.
+  """
+  createInequalityDoc(data: InequalityDocCreationInput!): InequalityDoc!
+
+  """
+  Create multiple InequalityDocs. Check the `InequalityDocCreationInput` type for the expected shape of the data.
+  """
+  createInequalityDocs(data: [InequalityDocCreationInput!]!): [InequalityDoc!]!
+
+  """
+  Create a new NegatedComparisonDoc. Check the `NegatedComparisonDocCreationInput` type for the expected shape of the data.
+  """
+  createNegatedComparisonDoc(data: NegatedComparisonDocCreationInput!): NegatedComparisonDoc!
+
+  """
+  Create multiple NegatedComparisonDocs. Check the `NegatedComparisonDocCreationInput` type for the expected shape of the data.
+  """
+  createNegatedComparisonDocs(data: [NegatedComparisonDocCreationInput!]!): [NegatedComparisonDoc!]!
+
+  """
+  Create a new NegatedEqualityDoc. Check the `NegatedEqualityDocCreationInput` type for the expected shape of the data.
+  """
+  createNegatedEqualityDoc(data: NegatedEqualityDocCreationInput!): NegatedEqualityDoc!
+
+  """
+  Create multiple NegatedEqualityDocs. Check the `NegatedEqualityDocCreationInput` type for the expected shape of the data.
+  """
+  createNegatedEqualityDocs(data: [NegatedEqualityDocCreationInput!]!): [NegatedEqualityDoc!]!
+
+  """
+  Create a new NegatedInequalityDoc. Check the `NegatedInequalityDocCreationInput` type for the expected shape of the data.
+  """
+  createNegatedInequalityDoc(data: NegatedInequalityDocCreationInput!): NegatedInequalityDoc!
+
+  """
+  Create multiple NegatedInequalityDocs. Check the `NegatedInequalityDocCreationInput` type for the expected shape of the data.
+  """
+  createNegatedInequalityDocs(data: [NegatedInequalityDocCreationInput!]!): [NegatedInequalityDoc!]!
+
+  """
+  Create a new NullCheckDoc. Check the `NullCheckDocCreationInput` type for the expected shape of the data.
+  """
+  createNullCheckDoc(data: NullCheckDocCreationInput!): NullCheckDoc!
+
+  """
+  Create multiple NullCheckDocs. Check the `NullCheckDocCreationInput` type for the expected shape of the data.
+  """
+  createNullCheckDocs(data: [NullCheckDocCreationInput!]!): [NullCheckDoc!]!
+
+  """
+  Create a new Project. Check the `ProjectCreationInput` type for the expected shape of the data.
+  """
+  createProject(data: ProjectCreationInput!): Project!
+
+  """
+  Create multiple Projects. Check the `ProjectCreationInput` type for the expected shape of the data.
+  """
+  createProjects(data: [ProjectCreationInput!]!): [Project!]!
+
+  """
+  Create a new User. Check the `UserCreationInput` type for the expected shape of the data.
+  """
+  createUser(data: UserCreationInput!): User!
+
+  """
+  Create multiple Users. Check the `UserCreationInput` type for the expected shape of the data.
+  """
+  createUsers(data: [UserCreationInput!]!): [User!]!
+
+  """Delete the DeMorganDoc with the provided primary key."""
+  deleteDeMorganDoc(id: Int!): DeMorganDoc
+
+  """Delete multiple DeMorganDocs matching the provided `where` filter."""
+  deleteDeMorganDocs(where: DeMorganDocFilter): [DeMorganDoc!]!
+
+  """Delete the DeMorganExpandedDoc with the provided primary key."""
+  deleteDeMorganExpandedDoc(id: Int!): DeMorganExpandedDoc
+
+  """
+  Delete multiple DeMorganExpandedDocs matching the provided `where` filter.
+  """
+  deleteDeMorganExpandedDocs(where: DeMorganExpandedDocFilter): [DeMorganExpandedDoc!]!
+
+  """Delete the InequalityDoc with the provided primary key."""
+  deleteInequalityDoc(id: Int!): InequalityDoc
+
+  """Delete multiple InequalityDocs matching the provided `where` filter."""
+  deleteInequalityDocs(where: InequalityDocFilter): [InequalityDoc!]!
+
+  """Delete the NegatedComparisonDoc with the provided primary key."""
+  deleteNegatedComparisonDoc(id: Int!): NegatedComparisonDoc
+
+  """
+  Delete multiple NegatedComparisonDocs matching the provided `where` filter.
+  """
+  deleteNegatedComparisonDocs(where: NegatedComparisonDocFilter): [NegatedComparisonDoc!]!
+
+  """Delete the NegatedEqualityDoc with the provided primary key."""
+  deleteNegatedEqualityDoc(id: Int!): NegatedEqualityDoc
+
+  """
+  Delete multiple NegatedEqualityDocs matching the provided `where` filter.
+  """
+  deleteNegatedEqualityDocs(where: NegatedEqualityDocFilter): [NegatedEqualityDoc!]!
+
+  """Delete the NegatedInequalityDoc with the provided primary key."""
+  deleteNegatedInequalityDoc(id: Int!): NegatedInequalityDoc
+
+  """
+  Delete multiple NegatedInequalityDocs matching the provided `where` filter.
+  """
+  deleteNegatedInequalityDocs(where: NegatedInequalityDocFilter): [NegatedInequalityDoc!]!
+
+  """Delete the NullCheckDoc with the provided primary key."""
+  deleteNullCheckDoc(id: Int!): NullCheckDoc
+
+  """Delete multiple NullCheckDocs matching the provided `where` filter."""
+  deleteNullCheckDocs(where: NullCheckDocFilter): [NullCheckDoc!]!
+
+  """Delete the Project with the provided primary key."""
+  deleteProject(id: Int!): Project
+
+  """Delete multiple Projects matching the provided `where` filter."""
+  deleteProjects(where: ProjectFilter): [Project!]!
+
+  """Delete the User with the provided primary key."""
+  deleteUser(id: Int!): User
+
+  """Delete multiple Users matching the provided `where` filter."""
+  deleteUsers(where: UserFilter): [User!]!
+
+  """
+  Update the DeMorganDoc with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateDeMorganDoc(id: Int!, data: DeMorganDocUpdateInput!): DeMorganDoc
+
+  """
+  Update multiple DeMorganDocs matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateDeMorganDocs(where: DeMorganDocFilter, data: DeMorganDocUpdateInput!): [DeMorganDoc!]!
+
+  """
+  Update the DeMorganExpandedDoc with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateDeMorganExpandedDoc(id: Int!, data: DeMorganExpandedDocUpdateInput!): DeMorganExpandedDoc
+
+  """
+  Update multiple DeMorganExpandedDocs matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateDeMorganExpandedDocs(where: DeMorganExpandedDocFilter, data: DeMorganExpandedDocUpdateInput!): [DeMorganExpandedDoc!]!
+
+  """
+  Update the InequalityDoc with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateInequalityDoc(id: Int!, data: InequalityDocUpdateInput!): InequalityDoc
+
+  """
+  Update multiple InequalityDocs matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateInequalityDocs(where: InequalityDocFilter, data: InequalityDocUpdateInput!): [InequalityDoc!]!
+
+  """
+  Update the NegatedComparisonDoc with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateNegatedComparisonDoc(id: Int!, data: NegatedComparisonDocUpdateInput!): NegatedComparisonDoc
+
+  """
+  Update multiple NegatedComparisonDocs matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateNegatedComparisonDocs(where: NegatedComparisonDocFilter, data: NegatedComparisonDocUpdateInput!): [NegatedComparisonDoc!]!
+
+  """
+  Update the NegatedEqualityDoc with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateNegatedEqualityDoc(id: Int!, data: NegatedEqualityDocUpdateInput!): NegatedEqualityDoc
+
+  """
+  Update multiple NegatedEqualityDocs matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateNegatedEqualityDocs(where: NegatedEqualityDocFilter, data: NegatedEqualityDocUpdateInput!): [NegatedEqualityDoc!]!
+
+  """
+  Update the NegatedInequalityDoc with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateNegatedInequalityDoc(id: Int!, data: NegatedInequalityDocUpdateInput!): NegatedInequalityDoc
+
+  """
+  Update multiple NegatedInequalityDocs matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateNegatedInequalityDocs(where: NegatedInequalityDocFilter, data: NegatedInequalityDocUpdateInput!): [NegatedInequalityDoc!]!
+
+  """
+  Update the NullCheckDoc with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateNullCheckDoc(id: Int!, data: NullCheckDocUpdateInput!): NullCheckDoc
+
+  """
+  Update multiple NullCheckDocs matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateNullCheckDocs(where: NullCheckDocFilter, data: NullCheckDocUpdateInput!): [NullCheckDoc!]!
+
+  """
+  Update the Project with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateProject(id: Int!, data: ProjectUpdateInput!): Project
+
+  """
+  Update multiple Projects matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateProjects(where: ProjectFilter, data: ProjectUpdateInput!): [Project!]!
+
+  """
+  Update the User with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateUser(id: Int!, data: UserUpdateInput!): User
+
+  """
+  Update multiple Users matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
+}

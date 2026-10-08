@@ -1,0 +1,281 @@
+# A value missing from a create's input is stored as null. Each type's rule must not hold for
+# null, so omitting the field (or passing null) must be rejected, even when the rule's negation or
+# inequality might suggest otherwise (https://github.com/exograph/exograph/issues/2320)
+stages:
+  # !(self.ownerId != AuthContext.id): a valid value is allowed
+  - operation: |
+      mutation {
+        createNegatedInequalityDoc(data: {content: "matching ownerId", ownerId: 1}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "data": {
+          "createNegatedInequalityDoc": {
+            "content": "matching ownerId"
+          }
+        }
+      }
+  # !(self.ownerId != AuthContext.id): an omitted ownerId (stored as null) is rejected
+  - operation: |
+      mutation {
+        createNegatedInequalityDoc(data: {content: "omitted ownerId"}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # !(self.ownerId != AuthContext.id): an explicit null is rejected
+  - operation: |
+      mutation {
+        createNegatedInequalityDoc(data: {content: "explicit null", ownerId: null}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # !(self.locked == false): a valid value is allowed
+  - operation: |
+      mutation {
+        createNegatedEqualityDoc(data: {content: "locked", locked: true}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "data": {
+          "createNegatedEqualityDoc": {
+            "content": "locked"
+          }
+        }
+      }
+  # !(self.locked == false): an omitted locked (stored as null) is rejected
+  - operation: |
+      mutation {
+        createNegatedEqualityDoc(data: {content: "omitted locked"}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # !(self.locked == false): an explicit null is rejected
+  - operation: |
+      mutation {
+        createNegatedEqualityDoc(data: {content: "explicit null", locked: null}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # self.rating != 5: a valid value is allowed
+  - operation: |
+      mutation {
+        createInequalityDoc(data: {content: "rating other than 5", rating: 3}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "data": {
+          "createInequalityDoc": {
+            "content": "rating other than 5"
+          }
+        }
+      }
+  # self.rating != 5: an omitted rating (stored as null) is rejected
+  - operation: |
+      mutation {
+        createInequalityDoc(data: {content: "omitted rating"}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # self.rating != 5: an explicit null is rejected
+  - operation: |
+      mutation {
+        createInequalityDoc(data: {content: "explicit null", rating: null}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # !(self.level < 10): a valid value is allowed
+  - operation: |
+      mutation {
+        createNegatedComparisonDoc(data: {content: "level of at least 10", level: 20}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "data": {
+          "createNegatedComparisonDoc": {
+            "content": "level of at least 10"
+          }
+        }
+      }
+  # !(self.level < 10): an omitted level (stored as null) is rejected
+  - operation: |
+      mutation {
+        createNegatedComparisonDoc(data: {content: "omitted level"}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # !(self.level < 10): an explicit null is rejected
+  - operation: |
+      mutation {
+        createNegatedComparisonDoc(data: {content: "explicit null", level: null}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 1
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # Only the valid rows are stored
+  - operation: |
+      query {
+        negatedInequalityDocs @unordered {
+          content
+          ownerId
+        }
+        negatedEqualityDocs @unordered {
+          content
+          locked
+        }
+        inequalityDocs @unordered {
+          content
+          rating
+        }
+        negatedComparisonDocs @unordered {
+          content
+          level
+        }
+      }
+    response: |
+      {
+        "data": {
+          "negatedInequalityDocs": [
+            {
+              "content": "matching ownerId",
+              "ownerId": 1
+            }
+          ],
+          "negatedEqualityDocs": [
+            {
+              "content": "locked",
+              "locked": true
+            }
+          ],
+          "inequalityDocs": [
+            {
+              "content": "rating other than 5",
+              "rating": 3
+            }
+          ],
+          "negatedComparisonDocs": [
+            {
+              "content": "level of at least 10",
+              "level": 20
+            }
+          ]
+        }
+      }

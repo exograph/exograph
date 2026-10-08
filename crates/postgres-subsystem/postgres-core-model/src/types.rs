@@ -162,6 +162,16 @@ pub enum PostgresFieldDefaultValue {
     AutoIncrement(Option<SchemaObjectName>),
 }
 
+impl PostgresFieldDefaultValue {
+    /// Whether the database generates the value (so it is unknown until the insert)
+    pub fn is_generated(&self) -> bool {
+        matches!(
+            self,
+            PostgresFieldDefaultValue::Function(_) | PostgresFieldDefaultValue::AutoIncrement(_)
+        )
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PostgresField<CT> {
     pub name: String,

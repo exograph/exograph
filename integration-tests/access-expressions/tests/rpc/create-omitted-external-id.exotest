@@ -1,0 +1,82 @@
+# Creating an `ExternalDoc` requires `self.externalId == AuthContext.externalId` (or ADMIN). 
+# Omitting the nullable `externalId` from the input would store a null `externalId`, which 
+# violates the rule, so the create must be rejected.
+stages:
+  # Control: a supplied, non-matching externalId is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_external_doc",
+          "params": {
+            "data": {"content": "non matching external id", "externalId": 999}
+          }
+        }
+    auth: |
+      {
+        "externalId": 5
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # Control: a supplied, matching externalId is allowed
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_external_doc",
+          "params": {
+            "data": {"content": "matching external id", "externalId": 5}
+          }
+        }
+    auth: |
+      {
+        "externalId": 5
+      }
+    response: |
+      {
+        "result": {"id": 3}
+      }
+  # Omitting externalId must be rejected (the row would have externalId = null != 5)
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_external_doc",
+          "params": {
+            "data": {"content": "external id omitted"}
+          }
+        }
+    auth: |
+      {
+        "externalId": 5
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # No row violating the rule should exist
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "get_external_docs",
+          "params": {
+            "where": {"externalId": {"eq": null}}
+          }
+        }
+    auth: |
+      {
+        "roles": ["ADMIN"]
+      }
+    response: |
+      {
+        "result": []
+      }

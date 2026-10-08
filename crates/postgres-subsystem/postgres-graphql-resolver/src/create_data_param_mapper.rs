@@ -13,7 +13,7 @@ use async_recursion::async_recursion;
 use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
-use core_resolver::access_solver::AccessInput;
+use core_resolver::access_solver::{AccessInput, MissingValuePolicy};
 use core_resolver::context_extractor::ContextExtractor;
 use exo_sql_pg::{
     AbstractInsert, ColumnId, ColumnValuePair, InsertionElement, InsertionRow, ManyToOne,
@@ -56,7 +56,7 @@ impl<'a> SQLMapper<'a, PgAbstractInsert> for InsertOperation<'a> {
         let table_id = subsystem.core_subsystem.entity_types[data_type.entity_id].table_id;
 
         let (rows, precheck_predicates) =
-            map_argument(data_type, argument, subsystem, request_context).await?;
+            map_argument(data_type, argument, None, subsystem, request_context).await?;
 
         Ok(AbstractInsert {
             table_id,
@@ -71,17 +71,25 @@ impl<'a> SQLMapper<'a, PgAbstractInsert> for InsertOperation<'a> {
     }
 }
 
+/// `parent_reference` is the field referring to the parent when this is a nested create
 pub(crate) async fn map_argument<'a>(
     data_type: &'a MutationType,
     argument: &'a Val,
+    parent_reference: Option<&'a str>,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<(Vec<PgInsertionRow>, Vec<PgAbstractPredicate>), PostgresExecutionError> {
     match argument {
         Val::List(arguments) => {
-            let mapped = arguments
-                .iter()
-                .map(|argument| map_single(data_type, argument, subsystem, request_context));
+            let mapped = arguments.iter().map(|argument| {
+                map_single(
+                    data_type,
+                    argument,
+                    parent_reference,
+                    subsystem,
+                    request_context,
+                )
+            });
             let mapped: Vec<(PgInsertionRow, Vec<PgAbstractPredicate>)> =
                 try_join_all(mapped).await?;
 
@@ -96,8 +104,14 @@ pub(crate) async fn map_argument<'a>(
             Ok((operations, precheck_queries))
         }
         _ => {
-            let (insertion_row, precheck_predicates) =
-                map_single(data_type, argument, subsystem, request_context).await?;
+            let (insertion_row, precheck_predicates) = map_single(
+                data_type,
+                argument,
+                parent_reference,
+                subsystem,
+                request_context,
+            )
+            .await?;
             Ok((vec![insertion_row], precheck_predicates))
         }
     }
@@ -108,6 +122,7 @@ pub(crate) async fn map_argument<'a>(
 async fn map_single<'a>(
     data_type: &'a MutationType,
     argument: &'a Val,
+    parent_reference: Option<&'a str>,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<(PgInsertionRow, Vec<PgAbstractPredicate>), PostgresExecutionError> {
@@ -119,7 +134,7 @@ async fn map_single<'a>(
         request_context,
         Some(&AccessInput {
             value: argument,
-            ignore_missing_value: true,
+            missing_value_policy: MissingValuePolicy::Create { parent_reference },
             aliases: HashMap::new(),
         }),
     )
@@ -292,8 +307,18 @@ async fn map_foreign<'a>(
         _ => unreachable!("Foreign type cannot be a primitive"), // TODO: Handle this at the type-level
     };
 
-    let (insertions, precheck_predicates) =
-        map_argument(field_type, argument, subsystem, request_context).await?;
+    let parent_reference = one_to_many_relation
+        .foreign_field(&subsystem.core_subsystem.entity_types)
+        .map(|foreign_field| foreign_field.name.as_str());
+
+    let (insertions, precheck_predicates) = map_argument(
+        field_type,
+        argument,
+        parent_reference,
+        subsystem,
+        request_context,
+    )
+    .await?;
 
     Ok(InsertionElement::NestedInsert(NestedInsertion {
         relation_id: one_to_many_relation.relation_id,

@@ -138,15 +138,18 @@ impl TestSystem {
                                 let mut field_path = a.clone();
                                 field_path.push(field.name.clone());
 
-                                if field.relation.is_pk() {
-                                    FieldPath::Normal(field_path, earlier_default_value)
+                                // Same as the precheck builder's `effective_default_value`
+                                let effective_default_value = if field.relation.is_pk() {
+                                    earlier_default_value.or(field.default_value.clone())
                                 } else {
-                                    FieldPath::Normal(field_path, None)
-                                }
+                                    field.default_value.clone()
+                                };
+
+                                FieldPath::Normal(field_path, effective_default_value)
                             }
-                            (FieldPath::Normal(a, _), false) => FieldPath::Pk {
+                            (FieldPath::Normal(a, lead_default), false) => FieldPath::Pk {
                                 lead: a.clone(),
-                                lead_default: None,
+                                lead_default: lead_default.clone(),
                                 pk_fields: entity_type
                                     .pk_fields()
                                     .iter()
@@ -166,7 +169,7 @@ impl TestSystem {
                     }
                     None => AccessPrimitiveExpressionPath::new(
                         PhysicalColumnPath::init(link),
-                        FieldPath::Normal(vec![field.name.clone()], None),
+                        FieldPath::Normal(vec![field.name.clone()], field.default_value.clone()),
                     ),
                 };
 
