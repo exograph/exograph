@@ -1,0 +1,88 @@
+# `ReviewRequest`'s rule (`self.reviewer.retiredOn == null`) compares a nullable field of the
+# reviewer with null. A row without a reviewer violates the rule, so the precheck must not treat the
+# missing reviewer's field as null.
+stages:
+  # An active reviewer is allowed
+  - operation: |
+      mutation($reviewerId: Int!) {
+        createReviewRequest(data: {content: "active reviewer", reviewer: {id: $reviewerId}}) {
+          content
+        }
+      }
+    variable: |
+      {
+        "reviewerId": $.activeReviewerId
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "data": {
+          "createReviewRequest": {
+            "content": "active reviewer"
+          }
+        }
+      }
+  # A retired reviewer is rejected
+  - operation: |
+      mutation($reviewerId: Int!) {
+        createReviewRequest(data: {content: "retired reviewer", reviewer: {id: $reviewerId}}) {
+          content
+        }
+      }
+    variable: |
+      {
+        "reviewerId": $.retiredReviewerId
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # An omitted reviewer is rejected
+  - operation: |
+      mutation {
+        createReviewRequest(data: {content: "omitted reviewer"}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # A null reviewer is rejected
+  - operation: |
+      mutation {
+        createReviewRequest(data: {content: "null reviewer", reviewer: null}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }

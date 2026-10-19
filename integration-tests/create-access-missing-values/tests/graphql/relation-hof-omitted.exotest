@@ -1,0 +1,88 @@
+# `TeamDoc`'s rule (`self.team.memberships.some(m => m.user.id == AuthContext.id)`) goes through the
+# team. A row without a team violates the rule, so the precheck must not reduce it to "some team has
+# the user as a member".
+stages:
+  # A team with the user as a member is allowed
+  - operation: |
+      mutation($teamId: Int!) {
+        createTeamDoc(data: {content: "member", team: {id: $teamId}}) {
+          content
+        }
+      }
+    variable: |
+      {
+        "teamId": $.engineeringTeamId
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "data": {
+          "createTeamDoc": {
+            "content": "member"
+          }
+        }
+      }
+  # A team without the user as a member is rejected
+  - operation: |
+      mutation($teamId: Int!) {
+        createTeamDoc(data: {content: "not a member", team: {id: $teamId}}) {
+          content
+        }
+      }
+    variable: |
+      {
+        "teamId": $.engineeringTeamId
+      }
+    auth: |
+      {
+        "sub": $.daveDesignerId
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # An omitted team is rejected
+  - operation: |
+      mutation {
+        createTeamDoc(data: {content: "omitted team"}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # A null team is rejected
+  - operation: |
+      mutation {
+        createTeamDoc(data: {content: "null team", team: null}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }

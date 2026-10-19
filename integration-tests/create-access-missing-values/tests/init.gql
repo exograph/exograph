@@ -1,5 +1,23 @@
-operation: |
-  mutation {
-    u1: createUser(data: {name: "u1"}) { id }
-    u2: createUser(data: {name: "u2"}) { id }
-  }
+stages:
+  # alice is an engineer (on the engineering team and in the chat), dave is a designer (on the design
+  # team), and bob is inactive (in no team). alice and bob are created first: tests that don't use
+  # these bindings refer to them by id (1 and 2).
+  - operation: |
+      mutation {
+        alice: createUser(data: {name: "alice"}) { id @bind(name: "aliceEngineerId") }
+        bob: createUser(data: {name: "bob", active: false}) { id @bind(name: "bobInactiveId") }
+        dave: createUser(data: {name: "dave"}) { id @bind(name: "daveDesignerId") }
+        activeReviewer: createReviewer(data: {name: "active reviewer"}) { id @bind(name: "activeReviewerId") }
+        retiredReviewer: createReviewer(data: {name: "retired reviewer", retiredOn: "2026-01-01"}) { id @bind(name: "retiredReviewerId") }
+      }
+  - operation: |
+      mutation($aliceEngineerId: Int!, $daveDesignerId: Int!) {
+        engineering: createTeam(data: {name: "engineering", memberships: [{user: {id: $aliceEngineerId}}]}) { id @bind(name: "engineeringTeamId") }
+        design: createTeam(data: {name: "design", memberships: [{user: {id: $daveDesignerId}}]}) { id @bind(name: "designTeamId") }
+        chat: createChat(data: {name: "chat", participations: [{user: {id: $aliceEngineerId}}]}) { id }
+      }
+    variable: |
+      {
+        "aliceEngineerId": $.aliceEngineerId,
+        "daveDesignerId": $.daveDesignerId
+      }

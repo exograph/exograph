@@ -1,0 +1,63 @@
+# `ParticipationNote`'s rule (`self.participation.user.active == true || AuthContext.role == "ADMIN"`)
+# goes through `ChatParticipation`, whose pk includes `user: User = AuthContext.id`. That default
+# applies to a participation's own `user`, so it doesn't make an omitted participation present: for a
+# non-admin, a row without a participation violates the rule.
+stages:
+  # An admin may omit the participation
+  - operation: |
+      mutation {
+        createParticipationNote(data: {content: "by an admin"}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": $.daveDesignerId,
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "data": {
+          "createParticipationNote": {
+            "content": "by an admin"
+          }
+        }
+      }
+  # An omitted participation is rejected
+  - operation: |
+      mutation {
+        createParticipationNote(data: {content: "omitted participation"}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # A null participation is rejected
+  - operation: |
+      mutation {
+        createParticipationNote(data: {content: "null participation", participation: null}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }

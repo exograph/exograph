@@ -1,0 +1,77 @@
+# `TeamSuggestion`'s rule has an alternative through the review team inside the
+# `some(...)` body:
+#
+#   self.team.memberships.some(m => m.user.id == AuthContext.id || self.reviewTeam.active == true)
+#
+# A row without a review team satisfies the rule only through a membership, so the precheck must
+# not skip the body for a non-member.
+stages:
+  # A member of the team, without a review team, is allowed
+  - operation: |
+      mutation($teamId: Int!) {
+        createTeamSuggestion(data: {content: "by a member", team: {id: $teamId}}) {
+          content
+        }
+      }
+    variable: |
+      {
+        "teamId": $.designTeamId
+      }
+    auth: |
+      {
+        "sub": $.daveDesignerId
+      }
+    response: |
+      {
+        "data": {
+          "createTeamSuggestion": {
+            "content": "by a member"
+          }
+        }
+      }
+  # A non-member, with the review team omitted, is rejected
+  - operation: |
+      mutation($teamId: Int!) {
+        createTeamSuggestion(data: {content: "omitted review team", team: {id: $teamId}}) {
+          content
+        }
+      }
+    variable: |
+      {
+        "teamId": $.designTeamId
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # A non-member, with a null review team, is rejected
+  - operation: |
+      mutation($teamId: Int!) {
+        createTeamSuggestion(data: {content: "null review team", team: {id: $teamId}, reviewTeam: null}) {
+          content
+        }
+      }
+    variable: |
+      {
+        "teamId": $.designTeamId
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }

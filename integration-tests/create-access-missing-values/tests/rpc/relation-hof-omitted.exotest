@@ -1,0 +1,108 @@
+# `TeamDoc`'s rule (`self.team.memberships.some(m => m.user.id == AuthContext.id)`) goes through the
+# team. A row without a team (omitted, null, or a reference without its id) violates the rule, so the
+# precheck must not reduce it to "some team has the user as a member".
+stages:
+  # A team with the user as a member is allowed
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_team_doc",
+          "params": {
+            "data": {"content": "member", "team": {"id": $.engineeringTeamId}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "result": {
+          "id": 1
+        }
+      }
+  # A team without the user as a member is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_team_doc",
+          "params": {
+            "data": {"content": "not a member", "team": {"id": $.engineeringTeamId}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.daveDesignerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # An omitted team is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_team_doc",
+          "params": {
+            "data": {"content": "omitted team"}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # A null team is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_team_doc",
+          "params": {
+            "data": {"content": "null team", "team": null}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # A team without its id is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_team_doc",
+          "params": {
+            "data": {"content": "team without its id", "team": {}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }

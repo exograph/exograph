@@ -1,0 +1,90 @@
+# `ParticipationNote`'s rule (`self.participation.user.active == true || AuthContext.role == "ADMIN"`)
+# goes through `ChatParticipation`, whose pk includes `user: User = AuthContext.id`. That default
+# applies to a participation's own `user`, so it doesn't make an omitted participation present: for a
+# non-admin, a row without a participation (omitted, null, or a reference without its keys) violates
+# the rule.
+stages:
+  # An admin may omit the participation
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_participation_note",
+          "params": {
+            "data": {"content": "by an admin"}
+          }
+        }
+    auth: |
+      {
+        "sub": $.daveDesignerId,
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "result": {
+          "id": 1
+        }
+      }
+  # An omitted participation is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_participation_note",
+          "params": {
+            "data": {"content": "omitted participation"}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # A null participation is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_participation_note",
+          "params": {
+            "data": {"content": "null participation", "participation": null}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # A participation without its keys is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_participation_note",
+          "params": {
+            "data": {"content": "participation without its keys", "participation": {}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
