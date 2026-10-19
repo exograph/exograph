@@ -43,8 +43,8 @@ use super::database_solver::to_column_path;
 /// A value is compared in one of three ways:
 /// - `Common(Some(value))`: a known value (a literal, a context value, or a value from the input).
 ///   Comparing it is definite: `null == 5` is false, and `null == null` is true.
-/// - `Common(None)`: a missing context value. Comparing it is unknown (see [`AccessSolution`]),
-///   even with null.
+/// - `Common(None)`: an unknown value, such as a missing context value. Comparing it is unknown
+///   (see [`AccessSolution`]), even with null.
 /// - `NullColumn`: a column of the row being created that will be stored as null (the input
 ///   supplies null, or omits it and the field has no default). As in SQL, comparing it with a
 ///   non-null value is unknown. However, comparing it with null is definite, since `== null` means
@@ -187,7 +187,33 @@ async fn reduce_primitive_expression<'a>(
             };
             let (field_path_strings, default) = match &path.field_path {
                 FieldPath::Normal(field_path, default) => (field_path, default),
-                FieldPath::Pk { .. } => {
+                FieldPath::Pk {
+                    lead,
+                    lead_default,
+                    pk_fields,
+                } => {
+                    // In a create, a field through a relation that will be stored as null (such as
+                    // `self.owner.name` with `owner: null`) has no row to read, so it is unknown,
+                    // even compared with null: a filter through the relation (such as an update's)
+                    // never matches a null key either. Looking it up in the database without the
+                    // relation's key would match any related row instead.
+                    if parameter_name.is_none()
+                        && let Some(input_value) = input_value
+                        && relation_stored_as_null(
+                            solver,
+                            input_value,
+                            lead,
+                            lead_default,
+                            pk_fields,
+                            request_context,
+                        )
+                        .await
+                    {
+                        return Ok(AccessSolution::Solved(
+                            SolvedPrecheckPrimitiveExpression::Common(None),
+                        ));
+                    }
+
                     return Ok(AccessSolution::Solved(
                         SolvedPrecheckPrimitiveExpression::Path(
                             path.clone(),
@@ -206,10 +232,7 @@ async fn reduce_primitive_expression<'a>(
 
             let value = value.transpose()?.flatten();
 
-            let create_parent_reference = match input_value.map(|ctx| ctx.missing_value_policy) {
-                Some(MissingValuePolicy::Create { parent_reference }) => Some(parent_reference),
-                _ => None,
-            };
+            let create_parent_reference = input_value.and_then(create_parent_reference);
 
             match (value, create_parent_reference) {
                 (Some(value), None) => Ok(AccessSolution::Solved(
@@ -232,15 +255,8 @@ async fn reduce_primitive_expression<'a>(
                 (None, Some(parent_reference)) => {
                     // An explicit null along the path (such as `owner: null` for `self.owner.id`)
                     // is stored as null too (a default applies only to an absent value)
-                    let explicit_null_on_path = input_value.is_some_and(|ctx| {
-                        (1..field_path_strings.len()).any(|prefix_len| {
-                            let prefix = field_path_strings[..prefix_len]
-                                .iter()
-                                .map(|s| AccessInputPathElement::Property(s.as_str()))
-                                .collect();
-                            matches!(ctx.resolve(AccessInputPath(prefix)), Ok(Some(Val::Null)))
-                        })
-                    });
+                    let explicit_null_on_path =
+                        input_value.is_some_and(|ctx| null_along_path(ctx, field_path_strings));
 
                     if explicit_null_on_path {
                         return Ok(AccessSolution::Solved(
@@ -306,6 +322,29 @@ async fn reduce_primitive_expression<'a>(
                     lead_default,
                 } => {
                     let (head, tail) = lead.column_path.split_head();
+
+                    // In a create, a function over a relation that will be stored as null (such as
+                    // `self.team.members.some(...)` with `team: null`) is unknown, as a field
+                    // through it is. Looking it up in the database without the relation's key would
+                    // search any related row instead. Inside a function over an input list (which sets
+                    // aliases), the lead may be relative to that function's parameter, which a
+                    // function's path doesn't record, so the check is left out there.
+                    if let Some(input_value) = input_value
+                        && input_value.aliases.is_empty()
+                        && relation_stored_as_null(
+                            solver,
+                            input_value,
+                            lead_path,
+                            lead_default,
+                            pk_fields,
+                            request_context,
+                        )
+                        .await
+                    {
+                        return Ok(AccessSolution::Solved(
+                            SolvedPrecheckPrimitiveExpression::Common(None),
+                        ));
+                    }
 
                     let lead_value = resolve_value(
                         solver,
@@ -375,6 +414,34 @@ async fn reduce_primitive_expression<'a>(
                     let solved_expr = solver
                         .solve(request_context, new_input_value.as_ref(), &f_expr)
                         .await?;
+
+                    // In a create, an unsolvable body (such as one comparing a field through a
+                    // relation stored as null) is evaluated the way SQL evaluates `some` over the
+                    // related rows: a row whose body is unknown doesn't match, so `some` holds
+                    // where a related row's body is true and is false elsewhere. As an unsolvable
+                    // primitive, the comparison with it would be skipped instead (see
+                    // `solve_relational_op`), allowing the create.
+                    //
+                    // That holds only for a body that is never both true and false. A skipped
+                    // comparison (such as one with the parent's reference, unknown until the
+                    // insert) is both, so a body with one is still skipped: resolving it to where
+                    // it is true would deny under a negation, which a skipped comparison must not.
+                    let in_create = input_value.and_then(create_parent_reference).is_some();
+                    let solved_expr = match solved_expr {
+                        AccessSolution::Unsolvable {
+                            true_when,
+                            false_when,
+                        } if in_create
+                            && AbstractPredicate::and(
+                                true_when.0.clone(),
+                                false_when.0.clone(),
+                            )
+                            .is_false() =>
+                        {
+                            AccessSolution::Solved(true_when)
+                        }
+                        solved_expr => solved_expr,
+                    };
 
                     return Ok(solved_expr.map(|solved_expr| {
                         SolvedPrecheckPrimitiveExpression::Predicate(Box::new(
@@ -833,7 +900,8 @@ async fn compute_relational_predicate(
                             ))
                         }
                         None => {
-                            // If the pk value is not found, it means we are performing a nested mutation (where the value would be from the parent mutation)
+                            // If the pk value is not found, it means we are performing a nested mutation (where the value would be from the parent mutation).
+                            // In a create, a relation stored as null is handled earlier where it can be detected (see `relation_stored_as_null`).
                             Ok(AbstractPredicate::True)
                         }
                     }
@@ -854,6 +922,98 @@ fn ignores_missing_value(input_value: Option<&AccessInput<'_>>) -> bool {
     input_value.is_some_and(|ctx| ctx.missing_value_policy != MissingValuePolicy::Evaluate)
 }
 
+/// In a create, the nested create's reference to its parent (`Some(None)` for a top-level create).
+/// `None` outside a create.
+fn create_parent_reference<'a>(input_value: &AccessInput<'a>) -> Option<Option<&'a str>> {
+    match input_value.missing_value_policy {
+        MissingValuePolicy::Create { parent_reference } => Some(parent_reference),
+        _ => None,
+    }
+}
+
+/// Whether, in a create, the relation at `lead` (such as `owner` for `self.owner.name`) will be
+/// stored as null: the input supplies null or a reference without the relation's key (such as RPC's
+/// `owner: {}`), or omits the relation and its field has no default. A nested create's reference to
+/// its parent isn't: the parent supplies it on insert.
+async fn relation_stored_as_null(
+    solver: &PostgresCoreSubsystem,
+    input_value: &AccessInput<'_>,
+    lead: &[String],
+    lead_default: &Option<PostgresFieldDefaultValue>,
+    pk_fields: &[String],
+    request_context: &RequestContext<'_>,
+) -> bool {
+    let Some(parent_reference) = create_parent_reference(input_value) else {
+        return false;
+    };
+
+    if starts_at_parent_reference(parent_reference, lead) {
+        return false;
+    }
+
+    // The lead starts at `self`, so it is resolved against the input itself, not through a function
+    // parameter's alias (which may have the same name as the relation)
+    let input_value = AccessInput {
+        value: input_value.value,
+        missing_value_policy: input_value.missing_value_policy,
+        aliases: HashMap::new(),
+    };
+
+    if null_along_path(&input_value, lead) {
+        return true;
+    }
+
+    // A longer lead goes through a target whose pk includes a relation (such as
+    // `participation.user` in `self.participation.user.name`). Its `lead_default` is then that
+    // inner pk field's default (see `effective_default_value` in the precheck builder), which says
+    // nothing about whether this row has the relation, so it applies only to a single-field lead.
+    let lead_default = if lead.len() == 1 { lead_default } else { &None };
+
+    let lead_value = resolve_value(
+        solver,
+        Some(&input_value),
+        lead,
+        lead_default,
+        request_context,
+    )
+    .await;
+
+    match lead_value {
+        Ok(lead_value) => match lead_value.as_ref().map(|value| value.as_ref()) {
+            None | Some(Val::Null) => true,
+            Some(Val::Object(reference)) => pk_fields
+                .iter()
+                .any(|pk_field| matches!(reference.get(pk_field), None | Some(Val::Null))),
+            // Such as a key from the relation's default (`owner: User = AuthContext.id`)
+            Some(_) => false,
+        },
+        // Such as a default from a context value of the wrong type: left to the lookup, as before
+        Err(_) => false,
+    }
+}
+
+/// Whether `path` (relative to `self`) starts at a nested create's reference to its parent, whose
+/// value the parent supplies on insert
+fn starts_at_parent_reference(parent_reference: Option<&str>, path: &[String]) -> bool {
+    parent_reference.is_some() && path.first().map(String::as_str) == parent_reference
+}
+
+/// Whether the input has an explicit null before the end of `path`, such as `owner: null` for
+/// `self.owner.id`. The value at `path` will then be stored as null (a default applies only to an
+/// absent value).
+fn null_along_path(input_value: &AccessInput<'_>, path: &[String]) -> bool {
+    (1..path.len()).any(|prefix_len| {
+        let prefix = path[..prefix_len]
+            .iter()
+            .map(|s| AccessInputPathElement::Property(s.as_str()))
+            .collect();
+        matches!(
+            input_value.resolve(AccessInputPath(prefix)),
+            Ok(Some(Val::Null))
+        )
+    })
+}
+
 /// Whether a value missing from a create's input at `path` (relative to `self`), whose field has the
 /// `field_default` value, is unknown until the insert, so a comparison with it is skipped.
 /// That is the case for a nested create's reference to its parent (supplied by the parent) and for
@@ -863,8 +1023,7 @@ fn is_unknown_until_insert(
     path: &[String],
     field_default: &Option<PostgresFieldDefaultValue>,
 ) -> bool {
-    let supplied_by_parent =
-        parent_reference.is_some() && path.first().map(String::as_str) == parent_reference;
+    let supplied_by_parent = starts_at_parent_reference(parent_reference, path);
 
     // Only a field of this row is generated for it. A longer path such as `self.owner.id` carries
     // the target's default (`User.id`'s `autoIncrement()`, see `effective_default_value` in the

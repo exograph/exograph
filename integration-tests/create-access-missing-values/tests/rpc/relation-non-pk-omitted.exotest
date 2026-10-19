@@ -1,0 +1,108 @@
+# `Post`'s rule (`self.author.active == true`) refers to a non-pk field of the author, which the
+# precheck looks up in the database. A row without an author (omitted, null, or a reference without
+# its id) violates the rule, so the precheck must not reduce it to "some user is active".
+stages:
+  # An active author is allowed
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_post",
+          "params": {
+            "data": {"content": "by an active author", "author": {"id": $.aliceEngineerId}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "result": {
+          "id": 1
+        }
+      }
+  # An inactive author is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_post",
+          "params": {
+            "data": {"content": "by an inactive author", "author": {"id": $.bobInactiveId}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # An omitted author is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_post",
+          "params": {
+            "data": {"content": "omitted author"}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # A null author is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_post",
+          "params": {
+            "data": {"content": "null author", "author": null}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # An author without its id is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_post",
+          "params": {
+            "data": {"content": "author without its id", "author": {}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }

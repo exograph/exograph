@@ -1,0 +1,74 @@
+# `TeamProposal`'s rule (`self.team.memberships.some(m => m.user.id == AuthContext.id &&
+# self.reviewTeam.active == true)`) also goes through the review team inside the `some(...)` body. A
+# row without a review team violates the rule, so the precheck must not skip the body.
+stages:
+  # An active review team is allowed
+  - operation: |
+      mutation($teamId: Int!, $reviewTeamId: Int!) {
+        createTeamProposal(data: {content: "reviewed by an active team", team: {id: $teamId}, reviewTeam: {id: $reviewTeamId}}) {
+          content
+        }
+      }
+    variable: |
+      {
+        "teamId": $.engineeringTeamId,
+        "reviewTeamId": $.engineeringTeamId
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "data": {
+          "createTeamProposal": {
+            "content": "reviewed by an active team"
+          }
+        }
+      }
+  # An omitted review team is rejected
+  - operation: |
+      mutation($teamId: Int!) {
+        createTeamProposal(data: {content: "omitted review team", team: {id: $teamId}}) {
+          content
+        }
+      }
+    variable: |
+      {
+        "teamId": $.engineeringTeamId
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # A null review team is rejected
+  - operation: |
+      mutation($teamId: Int!) {
+        createTeamProposal(data: {content: "null review team", team: {id: $teamId}, reviewTeam: null}) {
+          content
+        }
+      }
+    variable: |
+      {
+        "teamId": $.engineeringTeamId
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }

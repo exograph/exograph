@@ -1,0 +1,88 @@
+# `Post`'s rule (`self.author.active == true`) refers to a non-pk field of the author, which the
+# precheck looks up in the database. A row without an author violates the rule, so the precheck must
+# not reduce it to "some user is active".
+stages:
+  # An active author is allowed
+  - operation: |
+      mutation($authorId: Int!) {
+        createPost(data: {content: "by an active author", author: {id: $authorId}}) {
+          content
+        }
+      }
+    variable: |
+      {
+        "authorId": $.aliceEngineerId
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "data": {
+          "createPost": {
+            "content": "by an active author"
+          }
+        }
+      }
+  # An inactive author is rejected
+  - operation: |
+      mutation($authorId: Int!) {
+        createPost(data: {content: "by an inactive author", author: {id: $authorId}}) {
+          content
+        }
+      }
+    variable: |
+      {
+        "authorId": $.bobInactiveId
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # An omitted author is rejected
+  - operation: |
+      mutation {
+        createPost(data: {content: "omitted author"}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # A null author is rejected
+  - operation: |
+      mutation {
+        createPost(data: {content: "null author", author: null}) {
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }

@@ -1,8 +1,7 @@
-// Create mutations access evaluation access rules that refer to values missing from the input 
-// (https://github.com/exograph/exograph/issues/2320). Such a value is stored as null, so
-// a rule must match the SQL semantics for null.
+// Create mutations evaluate access rules that refer to values missing from the input. Such a value
+// is stored as null, so a rule must match the SQL semantics for null.
 context AuthContext {
-  @jwt("sub") id: Int?
+  @jwt("sub") id: Int
   @jwt role: String?
 }
 
@@ -12,9 +11,13 @@ module CreateAccessDatabase {
   type User {
     @pk id: Int = autoIncrement()
     name: String
+    active: Boolean = true
     projects: Set<Project>?
     deMorganDocs: Set<DeMorganDoc>?
     deMorganExpandedDocs: Set<DeMorganExpandedDoc>?
+    posts: Set<Post>?
+    memberships: Set<Membership>?
+    chatParticipations: Set<ChatParticipation>?
   }
 
   // Allow creation by non-admins only if the set owner is set to the authenticated user
@@ -77,5 +80,121 @@ module CreateAccessDatabase {
     @pk id: Int = autoIncrement()
     content: String
     approvedBy: Int?
+  }
+
+  // A rule on a non-pk field of a relation (`User.active`), which the precheck looks up in the
+  // database. A row without an author violates the rule.
+  @access(query=true, mutation=self.author.active == true)
+  type Post {
+    @pk id: Int = autoIncrement()
+    content: String
+    author: User?
+  }
+
+  @access(true)
+  type Reviewer {
+    @pk id: Int = autoIncrement()
+    name: String
+    retiredOn: LocalDate?
+    reviewRequests: Set<ReviewRequest>?
+  }
+
+  // A rule that compares a nullable field of a relation (`Reviewer.retiredOn`) with null. A row
+  // without a reviewer violates the rule: an update or delete filter through the relation never
+  // matches it either.
+  @access(query=true, mutation=self.reviewer.retiredOn == null)
+  type ReviewRequest {
+    @pk id: Int = autoIncrement()
+    content: String
+    reviewer: Reviewer?
+  }
+
+  @access(true)
+  type Team {
+    @pk id: Int = autoIncrement()
+    name: String
+    active: Boolean = true
+    memberships: Set<Membership>?
+    teamDocs: Set<TeamDoc>?
+    @relation("team") proposals: Set<TeamProposal>?
+    @relation("team") suggestions: Set<TeamSuggestion>?
+    @relation("reviewTeam") reviewedProposals: Set<TeamProposal>?
+    @relation("reviewTeam") reviewedSuggestions: Set<TeamSuggestion>?
+    tasks: Set<Task>?
+  }
+
+  @access(true)
+  type Membership {
+    @pk id: Int = autoIncrement()
+    team: Team
+    user: User
+  }
+
+  // A higher-order function through a relation. A row without a team violates the rule.
+  @access(query=true, mutation=self.team.memberships.some(m => m.user.id == AuthContext.id))
+  type TeamDoc {
+    @pk id: Int = autoIncrement()
+    content: String
+    team: Team?
+  }
+
+  // A team member may make a proposal only for an active review team. The `some(...)` body goes
+  // through another relation (`reviewTeam`), so a row without a review team violates the rule.
+  @access(query=true, mutation=self.team.memberships.some(m => m.user.id == AuthContext.id && self.reviewTeam.active == true))
+  type TeamProposal {
+    @pk id: Int = autoIncrement()
+    content: String
+    team: Team?
+    reviewTeam: Team?
+  }
+
+  // A team member may make a suggestion, as may anyone once an active review team will review it.
+  // The `some(...)` body has an alternative through another relation (`reviewTeam`), so without a
+  // review team, only a membership satisfies the rule.
+  @access(query=true, mutation=self.team.memberships.some(m => m.user.id == AuthContext.id || self.reviewTeam.active == true))
+  type TeamSuggestion {
+    @pk id: Int = autoIncrement()
+    content: String
+    team: Team?
+    reviewTeam: Team?
+  }
+
+  @access(true)
+  type Chat {
+    @pk id: Int = autoIncrement()
+    name: String
+    participations: Set<ChatParticipation>?
+  }
+
+  @access(true)
+  type ChatParticipation {
+    @pk chat: Chat
+    @pk user: User = AuthContext.id
+    notes: Set<ParticipationNote>?
+  }
+
+  // A rule through a relation (`participation`) whose target's pk includes a relation with a
+  // default (`ChatParticipation.user`). A row without a participation violates the rule.
+  @access(query=true, mutation=self.participation.user.active == true || AuthContext.role == "ADMIN")
+  type ParticipationNote {
+    @pk id: Int = autoIncrement()
+    content: String
+    participation: ChatParticipation?
+  }
+
+  // A function nested in a function over the sprint's tasks (`t.team` is the task's team)
+  @access(query=true, mutation=self.tasks.some(t => t.team.memberships.some(m => m.user.id == AuthContext.id)))
+  type Sprint {
+    @pk id: Int = autoIncrement()
+    name: String
+    tasks: Set<Task>?
+  }
+
+  @access(true)
+  type Task {
+    @pk id: Int = autoIncrement()
+    title: String
+    sprint: Sprint
+    team: Team?
   }
 }

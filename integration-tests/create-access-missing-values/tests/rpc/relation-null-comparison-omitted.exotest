@@ -1,0 +1,108 @@
+# `ReviewRequest`'s rule (`self.reviewer.retiredOn == null`) compares a nullable field of the
+# reviewer with null. A row without a reviewer (omitted, null, or a reference without its id)
+# violates the rule, so the precheck must not treat the missing reviewer's field as null.
+stages:
+  # An active reviewer is allowed
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_review_request",
+          "params": {
+            "data": {"content": "active reviewer", "reviewer": {"id": $.activeReviewerId}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "result": {
+          "id": 1
+        }
+      }
+  # A retired reviewer is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_review_request",
+          "params": {
+            "data": {"content": "retired reviewer", "reviewer": {"id": $.retiredReviewerId}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # An omitted reviewer is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_review_request",
+          "params": {
+            "data": {"content": "omitted reviewer"}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # A null reviewer is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_review_request",
+          "params": {
+            "data": {"content": "null reviewer", "reviewer": null}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # A reviewer without its id is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_review_request",
+          "params": {
+            "data": {"content": "reviewer without its id", "reviewer": {}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }

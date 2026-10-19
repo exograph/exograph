@@ -1,0 +1,88 @@
+# `TeamProposal`'s rule (`self.team.memberships.some(m => m.user.id == AuthContext.id &&
+# self.reviewTeam.active == true)`) also goes through the review team inside the `some(...)` body. A
+# row without a review team (omitted, null, or a reference without its id) violates the rule, so the
+# precheck must not skip the body.
+stages:
+  # An active review team is allowed
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_team_proposal",
+          "params": {
+            "data": {"content": "reviewed by an active team", "team": {"id": $.engineeringTeamId}, "reviewTeam": {"id": $.engineeringTeamId}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "result": {
+          "id": 1
+        }
+      }
+  # An omitted review team is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_team_proposal",
+          "params": {
+            "data": {"content": "omitted review team", "team": {"id": $.engineeringTeamId}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # A null review team is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_team_proposal",
+          "params": {
+            "data": {"content": "null review team", "team": {"id": $.engineeringTeamId}, "reviewTeam": null}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }
+  # A review team without its id is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_team_proposal",
+          "params": {
+            "data": {"content": "review team without its id", "team": {"id": $.engineeringTeamId}, "reviewTeam": {}}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }

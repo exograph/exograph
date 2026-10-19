@@ -32,6 +32,7 @@ impl TestSystem {
                         @pk id: Int = autoIncrement()
                         title: String
                         publications: Set<Publication>?
+                        memberships: Set<Membership>?
                     }
 
                     @access(true)
@@ -49,6 +50,7 @@ impl TestSystem {
                         age: Int
                         publications: Set<Publication>?
                         todos: Set<Todo>?
+                        memberships: Set<Membership>?
                     }
 
                     @access(true)
@@ -57,6 +59,20 @@ impl TestSystem {
                         title: String
                         completed: Boolean
                         user: User = AccessContext.id
+                    }
+
+                    @access(true)
+                    type Membership {
+                        @pk article: Article
+                        @pk user: User = AccessContext.id
+                        notes: Set<Note>?
+                    }
+
+                    @access(true)
+                    type Note {
+                        @pk id: Int = autoIncrement()
+                        text: String
+                        membership: Membership?
                     }
                 }
             "#,

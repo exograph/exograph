@@ -471,6 +471,8 @@ async fn unspecified_field_in_create() {
         Allowed,
         /// Same as with `MissingValuePolicy::Ignore` (the value is unknown until the insert)
         Ignored,
+        /// Looked up in the database, as with other policies (the input supplies the key)
+        LookedUp,
     }
     use Expected::*;
 
@@ -491,6 +493,45 @@ async fn unspecified_field_in_create() {
         relation(AccessRelationalOp::Lt(
             path("Publication", "royalty"),
             other,
+        ))
+    };
+    // self.author.name, a non-pk field of a relation (looked up in the database)
+    let author_name_eq = |other| {
+        relation(AccessRelationalOp::Eq(
+            path("Publication", "author.name"),
+            other,
+        ))
+    };
+    // self.article.publications.some(p => <body>) == true
+    let article_publications_some_where = |body| {
+        relation(AccessRelationalOp::Eq(
+            Box::new(PrecheckAccessPrimitiveExpression::Function(
+                test_system.path("Publication", "article.publications"),
+                FunctionCall {
+                    name: "some".to_string(),
+                    parameter_name: "p".to_string(),
+                    expr: body,
+                },
+            )),
+            Box::new(PrecheckAccessPrimitiveExpression::Common(
+                CommonAccessPrimitiveExpression::BooleanLiteral(true),
+            )),
+        ))
+    };
+    // p.royalty == AuthContext.id
+    let royalty_matches = || {
+        relation(AccessRelationalOp::Eq(
+            Box::new(test_system.expr("Publication", "royalty", Some("p"))),
+            context("id"),
+        ))
+    };
+    let article_publications_some = || article_publications_some_where(royalty_matches());
+    // self.membership.user.name == AuthContext.name (on Note), through `Membership`, whose pk
+    // includes `user: User = AccessContext.id`
+    let membership_user_name_eq = || {
+        relation(AccessRelationalOp::Eq(
+            path("Note", "membership.user.name"),
+            context("name"),
         ))
     };
 
@@ -580,6 +621,115 @@ async fn unspecified_field_in_create() {
             Ignored,
             Ignored,
         ),
+        // self.author.name == AuthContext.name: an author that will be stored as null (absent,
+        // null, or without its key) leaves no name to read, so the comparison is unknown, rather
+        // than matching any user's name
+        (
+            author_name_eq(context("name")),
+            json!({"royalty": 10}),
+            Denied,
+            Ignored,
+        ),
+        (
+            author_name_eq(context("name")),
+            json!({"royalty": 10, "author": null}),
+            Denied,
+            Ignored,
+        ),
+        (
+            author_name_eq(context("name")),
+            json!({"royalty": 10, "author": {}}),
+            Denied,
+            Ignored,
+        ),
+        (
+            not(author_name_eq(context("name"))),
+            json!({"royalty": 10}),
+            Denied,
+            Ignored,
+        ),
+        // Unknown even compared with null: a filter through the relation (such as an update's)
+        // never matches a null author either
+        (
+            author_name_eq(null()),
+            json!({"royalty": 10}),
+            Denied,
+            Ignored,
+        ),
+        (
+            author_name_eq(context("name")),
+            json!({"royalty": 10, "author": {"id": 7}}),
+            LookedUp,
+            Ignored,
+        ),
+        // self.article.publications.some(...): an article that will be stored as null makes the
+        // result unknown, rather than looking for a match in any article
+        (
+            article_publications_some(),
+            json!({"royalty": 10}),
+            Denied,
+            Denied,
+        ),
+        (
+            article_publications_some(),
+            json!({"royalty": 10, "article": null}),
+            Denied,
+            Denied,
+        ),
+        (
+            article_publications_some(),
+            json!({"royalty": 10, "article": {}}),
+            Denied,
+            Denied,
+        ),
+        (
+            not(article_publications_some()),
+            json!({"royalty": 10}),
+            Denied,
+            Denied,
+        ),
+        // self.article.publications.some(p => p.royalty == AuthContext.id &&
+        // self.author.name == AuthContext.name): with the author stored as null, the body is
+        // never true for a related row, so `some` is false (as in SQL) and its negation is true
+        // (rather than skipped, which would allow both)
+        (
+            article_publications_some_where(and(
+                royalty_matches(),
+                author_name_eq(context("name")),
+            )),
+            json!({"royalty": 10, "article": {"id": 50}}),
+            Denied,
+            Ignored,
+        ),
+        (
+            not(article_publications_some_where(and(
+                royalty_matches(),
+                author_name_eq(context("name")),
+            ))),
+            json!({"royalty": 10, "article": {"id": 50}}),
+            Allowed,
+            Ignored,
+        ),
+        // self.membership.user.name == AuthContext.name: the default of `Membership.user` doesn't
+        // make an omitted membership present
+        (
+            membership_user_name_eq(),
+            json!({"text": "T"}),
+            Denied,
+            Denied,
+        ),
+        (
+            membership_user_name_eq(),
+            json!({"text": "T", "membership": null}),
+            Denied,
+            Denied,
+        ),
+        (
+            membership_user_name_eq(),
+            json!({"text": "T", "membership": {}}),
+            Denied,
+            Denied,
+        ),
     ];
 
     for (test_ae, input_value, expected_top_level, expected_nested) in matrix {
@@ -602,6 +752,16 @@ async fn unspecified_field_in_create() {
             Denied => false.into(),
             Allowed => true.into(),
             Ignored => ignored_solution.clone(),
+            LookedUp => {
+                assert!(
+                    !matches!(
+                        ignored_solution,
+                        AbstractPredicate::True | AbstractPredicate::False
+                    ),
+                    "{test_ae:?} with {input_value:?} should be looked up in the database"
+                );
+                ignored_solution.clone()
+            }
         };
 
         assert_eq!(
@@ -621,6 +781,131 @@ async fn unspecified_field_in_create() {
             "{test_ae:?} with {input_value:?} (nested)"
         );
     }
+}
+
+#[cfg_attr(not(target_family = "wasm"), tokio::test)]
+#[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
+async fn unsolvable_some_body_in_create() {
+    // Scenario: self.article.publications.some(p => p.royalty == AuthContext.id ||
+    // self.author.name == AuthContext.name) in a create without an author. A related row matches
+    // only through `p.royalty == AuthContext.id` (as in SQL, a row whose body is unknown doesn't
+    // match), so the function is looked up as `some(p => p.royalty == AuthContext.id)` is, rather
+    // than skipped (which would allow the create).
+    let test_system = TestSystem::new().await;
+
+    let relation = AccessPredicateExpression::RelationalOp;
+    let some_where = |body| {
+        relation(AccessRelationalOp::Eq(
+            Box::new(PrecheckAccessPrimitiveExpression::Function(
+                test_system.path("Publication", "article.publications"),
+                FunctionCall {
+                    name: "some".to_string(),
+                    parameter_name: "p".to_string(),
+                    expr: body,
+                },
+            )),
+            Box::new(PrecheckAccessPrimitiveExpression::Common(
+                CommonAccessPrimitiveExpression::BooleanLiteral(true),
+            )),
+        ))
+    };
+    let royalty_matches = || {
+        relation(AccessRelationalOp::Eq(
+            Box::new(test_system.expr("Publication", "royalty", Some("p"))),
+            context_selection_expr("AccessContext", "id"),
+        ))
+    };
+    let author_name_matches = || {
+        relation(AccessRelationalOp::Eq(
+            Box::new(test_system.expr("Publication", "author.name", None)),
+            context_selection_expr("AccessContext", "name"),
+        ))
+    };
+
+    let input_value = json!({"royalty": 10, "article": {"id": 50}}).into();
+    let solve = |test_ae| {
+        solve_access(
+            test_ae,
+            json!({"name": "John", "id": 5}),
+            Some(AccessInput {
+                value: &input_value,
+                missing_value_policy: MissingValuePolicy::Create {
+                    parent_reference: None,
+                },
+                aliases: HashMap::new(),
+            }),
+            &test_system.system,
+        )
+    };
+
+    let or_body = some_where(AccessPredicateExpression::LogicalOp(
+        AccessLogicalExpression::Or(Box::new(royalty_matches()), Box::new(author_name_matches())),
+    ));
+    let royalty_only = some_where(royalty_matches());
+
+    let solved_predicate = solve(&or_body).await;
+    assert!(!matches!(
+        solved_predicate,
+        AbstractPredicate::True | AbstractPredicate::False
+    ));
+    assert_eq!(solved_predicate, solve(&royalty_only).await);
+}
+
+#[cfg_attr(not(target_family = "wasm"), tokio::test)]
+#[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
+async fn skipped_some_body_in_nested_create() {
+    // Scenario: !self.article.publications.some(p => p.royalty == AuthContext.id &&
+    // self.author.id == AuthContext.id) in a create nested under the author. The author's id is
+    // unknown until the parent's insert, so its comparison is skipped, and a skipped comparison
+    // doesn't deny, even under a negation. Resolving the body to where it is true
+    // (`p.royalty == AuthContext.id`) would deny wherever that holds instead.
+    let test_system = TestSystem::new().await;
+
+    let relation = AccessPredicateExpression::RelationalOp;
+    let body = AccessPredicateExpression::LogicalOp(AccessLogicalExpression::And(
+        Box::new(relation(AccessRelationalOp::Eq(
+            Box::new(test_system.expr("Publication", "royalty", Some("p"))),
+            context_selection_expr("AccessContext", "id"),
+        ))),
+        Box::new(relation(AccessRelationalOp::Eq(
+            Box::new(test_system.expr("Publication", "author.id", None)),
+            context_selection_expr("AccessContext", "id"),
+        ))),
+    ));
+    let some = relation(AccessRelationalOp::Eq(
+        Box::new(PrecheckAccessPrimitiveExpression::Function(
+            test_system.path("Publication", "article.publications"),
+            FunctionCall {
+                name: "some".to_string(),
+                parameter_name: "p".to_string(),
+                expr: body,
+            },
+        )),
+        Box::new(PrecheckAccessPrimitiveExpression::Common(
+            CommonAccessPrimitiveExpression::BooleanLiteral(true),
+        )),
+    ));
+    let not_some =
+        AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Not(Box::new(some.clone())));
+
+    let input_value = json!({"royalty": 10, "article": {"id": 50}}).into();
+    let solve = |test_ae| {
+        solve_access(
+            test_ae,
+            json!({"name": "John", "id": 5}),
+            Some(AccessInput {
+                value: &input_value,
+                missing_value_policy: MissingValuePolicy::Create {
+                    parent_reference: Some("author"),
+                },
+                aliases: HashMap::new(),
+            }),
+            &test_system.system,
+        )
+    };
+
+    assert_eq!(solve(&some).await, AbstractPredicate::True);
+    assert_eq!(solve(&not_some).await, AbstractPredicate::True);
 }
 
 #[cfg_attr(not(target_family = "wasm"), tokio::test)]

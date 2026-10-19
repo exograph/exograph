@@ -1,0 +1,46 @@
+# `Sprint`'s rule (`self.tasks.some(t => t.team.memberships.some(m => m.user.id == AuthContext.id))`)
+# nests a function over a task's team inside a function over the sprint's tasks. The inner team is
+# the task's (`t.team`), not the sprint's, so the precheck must not treat it as an omitted relation
+# of the sprint.
+stages:
+  # A task on a team with the user as a member is allowed
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_sprint",
+          "params": {
+            "data": {"name": "sprint", "tasks": [{"title": "task", "team": {"id": $.engineeringTeamId}}]}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "result": {
+          "id": 1
+        }
+      }
+  # A sprint without tasks is rejected
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_sprint",
+          "params": {
+            "data": {"name": "sprint without tasks", "tasks": []}
+          }
+        }
+    auth: |
+      {
+        "sub": $.aliceEngineerId
+      }
+    response: |
+      {
+        "error": {
+          "code": -32004,
+          "message": "Not authorized"
+        }
+      }

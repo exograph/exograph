@@ -7,6 +7,139 @@ input BooleanFilter {
   neq: Boolean
 }
 
+type Chat {
+  id: Int!
+  name: String!
+  participations(where: ChatParticipationFilter, orderBy: [ChatParticipationOrdering!], limit: Int, offset: Int): [ChatParticipation!]
+  participationsAgg(where: ChatParticipationFilter): ChatParticipationAgg
+}
+
+"""An aggregate for the `Chat` type."""
+type ChatAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input ChatCreationInput {
+  name: String!
+  participations: [ChatParticipationCreationInputFromChat!]
+}
+
+"""
+Predicate for the `Chat` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input ChatFilter {
+  id: IntFilter
+  name: StringFilter
+  participations: ChatParticipationFilter
+  and: [ChatFilter!]
+  or: [ChatFilter!]
+  not: ChatFilter
+}
+
+input ChatOrdering {
+  id: Ordering
+  name: Ordering
+}
+
+type ChatParticipation {
+  chat: Chat!
+  user: User!
+  notes(where: ParticipationNoteFilter, orderBy: [ParticipationNoteOrdering!], limit: Int, offset: Int): [ParticipationNote!]
+  notesAgg(where: ParticipationNoteFilter): ParticipationNoteAgg
+}
+
+"""An aggregate for the `ChatParticipation` type."""
+type ChatParticipationAgg {
+  chat: ChatAgg
+  user: UserAgg
+}
+
+input ChatParticipationCreationInput {
+  chat: ChatReferenceInput!
+  user: UserReferenceInput
+  notes: [ParticipationNoteCreationInputFromChatParticipation!]
+}
+
+input ChatParticipationCreationInputFromChat {
+  user: UserReferenceInput
+  notes: [ParticipationNoteCreationInputFromChatParticipation!]
+}
+
+input ChatParticipationCreationInputFromUser {
+  chat: ChatReferenceInput!
+  notes: [ParticipationNoteCreationInputFromChatParticipation!]
+}
+
+"""
+Predicate for the `ChatParticipation` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input ChatParticipationFilter {
+  chat: ChatFilter
+  user: UserFilter
+  notes: ParticipationNoteFilter
+  and: [ChatParticipationFilter!]
+  or: [ChatParticipationFilter!]
+  not: ChatParticipationFilter
+}
+
+input ChatParticipationOrdering {
+  chat: [ChatOrdering!]
+  user: [UserOrdering!]
+}
+
+input ChatParticipationReferenceInput {
+  chat: ChatReferenceInput!
+  user: UserReferenceInput!
+}
+
+input ChatParticipationUpdateInput {
+  chat: ChatReferenceInput
+  user: UserReferenceInput
+  notes: ParticipationNoteUpdateInputFromChatParticipation
+}
+
+input ChatParticipationUpdateInputFromChat {
+  create: [ChatParticipationCreationInputFromChat!]
+  update: [ChatParticipationUpdateInputFromChatNested!]
+  delete: [ChatParticipationReferenceInput!]
+}
+
+input ChatParticipationUpdateInputFromChatNested {
+  user: ChatUpdateInput!
+  notes: ParticipationNoteUpdateInputFromChatParticipation
+}
+
+input ChatParticipationUpdateInputFromUser {
+  create: [ChatParticipationCreationInputFromUser!]
+  update: [ChatParticipationUpdateInputFromUserNested!]
+  delete: [ChatParticipationReferenceInput!]
+}
+
+input ChatParticipationUpdateInputFromUserNested {
+  chat: ChatUpdateInput!
+  notes: ParticipationNoteUpdateInputFromChatParticipation
+}
+
+input ChatReferenceInput {
+  id: Int!
+}
+
+"""A predicate to filter the results for a `Chat` type parameter."""
+input ChatUniqueFilter {
+  id: Int!
+}
+
+input ChatUpdateInput {
+  id: Int
+  name: String
+  participations: ChatParticipationUpdateInputFromChat
+}
+
 type DeMorganDoc {
   id: Int!
   content: String!
@@ -192,6 +325,97 @@ input IntFilter {
   gte: Int
 }
 
+scalar LocalDate
+
+type LocalDateAgg {
+  count: Int
+}
+
+input LocalDateFilter {
+  eq: LocalDate
+  neq: LocalDate
+  lt: LocalDate
+  lte: LocalDate
+  gt: LocalDate
+  gte: LocalDate
+}
+
+type Membership {
+  id: Int!
+  team: Team!
+  user: User!
+}
+
+"""An aggregate for the `Membership` type."""
+type MembershipAgg {
+  id: IntAgg
+}
+
+input MembershipCreationInput {
+  team: TeamReferenceInput!
+  user: UserReferenceInput!
+}
+
+input MembershipCreationInputFromTeam {
+  user: UserReferenceInput!
+}
+
+input MembershipCreationInputFromUser {
+  team: TeamReferenceInput!
+}
+
+"""
+Predicate for the `Membership` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input MembershipFilter {
+  id: IntFilter
+  team: TeamFilter
+  user: UserFilter
+  and: [MembershipFilter!]
+  or: [MembershipFilter!]
+  not: MembershipFilter
+}
+
+input MembershipOrdering {
+  id: Ordering
+  team: [TeamOrdering!]
+  user: [UserOrdering!]
+}
+
+input MembershipReferenceInput {
+  id: Int!
+}
+
+input MembershipUpdateInput {
+  id: Int
+  team: TeamReferenceInput
+  user: UserReferenceInput
+}
+
+input MembershipUpdateInputFromTeam {
+  create: [MembershipCreationInputFromTeam!]
+  update: [MembershipUpdateInputFromTeamNested!]
+  delete: [MembershipReferenceInput!]
+}
+
+input MembershipUpdateInputFromTeamNested {
+  id: Int!
+  user: UserReferenceInput
+}
+
+input MembershipUpdateInputFromUser {
+  create: [MembershipCreationInputFromUser!]
+  update: [MembershipUpdateInputFromUserNested!]
+  delete: [MembershipReferenceInput!]
+}
+
+input MembershipUpdateInputFromUserNested {
+  id: Int!
+  team: TeamReferenceInput
+}
+
 type NegatedComparisonDoc {
   id: Int!
   content: String!
@@ -373,6 +597,130 @@ enum Ordering {
   DESC
 }
 
+type ParticipationNote {
+  id: Int!
+  content: String!
+  participation: ChatParticipation
+}
+
+"""An aggregate for the `ParticipationNote` type."""
+type ParticipationNoteAgg {
+  id: IntAgg
+  content: StringAgg
+}
+
+input ParticipationNoteCreationInput {
+  content: String!
+  participation: ChatParticipationReferenceInput
+}
+
+input ParticipationNoteCreationInputFromChatParticipation {
+  content: String!
+}
+
+"""
+Predicate for the `ParticipationNote` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input ParticipationNoteFilter {
+  id: IntFilter
+  content: StringFilter
+  participation: ChatParticipationFilter
+  and: [ParticipationNoteFilter!]
+  or: [ParticipationNoteFilter!]
+  not: ParticipationNoteFilter
+}
+
+input ParticipationNoteOrdering {
+  id: Ordering
+  content: Ordering
+  participation: [ChatParticipationOrdering!]
+}
+
+input ParticipationNoteReferenceInput {
+  id: Int!
+}
+
+input ParticipationNoteUpdateInput {
+  id: Int
+  content: String
+  participation: ChatParticipationReferenceInput
+}
+
+input ParticipationNoteUpdateInputFromChatParticipation {
+  create: [ParticipationNoteCreationInputFromChatParticipation!]
+  update: [ParticipationNoteUpdateInputFromChatParticipationNested!]
+  delete: [ParticipationNoteReferenceInput!]
+}
+
+input ParticipationNoteUpdateInputFromChatParticipationNested {
+  id: Int!
+  content: String
+}
+
+type Post {
+  id: Int!
+  content: String!
+  author: User
+}
+
+"""An aggregate for the `Post` type."""
+type PostAgg {
+  id: IntAgg
+  content: StringAgg
+}
+
+input PostCreationInput {
+  content: String!
+  author: UserReferenceInput
+}
+
+input PostCreationInputFromUser {
+  content: String!
+}
+
+"""
+Predicate for the `Post` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input PostFilter {
+  id: IntFilter
+  content: StringFilter
+  author: UserFilter
+  and: [PostFilter!]
+  or: [PostFilter!]
+  not: PostFilter
+}
+
+input PostOrdering {
+  id: Ordering
+  content: Ordering
+  author: [UserOrdering!]
+}
+
+input PostReferenceInput {
+  id: Int!
+}
+
+input PostUpdateInput {
+  id: Int
+  content: String
+  author: UserReferenceInput
+}
+
+input PostUpdateInputFromUser {
+  create: [PostCreationInputFromUser!]
+  update: [PostUpdateInputFromUserNested!]
+  delete: [PostReferenceInput!]
+}
+
+input PostUpdateInputFromUserNested {
+  id: Int!
+  content: String
+}
+
 type Project {
   id: Int!
   title: String!
@@ -435,6 +783,168 @@ input ProjectUpdateInputFromUserNested {
   title: String
 }
 
+type ReviewRequest {
+  id: Int!
+  content: String!
+  reviewer: Reviewer
+}
+
+"""An aggregate for the `ReviewRequest` type."""
+type ReviewRequestAgg {
+  id: IntAgg
+  content: StringAgg
+}
+
+input ReviewRequestCreationInput {
+  content: String!
+  reviewer: ReviewerReferenceInput
+}
+
+input ReviewRequestCreationInputFromReviewer {
+  content: String!
+}
+
+"""
+Predicate for the `ReviewRequest` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input ReviewRequestFilter {
+  id: IntFilter
+  content: StringFilter
+  reviewer: ReviewerFilter
+  and: [ReviewRequestFilter!]
+  or: [ReviewRequestFilter!]
+  not: ReviewRequestFilter
+}
+
+input ReviewRequestOrdering {
+  id: Ordering
+  content: Ordering
+  reviewer: [ReviewerOrdering!]
+}
+
+input ReviewRequestReferenceInput {
+  id: Int!
+}
+
+input ReviewRequestUpdateInput {
+  id: Int
+  content: String
+  reviewer: ReviewerReferenceInput
+}
+
+input ReviewRequestUpdateInputFromReviewer {
+  create: [ReviewRequestCreationInputFromReviewer!]
+  update: [ReviewRequestUpdateInputFromReviewerNested!]
+  delete: [ReviewRequestReferenceInput!]
+}
+
+input ReviewRequestUpdateInputFromReviewerNested {
+  id: Int!
+  content: String
+}
+
+type Reviewer {
+  id: Int!
+  name: String!
+  retiredOn: LocalDate
+  reviewRequests(where: ReviewRequestFilter, orderBy: [ReviewRequestOrdering!], limit: Int, offset: Int): [ReviewRequest!]
+  reviewRequestsAgg(where: ReviewRequestFilter): ReviewRequestAgg
+}
+
+"""An aggregate for the `Reviewer` type."""
+type ReviewerAgg {
+  id: IntAgg
+  name: StringAgg
+  retiredOn: LocalDateAgg
+}
+
+input ReviewerCreationInput {
+  name: String!
+  retiredOn: LocalDate
+  reviewRequests: [ReviewRequestCreationInputFromReviewer!]
+}
+
+"""
+Predicate for the `Reviewer` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input ReviewerFilter {
+  id: IntFilter
+  name: StringFilter
+  retiredOn: LocalDateFilter
+  reviewRequests: ReviewRequestFilter
+  and: [ReviewerFilter!]
+  or: [ReviewerFilter!]
+  not: ReviewerFilter
+}
+
+input ReviewerOrdering {
+  id: Ordering
+  name: Ordering
+  retiredOn: Ordering
+}
+
+input ReviewerReferenceInput {
+  id: Int!
+}
+
+input ReviewerUpdateInput {
+  id: Int
+  name: String
+  retiredOn: LocalDate
+  reviewRequests: ReviewRequestUpdateInputFromReviewer
+}
+
+type Sprint {
+  id: Int!
+  name: String!
+  tasks(where: TaskFilter, orderBy: [TaskOrdering!], limit: Int, offset: Int): [Task!]
+  tasksAgg(where: TaskFilter): TaskAgg
+}
+
+"""An aggregate for the `Sprint` type."""
+type SprintAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input SprintCreationInput {
+  name: String!
+  tasks: [TaskCreationInputFromSprint!]
+}
+
+"""
+Predicate for the `Sprint` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input SprintFilter {
+  id: IntFilter
+  name: StringFilter
+  tasks: TaskFilter
+  and: [SprintFilter!]
+  or: [SprintFilter!]
+  not: SprintFilter
+}
+
+input SprintOrdering {
+  id: Ordering
+  name: Ordering
+}
+
+input SprintReferenceInput {
+  id: Int!
+}
+
+input SprintUpdateInput {
+  id: Int
+  name: String
+  tasks: TaskUpdateInputFromSprint
+}
+
 type StringAgg {
   min: String
   max: String
@@ -454,28 +964,405 @@ input StringFilter {
   endsWith: String
 }
 
+type Task {
+  id: Int!
+  title: String!
+  sprint: Sprint!
+  team: Team
+}
+
+"""An aggregate for the `Task` type."""
+type TaskAgg {
+  id: IntAgg
+  title: StringAgg
+}
+
+input TaskCreationInput {
+  title: String!
+  sprint: SprintReferenceInput!
+  team: TeamReferenceInput
+}
+
+input TaskCreationInputFromSprint {
+  title: String!
+  team: TeamReferenceInput
+}
+
+input TaskCreationInputFromTeam {
+  title: String!
+  sprint: SprintReferenceInput!
+}
+
+"""
+Predicate for the `Task` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input TaskFilter {
+  id: IntFilter
+  title: StringFilter
+  sprint: SprintFilter
+  team: TeamFilter
+  and: [TaskFilter!]
+  or: [TaskFilter!]
+  not: TaskFilter
+}
+
+input TaskOrdering {
+  id: Ordering
+  title: Ordering
+  sprint: [SprintOrdering!]
+  team: [TeamOrdering!]
+}
+
+input TaskReferenceInput {
+  id: Int!
+}
+
+input TaskUpdateInput {
+  id: Int
+  title: String
+  sprint: SprintReferenceInput
+  team: TeamReferenceInput
+}
+
+input TaskUpdateInputFromSprint {
+  create: [TaskCreationInputFromSprint!]
+  update: [TaskUpdateInputFromSprintNested!]
+  delete: [TaskReferenceInput!]
+}
+
+input TaskUpdateInputFromSprintNested {
+  id: Int!
+  title: String
+  team: TeamReferenceInput
+}
+
+input TaskUpdateInputFromTeam {
+  create: [TaskCreationInputFromTeam!]
+  update: [TaskUpdateInputFromTeamNested!]
+  delete: [TaskReferenceInput!]
+}
+
+input TaskUpdateInputFromTeamNested {
+  id: Int!
+  title: String
+  sprint: SprintReferenceInput
+}
+
+type Team {
+  id: Int!
+  name: String!
+  active: Boolean!
+  memberships(where: MembershipFilter, orderBy: [MembershipOrdering!], limit: Int, offset: Int): [Membership!]
+  teamDocs(where: TeamDocFilter, orderBy: [TeamDocOrdering!], limit: Int, offset: Int): [TeamDoc!]
+  proposals(where: TeamProposalFilter, orderBy: [TeamProposalOrdering!], limit: Int, offset: Int): [TeamProposal!]
+  suggestions(where: TeamSuggestionFilter, orderBy: [TeamSuggestionOrdering!], limit: Int, offset: Int): [TeamSuggestion!]
+  reviewedProposals(where: TeamProposalFilter, orderBy: [TeamProposalOrdering!], limit: Int, offset: Int): [TeamProposal!]
+  reviewedSuggestions(where: TeamSuggestionFilter, orderBy: [TeamSuggestionOrdering!], limit: Int, offset: Int): [TeamSuggestion!]
+  tasks(where: TaskFilter, orderBy: [TaskOrdering!], limit: Int, offset: Int): [Task!]
+  membershipsAgg(where: MembershipFilter): MembershipAgg
+  teamDocsAgg(where: TeamDocFilter): TeamDocAgg
+  proposalsAgg(where: TeamProposalFilter): TeamProposalAgg
+  suggestionsAgg(where: TeamSuggestionFilter): TeamSuggestionAgg
+  reviewedProposalsAgg(where: TeamProposalFilter): TeamProposalAgg
+  reviewedSuggestionsAgg(where: TeamSuggestionFilter): TeamSuggestionAgg
+  tasksAgg(where: TaskFilter): TaskAgg
+}
+
+"""An aggregate for the `Team` type."""
+type TeamAgg {
+  id: IntAgg
+  name: StringAgg
+  active: BooleanAgg
+}
+
+input TeamCreationInput {
+  name: String!
+  active: Boolean
+  memberships: [MembershipCreationInputFromTeam!]
+  teamDocs: [TeamDocCreationInputFromTeam!]
+  proposals: [TeamProposalCreationInputFromTeam!]
+  suggestions: [TeamSuggestionCreationInputFromTeam!]
+  reviewedProposals: [TeamProposalCreationInputFromTeam!]
+  reviewedSuggestions: [TeamSuggestionCreationInputFromTeam!]
+  tasks: [TaskCreationInputFromTeam!]
+}
+
+type TeamDoc {
+  id: Int!
+  content: String!
+  team: Team
+}
+
+"""An aggregate for the `TeamDoc` type."""
+type TeamDocAgg {
+  id: IntAgg
+  content: StringAgg
+}
+
+input TeamDocCreationInput {
+  content: String!
+  team: TeamReferenceInput
+}
+
+input TeamDocCreationInputFromTeam {
+  content: String!
+}
+
+"""
+Predicate for the `TeamDoc` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input TeamDocFilter {
+  id: IntFilter
+  content: StringFilter
+  team: TeamFilter
+  and: [TeamDocFilter!]
+  or: [TeamDocFilter!]
+  not: TeamDocFilter
+}
+
+input TeamDocOrdering {
+  id: Ordering
+  content: Ordering
+  team: [TeamOrdering!]
+}
+
+input TeamDocReferenceInput {
+  id: Int!
+}
+
+input TeamDocUpdateInput {
+  id: Int
+  content: String
+  team: TeamReferenceInput
+}
+
+input TeamDocUpdateInputFromTeam {
+  create: [TeamDocCreationInputFromTeam!]
+  update: [TeamDocUpdateInputFromTeamNested!]
+  delete: [TeamDocReferenceInput!]
+}
+
+input TeamDocUpdateInputFromTeamNested {
+  id: Int!
+  content: String
+}
+
+"""
+Predicate for the `Team` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input TeamFilter {
+  id: IntFilter
+  name: StringFilter
+  active: BooleanFilter
+  memberships: MembershipFilter
+  teamDocs: TeamDocFilter
+  proposals: TeamProposalFilter
+  suggestions: TeamSuggestionFilter
+  reviewedProposals: TeamProposalFilter
+  reviewedSuggestions: TeamSuggestionFilter
+  tasks: TaskFilter
+  and: [TeamFilter!]
+  or: [TeamFilter!]
+  not: TeamFilter
+}
+
+input TeamOrdering {
+  id: Ordering
+  name: Ordering
+  active: Ordering
+}
+
+type TeamProposal {
+  id: Int!
+  content: String!
+  team: Team
+  reviewTeam: Team
+}
+
+"""An aggregate for the `TeamProposal` type."""
+type TeamProposalAgg {
+  id: IntAgg
+  content: StringAgg
+}
+
+input TeamProposalCreationInput {
+  content: String!
+  team: TeamReferenceInput
+  reviewTeam: TeamReferenceInput
+}
+
+input TeamProposalCreationInputFromTeam {
+  content: String!
+}
+
+"""
+Predicate for the `TeamProposal` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input TeamProposalFilter {
+  id: IntFilter
+  content: StringFilter
+  team: TeamFilter
+  reviewTeam: TeamFilter
+  and: [TeamProposalFilter!]
+  or: [TeamProposalFilter!]
+  not: TeamProposalFilter
+}
+
+input TeamProposalOrdering {
+  id: Ordering
+  content: Ordering
+  team: [TeamOrdering!]
+  reviewTeam: [TeamOrdering!]
+}
+
+input TeamProposalReferenceInput {
+  id: Int!
+}
+
+input TeamProposalUpdateInput {
+  id: Int
+  content: String
+  team: TeamReferenceInput
+  reviewTeam: TeamReferenceInput
+}
+
+input TeamProposalUpdateInputFromTeam {
+  create: [TeamProposalCreationInputFromTeam!]
+  update: [TeamProposalUpdateInputFromTeamNested!]
+  delete: [TeamProposalReferenceInput!]
+}
+
+input TeamProposalUpdateInputFromTeamNested {
+  id: Int!
+  content: String
+}
+
+input TeamReferenceInput {
+  id: Int!
+}
+
+type TeamSuggestion {
+  id: Int!
+  content: String!
+  team: Team
+  reviewTeam: Team
+}
+
+"""An aggregate for the `TeamSuggestion` type."""
+type TeamSuggestionAgg {
+  id: IntAgg
+  content: StringAgg
+}
+
+input TeamSuggestionCreationInput {
+  content: String!
+  team: TeamReferenceInput
+  reviewTeam: TeamReferenceInput
+}
+
+input TeamSuggestionCreationInputFromTeam {
+  content: String!
+}
+
+"""
+Predicate for the `TeamSuggestion` type parameter. 
+If a field is omitted, no filter is applied for that field.
+To check a field against null, use a `<field name>: null` filter
+"""
+input TeamSuggestionFilter {
+  id: IntFilter
+  content: StringFilter
+  team: TeamFilter
+  reviewTeam: TeamFilter
+  and: [TeamSuggestionFilter!]
+  or: [TeamSuggestionFilter!]
+  not: TeamSuggestionFilter
+}
+
+input TeamSuggestionOrdering {
+  id: Ordering
+  content: Ordering
+  team: [TeamOrdering!]
+  reviewTeam: [TeamOrdering!]
+}
+
+input TeamSuggestionReferenceInput {
+  id: Int!
+}
+
+input TeamSuggestionUpdateInput {
+  id: Int
+  content: String
+  team: TeamReferenceInput
+  reviewTeam: TeamReferenceInput
+}
+
+input TeamSuggestionUpdateInputFromTeam {
+  create: [TeamSuggestionCreationInputFromTeam!]
+  update: [TeamSuggestionUpdateInputFromTeamNested!]
+  delete: [TeamSuggestionReferenceInput!]
+}
+
+input TeamSuggestionUpdateInputFromTeamNested {
+  id: Int!
+  content: String
+}
+
+input TeamUpdateInput {
+  id: Int
+  name: String
+  active: Boolean
+  memberships: MembershipUpdateInputFromTeam
+  teamDocs: TeamDocUpdateInputFromTeam
+  proposals: TeamProposalUpdateInputFromTeam
+  suggestions: TeamSuggestionUpdateInputFromTeam
+  reviewedProposals: TeamProposalUpdateInputFromTeam
+  reviewedSuggestions: TeamSuggestionUpdateInputFromTeam
+  tasks: TaskUpdateInputFromTeam
+}
+
 type User {
   id: Int!
   name: String!
+  active: Boolean!
   projects(where: ProjectFilter, orderBy: [ProjectOrdering!], limit: Int, offset: Int): [Project!]
   deMorganDocs(where: DeMorganDocFilter, orderBy: [DeMorganDocOrdering!], limit: Int, offset: Int): [DeMorganDoc!]
   deMorganExpandedDocs(where: DeMorganExpandedDocFilter, orderBy: [DeMorganExpandedDocOrdering!], limit: Int, offset: Int): [DeMorganExpandedDoc!]
+  posts(where: PostFilter, orderBy: [PostOrdering!], limit: Int, offset: Int): [Post!]
+  memberships(where: MembershipFilter, orderBy: [MembershipOrdering!], limit: Int, offset: Int): [Membership!]
+  chatParticipations(where: ChatParticipationFilter, orderBy: [ChatParticipationOrdering!], limit: Int, offset: Int): [ChatParticipation!]
   projectsAgg(where: ProjectFilter): ProjectAgg
   deMorganDocsAgg(where: DeMorganDocFilter): DeMorganDocAgg
   deMorganExpandedDocsAgg(where: DeMorganExpandedDocFilter): DeMorganExpandedDocAgg
+  postsAgg(where: PostFilter): PostAgg
+  membershipsAgg(where: MembershipFilter): MembershipAgg
+  chatParticipationsAgg(where: ChatParticipationFilter): ChatParticipationAgg
 }
 
 """An aggregate for the `User` type."""
 type UserAgg {
   id: IntAgg
   name: StringAgg
+  active: BooleanAgg
 }
 
 input UserCreationInput {
   name: String!
+  active: Boolean
   projects: [ProjectCreationInputFromUser!]
   deMorganDocs: [DeMorganDocCreationInputFromUser!]
   deMorganExpandedDocs: [DeMorganExpandedDocCreationInputFromUser!]
+  posts: [PostCreationInputFromUser!]
+  memberships: [MembershipCreationInputFromUser!]
+  chatParticipations: [ChatParticipationCreationInputFromUser!]
 }
 
 """
@@ -486,9 +1373,13 @@ To check a field against null, use a `<field name>: null` filter
 input UserFilter {
   id: IntFilter
   name: StringFilter
+  active: BooleanFilter
   projects: ProjectFilter
   deMorganDocs: DeMorganDocFilter
   deMorganExpandedDocs: DeMorganExpandedDocFilter
+  posts: PostFilter
+  memberships: MembershipFilter
+  chatParticipations: ChatParticipationFilter
   and: [UserFilter!]
   or: [UserFilter!]
   not: UserFilter
@@ -497,21 +1388,57 @@ input UserFilter {
 input UserOrdering {
   id: Ordering
   name: Ordering
+  active: Ordering
 }
 
 input UserReferenceInput {
   id: Int!
 }
 
+"""A predicate to filter the results for a `User` type parameter."""
+input UserUniqueFilter {
+  id: Int!
+}
+
 input UserUpdateInput {
   id: Int
   name: String
+  active: Boolean
   projects: ProjectUpdateInputFromUser
   deMorganDocs: DeMorganDocUpdateInputFromUser
   deMorganExpandedDocs: DeMorganExpandedDocUpdateInputFromUser
+  posts: PostUpdateInputFromUser
+  memberships: MembershipUpdateInputFromUser
+  chatParticipations: ChatParticipationUpdateInputFromUser
 }
 
 type Query {
+  """Get a single `Chat` by primary key"""
+  chat(id: Int!): Chat
+
+  """Get a single `ChatParticipation` by primary key"""
+  chatParticipation(chat: ChatUniqueFilter!, user: UserUniqueFilter!): ChatParticipation
+
+  """
+  Get multiple `ChatParticipation`s given the provided `where` filter, order by, limit, and offset
+  """
+  chatParticipations(where: ChatParticipationFilter, orderBy: [ChatParticipationOrdering!], limit: Int, offset: Int): [ChatParticipation!]!
+
+  """
+  Get the aggregate value of the selected fields over all `ChatParticipation`s given the provided `where` filter
+  """
+  chatParticipationsAgg(where: ChatParticipationFilter): ChatParticipationAgg!
+
+  """
+  Get multiple `Chat`s given the provided `where` filter, order by, limit, and offset
+  """
+  chats(where: ChatFilter, orderBy: [ChatOrdering!], limit: Int, offset: Int): [Chat!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Chat`s given the provided `where` filter
+  """
+  chatsAgg(where: ChatFilter): ChatAgg!
+
   """Get a single `DeMorganDoc` by primary key"""
   deMorganDoc(id: Int!): DeMorganDoc
 
@@ -550,6 +1477,19 @@ type Query {
   Get the aggregate value of the selected fields over all `InequalityDoc`s given the provided `where` filter
   """
   inequalityDocsAgg(where: InequalityDocFilter): InequalityDocAgg!
+
+  """Get a single `Membership` by primary key"""
+  membership(id: Int!): Membership
+
+  """
+  Get multiple `Membership`s given the provided `where` filter, order by, limit, and offset
+  """
+  memberships(where: MembershipFilter, orderBy: [MembershipOrdering!], limit: Int, offset: Int): [Membership!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Membership`s given the provided `where` filter
+  """
+  membershipsAgg(where: MembershipFilter): MembershipAgg!
 
   """Get a single `NegatedComparisonDoc` by primary key"""
   negatedComparisonDoc(id: Int!): NegatedComparisonDoc
@@ -603,6 +1543,32 @@ type Query {
   """
   nullCheckDocsAgg(where: NullCheckDocFilter): NullCheckDocAgg!
 
+  """Get a single `ParticipationNote` by primary key"""
+  participationNote(id: Int!): ParticipationNote
+
+  """
+  Get multiple `ParticipationNote`s given the provided `where` filter, order by, limit, and offset
+  """
+  participationNotes(where: ParticipationNoteFilter, orderBy: [ParticipationNoteOrdering!], limit: Int, offset: Int): [ParticipationNote!]!
+
+  """
+  Get the aggregate value of the selected fields over all `ParticipationNote`s given the provided `where` filter
+  """
+  participationNotesAgg(where: ParticipationNoteFilter): ParticipationNoteAgg!
+
+  """Get a single `Post` by primary key"""
+  post(id: Int!): Post
+
+  """
+  Get multiple `Post`s given the provided `where` filter, order by, limit, and offset
+  """
+  posts(where: PostFilter, orderBy: [PostOrdering!], limit: Int, offset: Int): [Post!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Post`s given the provided `where` filter
+  """
+  postsAgg(where: PostFilter): PostAgg!
+
   """Get a single `Project` by primary key"""
   project(id: Int!): Project
 
@@ -615,6 +1581,110 @@ type Query {
   Get the aggregate value of the selected fields over all `Project`s given the provided `where` filter
   """
   projectsAgg(where: ProjectFilter): ProjectAgg!
+
+  """Get a single `ReviewRequest` by primary key"""
+  reviewRequest(id: Int!): ReviewRequest
+
+  """
+  Get multiple `ReviewRequest`s given the provided `where` filter, order by, limit, and offset
+  """
+  reviewRequests(where: ReviewRequestFilter, orderBy: [ReviewRequestOrdering!], limit: Int, offset: Int): [ReviewRequest!]!
+
+  """
+  Get the aggregate value of the selected fields over all `ReviewRequest`s given the provided `where` filter
+  """
+  reviewRequestsAgg(where: ReviewRequestFilter): ReviewRequestAgg!
+
+  """Get a single `Reviewer` by primary key"""
+  reviewer(id: Int!): Reviewer
+
+  """
+  Get multiple `Reviewer`s given the provided `where` filter, order by, limit, and offset
+  """
+  reviewers(where: ReviewerFilter, orderBy: [ReviewerOrdering!], limit: Int, offset: Int): [Reviewer!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Reviewer`s given the provided `where` filter
+  """
+  reviewersAgg(where: ReviewerFilter): ReviewerAgg!
+
+  """Get a single `Sprint` by primary key"""
+  sprint(id: Int!): Sprint
+
+  """
+  Get multiple `Sprint`s given the provided `where` filter, order by, limit, and offset
+  """
+  sprints(where: SprintFilter, orderBy: [SprintOrdering!], limit: Int, offset: Int): [Sprint!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Sprint`s given the provided `where` filter
+  """
+  sprintsAgg(where: SprintFilter): SprintAgg!
+
+  """Get a single `Task` by primary key"""
+  task(id: Int!): Task
+
+  """
+  Get multiple `Task`s given the provided `where` filter, order by, limit, and offset
+  """
+  tasks(where: TaskFilter, orderBy: [TaskOrdering!], limit: Int, offset: Int): [Task!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Task`s given the provided `where` filter
+  """
+  tasksAgg(where: TaskFilter): TaskAgg!
+
+  """Get a single `Team` by primary key"""
+  team(id: Int!): Team
+
+  """Get a single `TeamDoc` by primary key"""
+  teamDoc(id: Int!): TeamDoc
+
+  """
+  Get multiple `TeamDoc`s given the provided `where` filter, order by, limit, and offset
+  """
+  teamDocs(where: TeamDocFilter, orderBy: [TeamDocOrdering!], limit: Int, offset: Int): [TeamDoc!]!
+
+  """
+  Get the aggregate value of the selected fields over all `TeamDoc`s given the provided `where` filter
+  """
+  teamDocsAgg(where: TeamDocFilter): TeamDocAgg!
+
+  """Get a single `TeamProposal` by primary key"""
+  teamProposal(id: Int!): TeamProposal
+
+  """
+  Get multiple `TeamProposal`s given the provided `where` filter, order by, limit, and offset
+  """
+  teamProposals(where: TeamProposalFilter, orderBy: [TeamProposalOrdering!], limit: Int, offset: Int): [TeamProposal!]!
+
+  """
+  Get the aggregate value of the selected fields over all `TeamProposal`s given the provided `where` filter
+  """
+  teamProposalsAgg(where: TeamProposalFilter): TeamProposalAgg!
+
+  """Get a single `TeamSuggestion` by primary key"""
+  teamSuggestion(id: Int!): TeamSuggestion
+
+  """
+  Get multiple `TeamSuggestion`s given the provided `where` filter, order by, limit, and offset
+  """
+  teamSuggestions(where: TeamSuggestionFilter, orderBy: [TeamSuggestionOrdering!], limit: Int, offset: Int): [TeamSuggestion!]!
+
+  """
+  Get the aggregate value of the selected fields over all `TeamSuggestion`s given the provided `where` filter
+  """
+  teamSuggestionsAgg(where: TeamSuggestionFilter): TeamSuggestionAgg!
+
+  """
+  Get multiple `Team`s given the provided `where` filter, order by, limit, and offset
+  """
+  teams(where: TeamFilter, orderBy: [TeamOrdering!], limit: Int, offset: Int): [Team!]!
+
+  """
+  Get the aggregate value of the selected fields over all `Team`s given the provided `where` filter
+  """
+  teamsAgg(where: TeamFilter): TeamAgg!
 
   """Get a single `User` by primary key"""
   user(id: Int!): User
@@ -631,6 +1701,26 @@ type Query {
 }
 
 type Mutation {
+  """
+  Create a new Chat. Check the `ChatCreationInput` type for the expected shape of the data.
+  """
+  createChat(data: ChatCreationInput!): Chat!
+
+  """
+  Create a new ChatParticipation. Check the `ChatParticipationCreationInput` type for the expected shape of the data.
+  """
+  createChatParticipation(data: ChatParticipationCreationInput!): ChatParticipation!
+
+  """
+  Create multiple ChatParticipations. Check the `ChatParticipationCreationInput` type for the expected shape of the data.
+  """
+  createChatParticipations(data: [ChatParticipationCreationInput!]!): [ChatParticipation!]!
+
+  """
+  Create multiple Chats. Check the `ChatCreationInput` type for the expected shape of the data.
+  """
+  createChats(data: [ChatCreationInput!]!): [Chat!]!
+
   """
   Create a new DeMorganDoc. Check the `DeMorganDocCreationInput` type for the expected shape of the data.
   """
@@ -660,6 +1750,16 @@ type Mutation {
   Create multiple InequalityDocs. Check the `InequalityDocCreationInput` type for the expected shape of the data.
   """
   createInequalityDocs(data: [InequalityDocCreationInput!]!): [InequalityDoc!]!
+
+  """
+  Create a new Membership. Check the `MembershipCreationInput` type for the expected shape of the data.
+  """
+  createMembership(data: MembershipCreationInput!): Membership!
+
+  """
+  Create multiple Memberships. Check the `MembershipCreationInput` type for the expected shape of the data.
+  """
+  createMemberships(data: [MembershipCreationInput!]!): [Membership!]!
 
   """
   Create a new NegatedComparisonDoc. Check the `NegatedComparisonDocCreationInput` type for the expected shape of the data.
@@ -702,6 +1802,26 @@ type Mutation {
   createNullCheckDocs(data: [NullCheckDocCreationInput!]!): [NullCheckDoc!]!
 
   """
+  Create a new ParticipationNote. Check the `ParticipationNoteCreationInput` type for the expected shape of the data.
+  """
+  createParticipationNote(data: ParticipationNoteCreationInput!): ParticipationNote!
+
+  """
+  Create multiple ParticipationNotes. Check the `ParticipationNoteCreationInput` type for the expected shape of the data.
+  """
+  createParticipationNotes(data: [ParticipationNoteCreationInput!]!): [ParticipationNote!]!
+
+  """
+  Create a new Post. Check the `PostCreationInput` type for the expected shape of the data.
+  """
+  createPost(data: PostCreationInput!): Post!
+
+  """
+  Create multiple Posts. Check the `PostCreationInput` type for the expected shape of the data.
+  """
+  createPosts(data: [PostCreationInput!]!): [Post!]!
+
+  """
   Create a new Project. Check the `ProjectCreationInput` type for the expected shape of the data.
   """
   createProject(data: ProjectCreationInput!): Project!
@@ -712,6 +1832,86 @@ type Mutation {
   createProjects(data: [ProjectCreationInput!]!): [Project!]!
 
   """
+  Create a new ReviewRequest. Check the `ReviewRequestCreationInput` type for the expected shape of the data.
+  """
+  createReviewRequest(data: ReviewRequestCreationInput!): ReviewRequest!
+
+  """
+  Create multiple ReviewRequests. Check the `ReviewRequestCreationInput` type for the expected shape of the data.
+  """
+  createReviewRequests(data: [ReviewRequestCreationInput!]!): [ReviewRequest!]!
+
+  """
+  Create a new Reviewer. Check the `ReviewerCreationInput` type for the expected shape of the data.
+  """
+  createReviewer(data: ReviewerCreationInput!): Reviewer!
+
+  """
+  Create multiple Reviewers. Check the `ReviewerCreationInput` type for the expected shape of the data.
+  """
+  createReviewers(data: [ReviewerCreationInput!]!): [Reviewer!]!
+
+  """
+  Create a new Sprint. Check the `SprintCreationInput` type for the expected shape of the data.
+  """
+  createSprint(data: SprintCreationInput!): Sprint!
+
+  """
+  Create multiple Sprints. Check the `SprintCreationInput` type for the expected shape of the data.
+  """
+  createSprints(data: [SprintCreationInput!]!): [Sprint!]!
+
+  """
+  Create a new Task. Check the `TaskCreationInput` type for the expected shape of the data.
+  """
+  createTask(data: TaskCreationInput!): Task!
+
+  """
+  Create multiple Tasks. Check the `TaskCreationInput` type for the expected shape of the data.
+  """
+  createTasks(data: [TaskCreationInput!]!): [Task!]!
+
+  """
+  Create a new Team. Check the `TeamCreationInput` type for the expected shape of the data.
+  """
+  createTeam(data: TeamCreationInput!): Team!
+
+  """
+  Create a new TeamDoc. Check the `TeamDocCreationInput` type for the expected shape of the data.
+  """
+  createTeamDoc(data: TeamDocCreationInput!): TeamDoc!
+
+  """
+  Create multiple TeamDocs. Check the `TeamDocCreationInput` type for the expected shape of the data.
+  """
+  createTeamDocs(data: [TeamDocCreationInput!]!): [TeamDoc!]!
+
+  """
+  Create a new TeamProposal. Check the `TeamProposalCreationInput` type for the expected shape of the data.
+  """
+  createTeamProposal(data: TeamProposalCreationInput!): TeamProposal!
+
+  """
+  Create multiple TeamProposals. Check the `TeamProposalCreationInput` type for the expected shape of the data.
+  """
+  createTeamProposals(data: [TeamProposalCreationInput!]!): [TeamProposal!]!
+
+  """
+  Create a new TeamSuggestion. Check the `TeamSuggestionCreationInput` type for the expected shape of the data.
+  """
+  createTeamSuggestion(data: TeamSuggestionCreationInput!): TeamSuggestion!
+
+  """
+  Create multiple TeamSuggestions. Check the `TeamSuggestionCreationInput` type for the expected shape of the data.
+  """
+  createTeamSuggestions(data: [TeamSuggestionCreationInput!]!): [TeamSuggestion!]!
+
+  """
+  Create multiple Teams. Check the `TeamCreationInput` type for the expected shape of the data.
+  """
+  createTeams(data: [TeamCreationInput!]!): [Team!]!
+
+  """
   Create a new User. Check the `UserCreationInput` type for the expected shape of the data.
   """
   createUser(data: UserCreationInput!): User!
@@ -720,6 +1920,20 @@ type Mutation {
   Create multiple Users. Check the `UserCreationInput` type for the expected shape of the data.
   """
   createUsers(data: [UserCreationInput!]!): [User!]!
+
+  """Delete the Chat with the provided primary key."""
+  deleteChat(id: Int!): Chat
+
+  """Delete the ChatParticipation with the provided primary key."""
+  deleteChatParticipation(chat: ChatUniqueFilter!, user: UserUniqueFilter!): ChatParticipation
+
+  """
+  Delete multiple ChatParticipations matching the provided `where` filter.
+  """
+  deleteChatParticipations(where: ChatParticipationFilter): [ChatParticipation!]!
+
+  """Delete multiple Chats matching the provided `where` filter."""
+  deleteChats(where: ChatFilter): [Chat!]!
 
   """Delete the DeMorganDoc with the provided primary key."""
   deleteDeMorganDoc(id: Int!): DeMorganDoc
@@ -740,6 +1954,12 @@ type Mutation {
 
   """Delete multiple InequalityDocs matching the provided `where` filter."""
   deleteInequalityDocs(where: InequalityDocFilter): [InequalityDoc!]!
+
+  """Delete the Membership with the provided primary key."""
+  deleteMembership(id: Int!): Membership
+
+  """Delete multiple Memberships matching the provided `where` filter."""
+  deleteMemberships(where: MembershipFilter): [Membership!]!
 
   """Delete the NegatedComparisonDoc with the provided primary key."""
   deleteNegatedComparisonDoc(id: Int!): NegatedComparisonDoc
@@ -771,17 +1991,99 @@ type Mutation {
   """Delete multiple NullCheckDocs matching the provided `where` filter."""
   deleteNullCheckDocs(where: NullCheckDocFilter): [NullCheckDoc!]!
 
+  """Delete the ParticipationNote with the provided primary key."""
+  deleteParticipationNote(id: Int!): ParticipationNote
+
+  """
+  Delete multiple ParticipationNotes matching the provided `where` filter.
+  """
+  deleteParticipationNotes(where: ParticipationNoteFilter): [ParticipationNote!]!
+
+  """Delete the Post with the provided primary key."""
+  deletePost(id: Int!): Post
+
+  """Delete multiple Posts matching the provided `where` filter."""
+  deletePosts(where: PostFilter): [Post!]!
+
   """Delete the Project with the provided primary key."""
   deleteProject(id: Int!): Project
 
   """Delete multiple Projects matching the provided `where` filter."""
   deleteProjects(where: ProjectFilter): [Project!]!
 
+  """Delete the ReviewRequest with the provided primary key."""
+  deleteReviewRequest(id: Int!): ReviewRequest
+
+  """Delete multiple ReviewRequests matching the provided `where` filter."""
+  deleteReviewRequests(where: ReviewRequestFilter): [ReviewRequest!]!
+
+  """Delete the Reviewer with the provided primary key."""
+  deleteReviewer(id: Int!): Reviewer
+
+  """Delete multiple Reviewers matching the provided `where` filter."""
+  deleteReviewers(where: ReviewerFilter): [Reviewer!]!
+
+  """Delete the Sprint with the provided primary key."""
+  deleteSprint(id: Int!): Sprint
+
+  """Delete multiple Sprints matching the provided `where` filter."""
+  deleteSprints(where: SprintFilter): [Sprint!]!
+
+  """Delete the Task with the provided primary key."""
+  deleteTask(id: Int!): Task
+
+  """Delete multiple Tasks matching the provided `where` filter."""
+  deleteTasks(where: TaskFilter): [Task!]!
+
+  """Delete the Team with the provided primary key."""
+  deleteTeam(id: Int!): Team
+
+  """Delete the TeamDoc with the provided primary key."""
+  deleteTeamDoc(id: Int!): TeamDoc
+
+  """Delete multiple TeamDocs matching the provided `where` filter."""
+  deleteTeamDocs(where: TeamDocFilter): [TeamDoc!]!
+
+  """Delete the TeamProposal with the provided primary key."""
+  deleteTeamProposal(id: Int!): TeamProposal
+
+  """Delete multiple TeamProposals matching the provided `where` filter."""
+  deleteTeamProposals(where: TeamProposalFilter): [TeamProposal!]!
+
+  """Delete the TeamSuggestion with the provided primary key."""
+  deleteTeamSuggestion(id: Int!): TeamSuggestion
+
+  """Delete multiple TeamSuggestions matching the provided `where` filter."""
+  deleteTeamSuggestions(where: TeamSuggestionFilter): [TeamSuggestion!]!
+
+  """Delete multiple Teams matching the provided `where` filter."""
+  deleteTeams(where: TeamFilter): [Team!]!
+
   """Delete the User with the provided primary key."""
   deleteUser(id: Int!): User
 
   """Delete multiple Users matching the provided `where` filter."""
   deleteUsers(where: UserFilter): [User!]!
+
+  """
+  Update the Chat with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateChat(id: Int!, data: ChatUpdateInput!): Chat
+
+  """
+  Update the ChatParticipation with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateChatParticipation(chat: ChatUniqueFilter!, user: UserUniqueFilter!, data: ChatParticipationUpdateInput!): ChatParticipation
+
+  """
+  Update multiple ChatParticipations matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateChatParticipations(where: ChatParticipationFilter, data: ChatParticipationUpdateInput!): [ChatParticipation!]!
+
+  """
+  Update multiple Chats matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateChats(where: ChatFilter, data: ChatUpdateInput!): [Chat!]!
 
   """
   Update the DeMorganDoc with the provided primary key with the provided data. Any fields not provided will remain unchanged.
@@ -812,6 +2114,16 @@ type Mutation {
   Update multiple InequalityDocs matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
   """
   updateInequalityDocs(where: InequalityDocFilter, data: InequalityDocUpdateInput!): [InequalityDoc!]!
+
+  """
+  Update the Membership with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateMembership(id: Int!, data: MembershipUpdateInput!): Membership
+
+  """
+  Update multiple Memberships matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateMemberships(where: MembershipFilter, data: MembershipUpdateInput!): [Membership!]!
 
   """
   Update the NegatedComparisonDoc with the provided primary key with the provided data. Any fields not provided will remain unchanged.
@@ -854,6 +2166,26 @@ type Mutation {
   updateNullCheckDocs(where: NullCheckDocFilter, data: NullCheckDocUpdateInput!): [NullCheckDoc!]!
 
   """
+  Update the ParticipationNote with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateParticipationNote(id: Int!, data: ParticipationNoteUpdateInput!): ParticipationNote
+
+  """
+  Update multiple ParticipationNotes matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateParticipationNotes(where: ParticipationNoteFilter, data: ParticipationNoteUpdateInput!): [ParticipationNote!]!
+
+  """
+  Update the Post with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updatePost(id: Int!, data: PostUpdateInput!): Post
+
+  """
+  Update multiple Posts matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updatePosts(where: PostFilter, data: PostUpdateInput!): [Post!]!
+
+  """
   Update the Project with the provided primary key with the provided data. Any fields not provided will remain unchanged.
   """
   updateProject(id: Int!, data: ProjectUpdateInput!): Project
@@ -862,6 +2194,86 @@ type Mutation {
   Update multiple Projects matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
   """
   updateProjects(where: ProjectFilter, data: ProjectUpdateInput!): [Project!]!
+
+  """
+  Update the ReviewRequest with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateReviewRequest(id: Int!, data: ReviewRequestUpdateInput!): ReviewRequest
+
+  """
+  Update multiple ReviewRequests matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateReviewRequests(where: ReviewRequestFilter, data: ReviewRequestUpdateInput!): [ReviewRequest!]!
+
+  """
+  Update the Reviewer with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateReviewer(id: Int!, data: ReviewerUpdateInput!): Reviewer
+
+  """
+  Update multiple Reviewers matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateReviewers(where: ReviewerFilter, data: ReviewerUpdateInput!): [Reviewer!]!
+
+  """
+  Update the Sprint with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateSprint(id: Int!, data: SprintUpdateInput!): Sprint
+
+  """
+  Update multiple Sprints matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateSprints(where: SprintFilter, data: SprintUpdateInput!): [Sprint!]!
+
+  """
+  Update the Task with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateTask(id: Int!, data: TaskUpdateInput!): Task
+
+  """
+  Update multiple Tasks matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateTasks(where: TaskFilter, data: TaskUpdateInput!): [Task!]!
+
+  """
+  Update the Team with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateTeam(id: Int!, data: TeamUpdateInput!): Team
+
+  """
+  Update the TeamDoc with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateTeamDoc(id: Int!, data: TeamDocUpdateInput!): TeamDoc
+
+  """
+  Update multiple TeamDocs matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateTeamDocs(where: TeamDocFilter, data: TeamDocUpdateInput!): [TeamDoc!]!
+
+  """
+  Update the TeamProposal with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateTeamProposal(id: Int!, data: TeamProposalUpdateInput!): TeamProposal
+
+  """
+  Update multiple TeamProposals matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateTeamProposals(where: TeamProposalFilter, data: TeamProposalUpdateInput!): [TeamProposal!]!
+
+  """
+  Update the TeamSuggestion with the provided primary key with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateTeamSuggestion(id: Int!, data: TeamSuggestionUpdateInput!): TeamSuggestion
+
+  """
+  Update multiple TeamSuggestions matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateTeamSuggestions(where: TeamSuggestionFilter, data: TeamSuggestionUpdateInput!): [TeamSuggestion!]!
+
+  """
+  Update multiple Teams matching the provided `where` filter with the provided data. Any fields not provided will remain unchanged.
+  """
+  updateTeams(where: TeamFilter, data: TeamUpdateInput!): [Team!]!
 
   """
   Update the User with the provided primary key with the provided data. Any fields not provided will remain unchanged.
