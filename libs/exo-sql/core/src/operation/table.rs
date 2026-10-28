@@ -7,9 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{SchemaObjectName, TableId};
+use crate::{ColumnId, SchemaObjectName, TableId};
 
 use super::DatabaseExtension;
+use super::column::Column;
 use super::join::LeftJoin;
 use super::select::Select;
 
@@ -28,6 +29,15 @@ pub enum Table<Ext: DatabaseExtension> {
         select: Box<Select<Ext>>,
         /// The alias of the sub-select (optional, since we need to alias the sub-select when used in a FROM clause)
         alias: Option<(String, SchemaObjectName)>,
+    },
+    /// A row of values in place of a row of a physical table, such as
+    /// `(VALUES ($1, $2)) AS "concerts" ("venue_id", "name")`. The table's columns elsewhere in
+    /// the select refer to these values, while a sub-select from the table itself (such as
+    /// through a self-relation) still reads the table.
+    Values {
+        table_id: TableId,
+        /// The values of the table's columns that the select refers to
+        row: Vec<(ColumnId, Column<Ext>)>,
     },
 }
 

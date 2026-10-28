@@ -56,8 +56,12 @@ impl InsertionStrategy for MultiStatementStrategy {
             table_id,
             rows,
             selection,
-            precheck_predicates,
         } = abstract_insert;
+
+        let precheck_predicates = rows
+            .iter()
+            .map(|row| row.precheck_predicate.clone())
+            .collect();
 
         add_precheck_queries(
             precheck_predicates,
@@ -245,7 +249,6 @@ fn insert_nested_row<'a>(
     let NestedInsertion {
         relation_id,
         insertions,
-        ..
     } = nested_row;
 
     let relation = relation_id.deref(database);
