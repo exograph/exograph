@@ -36,14 +36,15 @@ pub struct AbstractInsert<Ext: DatabaseExtension> {
     pub rows: Vec<InsertionRow<Ext>>,
     /// The selection to return
     pub selection: AbstractSelect<Ext>,
-    /// Check to run before inserting (if the resulting select returns 1 row, then the precheck passes)
-    pub precheck_predicates: Vec<AbstractPredicate<Ext>>,
 }
 
 /// A logical row to be inserted (see `InsertionElement` for more details).
 #[derive(Debug)]
 pub struct InsertionRow<Ext: DatabaseExtension> {
     pub elems: Vec<InsertionElement<Ext>>,
+    /// Check to run before inserting this row (if the resulting select returns 1 row, then the
+    /// precheck passes). `True` if there is nothing to check.
+    pub precheck_predicate: AbstractPredicate<Ext>,
 }
 
 impl<Ext: DatabaseExtension> InsertionRow<Ext> {
@@ -69,7 +70,6 @@ pub struct NestedInsertion<Ext: DatabaseExtension> {
     /// The relation with the parent element (the self_pk_column_id is the parent table's pk column and the self_column_id is the column in the table being inserted that refers to the the parent table)
     pub relation_id: OneToManyId,
     pub insertions: Vec<InsertionRow<Ext>>,
-    pub precheck_predicates: Vec<AbstractPredicate<Ext>>,
 }
 
 /// A pair of column and value to be inserted into the table.

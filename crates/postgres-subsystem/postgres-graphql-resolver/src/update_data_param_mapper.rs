@@ -374,7 +374,7 @@ async fn compute_nested_inserts<'a>(
     ) -> Result<PgNestedAbstractInsert, PostgresExecutionError> {
         let table_id = subsystem.core_subsystem.entity_types[field_entity_type.entity_id].table_id;
 
-        let (rows, precheck_predicates) = super::create_data_param_mapper::map_argument(
+        let rows = super::create_data_param_mapper::map_argument(
             field_entity_type,
             argument,
             parent_reference,
@@ -392,7 +392,6 @@ async fn compute_nested_inserts<'a>(
             insert: AbstractInsert {
                 table_id,
                 rows,
-                precheck_predicates,
                 selection: AbstractSelect {
                     table_id,
                     selection: Selection::Seq(vec![]),

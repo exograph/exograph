@@ -17,8 +17,7 @@ use core_resolver::access_solver::{AccessInput, MissingValuePolicy};
 use core_resolver::context_extractor::ContextExtractor;
 use exo_sql_pg::{
     AbstractInsert, ColumnId, ColumnValuePair, InsertionElement, InsertionRow, ManyToOne,
-    NestedInsertion, PgAbstractInsert, PgAbstractPredicate, PgAbstractSelect, PgInsertionElement,
-    PgInsertionRow,
+    NestedInsertion, PgAbstractInsert, PgAbstractSelect, PgInsertionElement, PgInsertionRow,
 };
 use futures::future::{join_all, try_join_all};
 use postgres_core_model::relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation};
@@ -55,14 +54,12 @@ impl<'a> SQLMapper<'a, PgAbstractInsert> for InsertOperation<'a> {
         let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
         let table_id = subsystem.core_subsystem.entity_types[data_type.entity_id].table_id;
 
-        let (rows, precheck_predicates) =
-            map_argument(data_type, argument, None, subsystem, request_context).await?;
+        let rows = map_argument(data_type, argument, None, subsystem, request_context).await?;
 
         Ok(AbstractInsert {
             table_id,
             rows,
             selection: self.select,
-            precheck_predicates,
         })
     }
 
@@ -78,7 +75,7 @@ pub(crate) async fn map_argument<'a>(
     parent_reference: Option<&'a str>,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<(Vec<PgInsertionRow>, Vec<PgAbstractPredicate>), PostgresExecutionError> {
+) -> Result<Vec<PgInsertionRow>, PostgresExecutionError> {
     match argument {
         Val::List(arguments) => {
             let mapped = arguments.iter().map(|argument| {
@@ -90,21 +87,10 @@ pub(crate) async fn map_argument<'a>(
                     request_context,
                 )
             });
-            let mapped: Vec<(PgInsertionRow, Vec<PgAbstractPredicate>)> =
-                try_join_all(mapped).await?;
-
-            let mut precheck_queries = vec![];
-            let mut operations = vec![];
-
-            for (insertion_row, precheck_predicates) in mapped {
-                precheck_queries.extend(precheck_predicates);
-                operations.push(insertion_row);
-            }
-
-            Ok((operations, precheck_queries))
+            try_join_all(mapped).await
         }
         _ => {
-            let (insertion_row, precheck_predicates) = map_single(
+            let insertion_row = map_single(
                 data_type,
                 argument,
                 parent_reference,
@@ -112,7 +98,7 @@ pub(crate) async fn map_argument<'a>(
                 request_context,
             )
             .await?;
-            Ok((vec![insertion_row], precheck_predicates))
+            Ok(vec![insertion_row])
         }
     }
 }
@@ -125,7 +111,7 @@ async fn map_single<'a>(
     parent_reference: Option<&'a str>,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<(PgInsertionRow, Vec<PgAbstractPredicate>), PostgresExecutionError> {
+) -> Result<PgInsertionRow, PostgresExecutionError> {
     let (precheck_predicate, _entity_predicate) = check_access(
         &subsystem.core_subsystem.entity_types[data_type.entity_id],
         &[],
@@ -211,7 +197,10 @@ async fn map_single<'a>(
     let row: Result<Vec<PgInsertionElement>, PostgresExecutionError> =
         join_all(row).await.into_iter().flatten().collect();
 
-    Ok((InsertionRow { elems: row? }, vec![precheck_predicate]))
+    Ok(InsertionRow {
+        elems: row?,
+        precheck_predicate,
+    })
 }
 
 async fn map_self_column<'a>(
@@ -311,7 +300,7 @@ async fn map_foreign<'a>(
         .foreign_field(&subsystem.core_subsystem.entity_types)
         .map(|foreign_field| foreign_field.name.as_str());
 
-    let (insertions, precheck_predicates) = map_argument(
+    let insertions = map_argument(
         field_type,
         argument,
         parent_reference,
@@ -323,6 +312,5 @@ async fn map_foreign<'a>(
     Ok(InsertionElement::NestedInsert(NestedInsertion {
         relation_id: one_to_many_relation.relation_id,
         insertions,
-        precheck_predicates,
     }))
 }

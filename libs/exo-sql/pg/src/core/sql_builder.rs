@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use exo_sql_core::Database;
 
@@ -28,6 +28,12 @@ pub struct SQLBuilder {
     /// (...table...)"). Similarly, for a sub-select, the alias would be the name of the sub-select.
     /// This is used to render alias in lieu of table names for the related expressions.
     table_alias_map: HashMap<SchemaObjectName, String>,
+    /// Tables whose columns are prefixed with the table's bare name (`"users"."id"` for
+    /// `auth.users`). Unlike `table_alias_map`, this changes only the table prefix of a column. For
+    /// example, for a row of values aliased as its table, the table's columns refer to the alias,
+    /// but a sub-select from the table itself (such as through a self-relation) still names the
+    /// table.
+    tables_with_bare_name_prefix: HashSet<SchemaObjectName>,
 }
 
 impl Default for SQLBuilder {
@@ -43,6 +49,7 @@ impl SQLBuilder {
             params: Vec::new(),
             fully_qualify_column_names: true,
             table_alias_map: HashMap::new(),
+            tables_with_bare_name_prefix: HashSet::new(),
         }
     }
 
@@ -95,7 +102,11 @@ impl SQLBuilder {
     /// mode, otherwise an empty string.
     pub fn push_table_prefix(&mut self, table_name: &SchemaObjectName) {
         if self.fully_qualify_column_names {
-            self.push_table(table_name);
+            if self.tables_with_bare_name_prefix.contains(table_name) {
+                self.push_identifier(&table_name.name);
+            } else {
+                self.push_table(table_name);
+            }
             self.push('.');
         }
     }
@@ -192,6 +203,33 @@ impl SQLBuilder {
         self.table_alias_map.extend(table_alias_map);
         let ret = func(self);
         self.table_alias_map = cur_table_alias_map;
+        ret
+    }
+
+    /// Execute the given function with the given table aliases (see [`Self::table_alias_map`]) and
+    /// tables whose columns are prefixed with their bare name (see
+    /// [`Self::tables_with_bare_name_prefix`]).
+    pub fn with_alias_maps<F, R>(
+        &mut self,
+        table_alias_map: HashMap<SchemaObjectName, String>,
+        tables_with_bare_name_prefix: HashSet<SchemaObjectName>,
+        func: F,
+    ) -> R
+    where
+        F: FnOnce(&mut Self) -> R,
+    {
+        if table_alias_map.is_empty() && tables_with_bare_name_prefix.is_empty() {
+            return func(self);
+        }
+
+        let cur_table_alias_map = self.table_alias_map.clone();
+        let cur_tables_with_bare_name_prefix = self.tables_with_bare_name_prefix.clone();
+        self.table_alias_map.extend(table_alias_map);
+        self.tables_with_bare_name_prefix
+            .extend(tables_with_bare_name_prefix);
+        let ret = func(self);
+        self.table_alias_map = cur_table_alias_map;
+        self.tables_with_bare_name_prefix = cur_tables_with_bare_name_prefix;
         ret
     }
 }

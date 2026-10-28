@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use exo_sql_core::Database;
 
@@ -31,31 +31,46 @@ impl ExpressionBuilder for Select {
             _ => HashMap::new(),
         };
 
+        // A row of values is aliased as its table's bare name (see `Table::Values`), which only its
+        // columns refer to. The alias must be the table's name: it also applies to the table's
+        // columns in a sub-select from the table itself (such as through a self-relation), and
+        // those refer to the sub-select's table only because it shadows the alias.
+        let tables_with_bare_name_prefix = match &self.table {
+            Table::Values { table_id, .. } => {
+                HashSet::from([database.get_table(*table_id).name.clone()])
+            }
+            _ => HashSet::new(),
+        };
+
         builder.push_str("SELECT ");
 
         // Columns
-        builder.with_table_alias_map(table_alias_map.clone(), |builder| {
-            builder.push_iter(self.columns.iter(), ", ", |builder, col: &Column| {
-                col.build(database, builder);
+        builder.with_alias_maps(
+            table_alias_map.clone(),
+            tables_with_bare_name_prefix.clone(),
+            |builder| {
+                builder.push_iter(self.columns.iter(), ", ", |builder, col: &Column| {
+                    col.build(database, builder);
 
-                if self.top_level_selection
-                    && matches!(
-                        col,
-                        Column::Extension(
-                            PgColumnExtension::JsonObject(_) | PgColumnExtension::JsonAgg(_)
+                    if self.top_level_selection
+                        && matches!(
+                            col,
+                            Column::Extension(
+                                PgColumnExtension::JsonObject(_) | PgColumnExtension::JsonAgg(_)
+                            )
                         )
-                    )
-                {
-                    // See the comment on `top_level_selection` for why we do this
-                    builder.push_str("::text");
-                }
-            });
-        });
+                    {
+                        // See the comment on `top_level_selection` for why we do this
+                        builder.push_str("::text");
+                    }
+                });
+            },
+        );
 
         builder.push_str(" FROM ");
         self.table.build(database, builder);
 
-        builder.with_table_alias_map(table_alias_map, |builder| {
+        builder.with_alias_maps(table_alias_map, tables_with_bare_name_prefix, |builder| {
             // Avoid correct, but inelegant "WHERE TRUE" clause
             if self.predicate != ConcretePredicate::True {
                 builder.push_str(" WHERE ");

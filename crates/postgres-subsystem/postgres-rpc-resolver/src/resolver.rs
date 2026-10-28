@@ -847,7 +847,7 @@ async fn compute_create_columns_inner<'a>(
                     let parent_reference = one_to_many_relation
                         .foreign_field(&subsystem.core_subsystem.entity_types)
                         .map(|foreign_field| foreign_field.name.as_str());
-                    let (insertions, precheck_predicates) = build_nested_insertions(
+                    let insertions = build_nested_insertions(
                         foreign_entity,
                         Some(entity_type),
                         parent_reference,
@@ -859,7 +859,6 @@ async fn compute_create_columns_inner<'a>(
                     elements.push(InsertionElement::NestedInsert(NestedInsertion {
                         relation_id: one_to_many_relation.relation_id,
                         insertions,
-                        precheck_predicates,
                     }));
                 }
             }
@@ -870,8 +869,7 @@ async fn compute_create_columns_inner<'a>(
     Ok(elements)
 }
 
-type NestedInsertionsResult =
-    Result<(Vec<PgInsertionRow>, Vec<PgAbstractPredicate>), SubsystemRpcError>;
+type NestedInsertionsResult = Result<Vec<PgInsertionRow>, SubsystemRpcError>;
 
 /// Build nested insertions from a Val (list or single object) for OneToMany creates.
 fn build_nested_insertions<'a>(
@@ -886,7 +884,6 @@ fn build_nested_insertions<'a>(
         let items = val_as_items(nested_val)?;
 
         let mut rows = Vec::new();
-        let mut precheck_predicates = Vec::new();
 
         for item in items {
             let precheck = compute_create_access(
@@ -905,11 +902,13 @@ fn build_nested_insertions<'a>(
                 subsystem,
             )
             .await?;
-            rows.push(InsertionRow { elems: elements });
-            precheck_predicates.push(precheck);
+            rows.push(InsertionRow {
+                elems: elements,
+                precheck_predicate: precheck,
+            });
         }
 
-        Ok((rows, precheck_predicates))
+        Ok(rows)
     })
 }
 
@@ -919,14 +918,17 @@ async fn build_single_insert<'a>(
     data_val: Val,
     request_context: &'a RequestContext<'a>,
     subsystem: &'a PostgresRpcSubsystem,
-) -> Result<(PgInsertionRow, PgAbstractPredicate), SubsystemRpcError> {
+) -> Result<PgInsertionRow, SubsystemRpcError> {
     let precheck_predicate =
         compute_create_access(entity_type, &data_val, None, request_context, subsystem).await?;
 
     let elements =
         compute_create_columns(entity_type, &data_val, None, request_context, subsystem).await?;
 
-    Ok((InsertionRow { elems: elements }, precheck_predicate))
+    Ok(InsertionRow {
+        elems: elements,
+        precheck_predicate,
+    })
 }
 
 /// Build a create AbstractInsert<PgExtension> operation.
@@ -945,27 +947,22 @@ async fn build_create_operation<'a>(
     )
     .await?;
 
-    let (rows, precheck_predicates) = match data_val {
+    let rows = match data_val {
         Val::List(items) => {
-            let results =
-                futures::future::try_join_all(items.into_iter().map(|item| {
-                    build_single_insert(entity_type, item, request_context, subsystem)
-                }))
-                .await?;
-            results.into_iter().unzip()
+            futures::future::try_join_all(
+                items
+                    .into_iter()
+                    .map(|item| build_single_insert(entity_type, item, request_context, subsystem)),
+            )
+            .await?
         }
-        _ => {
-            let (row, precheck) =
-                build_single_insert(entity_type, data_val, request_context, subsystem).await?;
-            (vec![row], vec![precheck])
-        }
+        _ => vec![build_single_insert(entity_type, data_val, request_context, subsystem).await?],
     };
 
     Ok(AbstractOperation::Insert(AbstractInsert {
         table_id: entity_type.table_id,
         rows,
         selection,
-        precheck_predicates,
     }))
 }
 
@@ -1724,8 +1721,10 @@ async fn compute_nested_create_for_update<'a>(
             relation_column_ids: relation_column_ids.clone(),
             insert: AbstractInsert {
                 table_id: foreign_entity.table_id,
-                rows: vec![InsertionRow { elems: elements }],
-                precheck_predicates: vec![precheck],
+                rows: vec![InsertionRow {
+                    elems: elements,
+                    precheck_predicate: precheck,
+                }],
                 selection: PgAbstractSelect {
                     table_id: foreign_entity.table_id,
                     selection: Selection::Seq(vec![]),
