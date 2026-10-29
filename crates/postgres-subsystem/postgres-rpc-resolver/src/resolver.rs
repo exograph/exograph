@@ -41,6 +41,7 @@ use postgres_core_model::relation::PostgresRelation;
 use postgres_core_model::relation::{ManyToOneRelation, OneToManyRelation, RelationCardinality};
 use postgres_core_model::types::{EntityType, PostgresField};
 use postgres_core_resolver::cast;
+use postgres_core_resolver::create_util::create_field_value;
 use postgres_core_resolver::order_by_mapper::compute_order_by;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_core_resolver::predicate_mapper::compute_predicate;
@@ -778,9 +779,12 @@ async fn compute_create_columns_inner<'a>(
 
         match &field.relation {
             PostgresRelation::Scalar { column_id, .. } => {
-                if let Some(value) = get_argument_field(data_val, &field.name) {
+                if let Some(field_value) =
+                    create_field_value(field, data_val, &subsystem.core_subsystem, request_context)
+                        .await?
+                {
                     let column = column_id.get_column(&subsystem.core_subsystem.database);
-                    let value_column = cast::literal_column(value, column)
+                    let value_column = cast::literal_column(field_value.value(), column)
                         .map_err(|e| SubsystemRpcError::UserDisplayError(e.user_error_message()))?;
                     elements.push(InsertionElement::SelfInsert(ColumnValuePair {
                         column: *column_id,
@@ -800,8 +804,12 @@ async fn compute_create_columns_inner<'a>(
                 let ManyToOne { column_pairs, .. } =
                     relation_id.deref(&subsystem.core_subsystem.database);
 
-                match get_argument_field(data_val, &field.name) {
-                    Some(Val::Null) => {
+                let field_value =
+                    create_field_value(field, data_val, &subsystem.core_subsystem, request_context)
+                        .await?;
+
+                match field_value {
+                    Some(field_value) if field_value.value() == &Val::Null => {
                         for column_pair in column_pairs.iter() {
                             elements.push(InsertionElement::SelfInsert(ColumnValuePair {
                                 column: column_pair.self_column_id,
@@ -809,7 +817,7 @@ async fn compute_create_columns_inner<'a>(
                             }));
                         }
                     }
-                    Some(argument_value) => {
+                    Some(field_value) => {
                         for (column_pair, foreign_pk_field_id) in
                             column_pairs.iter().zip(foreign_pk_field_ids.iter())
                         {
@@ -821,7 +829,7 @@ async fn compute_create_columns_inner<'a>(
                                 .name;
 
                             if let Some(foreign_type_pk_arg) =
-                                get_argument_field(argument_value, foreign_type_pk_field_name)
+                                field_value.reference_key(foreign_type_pk_field_name)
                             {
                                 let value_column =
                                     cast::literal_column(foreign_type_pk_arg, self_column)

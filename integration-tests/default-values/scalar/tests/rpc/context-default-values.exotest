@@ -1,0 +1,74 @@
+# RPC stores a context default when the input omits the field, as GraphQL does
+# (`../context-default-values.exotest`)
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_event",
+          "params": {
+            "data": {"message": "m1", "clientId": "explicit-client1", "orgId": "explicit-org1"},
+            "projection": "basic"
+          }
+        }
+    headers: |
+      {
+        "client_id": "test-client1",
+        "client_org": "test-org1"
+      }
+    response: |
+      {
+        "result": {
+          "id": 2,
+          "timestamp": (timestamp) => true,
+          "category": "INFO",
+          "priority": 0,
+          "price": 10.0,
+          "decimalPrice": "10.00",
+          "message": "m1",
+          "is_system": true,
+          "clientId": "explicit-client1",
+          "orgId": "explicit-org1",
+          "eventDate": "2024-01-01",
+          "eventTime": "14:30:00",
+          "eventDateTime": "2024-01-01T14:30:00",
+          "metadata": {},
+          "eventId": "550e8400-e29b-41d4-a716-446655440000"
+        }
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_event",
+          "params": {
+            "data": {"message": "m2"},
+            "projection": "basic"
+          }
+        }
+    headers: |
+      {
+        "client_id": "test-client1",
+        "client_org": "test-org1"
+      }
+    response: |
+      {
+        "result": {
+          "id": 3,
+          "timestamp": (timestamp) => true,
+          "category": "INFO",
+          "priority": 0,
+          "price": 10.0,
+          "decimalPrice": "10.00",
+          "message": "m2",
+          "is_system": true,
+          "clientId": "test-client1",
+          "orgId": "test-org1",
+          "eventDate": "2024-01-01",
+          "eventTime": "14:30:00",
+          "eventDateTime": "2024-01-01T14:30:00",
+          "metadata": {},
+          "eventId": "550e8400-e29b-41d4-a716-446655440000"
+        }
+      }
