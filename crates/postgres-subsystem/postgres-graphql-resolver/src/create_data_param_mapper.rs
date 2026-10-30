@@ -14,16 +14,13 @@ use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
 use core_resolver::access_solver::{AccessInput, MissingValuePolicy};
-use core_resolver::context_extractor::ContextExtractor;
 use exo_sql_pg::{
     AbstractInsert, ColumnId, ColumnValuePair, InsertionElement, InsertionRow, ManyToOne,
     NestedInsertion, PgAbstractInsert, PgAbstractSelect, PgInsertionElement, PgInsertionRow,
 };
 use futures::future::{join_all, try_join_all};
 use postgres_core_model::relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation};
-use postgres_core_model::types::{
-    PostgresField, PostgresFieldDefaultValue, PostgresType, base_type,
-};
+use postgres_core_model::types::{PostgresField, PostgresType, base_type};
 use postgres_graphql_model::{
     mutation::DataParameter, subsystem::PostgresGraphQLSubsystem, types::MutationType,
 };
@@ -35,6 +32,7 @@ use crate::{
 
 use postgres_core_resolver::{
     cast,
+    create_util::{CreateFieldValue, create_field_value},
     postgres_execution_error::{PostgresExecutionError, WithContext},
 };
 
@@ -130,31 +128,15 @@ async fn map_single<'a>(
 
     let mapped = stream::iter(&data_type.fields)
         .map(|field| async move {
-            let field_arg =
-                postgres_core_resolver::predicate_util::get_argument_field(argument, &field.name);
+            let field_value =
+                create_field_value(field, argument, &subsystem.core_subsystem, request_context)
+                    .await
+                    .ok()?;
 
-            // If the argument has not been supplied, but has a default value, extract it from the context
-            let field_arg = match field_arg {
-                Some(_) => Ok(field_arg),
-                None => {
-                    if let Some(PostgresFieldDefaultValue::Dynamic(selection)) =
-                        &field.default_value
-                    {
-                        subsystem
-                            .core_subsystem
-                            .extract_context_selection(request_context, selection)
-                            .await
-                    } else {
-                        Ok(None)
-                    }
-                }
-            }
-            .ok()?;
-
-            field_arg.map(|field_arg| async move {
+            field_value.map(|field_value| async move {
                 match &field.relation {
                     PostgresRelation::Scalar { column_id, .. } => {
-                        vec![map_self_column(*column_id, field, field_arg, subsystem).await]
+                        vec![map_self_column(*column_id, field, field_value, subsystem).await]
                     }
 
                     PostgresRelation::ManyToOne {
@@ -165,7 +147,12 @@ async fn map_single<'a>(
                             relation_id.deref(&subsystem.core_subsystem.database);
 
                         let mapped = column_pairs.iter().map(|column_pair| {
-                            map_self_column(column_pair.self_column_id, field, field_arg, subsystem)
+                            map_self_column(
+                                column_pair.self_column_id,
+                                field,
+                                field_value,
+                                subsystem,
+                            )
                         });
                         join_all(mapped).await
                     }
@@ -174,7 +161,7 @@ async fn map_single<'a>(
                         vec![
                             map_foreign(
                                 field,
-                                field_arg,
+                                field_value.value(),
                                 one_to_many_relation,
                                 subsystem,
                                 request_context,
@@ -206,7 +193,7 @@ async fn map_single<'a>(
 async fn map_self_column<'a>(
     key_column_id: ColumnId,
     field: &'a PostgresField<MutationType>,
-    argument: &'a Val,
+    field_value: CreateFieldValue<'a>,
     subsystem: &'a PostgresGraphQLSubsystem,
 ) -> Result<PgInsertionElement, PostgresExecutionError> {
     let key_column = key_column_id.get_column(&subsystem.core_subsystem.database);
@@ -248,19 +235,12 @@ async fn map_self_column<'a>(
                 })
                 .expect("Foreign key field not found");
 
-            match postgres_core_resolver::predicate_util::get_argument_field(
-                argument,
-                foreign_type_pk_field_name,
-            ) {
-                Some(foreign_type_pk_arg) => foreign_type_pk_arg,
-                None => {
-                    // This can happen if we used a context value for a foreign key
-                    // Instead of getting in the `{id: <value>}` format, we get the value directly
-                    argument
-                }
-            }
+            // A null reference has no key, so it is stored as is
+            field_value
+                .reference_key(foreign_type_pk_field_name)
+                .unwrap_or(field_value.value())
         }
-        _ => argument,
+        _ => field_value.value(),
     };
 
     let value_column = cast::literal_column(argument_value, key_column).with_context(format!(

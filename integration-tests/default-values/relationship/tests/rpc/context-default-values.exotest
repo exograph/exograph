@@ -1,0 +1,48 @@
+# RPC stores a relation's context default (`user: User = AuthContext.id`) when the input omits the
+# relation, as GraphQL does (`../context-default-values.exotest`)
+stages:
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_todo",
+          "params": {
+            "data": {"content": "c1", "user": {"id": $.user1_id}},
+            "projection": "basic"
+          }
+        }
+    auth: |
+      {
+        "sub": $.user2_id
+      }
+    response: |
+      {
+        "result": {
+          "id": 1,
+          "content": "c1",
+          "user": {"id": $.user1_id}
+        }
+      }
+
+  - operation:
+      type: rpc
+      payload: |
+        {
+          "method": "create_todo",
+          "params": {
+            "data": {"content": "c2"},
+            "projection": "basic"
+          }
+        }
+    auth: |
+      {
+        "sub": $.user2_id
+      }
+    response: |
+      {
+        "result": {
+          "id": 2,
+          "content": "c2",
+          "user": {"id": $.user2_id}
+        }
+      }
