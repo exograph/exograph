@@ -239,7 +239,7 @@ mod tests {
             );
 
             // The mismatch case doesn't make sense for lt/lte/gt/gte, but since we don't optimize
-            // (to reduce obvious matches such as 5 < 6 => Predicate::True) those cases,
+            // (to reduce obvious matches such as 5 < 6 => AbstractPredicate::True) those cases,
             // the unoptimized predicate created works for both match and mismatch cases.
 
             let request_context = test_request_context(
@@ -278,7 +278,7 @@ mod tests {
                         test_system.owner_id_column(),
                     )
                 );
-                // No user_id, so we can definitely declare it Predicate::False
+                // No user_id, so we can definitely declare it AbstractPredicate::False
                 assert_solve_access!(&test_ae, &empty_context, context_missing_predicate);
             }
 
@@ -299,7 +299,7 @@ mod tests {
                         ColumnPath::Param(SQLParamContainer::string("u1".to_string())),
                     )
                 );
-                // No user_id, so we can definitely declare it Predicate::False
+                // No user_id, so we can definitely declare it AbstractPredicate::False
                 assert_solve_access!(&test_ae, &empty_context, context_missing_predicate);
             }
         }

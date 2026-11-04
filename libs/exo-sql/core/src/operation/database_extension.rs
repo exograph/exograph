@@ -40,7 +40,7 @@ pub trait DatabaseExtension: Debug + PartialEq + Clone {
     type OrderByExtension: Debug + PartialEq + Clone;
 
     /// Database-specific predicate extensions (e.g., pgvector distance predicates).
-    type PredicateExtension<C: Debug + PartialEq + ParamEquality + Clone>: Debug
+    type PredicateExtension<C: Debug + PartialEq + Clone>: Debug
         + PartialEq
         + Clone
         + PredicateExtensionPaths<C>;

@@ -91,9 +91,7 @@ pub enum PgPredicateExtension<C> {
     },
 }
 
-impl<C: Debug + PartialEq + ParamEquality + Clone> PredicateExtensionPaths<C>
-    for PgPredicateExtension<C>
-{
+impl<C: Debug + PartialEq + Clone> PredicateExtensionPaths<C> for PgPredicateExtension<C> {
     fn column_paths(&self) -> Vec<&C> {
         match self {
             PgPredicateExtension::VectorDistance {
@@ -139,7 +137,7 @@ impl DatabaseExtension for PgExtension {
     type FunctionExtension = PgFunctionExtension;
     type OrderByExtension = PgOrderByExtension;
 
-    type PredicateExtension<C: Debug + PartialEq + ParamEquality + Clone> = PgPredicateExtension<C>;
+    type PredicateExtension<C: Debug + PartialEq + Clone> = PgPredicateExtension<C>;
 
     type AbstractOrderByExtension = PgAbstractOrderByExtension;
 }

@@ -46,7 +46,8 @@ pub use core::physical_column_type::{
 };
 pub use core::sql_param_container::SQLParamContainer;
 pub use core::vector::{DEFAULT_VECTOR_SIZE, VectorDistanceFunction};
-pub use exo_sql_core::operation::{CaseSensitivity, NumericComparator, ParamEquality, Predicate};
+pub(crate) use exo_sql_core::operation::Predicate;
+pub use exo_sql_core::operation::{CaseSensitivity, NumericComparator};
 
 // Pg-specialized model type aliases
 pub type PgAbstractOperation = exo_sql_model::AbstractOperation<PgExtension>;

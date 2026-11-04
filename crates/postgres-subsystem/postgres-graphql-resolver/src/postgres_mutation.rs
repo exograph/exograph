@@ -25,7 +25,7 @@ use core_resolver::access_solver::{AccessInput, MissingValuePolicy};
 use core_resolver::validation::field::ValidatedField;
 use exo_sql_pg::{
     AbstractOperation, AbstractPredicate, PgAbstractDelete, PgAbstractInsert, PgAbstractOperation,
-    PgAbstractSelect, PgAbstractUpdate, Predicate,
+    PgAbstractSelect, PgAbstractUpdate,
 };
 use postgres_core_model::{predicate::PredicateParameter, types::EntityType};
 use postgres_graphql_model::{
@@ -148,7 +148,7 @@ async fn delete_operation<'content>(
         request_context,
     )
     .await?;
-    let predicate = Predicate::and(entity_predicate, arg_predicate);
+    let predicate = AbstractPredicate::and(entity_predicate, arg_predicate);
 
     Ok(PgAbstractDelete {
         table_id,
@@ -190,7 +190,7 @@ async fn update_operation<'content>(
         request_context,
     )
     .await?;
-    let predicate = Predicate::and(entity_predicate, arg_predicate);
+    let predicate = AbstractPredicate::and(entity_predicate, arg_predicate);
 
     match data_arg {
         Some(argument) => {

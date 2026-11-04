@@ -9,7 +9,6 @@
 
 use maybe_owned::MaybeOwned;
 
-use crate::ParamEquality;
 use exo_sql_core::Database;
 
 use crate::core::pg_extension::PgExtension;
@@ -97,32 +96,4 @@ pub enum ProxyColumn<'a> {
         col_index: usize,
         step_id: TransactionStepId,
     },
-}
-
-impl ParamEquality for ProxyColumn<'_> {
-    fn param_eq(&self, other: &Self) -> Option<bool> {
-        match (self, other) {
-            (Self::Concrete(l), Self::Concrete(r)) => l.param_eq(r),
-            _ => None,
-        }
-    }
-}
-
-impl PartialEq for ProxyColumn<'_> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Concrete(l), Self::Concrete(r)) => l == r,
-            (
-                Self::Template {
-                    col_index: l_col_index,
-                    step_id: l_step_id,
-                },
-                Self::Template {
-                    col_index: r_col_index,
-                    step_id: r_step_id,
-                },
-            ) => l_col_index == r_col_index && l_step_id == r_step_id,
-            _ => false,
-        }
-    }
 }

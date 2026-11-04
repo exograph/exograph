@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use super::DatabaseExtension;
-use super::predicate::ColumnPredicate;
+use super::predicate::Predicate;
 use super::table::Table;
 
 /// Represents a join between two tables. Currently, supports only left join.
@@ -19,11 +19,11 @@ pub struct LeftJoin<Ext: DatabaseExtension> {
     /// The right table in the join such as `venues`.
     right: Box<Table<Ext>>,
     /// The join predicate such as `concerts.venue_id = venues.id`.
-    predicate: ColumnPredicate<Ext>,
+    predicate: Predicate<Ext>,
 }
 
 impl<Ext: DatabaseExtension> LeftJoin<Ext> {
-    pub fn new(left: Table<Ext>, right: Table<Ext>, predicate: ColumnPredicate<Ext>) -> Self {
+    pub fn new(left: Table<Ext>, right: Table<Ext>, predicate: Predicate<Ext>) -> Self {
         LeftJoin {
             left: Box::new(left),
             right: Box::new(right),
@@ -39,7 +39,7 @@ impl<Ext: DatabaseExtension> LeftJoin<Ext> {
         &self.right
     }
 
-    pub fn predicate(&self) -> &ColumnPredicate<Ext> {
+    pub fn predicate(&self) -> &Predicate<Ext> {
         &self.predicate
     }
 }
