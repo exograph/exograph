@@ -134,7 +134,7 @@ fn to_delete<'a>(
 #[cfg(test)]
 mod tests {
     use crate::ExpressionBuilder;
-    use crate::{Predicate, sql_param_container::SQLParamContainer};
+    use crate::sql_param_container::SQLParamContainer;
     use exo_sql_model::{
         AbstractDelete, AbstractPredicate, AbstractSelect, ColumnPath, PhysicalColumnPath,
         selection::{AliasedSelectionElement, Selection, SelectionElement},
@@ -164,12 +164,12 @@ mod tests {
                             "id".to_string(),
                             SelectionElement::Physical(concerts_id_column),
                         )]),
-                        predicate: Predicate::True,
+                        predicate: AbstractPredicate::True,
                         order_by: None,
                         offset: None,
                         limit: None,
                     },
-                    predicate: Predicate::True,
+                    predicate: AbstractPredicate::True,
                     precheck_predicates: vec![],
                 };
 
@@ -205,7 +205,7 @@ mod tests {
                             "id".to_string(),
                             SelectionElement::Physical(concerts_id_column),
                         )]),
-                        predicate: Predicate::True,
+                        predicate: AbstractPredicate::True,
                         order_by: None,
                         offset: None,
                         limit: None,
@@ -252,7 +252,7 @@ mod tests {
                             "id".to_string(),
                             SelectionElement::Physical(concerts_id_column),
                         )]),
-                        predicate: Predicate::True,
+                        predicate: AbstractPredicate::True,
                         order_by: None,
                         offset: None,
                         limit: None,

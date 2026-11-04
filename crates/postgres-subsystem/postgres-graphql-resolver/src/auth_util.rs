@@ -26,7 +26,7 @@ use common::context::RequestContext;
 use common::value::Val;
 use core_model::access::AccessPredicateExpression;
 use core_resolver::{access_solver::AccessSolver, validation::field::ValidatedField};
-use exo_sql_pg::{AbstractPredicate, PgAbstractPredicate, Predicate};
+use exo_sql_pg::{AbstractPredicate, PgAbstractPredicate};
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
 pub(crate) async fn check_access<'a>(
@@ -48,7 +48,7 @@ pub(crate) async fn check_access<'a>(
                 )
                 .await?;
 
-                if entity_access == Predicate::False {
+                if entity_access == AbstractPredicate::False {
                     Err(PostgresExecutionError::Authorization)
                 } else {
                     let field_access_predicate = check_input_access(
@@ -77,7 +77,7 @@ pub(crate) async fn check_access<'a>(
                 )
                 .await?;
 
-                if entity_access == Predicate::False {
+                if entity_access == AbstractPredicate::False {
                     // Short circuit this common case
                     Err(PostgresExecutionError::Authorization)
                 } else {
@@ -139,7 +139,9 @@ pub(crate) async fn check_access<'a>(
         }
     };
 
-    if precheck_predicate == AbstractPredicate::False || entity_predicate == Predicate::False {
+    if precheck_predicate == AbstractPredicate::False
+        || entity_predicate == AbstractPredicate::False
+    {
         // Hard failure, no need to proceed to restrict the predicate in SQL
         Err(PostgresExecutionError::Authorization)
     } else {

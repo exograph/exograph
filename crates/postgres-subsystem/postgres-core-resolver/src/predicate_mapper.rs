@@ -17,7 +17,7 @@ use core_resolver::access_solver::AccessSolver;
 use exo_sql_pg::{
     AbstractPredicate, ArrayColumnType, ColumnPath, ColumnPathLink, Database, NumericComparator,
     PgAbstractPredicate, PgColumnPath, PgPredicateExtension, PhysicalColumnPath,
-    PhysicalColumnType, PhysicalColumnTypeExt, Predicate, SQLParamContainer, StringColumnType,
+    PhysicalColumnType, PhysicalColumnTypeExt, SQLParamContainer, StringColumnType,
 };
 use futures::future::{BoxFuture, FutureExt, try_join_all};
 use futures::{StreamExt, TryStreamExt};
@@ -390,7 +390,7 @@ fn map_predicate<'a, F: FieldAccessChecker>(
                                     .check_field_access(parameter, request_context)
                                     .await?;
 
-                                if field_access == Predicate::False {
+                                if field_access == AbstractPredicate::False {
                                     Err(PostgresExecutionError::Authorization)
                                 } else {
                                     let param_predicate = map_predicate(

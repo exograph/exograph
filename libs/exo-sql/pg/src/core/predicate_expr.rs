@@ -12,7 +12,7 @@ use crate::{CaseSensitivity, NumericComparator, Predicate};
 use crate::{ExpressionBuilder, SQLBuilder, column::Column, core::vector::VectorDistance};
 use exo_sql_core::Database;
 
-pub type ConcretePredicate = Predicate<Column, PgExtension>;
+pub type ConcretePredicate = Predicate<PgExtension>;
 
 impl ExpressionBuilder for ConcretePredicate {
     /// Build a predicate into a SQL string.

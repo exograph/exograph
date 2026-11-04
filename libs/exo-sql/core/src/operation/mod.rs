@@ -28,7 +28,7 @@ pub use group_by::GroupBy;
 pub use join::LeftJoin;
 pub use order::{OrderBy, OrderByElement, OrderByElementExpr};
 pub use param_equality::ParamEquality;
-pub use predicate::{CaseSensitivity, ColumnPredicate, NumericComparator, Predicate};
+pub use predicate::{CaseSensitivity, NumericComparator, Predicate};
 pub use select::Select;
 pub use table::Table;
 pub use transaction_step_id::TransactionStepId;

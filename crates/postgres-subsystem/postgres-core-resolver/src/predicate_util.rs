@@ -11,9 +11,8 @@
 
 use common::value::Val;
 use common::value::val::ValNumber;
-use std::fmt::Debug;
 
-use exo_sql_pg::{CaseSensitivity, ParamEquality, PgExtension, Predicate};
+use exo_sql_pg::{CaseSensitivity, PgAbstractPredicate, PgColumnPath};
 
 use crate::postgres_execution_error::PostgresExecutionError;
 
@@ -52,32 +51,36 @@ pub fn to_pg_vector(value: &Val, param_name: &str) -> Result<Vec<f32>, PostgresE
     }
 }
 
-/// Map predicate from operation name to a Predicate
-pub(crate) fn predicate_from_name<C: Debug + PartialEq + ParamEquality + Clone>(
+/// Map predicate from operation name to an abstract predicate
+pub(crate) fn predicate_from_name(
     op_name: &str,
-    lhs: C,
-    rhs: C,
-) -> Result<Predicate<C, PgExtension>, PostgresExecutionError> {
+    lhs: PgColumnPath,
+    rhs: PgColumnPath,
+) -> Result<PgAbstractPredicate, PostgresExecutionError> {
     match op_name {
-        "eq" => Ok(Predicate::Eq(lhs, rhs)),
-        "neq" => Ok(Predicate::Neq(lhs, rhs)),
-        "lt" => Ok(Predicate::Lt(lhs, rhs)),
-        "lte" => Ok(Predicate::Lte(lhs, rhs)),
-        "gt" => Ok(Predicate::Gt(lhs, rhs)),
-        "gte" => Ok(Predicate::Gte(lhs, rhs)),
-        "like" => Ok(Predicate::StringLike(lhs, rhs, CaseSensitivity::Sensitive)),
-        "ilike" => Ok(Predicate::StringLike(
+        "eq" => Ok(PgAbstractPredicate::Eq(lhs, rhs)),
+        "neq" => Ok(PgAbstractPredicate::Neq(lhs, rhs)),
+        "lt" => Ok(PgAbstractPredicate::Lt(lhs, rhs)),
+        "lte" => Ok(PgAbstractPredicate::Lte(lhs, rhs)),
+        "gt" => Ok(PgAbstractPredicate::Gt(lhs, rhs)),
+        "gte" => Ok(PgAbstractPredicate::Gte(lhs, rhs)),
+        "like" => Ok(PgAbstractPredicate::StringLike(
+            lhs,
+            rhs,
+            CaseSensitivity::Sensitive,
+        )),
+        "ilike" => Ok(PgAbstractPredicate::StringLike(
             lhs,
             rhs,
             CaseSensitivity::Insensitive,
         )),
-        "startsWith" => Ok(Predicate::StringStartsWith(lhs, rhs)),
-        "endsWith" => Ok(Predicate::StringEndsWith(lhs, rhs)),
-        "contains" => Ok(Predicate::JsonContains(lhs, rhs)),
-        "containedBy" => Ok(Predicate::JsonContainedBy(lhs, rhs)),
-        "matchKey" => Ok(Predicate::JsonMatchKey(lhs, rhs)),
-        "matchAnyKey" => Ok(Predicate::JsonMatchAnyKey(lhs, rhs)),
-        "matchAllKeys" => Ok(Predicate::JsonMatchAllKeys(lhs, rhs)),
+        "startsWith" => Ok(PgAbstractPredicate::StringStartsWith(lhs, rhs)),
+        "endsWith" => Ok(PgAbstractPredicate::StringEndsWith(lhs, rhs)),
+        "contains" => Ok(PgAbstractPredicate::JsonContains(lhs, rhs)),
+        "containedBy" => Ok(PgAbstractPredicate::JsonContainedBy(lhs, rhs)),
+        "matchKey" => Ok(PgAbstractPredicate::JsonMatchKey(lhs, rhs)),
+        "matchAnyKey" => Ok(PgAbstractPredicate::JsonMatchAnyKey(lhs, rhs)),
+        "matchAllKeys" => Ok(PgAbstractPredicate::JsonMatchAllKeys(lhs, rhs)),
         _ => Err(PostgresExecutionError::Validation(
             op_name.into(),
             format!("Unknown predicate operator: {op_name}"),

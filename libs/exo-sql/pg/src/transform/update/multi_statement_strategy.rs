@@ -321,7 +321,7 @@ fn delete_op<'a>(
 #[cfg(test)]
 mod tests {
     use crate::Column;
-    use crate::{Predicate, sql_param_container::SQLParamContainer};
+    use crate::sql_param_container::SQLParamContainer;
     use exo_sql_core::physical_column::get_otm_relation_for_columns;
     use exo_sql_model::{
         AbstractPredicate, AbstractSelect, AbstractUpdate, ColumnPath, NestedAbstractUpdate,
@@ -372,7 +372,7 @@ mod tests {
                                 SelectionElement::Physical(venues_name_column),
                             ),
                         ]),
-                        predicate: Predicate::True,
+                        predicate: AbstractPredicate::True,
                         order_by: None,
                         offset: None,
                         limit: None,
@@ -417,7 +417,7 @@ mod tests {
                     .deref(&database),
                     update: AbstractUpdate {
                         table_id: concerts_table,
-                        predicate: Predicate::True,
+                        predicate: AbstractPredicate::True,
                         column_values: vec![(
                             concerts_name_column,
                             Column::Param(SQLParamContainer::string(
@@ -427,7 +427,7 @@ mod tests {
                         selection: AbstractSelect {
                             table_id: venues_table,
                             selection: Selection::Seq(vec![]),
-                            predicate: Predicate::True,
+                            predicate: AbstractPredicate::True,
                             order_by: None,
                             offset: None,
                             limit: None,
@@ -461,7 +461,7 @@ mod tests {
                                 SelectionElement::Physical(venues_name_column),
                             ),
                         ]),
-                        predicate: Predicate::True,
+                        predicate: AbstractPredicate::True,
                         order_by: None,
                         offset: None,
                         limit: None,
