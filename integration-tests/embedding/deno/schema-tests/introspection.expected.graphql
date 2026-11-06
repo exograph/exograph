@@ -118,7 +118,7 @@ input VectorFilterArg {
   distanceTo: [Float!]!
 
   """The distance to the vector."""
-  distance: FloatFilter
+  distance: FloatFilter!
 }
 
 input VectorOrdering {

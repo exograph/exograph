@@ -1,0 +1,18 @@
+operation: |
+  query($searchVector: [Float!]) {
+      documents(where: {contentVector: {similar: {distanceTo: $searchVector, distance: {lt: null}}}}) @unordered {
+          id
+      }
+  }
+variable: |
+  {
+    searchVector: [0.95, 0.85, 0.15]
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Invalid field 'distance': The distance threshold must not be null"
+      }
+    ]
+  }

@@ -1,0 +1,16 @@
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_documents",
+      "params": {
+        "where": {"contentVector": {"similar": {"distanceTo": [0.95, 0.85, 0.15]}}}
+      }
+    }
+response: |
+  {
+    "error": {
+      "code": -32001,
+      "message": "Invalid field 'distance': A distance comparator is required"
+    }
+  }

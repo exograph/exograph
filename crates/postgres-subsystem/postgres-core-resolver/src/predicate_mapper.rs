@@ -181,10 +181,20 @@ fn map_predicate<'a, F: FieldAccessChecker>(
                                     arg_parameter_type.kind,
                                     PredicateParameterTypeKind::Vector
                                 ) {
-                                    let value = op_value.get("distanceTo").unwrap();
+                                    let value = op_value.get("distanceTo").ok_or_else(|| {
+                                        PostgresExecutionError::Validation(
+                                            "distanceTo".into(),
+                                            "A target vector is required".into(),
+                                        )
+                                    })?;
                                     let vector_value = to_pg_vector(value, &parameter.name)?;
 
-                                    let distance = op_value.get("distance").unwrap();
+                                    let distance = op_value.get("distance").ok_or_else(|| {
+                                        PostgresExecutionError::Validation(
+                                            "distance".into(),
+                                            "A distance comparator is required".into(),
+                                        )
+                                    })?;
                                     match distance {
                                         Val::Object(map) => {
                                             if map.len() != 1 {
@@ -214,7 +224,14 @@ fn map_predicate<'a, F: FieldAccessChecker>(
                                                 bits: exo_sql_pg::FloatBits::_53,
                                             };
                                             let threshold =
-                                                cast_value(threshold, &float_type, false)?.unwrap();
+                                                cast_value(threshold, &float_type, false)?;
+                                            let threshold = threshold.ok_or_else(|| {
+                                                PostgresExecutionError::Validation(
+                                                    "distance".into(),
+                                                    "The distance threshold must not be null"
+                                                        .into(),
+                                                )
+                                            })?;
                                             let target_vector =
                                                 SQLParamContainer::f32_array(vector_value);
 

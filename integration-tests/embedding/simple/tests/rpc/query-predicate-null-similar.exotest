@@ -1,0 +1,16 @@
+operation:
+  type: rpc
+  payload: |
+    {
+      "method": "get_documents",
+      "params": {
+        "where": {"contentVector": {"similar": null}}
+      }
+    }
+response: |
+  {
+    "error": {
+      "code": -32001,
+      "message": "Invalid field 'distanceTo': A target vector is required"
+    }
+  }

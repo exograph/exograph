@@ -1,0 +1,14 @@
+operation: |
+  query {
+      documents(where: {contentVector: {similar: null}}) @unordered {
+          id
+      }
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Invalid field 'distanceTo': A target vector is required"
+      }
+    ]
+  }
