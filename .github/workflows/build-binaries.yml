@@ -91,7 +91,7 @@ jobs:
       matrix:
         # For these target platforms
         include:
-          - os: macos-14
+          - os: macos-15
             deps-script: brew install protobuf
             target: aarch64-apple-darwin
             bin_extension: ""
