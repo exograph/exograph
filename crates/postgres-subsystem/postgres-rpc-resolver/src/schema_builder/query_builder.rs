@@ -93,31 +93,13 @@ impl BuildRpcTypeSchema for PredicateParameter {
                 let type_name = get_scalar_type_from_column_path_link(self, subsystem);
                 RpcTypeSchema::scalar(&type_name)
             }
-            PredicateParameterTypeKind::Operator(operators) => {
-                let filter_type_name = &param_type.name;
-                if !added_types.contains(filter_type_name) {
-                    added_types.insert(filter_type_name.clone());
-                    let mut filter_obj = RpcObjectType::new(filter_type_name);
-                    for op_param in operators {
-                        let op_type = &subsystem.core_subsystem.predicate_types
-                            [op_param.typ.innermost().type_id];
-                        let op_schema = match &op_type.kind {
-                            PredicateParameterTypeKind::Vector => RpcTypeSchema::optional(
-                                build_vector_filter_arg_schema(schema, added_types),
-                            ),
-                            _ => {
-                                let type_name =
-                                    get_scalar_type_from_column_path_link(op_param, subsystem);
-                                RpcTypeSchema::optional(RpcTypeSchema::scalar(&type_name))
-                            }
-                        };
-                        filter_obj =
-                            filter_obj.with_field(RpcObjectField::new(&op_param.name, op_schema));
-                    }
-                    schema.add_object_type(filter_type_name.clone(), filter_obj);
-                }
-                RpcTypeSchema::object(filter_type_name)
-            }
+            PredicateParameterTypeKind::Operator(operators) => build_operator_filter_schema(
+                &param_type.name,
+                operators,
+                subsystem,
+                schema,
+                added_types,
+            ),
             PredicateParameterTypeKind::Composite {
                 field_params,
                 logical_op_params,
@@ -171,7 +153,7 @@ impl BuildRpcTypeSchema for PredicateParameter {
                 RpcTypeSchema::object(ref_filter_name)
             }
             PredicateParameterTypeKind::Vector => {
-                build_vector_filter_arg_schema(schema, added_types)
+                build_vector_filter_arg_schema(subsystem, schema, added_types)
             }
         }
     }
@@ -246,18 +228,68 @@ fn ensure_vector_ordering_added(schema: &mut RpcSchema, added_types: &mut HashSe
     schema.add_object_type(VECTOR_ORDERING_NAME.to_string(), ordering_obj);
 }
 
+/// Build the schema of a filter on a primitive type, such as `IntFilter`.
+fn build_operator_filter_schema(
+    filter_type_name: &str,
+    operators: &[PredicateParameter],
+    subsystem: &PostgresRpcSubsystem,
+    schema: &mut RpcSchema,
+    added_types: &mut HashSet<String>,
+) -> RpcTypeSchema {
+    if !added_types.contains(filter_type_name) {
+        added_types.insert(filter_type_name.to_string());
+        let mut filter_obj = RpcObjectType::new(filter_type_name);
+        for op_param in operators {
+            let op_type =
+                &subsystem.core_subsystem.predicate_types[op_param.typ.innermost().type_id];
+            let op_schema = match &op_type.kind {
+                PredicateParameterTypeKind::Vector => RpcTypeSchema::optional(
+                    build_vector_filter_arg_schema(subsystem, schema, added_types),
+                ),
+                _ => {
+                    let type_name = get_scalar_type_from_column_path_link(op_param, subsystem);
+                    RpcTypeSchema::optional(RpcTypeSchema::scalar(&type_name))
+                }
+            };
+            filter_obj = filter_obj.with_field(RpcObjectField::new(&op_param.name, op_schema));
+        }
+        schema.add_object_type(filter_type_name.to_string(), filter_obj);
+    }
+    RpcTypeSchema::object(filter_type_name)
+}
+
 /// Build the VectorFilterArg schema (used by the 'similar' operator in VectorFilter).
-/// VectorFilterArg has two fields:
+/// VectorFilterArg has two required fields:
 /// - distanceTo: the target vector to compare against (array of floats)
-/// - distance: the maximum distance threshold (float)
+/// - distance: a `FloatFilter` with exactly one comparator, which the distance must satisfy
 fn build_vector_filter_arg_schema(
+    subsystem: &PostgresRpcSubsystem,
     schema: &mut RpcSchema,
     added_types: &mut HashSet<String>,
 ) -> RpcTypeSchema {
     // TODO: Unify with other ways we handle parameter types (and then have GraphQL also use the same way)
     const VECTOR_FILTER_ARG_NAME: &str = "VectorFilterArg";
+    const DISTANCE_FILTER_NAME: &str = "FloatFilter";
     if !added_types.contains(VECTOR_FILTER_ARG_NAME) {
         added_types.insert(VECTOR_FILTER_ARG_NAME.to_string());
+
+        let distance_filter_type = subsystem
+            .core_subsystem
+            .predicate_types
+            .iter()
+            .map(|(_, filter_type)| filter_type)
+            .find(|filter_type| filter_type.name == DISTANCE_FILTER_NAME);
+
+        let distance_schema = match distance_filter_type.map(|filter_type| &filter_type.kind) {
+            Some(PredicateParameterTypeKind::Operator(operators)) => build_operator_filter_schema(
+                DISTANCE_FILTER_NAME,
+                operators,
+                subsystem,
+                schema,
+                added_types,
+            ),
+            _ => panic!("Every primitive type, including Float, has an operator filter"),
+        };
 
         let filter_arg_obj = RpcObjectType::new(VECTOR_FILTER_ARG_NAME)
             .with_description("Vector similarity search argument")
@@ -265,10 +297,7 @@ fn build_vector_filter_arg_schema(
                 "distanceTo",
                 RpcTypeSchema::array(RpcTypeSchema::scalar("Float")),
             ))
-            .with_field(RpcObjectField::new(
-                "distance",
-                RpcTypeSchema::optional(RpcTypeSchema::scalar("Float")),
-            ));
+            .with_field(RpcObjectField::new("distance", distance_schema));
 
         schema.add_object_type(VECTOR_FILTER_ARG_NAME.to_string(), filter_arg_obj);
     }

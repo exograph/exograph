@@ -472,6 +472,29 @@
           }
         }
       },
+      "FloatFilter": {
+        "type": "object",
+        "properties": {
+          "eq": {
+            "type": "number"
+          },
+          "neq": {
+            "type": "number"
+          },
+          "lt": {
+            "type": "number"
+          },
+          "lte": {
+            "type": "number"
+          },
+          "gt": {
+            "type": "number"
+          },
+          "gte": {
+            "type": "number"
+          }
+        }
+      },
       "VectorFilterArg": {
         "type": "object",
         "properties": {
@@ -482,11 +505,12 @@
             }
           },
           "distance": {
-            "type": "number"
+            "$ref": "#/components/schemas/FloatFilter"
           }
         },
         "required": [
-          "distanceTo"
+          "distanceTo",
+          "distance"
         ],
         "description": "Vector similarity search argument"
       },
