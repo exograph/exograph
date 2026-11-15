@@ -109,10 +109,10 @@ clap = "4"
 deno_ast = "0.53.3"
 deno_error = "0.7.1"
 deno_runtime = "0.267.0"
-deno_core = { version = "0.412.0", features = ["v8"] }
-deno_fs = "0.169.0"
-deno_resolver = "0.90.0"
-node_resolver = "0.97.0"
+deno_core = { version = "0.413.0", features = ["v8"] }
+deno_fs = "0.170.0"
+deno_resolver = "0.91.0"
+node_resolver = "0.98.0"
 sys_traits = "0.1.28"
 deno_snapshots = "0.74.0"
 
